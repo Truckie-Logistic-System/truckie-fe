@@ -13,6 +13,8 @@ export const AUTH_REFRESH_TOKEN_KEY = import.meta.env.VITE_AUTH_REFRESH_TOKEN_KE
 
 // Map Configuration
 export const VIET_MAPS_API_KEY = import.meta.env.VITE_VIET_MAPS_API_KEY;
+export const OPEN_MAP_API_KEY = import.meta.env.VITE_OPEN_MAP_API_KEY;
+export const OPEN_MAP_API_BASE_URL = import.meta.env.VITE_OPEN_MAP_API_BASE_URL;
 
 // App Configuration
 export const APP_NAME = import.meta.env.VITE_APP_NAME;

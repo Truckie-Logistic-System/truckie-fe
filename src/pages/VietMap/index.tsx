@@ -117,7 +117,7 @@ const generateTileUrls = (
     return urls;
 };
 
-const MapPage = () => {
+const VietMapPage = () => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
     const [lng, setLng] = useState<number>(105.85);
@@ -467,7 +467,7 @@ const MapPage = () => {
 
 
     // Biến để lưu trữ timeout ID
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Handle search input change
     const handleSearchChange = (value: string) => {
@@ -624,4 +624,4 @@ const MapPage = () => {
     );
 };
 
-export default MapPage; 
+export default VietMapPage; 
