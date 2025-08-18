@@ -34,6 +34,36 @@ export interface PlaceDetail {
     lng: number;
 }
 
+export interface RouteInstruction {
+    distance: number;
+    heading: number;
+    sign: number;
+    interval: number[];
+    text: string;
+    time: number;
+    street_name: string;
+    last_heading: number | null;
+}
+
+export interface RoutePath {
+    distance: number;
+    weight: number;
+    time: number;
+    transfers: number;
+    points_encoded: boolean;
+    bbox: number[];
+    points: string;
+    instructions: RouteInstruction[];
+    snapped_waypoints: string;
+}
+
+export interface RouteResponse {
+    license: string;
+    code: string;
+    messages: string | null;
+    paths: RoutePath[];
+}
+
 // Lưu trữ controller cho request hiện tại để có thể hủy nếu cần
 let currentSearchController: AbortController | null = null;
 
@@ -106,4 +136,77 @@ export const getPlaceDetail = async (refId: string): Promise<PlaceDetail | null>
         console.error('Error getting place detail:', error);
         return null;
     }
-}; 
+};
+
+/**
+ * Tìm đường đi giữa các điểm
+ * @param points Mảng các điểm [lat, lng] để tìm đường đi
+ * @param vehicle Phương tiện di chuyển (car, bike, foot, motorcycle)
+ * @returns Thông tin về lộ trình
+ */
+export const findRoute = async (
+    points: [number, number][],
+    vehicle: 'car' | 'bike' | 'foot' | 'motorcycle' = 'car'
+): Promise<RouteResponse | null> => {
+    try {
+        if (points.length < 2) {
+            throw new Error('Cần ít nhất 2 điểm để tìm đường đi');
+        }
+
+        // Tạo chuỗi point=lat,lng cho mỗi điểm
+        const pointParams = points.map(([lat, lng]) => `point=${lat},${lng}`).join('&');
+
+        const url = `https://maps.vietmap.vn/api/route?api-version=1.1&apikey=${VIET_MAPS_API_KEY}&${pointParams}&points_encoded=true&vehicle=${vehicle}`;
+
+        const response = await axios.get<RouteResponse>(url);
+        return response.data;
+    } catch (error) {
+        console.error('Error finding route:', error);
+        return null;
+    }
+};
+
+/**
+ * Giải mã chuỗi polyline thành mảng các điểm [lng, lat]
+ * @param encoded Chuỗi polyline được mã hóa
+ * @returns Mảng các điểm dạng [lng, lat]
+ */
+export function decodePolyline(encoded: string): [number, number][] {
+    const points: [number, number][] = [];
+    let index = 0;
+    const len = encoded.length;
+    let lat = 0;
+    let lng = 0;
+
+    while (index < len) {
+        let b;
+        let shift = 0;
+        let result = 0;
+
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+
+        const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+
+        const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        // VietMap returns points in lat,lng order but maplibregl expects lng,lat
+        points.push([lng * 1e-5, lat * 1e-5]);
+    }
+
+    return points;
+} 

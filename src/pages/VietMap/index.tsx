@@ -1,14 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Button, Card, Input, Space, Typography, Progress, message, AutoComplete, Spin } from 'antd';
-import { SearchOutlined, AimOutlined, EnvironmentOutlined, CloudDownloadOutlined } from '@ant-design/icons';
+import { Card, Typography, message, Tabs } from 'antd';
+import { CarOutlined, EnvironmentOutlined, CompassOutlined } from '@ant-design/icons';
 import { VIET_MAPS_API_KEY } from '../../config/env';
-import { searchPlaces, getPlaceDetail } from '../../services/vietmap.service';
-import type { AutocompleteResult } from '../../services/vietmap.service';
+import { searchPlaces, getPlaceDetail, findRoute, decodePolyline } from '../../services/vietmap.service';
+import type { AutocompleteResult, RouteResponse, RouteInstruction } from '../../services/vietmap.service';
 
+// Import components
+import SearchPanel from './components/SearchPanel';
+import RoutePanel from './components/RoutePanel';
+import NavigationPanel from './components/NavigationPanel';
+import TripSummary from './components/TripSummary';
 
 const { Title } = Typography;
+const { TabPane } = Tabs;
 
 // Caching configuration
 const CACHE_NAME = 'vietmap-tiles-cache-v1';
@@ -137,6 +143,25 @@ const VietMapPage = () => {
     // State để lưu tọa độ đã chọn (từ tìm kiếm hoặc vị trí hiện tại)
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     const markersRef = useRef<maplibregl.Marker[]>([]);
+
+    // Route finding states
+    const [activeTab, setActiveTab] = useState<string>('search');
+    const [startPoint, setStartPoint] = useState<{ lat: number; lng: number; address: string } | null>(null);
+    const [endPoint, setEndPoint] = useState<{ lat: number; lng: number; address: string } | null>(null);
+    const [startSearchQuery, setStartSearchQuery] = useState<string>('');
+    const [endSearchQuery, setEndSearchQuery] = useState<string>('');
+    const [startOptions, setStartOptions] = useState<{ value: string; label: React.ReactNode }[]>([]);
+    const [endOptions, setEndOptions] = useState<{ value: string; label: React.ReactNode }[]>([]);
+    const [isStartSearching, setIsStartSearching] = useState<boolean>(false);
+    const [isEndSearching, setIsEndSearching] = useState<boolean>(false);
+    const [routeResult, setRouteResult] = useState<RouteResponse | null>(null);
+    const [selectedVehicle, setSelectedVehicle] = useState<'car' | 'bike' | 'foot' | 'motorcycle'>('car');
+    const [isRouteFinding, setIsRouteFinding] = useState<boolean>(false);
+    const [routePolyline, setRoutePolyline] = useState<maplibregl.Map | null>(null);
+    const routeLayerRef = useRef<string | null>(null);
+    const routeSourceRef = useRef<string | null>(null);
+    const startMarkerRef = useRef<maplibregl.Marker | null>(null);
+    const endMarkerRef = useRef<maplibregl.Marker | null>(null);
 
     // Preload Vietnam map tiles
     const preloadVietnamTiles = async () => {
@@ -328,6 +353,16 @@ const VietMapPage = () => {
                                     const addressInfo = data[0];
                                     setCurrentAddress(addressInfo.display);
                                     setAddressDetails(addressInfo);
+
+                                    // Nếu đang ở tab tìm đường và chưa có điểm xuất phát, tự động đặt vị trí hiện tại làm điểm xuất phát
+                                    if (activeTab === 'route' && !startPoint) {
+                                        setStartPoint({
+                                            lat: latitude,
+                                            lng: longitude,
+                                            address: addressInfo.display
+                                        });
+                                        setStartSearchQuery(addressInfo.display);
+                                    }
                                 } else {
                                     setCurrentAddress('Không tìm thấy địa chỉ');
                                     setAddressDetails(null);
@@ -519,107 +554,1154 @@ const VietMapPage = () => {
         }
     };
 
+    // Format time from milliseconds to minutes and seconds
+    const formatTime = (milliseconds: number) => {
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+        if (hours > 0) {
+            return `${hours} giờ ${minutes} phút`;
+        } else {
+            return `${minutes} phút`;
+        }
+    };
+
+    // Clear route from map
+    const clearRoute = () => {
+        if (map.current) {
+            // Remove existing route layer and source
+            if (routeLayerRef.current && map.current.getLayer(routeLayerRef.current)) {
+                map.current.removeLayer(routeLayerRef.current);
+            }
+
+            if (routeSourceRef.current && map.current.getSource(routeSourceRef.current)) {
+                map.current.removeSource(routeSourceRef.current);
+            }
+
+            // Reset refs
+            routeLayerRef.current = null;
+            routeSourceRef.current = null;
+
+            // Remove markers
+            if (startMarkerRef.current) {
+                startMarkerRef.current.remove();
+                startMarkerRef.current = null;
+            }
+
+            if (endMarkerRef.current) {
+                endMarkerRef.current.remove();
+                endMarkerRef.current = null;
+            }
+        }
+
+        // Clear route result
+        setRouteResult(null);
+    };
+
+    // Find route between two points
+    const findRouteBetweenPoints = async () => {
+        if (!startPoint || !endPoint) {
+            messageApi.error('Vui lòng chọn điểm xuất phát và điểm đến');
+            return;
+        }
+
+        setIsRouteFinding(true);
+        clearRoute();
+
+        try {
+            const points: [number, number][] = [
+                [startPoint.lat, startPoint.lng],
+                [endPoint.lat, endPoint.lng]
+            ];
+
+            const result = await findRoute(points, selectedVehicle);
+
+            if (result && result.paths && result.paths.length > 0) {
+                setRouteResult(result);
+
+                // Decode polyline and draw route on map
+                const path = result.paths[0];
+                const decodedPoints = decodePolyline(path.points);
+
+                if (map.current) {
+                    // Generate unique IDs for this route
+                    const sourceId = `route-source-${Date.now()}`;
+                    const layerId = `route-layer-${Date.now()}`;
+
+                    // Store IDs for later cleanup
+                    routeSourceRef.current = sourceId;
+                    routeLayerRef.current = layerId;
+
+                    // Add source for the route
+                    map.current.addSource(sourceId, {
+                        type: 'geojson',
+                        data: {
+                            type: 'Feature',
+                            properties: {},
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: decodedPoints
+                            }
+                        }
+                    });
+
+                    // Add route layer
+                    map.current.addLayer({
+                        id: layerId,
+                        type: 'line',
+                        source: sourceId,
+                        layout: {
+                            'line-join': 'round',
+                            'line-cap': 'round'
+                        },
+                        paint: {
+                            'line-color': '#1677ff',
+                            'line-width': 5,
+                            'line-opacity': 0.8
+                        }
+                    });
+
+                    // Add markers for start and end points
+                    startMarkerRef.current = new maplibregl.Marker({ color: 'green' })
+                        .setLngLat([startPoint.lng, startPoint.lat])
+                        .addTo(map.current);
+
+                    endMarkerRef.current = new maplibregl.Marker({ color: 'red' })
+                        .setLngLat([endPoint.lng, endPoint.lat])
+                        .addTo(map.current);
+
+                    // Fit map to route bounds
+                    const bounds = path.bbox;
+                    map.current.fitBounds([
+                        [bounds[0], bounds[1]], // Southwest corner [lng, lat]
+                        [bounds[2], bounds[3]]  // Northeast corner [lng, lat]
+                    ], { padding: 50 });
+                }
+
+                messageApi.success('Đã tìm thấy đường đi');
+            } else {
+                messageApi.error('Không tìm thấy đường đi phù hợp');
+            }
+        } catch (error) {
+            console.error('Error finding route:', error);
+            messageApi.error('Lỗi khi tìm đường đi');
+        } finally {
+            setIsRouteFinding(false);
+        }
+    };
+
+    // Handle search for start point
+    const handleStartSearchChange = (value: string) => {
+        setStartSearchQuery(value);
+
+        if (!value || value.length < 2) {
+            setStartOptions([]);
+            return;
+        }
+
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        if (value.length >= 2) {
+            setIsStartSearching(true);
+        }
+
+        const currentValue = value;
+
+        searchTimeoutRef.current = setTimeout(() => {
+            if (currentValue.length >= 2) {
+                performStartSearch(currentValue);
+            }
+        }, 400);
+    };
+
+    // Perform search for start point
+    const performStartSearch = async (value: string) => {
+        if (value.length < 2) {
+            setStartOptions([]);
+            return;
+        }
+
+        try {
+            const focusParam = map.current
+                ? `${map.current.getCenter().lat},${map.current.getCenter().lng}`
+                : undefined;
+
+            const results = await searchPlaces(value, focusParam);
+            setStartOptions(formatSearchResults(results));
+        } catch (error) {
+            console.error('Error searching places for start point:', error);
+            setStartOptions([]);
+        } finally {
+            setIsStartSearching(false);
+        }
+    };
+
+    // Handle search for end point
+    const handleEndSearchChange = (value: string) => {
+        setEndSearchQuery(value);
+
+        if (!value || value.length < 2) {
+            setEndOptions([]);
+            return;
+        }
+
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        if (value.length >= 2) {
+            setIsEndSearching(true);
+        }
+
+        const currentValue = value;
+
+        searchTimeoutRef.current = setTimeout(() => {
+            if (currentValue.length >= 2) {
+                performEndSearch(currentValue);
+            }
+        }, 400);
+    };
+
+    // Perform search for end point
+    const performEndSearch = async (value: string) => {
+        if (value.length < 2) {
+            setEndOptions([]);
+            return;
+        }
+
+        try {
+            const focusParam = map.current
+                ? `${map.current.getCenter().lat},${map.current.getCenter().lng}`
+                : undefined;
+
+            const results = await searchPlaces(value, focusParam);
+            setEndOptions(formatSearchResults(results));
+        } catch (error) {
+            console.error('Error searching places for end point:', error);
+            setEndOptions([]);
+        } finally {
+            setIsEndSearching(false);
+        }
+    };
+
+    // Handle selection of start point
+    const handleSelectStartPlace = async (value: string, option: any) => {
+        if (!map.current) return;
+
+        try {
+            const placeDetail = await getPlaceDetail(option.key);
+
+            if (placeDetail) {
+                setStartPoint({
+                    lat: placeDetail.lat,
+                    lng: placeDetail.lng,
+                    address: placeDetail.display
+                });
+
+                // Clear any existing route when changing start/end points
+                clearRoute();
+            }
+        } catch (error) {
+            console.error('Error handling start place selection:', error);
+            messageApi.error('Không thể tìm thấy thông tin chi tiết của địa điểm');
+        }
+    };
+
+    // Handle selection of end point
+    const handleSelectEndPlace = async (value: string, option: any) => {
+        if (!map.current) return;
+
+        try {
+            const placeDetail = await getPlaceDetail(option.key);
+
+            if (placeDetail) {
+                setEndPoint({
+                    lat: placeDetail.lat,
+                    lng: placeDetail.lng,
+                    address: placeDetail.display
+                });
+
+                // Clear any existing route when changing start/end points
+                clearRoute();
+            }
+        } catch (error) {
+            console.error('Error handling end place selection:', error);
+            messageApi.error('Không thể tìm thấy thông tin chi tiết của địa điểm');
+        }
+    };
+
+    // Use current location as start point
+    const useCurrentLocationAsStart = () => {
+        getCurrentLocation();
+    };
+
+    // Swap start and end points
+    const swapStartAndEndPoints = () => {
+        if (startPoint && endPoint) {
+            const tempStart = { ...startPoint };
+            const tempStartQuery = startSearchQuery;
+
+            setStartPoint(endPoint);
+            setStartSearchQuery(endSearchQuery);
+
+            setEndPoint(tempStart);
+            setEndSearchQuery(tempStartQuery);
+
+            // Clear any existing route
+            clearRoute();
+        }
+    };
+
+    // Get vehicle icon based on selected vehicle
+    const getVehicleIcon = () => {
+        switch (selectedVehicle) {
+            case 'car':
+                return <CarOutlined />;
+            case 'foot':
+                return <EnvironmentOutlined />;
+            case 'bike':
+            case 'motorcycle':
+                return <CompassOutlined />;
+            default:
+                return <CarOutlined />;
+        }
+    };
+
+    // Handle tab change
+    const handleTabChange = (key: string) => {
+        setActiveTab(key);
+
+        // If switching to route tab and we have the current location, set it as start point
+        if (key === 'route' && selectedLocation && !startPoint) {
+            setStartPoint({
+                lat: selectedLocation.lat,
+                lng: selectedLocation.lng,
+                address: currentAddress || 'Vị trí hiện tại'
+            });
+            setStartSearchQuery(currentAddress || 'Vị trí hiện tại');
+        }
+
+        // Clear route when switching tabs
+        if (key !== 'route') {
+            clearRoute();
+        }
+    };
+
+    // Navigation states
+    const [isNavigating, setIsNavigating] = useState<boolean>(false);
+    const [remainingDistance, setRemainingDistance] = useState<number>(0);
+    const [remainingTime, setRemainingTime] = useState<number>(0);
+    const [currentInstructionIndex, setCurrentInstructionIndex] = useState<number>(0);
+    const [nextTurnDistance, setNextTurnDistance] = useState<number>(0);
+    const [showNavigationModal, setShowNavigationModal] = useState<boolean>(false);
+    const [compassHeading, setCompassHeading] = useState<number | null>(null);
+    const watchPositionRef = useRef<number | null>(null);
+    const userLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
+    const navigationProgressRef = useRef<number>(0);
+
+    // Simulation states
+    const [isSimulating, setIsSimulating] = useState<boolean>(false);
+    const [simulationSpeed, setSimulationSpeed] = useState<number>(1);
+    const simulationIntervalRef = useRef<number | null>(null);
+    const simulationRoutePointsRef = useRef<[number, number][]>([]);
+    const simulationCurrentPointIndexRef = useRef<number>(0);
+    const simulationMarkerRef = useRef<maplibregl.Marker | null>(null);
+
+    // UI states
+    const [isNavigationPanelCollapsed, setIsNavigationPanelCollapsed] = useState<boolean>(false);
+    const [showTripSummary, setShowTripSummary] = useState<boolean>(false);
+    const [tripSummary, setTripSummary] = useState<{
+        startTime: number | null;
+        endTime: number | null;
+        totalDistance: number;
+        totalTime: number;
+        averageSpeed: number;
+    }>({
+        startTime: null,
+        endTime: null,
+        totalDistance: 0,
+        totalTime: 0,
+        averageSpeed: 0
+    });
+
+    // Initialize compass heading
+    useEffect(() => {
+        if (window.DeviceOrientationEvent) {
+            const handleOrientation = (event: any) => {
+                // For iOS devices
+                if (event.webkitCompassHeading) {
+                    setCompassHeading(event.webkitCompassHeading);
+                }
+                // For Android devices
+                else if (event.alpha) {
+                    setCompassHeading(360 - event.alpha);
+                }
+            };
+
+            window.addEventListener('deviceorientation', handleOrientation, true);
+
+            return () => {
+                window.removeEventListener('deviceorientation', handleOrientation, true);
+            };
+        }
+    }, []);
+
+    // Clear navigation when component unmounts
+    useEffect(() => {
+        return () => {
+            if (watchPositionRef.current !== null) {
+                navigator.geolocation.clearWatch(watchPositionRef.current);
+                watchPositionRef.current = null;
+            }
+        };
+    }, []);
+
+    // Clear simulation when component unmounts
+    useEffect(() => {
+        return () => {
+            if (simulationIntervalRef.current !== null) {
+                window.clearInterval(simulationIntervalRef.current);
+                simulationIntervalRef.current = null;
+            }
+        };
+    }, []);
+
+    // Calculate distance between two points using Haversine formula
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const R = 6371; // Radius of the earth in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const d = R * c; // Distance in km
+        return d;
+    };
+
+    // Find the closest point on the route to the current position
+    const findClosestPointOnRoute = (currentPosition: [number, number], routePoints: [number, number][]): number => {
+        let minDistance = Infinity;
+        let closestIndex = 0;
+
+        routePoints.forEach((point, index) => {
+            const distance = calculateDistance(
+                currentPosition[1], currentPosition[0],
+                point[1], point[0]
+            );
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestIndex = index;
+            }
+        });
+
+        return closestIndex;
+    };
+
+    // Calculate remaining distance from current position to destination
+    const calculateRemainingDistance = (currentPosition: [number, number], routePoints: [number, number][], closestPointIndex: number): number => {
+        let remainingDistance = 0;
+
+        // Add distance from current position to closest point on route
+        remainingDistance += calculateDistance(
+            currentPosition[1], currentPosition[0],
+            routePoints[closestPointIndex][1], routePoints[closestPointIndex][0]
+        );
+
+        // Add distances between remaining points on route
+        for (let i = closestPointIndex; i < routePoints.length - 1; i++) {
+            remainingDistance += calculateDistance(
+                routePoints[i][1], routePoints[i][0],
+                routePoints[i + 1][1], routePoints[i + 1][0]
+            );
+        }
+
+        return remainingDistance;
+    };
+
+    // Find the current instruction based on the closest point
+    const findCurrentInstruction = (closestPointIndex: number, instructions: RouteInstruction[]): number => {
+        for (let i = 0; i < instructions.length; i++) {
+            const instruction = instructions[i];
+            const [start, end] = instruction.interval;
+
+            if (closestPointIndex >= start && closestPointIndex <= end) {
+                return i;
+            }
+
+            // If we've passed this instruction's end point
+            if (closestPointIndex > end) {
+                // Return the next instruction if available
+                if (i < instructions.length - 1) {
+                    continue;
+                }
+            }
+        }
+
+        // If no match found, return the last instruction
+        return instructions.length - 1;
+    };
+
+    // Calculate distance to the next turn
+    const calculateDistanceToNextTurn = (currentPosition: [number, number], routePoints: [number, number][], closestPointIndex: number, instructions: RouteInstruction[], currentInstructionIndex: number): number => {
+        if (currentInstructionIndex >= instructions.length - 1) {
+            // If we're on the last instruction, return distance to destination
+            return calculateRemainingDistance(currentPosition, routePoints, closestPointIndex);
+        }
+
+        const nextInstruction = instructions[currentInstructionIndex + 1];
+        const nextTurnPointIndex = nextInstruction.interval[0];
+
+        let distanceToNextTurn = 0;
+
+        // Add distance from current position to closest point on route
+        distanceToNextTurn += calculateDistance(
+            currentPosition[1], currentPosition[0],
+            routePoints[closestPointIndex][1], routePoints[closestPointIndex][0]
+        );
+
+        // Add distances between points on route until next turn
+        for (let i = closestPointIndex; i < nextTurnPointIndex; i++) {
+            distanceToNextTurn += calculateDistance(
+                routePoints[i][1], routePoints[i][0],
+                routePoints[i + 1][1], routePoints[i + 1][0]
+            );
+        }
+
+        return distanceToNextTurn;
+    };
+
+    // Start navigation (modified to include simulation option)
+    const startNavigation = () => {
+        if (!routeResult || !routeResult.paths || routeResult.paths.length === 0) {
+            messageApi.error('Không có đường đi để bắt đầu dẫn đường');
+            return;
+        }
+
+        // If simulation is enabled, start simulation instead of real navigation
+        if (isSimulating) {
+            stopSimulation();
+            return;
+        }
+
+        // Original navigation code
+        setIsNavigating(true);
+        setShowNavigationModal(true);
+        setShowTripSummary(false);
+
+        // Record start time for trip summary
+        setTripSummary(prev => ({
+            ...prev,
+            startTime: Date.now(),
+            totalDistance: routeResult.paths[0].distance / 1000,
+            totalTime: routeResult.paths[0].time
+        }));
+
+        // Initial values
+        const path = routeResult.paths[0];
+        const routePoints = decodePolyline(path.points);
+        setRemainingDistance(path.distance / 1000); // Convert to km
+        setRemainingTime(path.time);
+        setCurrentInstructionIndex(0);
+
+        // If there's a first instruction, set next turn distance
+        if (path.instructions && path.instructions.length > 0) {
+            setNextTurnDistance(path.instructions[0].distance / 1000); // Convert to km
+        }
+
+        // Start watching position
+        if (navigator.geolocation) {
+            // Clear any existing watch
+            if (watchPositionRef.current !== null) {
+                navigator.geolocation.clearWatch(watchPositionRef.current);
+            }
+
+            watchPositionRef.current = navigator.geolocation.watchPosition(
+                (position) => {
+                    const { latitude, longitude, accuracy } = position.coords;
+                    const currentPosition: [number, number] = [longitude, latitude];
+
+                    // Update user location on map
+                    updateUserLocationOnMap(currentPosition, accuracy);
+
+                    // Calculate navigation progress
+                    const routePoints = decodePolyline(routeResult.paths[0].points);
+                    const closestPointIndex = findClosestPointOnRoute(currentPosition, routePoints);
+                    const remainingDist = calculateRemainingDistance(currentPosition, routePoints, closestPointIndex);
+
+                    // Update remaining distance and time
+                    setRemainingDistance(remainingDist);
+
+                    // Calculate progress percentage
+                    const totalDistance = routeResult.paths[0].distance / 1000; // in km
+                    const progress = 1 - (remainingDist / totalDistance);
+                    navigationProgressRef.current = progress;
+
+                    // Update remaining time based on progress
+                    const remainingTimeEstimate = routeResult.paths[0].time * (1 - progress);
+                    setRemainingTime(remainingTimeEstimate);
+
+                    // Find current instruction
+                    if (routeResult.paths[0].instructions && routeResult.paths[0].instructions.length > 0) {
+                        const newInstructionIndex = findCurrentInstruction(
+                            closestPointIndex,
+                            routeResult.paths[0].instructions
+                        );
+
+                        if (newInstructionIndex !== currentInstructionIndex) {
+                            setCurrentInstructionIndex(newInstructionIndex);
+                        }
+
+                        // Calculate distance to next turn
+                        const distanceToNextTurn = calculateDistanceToNextTurn(
+                            currentPosition,
+                            routePoints,
+                            closestPointIndex,
+                            routeResult.paths[0].instructions,
+                            newInstructionIndex
+                        );
+
+                        setNextTurnDistance(distanceToNextTurn);
+                    }
+
+                    // Check if we've reached the destination (within 50 meters)
+                    if (remainingDist < 0.05) {
+                        messageApi.success('Bạn đã đến điểm đến!');
+                        stopNavigation();
+                    }
+                },
+                (error) => {
+                    console.error('Error getting location during navigation:', error);
+                    messageApi.error('Không thể lấy vị trí hiện tại để dẫn đường');
+                    stopNavigation();
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
+                }
+            );
+        } else {
+            messageApi.error('Trình duyệt không hỗ trợ định vị');
+            setIsNavigating(false);
+        }
+    };
+
+    // Update user location on map during navigation
+    const updateUserLocationOnMap = (position: [number, number], accuracy: number) => {
+        if (!map.current) return;
+
+        // Create or update user location marker
+        if (!userLocationMarkerRef.current) {
+            // Create a new marker with custom HTML element for direction
+            const el = document.createElement('div');
+            el.className = 'navigation-marker';
+            el.style.width = '24px';
+            el.style.height = '24px';
+            el.style.borderRadius = '50%';
+            el.style.backgroundColor = '#4285F4';
+            el.style.border = '2px solid white';
+            el.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+            el.style.position = 'relative';
+
+            // Add direction indicator
+            const arrow = document.createElement('div');
+            arrow.style.width = '0';
+            arrow.style.height = '0';
+            arrow.style.borderLeft = '6px solid transparent';
+            arrow.style.borderRight = '6px solid transparent';
+            arrow.style.borderBottom = '10px solid white';
+            arrow.style.position = 'absolute';
+            arrow.style.top = '-6px';
+            arrow.style.left = '50%';
+            arrow.style.transform = 'translateX(-50%)';
+            arrow.style.transformOrigin = 'center bottom';
+            el.appendChild(arrow);
+
+            userLocationMarkerRef.current = new maplibregl.Marker({
+                element: el,
+                rotationAlignment: 'map'
+            })
+                .setLngLat(position)
+                .addTo(map.current);
+        } else {
+            userLocationMarkerRef.current.setLngLat(position);
+
+            // Update rotation based on compass heading if available
+            if (compassHeading !== null) {
+                const el = userLocationMarkerRef.current.getElement();
+                const arrow = el.querySelector('div');
+                if (arrow) {
+                    (arrow as HTMLElement).style.transform = `translateX(-50%) rotate(${compassHeading}deg)`;
+                }
+            }
+        }
+
+        // Center map on user location during navigation
+        map.current.flyTo({
+            center: position,
+            zoom: 17,
+            bearing: compassHeading !== null ? compassHeading : 0,
+            pitch: 60, // Tilt the map for better navigation view
+            duration: 500
+        });
+    };
+
+    // Pause navigation
+    const pauseNavigation = () => {
+        if (watchPositionRef.current !== null) {
+            navigator.geolocation.clearWatch(watchPositionRef.current);
+            watchPositionRef.current = null;
+        }
+
+        setIsNavigating(false);
+    };
+
+    // Resume navigation
+    const resumeNavigation = () => {
+        startNavigation();
+    };
+
+    // Stop navigation (modified to handle simulation)
+    const stopNavigation = () => {
+        // Record end time and calculate trip stats
+        const endTime = Date.now();
+        const startTime = tripSummary.startTime || endTime;
+        const actualTime = endTime - startTime;
+        const averageSpeed = tripSummary.totalDistance / (actualTime / 3600000); // km/h
+
+        setTripSummary(prev => ({
+            ...prev,
+            endTime: endTime,
+            averageSpeed: isSimulating ? prev.totalDistance / (prev.totalTime / 3600000) : averageSpeed
+        }));
+
+        // If simulation is running, stop it
+        if (isSimulating) {
+            stopSimulation();
+        } else {
+            // Original stop navigation code
+            if (watchPositionRef.current !== null) {
+                navigator.geolocation.clearWatch(watchPositionRef.current);
+                watchPositionRef.current = null;
+            }
+
+            // Remove user location marker
+            if (userLocationMarkerRef.current) {
+                userLocationMarkerRef.current.remove();
+                userLocationMarkerRef.current = null;
+            }
+        }
+
+        // Reset map view
+        if (map.current) {
+            map.current.setPitch(0);
+            map.current.setBearing(0);
+
+            // Fit map to route bounds if route exists
+            if (routeResult && routeResult.paths && routeResult.paths.length > 0) {
+                const bounds = routeResult.paths[0].bbox;
+                map.current.fitBounds([
+                    [bounds[0], bounds[1]], // Southwest corner [lng, lat]
+                    [bounds[2], bounds[3]]  // Northeast corner [lng, lat]
+                ], { padding: 50 });
+            }
+        }
+
+        setIsNavigating(false);
+        setShowNavigationModal(false);
+        setShowTripSummary(true);
+
+        // Show success message
+        messageApi.success('Hành trình đã kết thúc');
+    };
+
+    // Calculate bearing between two points
+    const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const toRad = (value: number) => (value * Math.PI) / 180;
+        const toDeg = (value: number) => (value * 180) / Math.PI;
+
+        const dLon = toRad(lon2 - lon1);
+        const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+        const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+            Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+        const brng = toDeg(Math.atan2(y, x));
+
+        return (brng + 360) % 360;
+    };
+
+    // Start simulation
+    const startSimulation = () => {
+        if (!routeResult || !routeResult.paths || routeResult.paths.length === 0) {
+            messageApi.error('Không có đường đi để bắt đầu mô phỏng');
+            return;
+        }
+
+        setIsSimulating(true);
+        setIsNavigating(true);
+        setShowNavigationModal(true);
+        setShowTripSummary(false);
+
+        // Record start time for trip summary
+        setTripSummary(prev => ({
+            ...prev,
+            startTime: Date.now(),
+            totalDistance: routeResult.paths[0].distance / 1000,
+            totalTime: routeResult.paths[0].time
+        }));
+
+        // Initial values
+        const path = routeResult.paths[0];
+        const routePoints = decodePolyline(path.points);
+        simulationRoutePointsRef.current = routePoints;
+        simulationCurrentPointIndexRef.current = 0;
+
+        setRemainingDistance(path.distance / 1000); // Convert to km
+        setRemainingTime(path.time);
+        setCurrentInstructionIndex(0);
+
+        // If there's a first instruction, set next turn distance
+        if (path.instructions && path.instructions.length > 0) {
+            setNextTurnDistance(path.instructions[0].distance / 1000); // Convert to km
+        }
+
+        // Create simulation vehicle marker
+        if (map.current) {
+            // Remove existing marker if any
+            if (simulationMarkerRef.current) {
+                simulationMarkerRef.current.remove();
+            }
+
+            // Create a custom marker element
+            const el = document.createElement('div');
+            el.className = 'simulation-marker';
+            el.style.width = '30px';
+            el.style.height = '30px';
+            el.style.borderRadius = '50%';
+            el.style.backgroundColor = '#4285F4';
+            el.style.border = '3px solid white';
+            el.style.boxShadow = '0 0 8px rgba(0,0,0,0.5)';
+            el.style.position = 'relative';
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+
+            // Add car icon
+            const carIcon = document.createElement('div');
+            carIcon.innerHTML = '🚗';
+            carIcon.style.fontSize = '16px';
+            el.appendChild(carIcon);
+
+            // Add direction indicator
+            const arrow = document.createElement('div');
+            arrow.style.width = '0';
+            arrow.style.height = '0';
+            arrow.style.borderLeft = '8px solid transparent';
+            arrow.style.borderRight = '8px solid transparent';
+            arrow.style.borderBottom = '12px solid white';
+            arrow.style.position = 'absolute';
+            arrow.style.top = '-10px';
+            arrow.style.left = '50%';
+            arrow.style.transform = 'translateX(-50%)';
+            arrow.style.transformOrigin = 'center bottom';
+            el.appendChild(arrow);
+
+            // Create and add marker
+            simulationMarkerRef.current = new maplibregl.Marker({
+                element: el,
+                rotationAlignment: 'map'
+            })
+                .setLngLat(routePoints[0])
+                .addTo(map.current);
+
+            // Center map on starting point
+            map.current.flyTo({
+                center: routePoints[0],
+                zoom: 17,
+                pitch: 60,
+                bearing: 0,
+                duration: 1000
+            });
+        }
+
+        // Start simulation interval
+        if (simulationIntervalRef.current !== null) {
+            window.clearInterval(simulationIntervalRef.current);
+        }
+
+        simulationIntervalRef.current = window.setInterval(() => {
+            moveSimulationVehicle();
+        }, 1000 / simulationSpeed);
+    };
+
+    // Move simulation vehicle along the route
+    const moveSimulationVehicle = () => {
+        const routePoints = simulationRoutePointsRef.current;
+        const currentIndex = simulationCurrentPointIndexRef.current;
+
+        if (currentIndex >= routePoints.length - 1) {
+            // Reached the end of route
+            stopSimulation();
+            messageApi.success('Mô phỏng hoàn tất! Đã đến điểm đến.');
+            return;
+        }
+
+        // Move to next point
+        const nextIndex = currentIndex + 1;
+        simulationCurrentPointIndexRef.current = nextIndex;
+
+        const currentPoint = routePoints[currentIndex];
+        const nextPoint = routePoints[nextIndex];
+
+        // Calculate bearing/heading between points
+        const bearing = calculateBearing(
+            currentPoint[1], currentPoint[0],
+            nextPoint[1], nextPoint[0]
+        );
+
+        // Update marker position and rotation
+        if (simulationMarkerRef.current && map.current) {
+            simulationMarkerRef.current.setLngLat(nextPoint);
+
+            // Rotate arrow to match direction
+            const el = simulationMarkerRef.current.getElement();
+            const arrow = el.querySelector('div:nth-child(2)') as HTMLElement;
+            if (arrow) {
+                arrow.style.transform = `translateX(-50%) rotate(${bearing}deg)`;
+            }
+
+            // Update map view to follow vehicle
+            map.current.flyTo({
+                center: nextPoint,
+                bearing: bearing,
+                pitch: 60,
+                duration: 1000 / simulationSpeed
+            });
+        }
+
+        // Calculate remaining distance
+        let remainingDist = 0;
+        for (let i = nextIndex; i < routePoints.length - 1; i++) {
+            remainingDist += calculateDistance(
+                routePoints[i][1], routePoints[i][0],
+                routePoints[i + 1][1], routePoints[i + 1][0]
+            );
+        }
+
+        setRemainingDistance(remainingDist);
+
+        // Calculate progress percentage
+        const totalDistance = routeResult!.paths[0].distance / 1000; // in km
+        const progress = 1 - (remainingDist / totalDistance);
+        navigationProgressRef.current = progress;
+
+        // Update remaining time based on progress
+        const remainingTimeEstimate = routeResult!.paths[0].time * (1 - progress);
+        setRemainingTime(remainingTimeEstimate);
+
+        // Find current instruction
+        if (routeResult!.paths[0].instructions && routeResult!.paths[0].instructions.length > 0) {
+            const newInstructionIndex = findCurrentInstruction(
+                nextIndex,
+                routeResult!.paths[0].instructions
+            );
+
+            if (newInstructionIndex !== currentInstructionIndex) {
+                setCurrentInstructionIndex(newInstructionIndex);
+            }
+
+            // Calculate distance to next turn
+            if (newInstructionIndex < routeResult!.paths[0].instructions.length - 1) {
+                const nextInstruction = routeResult!.paths[0].instructions[newInstructionIndex + 1];
+                const nextTurnPointIndex = nextInstruction.interval[0];
+
+                let distToNextTurn = 0;
+                for (let i = nextIndex; i < nextTurnPointIndex; i++) {
+                    distToNextTurn += calculateDistance(
+                        routePoints[i][1], routePoints[i][0],
+                        routePoints[i + 1][1], routePoints[i + 1][0]
+                    );
+                }
+
+                setNextTurnDistance(distToNextTurn);
+            }
+        }
+    };
+
+    // Stop simulation
+    const stopSimulation = () => {
+        if (simulationIntervalRef.current !== null) {
+            window.clearInterval(simulationIntervalRef.current);
+            simulationIntervalRef.current = null;
+        }
+
+        setIsSimulating(false);
+        setIsNavigating(false);
+        setShowNavigationModal(false);
+
+        // Remove simulation marker
+        if (simulationMarkerRef.current) {
+            simulationMarkerRef.current.remove();
+            simulationMarkerRef.current = null;
+        }
+
+        // Reset map view
+        if (map.current) {
+            map.current.setPitch(0);
+            map.current.setBearing(0);
+        }
+    };
+
+    // Change simulation speed
+    const changeSimulationSpeed = (speed: number) => {
+        setSimulationSpeed(speed);
+
+        // Restart interval with new speed if simulation is running
+        if (isSimulating && simulationIntervalRef.current !== null) {
+            window.clearInterval(simulationIntervalRef.current);
+            simulationIntervalRef.current = window.setInterval(() => {
+                moveSimulationVehicle();
+            }, 1000 / speed);
+        }
+    };
+
+    // Toggle navigation panel collapse
+    const toggleNavigationPanel = () => {
+        setIsNavigationPanelCollapsed(!isNavigationPanelCollapsed);
+    };
+
+    // Reset trip and start a new one
+    const resetTrip = () => {
+        clearRoute();
+        setShowTripSummary(false);
+        setTripSummary({
+            startTime: null,
+            endTime: null,
+            totalDistance: 0,
+            totalTime: 0,
+            averageSpeed: 0
+        });
+        setActiveTab('route');
+    };
+
+    // Start the same route again
+    const startSameRouteAgain = () => {
+        setShowTripSummary(false);
+        startNavigation();
+    };
+
+    // Handle vehicle change
+    const handleVehicleChange = (vehicle: 'car' | 'bike' | 'foot' | 'motorcycle') => {
+        setSelectedVehicle(vehicle);
+        // Clear existing route when changing vehicle
+        clearRoute();
+    };
+
     return (
         <div className="h-screen w-full relative">
             {contextHolder}
             <div ref={mapContainer} className="h-full w-full" />
 
-            {/* Control panel */}
-            <Card className="absolute top-4 left-4 shadow-lg z-10 w-1/3 bg-white/90 backdrop-blur-sm">
-                <Title level={4}>Bản đồ VietMap</Title>
-                <Space direction="vertical" className="w-full">
-                    <div>
-                        <div className="text-sm text-gray-600 mb-1">Tọa độ hiện tại:</div>
-                        <div>
-                            <span className="font-medium">Kinh độ:</span> {lng} | <span className="font-medium">Vĩ độ:</span> {lat}
-                        </div>
-                        <div>
-                            <span className="font-medium">Mức độ phóng to:</span> {zoom}x
-                        </div>
-                        {currentAddress && (
-                            <div className="mt-2 border-t pt-2">
-                                <div className="text-sm text-gray-600 mb-1">Địa chỉ hiện tại:</div>
-                                <div className="text-sm break-words font-medium">{currentAddress}</div>
+            {/* Control panel - Hidden when navigating */}
+            {!isNavigating && (
+                <Card className="absolute top-4 left-4 shadow-lg z-10 w-1/3 bg-white/90 backdrop-blur-sm">
+                    <Title level={4}>Bản đồ VietMap</Title>
 
-                                {addressDetails && (
-                                    <div className="mt-2">
-                                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
-                                            {addressDetails.name && (
-                                                <>
-                                                    <div className="text-gray-600">Số nhà/Tên:</div>
-                                                    <div>{addressDetails.name}</div>
-                                                </>
-                                            )}
-
-                                            {addressDetails.boundaries && addressDetails.boundaries.map((boundary: any, index: number) => (
-                                                <React.Fragment key={index}>
-                                                    <div className="text-gray-600">{boundary.prefix}:</div>
-                                                    <div>{boundary.name}</div>
-                                                </React.Fragment>
-                                            ))}
-
-                                            {addressDetails.distance && (
-                                                <>
-                                                    <div className="text-gray-600">Khoảng cách:</div>
-                                                    <div>{formatDistance(addressDetails.distance)}</div>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="relative w-full">
-                        <AutoComplete
-                            className="w-full"
-                            options={options}
-                            onSelect={handleSelectPlace}
-                            onSearch={handleSearchChange}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    handleSearchComplete(searchQuery);
-                                }
-                            }}
-                            value={searchQuery}
-                            placeholder="Tìm kiếm địa điểm"
-                            notFoundContent={isSearching ? <Spin size="small" /> : (searchQuery.length >= 2 ? "Không tìm thấy kết quả" : null)}
-                        />
-                        {searchQuery.length >= 2 && !isSearching && (
-                            <Button
-                                type="text"
-                                size="small"
-                                icon={<SearchOutlined />}
-                                className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10"
-                                onClick={() => handleSearchComplete(searchQuery)}
+                    {/* Trip summary display */}
+                    {showTripSummary && (
+                        <div className="mb-4">
+                            <TripSummary
+                                totalDistance={tripSummary.totalDistance}
+                                totalTime={tripSummary.totalTime}
+                                averageSpeed={tripSummary.averageSpeed}
+                                formatDistance={formatDistance}
+                                formatTime={formatTime}
+                                resetTrip={resetTrip}
+                                startSameRouteAgain={startSameRouteAgain}
                             />
-                        )}
-                        {isSearching && (
-                            <Spin
-                                size="small"
-                                className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10"
-                            />
-                        )}
-                    </div>
-
-                    <Button
-                        type="default"
-                        icon={<AimOutlined />}
-                        onClick={getCurrentLocation}
-                        className="w-full"
-                    >
-                        Vị trí hiện tại
-                    </Button>
-
-                    {/* {isPreloading && (
-                        <div>
-                            <div className="text-sm mb-1">Đang tải bản đồ Việt Nam: {preloadProgress}%</div>
-                            <Progress percent={preloadProgress} status="active" />
                         </div>
-                    )} */}
-                </Space>
-            </Card>
+                    )}
+
+                    <Tabs activeKey={activeTab} onChange={handleTabChange}>
+                        <TabPane tab="Tìm kiếm" key="search">
+                            <SearchPanel
+                                currentAddress={currentAddress}
+                                addressDetails={addressDetails}
+                                searchQuery={searchQuery}
+                                options={options}
+                                isSearching={isSearching}
+                                formatDistance={formatDistance}
+                                handleSearchChange={handleSearchChange}
+                                handleSearchComplete={handleSearchComplete}
+                                handleSelectPlace={handleSelectPlace}
+                                getCurrentLocation={getCurrentLocation}
+                            />
+                        </TabPane>
+
+                        <TabPane tab="Tìm đường" key="route">
+                            <RoutePanel
+                                selectedVehicle={selectedVehicle}
+                                startPoint={startPoint}
+                                endPoint={endPoint}
+                                startSearchQuery={startSearchQuery}
+                                endSearchQuery={endSearchQuery}
+                                startOptions={startOptions}
+                                endOptions={endOptions}
+                                isStartSearching={isStartSearching}
+                                isEndSearching={isEndSearching}
+                                isRouteFinding={isRouteFinding}
+                                routeResult={routeResult}
+                                simulationSpeed={simulationSpeed}
+                                isNavigating={isNavigating}
+                                formatDistance={formatDistance}
+                                formatTime={formatTime}
+                                getVehicleIcon={getVehicleIcon}
+                                handleStartSearchChange={handleStartSearchChange}
+                                handleEndSearchChange={handleEndSearchChange}
+                                handleSelectStartPlace={handleSelectStartPlace}
+                                handleSelectEndPlace={handleSelectEndPlace}
+                                useCurrentLocationAsStart={useCurrentLocationAsStart}
+                                swapStartAndEndPoints={swapStartAndEndPoints}
+                                findRouteBetweenPoints={findRouteBetweenPoints}
+                                startNavigation={startNavigation}
+                                startSimulation={startSimulation}
+                                changeSimulationSpeed={changeSimulationSpeed}
+                                clearRoute={clearRoute}
+                                onVehicleChange={handleVehicleChange}
+                            />
+                        </TabPane>
+                    </Tabs>
+                </Card>
+            )}
+
+            {/* Navigation Modal - Improved version */}
+            <div
+                className={`fixed left-0 right-0 bottom-0 z-20 transition-all duration-300 ${showNavigationModal ? 'translate-y-0' : 'translate-y-full'}`}
+                style={{ pointerEvents: showNavigationModal ? 'auto' : 'none' }}
+            >
+                <NavigationPanel
+                    isNavigationPanelCollapsed={isNavigationPanelCollapsed}
+                    isSimulating={isSimulating}
+                    routeResult={routeResult}
+                    currentInstructionIndex={currentInstructionIndex}
+                    nextTurnDistance={nextTurnDistance}
+                    remainingDistance={remainingDistance}
+                    remainingTime={remainingTime}
+                    simulationSpeed={simulationSpeed}
+                    formatDistance={formatDistance}
+                    formatTime={formatTime}
+                    toggleNavigationPanel={toggleNavigationPanel}
+                    stopNavigation={stopNavigation}
+                    pauseNavigation={pauseNavigation}
+                    resumeNavigation={resumeNavigation}
+                    changeSimulationSpeed={changeSimulationSpeed}
+                />
+            </div>
         </div>
     );
 };
