@@ -79,6 +79,69 @@ export interface ReverseGeocodeResponse {
     status: string;
 }
 
+export interface DirectionStep {
+    distance: {
+        text: string;
+        value: number;
+    };
+    duration: {
+        text: string;
+        value: number;
+    };
+    end_location: {
+        lat: number;
+        lng: number;
+    };
+    html_instructions: string;
+    maneuver: string;
+    polyline: {
+        points: string;
+    };
+    start_location: {
+        lat: number;
+        lng: number;
+    };
+    travel_mode: string;
+}
+
+export interface DirectionLeg {
+    distance: {
+        text: string;
+        value: number;
+    };
+    duration: {
+        text: string;
+        value: number;
+    };
+    end_address: string;
+    end_location: {
+        lat: number;
+        lng: number;
+    };
+    start_address: string;
+    start_location: {
+        lat: number;
+        lng: number;
+    };
+    steps: DirectionStep[];
+}
+
+export interface DirectionRoute {
+    bounds: any;
+    legs: DirectionLeg[];
+    overview_polyline: {
+        points: string;
+    };
+    summary: string;
+    warnings: string[];
+    waypoint_order: number[];
+}
+
+export interface DirectionResponse {
+    geocoded_waypoints: any[];
+    routes: DirectionRoute[];
+}
+
 // Lưu trữ controller cho request hiện tại để có thể hủy nếu cần
 let currentSearchController: AbortController | null = null;
 
@@ -238,5 +301,73 @@ export const getReverseGeocode = async (lng: number, lat: number): Promise<any |
                 lng
             }
         };
+    }
+};
+
+/**
+ * Giải mã chuỗi polyline thành mảng các điểm [lng, lat]
+ * @param encoded Chuỗi polyline được mã hóa
+ * @returns Mảng các điểm dạng [lng, lat]
+ */
+export function decodePolyline(encoded: string): [number, number][] {
+    const points: [number, number][] = [];
+    let index = 0;
+    const len = encoded.length;
+    let lat = 0;
+    let lng = 0;
+
+    while (index < len) {
+        let b;
+        let shift = 0;
+        let result = 0;
+
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+
+        const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+
+        const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        // OpenMap returns points in lat,lng order but maplibregl expects lng,lat
+        points.push([lng * 1e-5, lat * 1e-5]);
+    }
+
+    return points;
+}
+
+/**
+ * Tìm đường đi giữa hai điểm
+ * @param origin Điểm xuất phát dạng "lat,lng"
+ * @param destination Điểm đến dạng "lat,lng"
+ * @param vehicle Phương tiện di chuyển (car, bike, motor, taxi, truck, walking)
+ * @returns Thông tin về lộ trình
+ */
+export const findDirection = async (
+    origin: string,
+    destination: string,
+    vehicle: 'car' | 'bike' | 'motor' | 'taxi' | 'truck' | 'walking' = 'car'
+): Promise<DirectionResponse | null> => {
+    try {
+        const url = `${BASE_URL}/direction?origin=${origin}&destination=${destination}&vehicle=${vehicle}&apikey=${OPEN_MAP_API_KEY}`;
+
+        const response = await axios.get<DirectionResponse>(url);
+        return response.data;
+    } catch (error) {
+        console.error('Error finding direction:', error);
+        return null;
     }
 }; 
