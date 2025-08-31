@@ -1,6 +1,8 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import HomePage from '../pages/Home';
 import { LoginPage, RegisterPage } from '../pages/Auth';
+import VietMapPage from '../pages/VietMap';
+import OpenMapPage from '../pages/OpenMap';
 
 const router = createBrowserRouter([
     {
@@ -14,6 +16,14 @@ const router = createBrowserRouter([
     {
         path: '/auth/register',
         element: <RegisterPage />,
+    },
+    {
+        path: '/viet-map',
+        element: <VietMapPage />,
+    },
+    {
+        path: '/open-map',
+        element: <OpenMapPage />,
     }
 ]);
 
