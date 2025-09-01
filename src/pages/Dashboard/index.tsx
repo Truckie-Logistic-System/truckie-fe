@@ -2,6 +2,8 @@ import React from 'react';
 import { Card, Typography, Button } from 'antd';
 import { useAuth } from '../../context';
 import { useNavigate } from 'react-router-dom';
+import AdminDashboard from './AdminDashboard';
+import StaffDashboard from './StaffDashboard';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -13,6 +15,15 @@ const Dashboard: React.FC = () => {
         logout();
         navigate('/');
     };
+
+    // Render specific dashboard based on user role
+    if (user?.role === 'admin') {
+        return <AdminDashboard />;
+    }
+
+    if (user?.role === 'staff') {
+        return <StaffDashboard />;
+    }
 
     return (
         <div className="p-6">
@@ -74,4 +85,5 @@ const Dashboard: React.FC = () => {
     );
 };
 
+export { AdminDashboard, StaffDashboard };
 export default Dashboard; 

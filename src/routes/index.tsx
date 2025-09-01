@@ -4,15 +4,16 @@ import { LoginPage, RegisterPage } from '../pages/Auth';
 import VietMapPage from '../pages/VietMap';
 import OpenMapPage from '../pages/OpenMap';
 import TrackAsiaMapPage from '../pages/TrackAsiaMap';
-import Dashboard from '../pages/Dashboard';
+import Dashboard, { AdminDashboard, StaffDashboard } from '../pages/Dashboard';
 import { PermissionRoute } from '../components/auth';
+import { MainLayout, AdminLayout } from '../components/layout';
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
     // Trang chủ - ai cũng có thể truy cập
     {
         path: '/',
-        element: <HomePage />,
+        element: <MainLayout><HomePage /></MainLayout>,
     },
 
     // Các trang xác thực - chỉ dành cho người chưa đăng nhập
@@ -61,7 +62,9 @@ const router = createBrowserRouter([
                 authRedirectPath="/auth/login"
                 roleRedirectPath="/"
             >
-                <Outlet />
+                <MainLayout>
+                    <Outlet />
+                </MainLayout>
             </PermissionRoute>
         ),
         children: [
@@ -86,17 +89,35 @@ const router = createBrowserRouter([
                 authRedirectPath="/auth/login"
                 roleRedirectPath="/"
             >
-                <Outlet />
+                <AdminLayout>
+                    <Outlet />
+                </AdminLayout>
             </PermissionRoute>
         ),
         children: [
             {
                 path: 'dashboard',
-                element: <Dashboard />,
+                element: <StaffDashboard />,
             },
             {
                 path: 'orders',
-                element: <div>Manage Orders</div>, // Thay thế bằng component thực tế
+                element: <div>Quản lý đơn hàng</div>, // Thay thế bằng component thực tế
+            },
+            {
+                path: 'deliveries',
+                element: <div>Quản lý vận chuyển</div>, // Thay thế bằng component thực tế
+            },
+            {
+                path: 'customers',
+                element: <div>Quản lý khách hàng</div>, // Thay thế bằng component thực tế
+            },
+            {
+                path: 'reports',
+                element: <div>Báo cáo</div>, // Thay thế bằng component thực tế
+            },
+            {
+                path: 'notifications',
+                element: <div>Thông báo</div>, // Thay thế bằng component thực tế
             },
         ]
     },
@@ -111,21 +132,35 @@ const router = createBrowserRouter([
                 authRedirectPath="/auth/login"
                 roleRedirectPath="/"
             >
-                <Outlet />
+                <AdminLayout>
+                    <Outlet />
+                </AdminLayout>
             </PermissionRoute>
         ),
         children: [
             {
                 path: 'dashboard',
-                element: <Dashboard />,
+                element: <AdminDashboard />,
             },
             {
                 path: 'users',
-                element: <div>Manage Users</div>, // Thay thế bằng component thực tế
+                element: <div>Quản lý người dùng</div>, // Thay thế bằng component thực tế
+            },
+            {
+                path: 'drivers',
+                element: <div>Quản lý tài xế</div>, // Thay thế bằng component thực tế
+            },
+            {
+                path: 'staff',
+                element: <div>Quản lý nhân viên</div>, // Thay thế bằng component thực tế
+            },
+            {
+                path: 'reports',
+                element: <div>Báo cáo thống kê</div>, // Thay thế bằng component thực tế
             },
             {
                 path: 'settings',
-                element: <div>System Settings</div>, // Thay thế bằng component thực tế
+                element: <div>Cài đặt hệ thống</div>, // Thay thế bằng component thực tế
             },
         ]
     },
@@ -140,7 +175,9 @@ const router = createBrowserRouter([
                 authRedirectPath="/auth/login"
                 roleRedirectPath="/"
             >
-                <Outlet />
+                <MainLayout>
+                    <Outlet />
+                </MainLayout>
             </PermissionRoute>
         ),
         children: [
@@ -184,7 +221,7 @@ const router = createBrowserRouter([
     // Route mặc định khi không tìm thấy trang
     {
         path: '*',
-        element: <div>Không tìm thấy trang</div>, // Thay thế bằng component 404 thực tế
+        element: <MainLayout><div>Không tìm thấy trang</div></MainLayout>, // Thay thế bằng component 404 thực tế
     }
 ]);
 
