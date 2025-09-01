@@ -13,14 +13,46 @@ interface RegisterRequest {
     password: string;
     gender: boolean;
     dateOfBirth: string;
-    imageUrl?: string;
+    imageUrl: string;
     fullName: string;
     phoneNumber: string;
-    companyName?: string;
-    representativeName?: string;
-    representativePhone?: string;
-    businessLicenseNumber?: string;
-    businessAddress?: string;
+    companyName: string;
+    representativeName: string;
+    representativePhone: string;
+    businessLicenseNumber: string;
+    businessAddress: string;
+}
+
+interface RegisterResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: {
+        id: string;
+        companyName: string;
+        representativeName: string;
+        representativePhone: string;
+        businessLicenseNumber: string;
+        businessAddress: string;
+        status: string;
+        userResponse: {
+            id: string;
+            username: string;
+            fullName: string;
+            email: string;
+            phoneNumber: string;
+            gender: boolean;
+            dateOfBirth: string;
+            imageUrl: string;
+            status: string;
+            role: {
+                id: string;
+                roleName: string;
+                description: string;
+                isActive: boolean;
+            }
+        }
+    }
 }
 
 interface ApiResponse<T = any> {
@@ -109,9 +141,9 @@ const authService = {
      * @param registerData Customer registration data
      * @returns Promise with registration response
      */
-    register: async (registerData: RegisterRequest): Promise<ApiResponse> => {
+    register: async (registerData: RegisterRequest): Promise<RegisterResponse> => {
         try {
-            const response = await api.post<ApiResponse>('/api/v1/auths/customer/register', registerData);
+            const response = await api.post<RegisterResponse>('/api/v1/auths/customer/register', registerData);
             return response.data;
         } catch (error) {
             // Xử lý lỗi và trả về thông báo lỗi phù hợp

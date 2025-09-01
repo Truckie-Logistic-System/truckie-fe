@@ -13,6 +13,16 @@ const LoginPage: React.FC = () => {
     const location = useLocation();
     const { login, isAuthenticated, isLoading, getRedirectPath, user } = useAuth();
 
+    // Kiểm tra nếu người dùng vừa đăng ký thành công
+    useEffect(() => {
+        const state = location.state as { registered?: boolean; username?: string } | undefined;
+
+        if (state?.registered && state?.username) {
+            form.setFieldsValue({ username: state.username });
+            // Không hiển thị thông báo trùng lặp vì đã hiển thị ở trang đăng ký
+        }
+    }, [location.state, form]);
+
     // Nếu đã đăng nhập, chuyển hướng đến trang phù hợp với vai trò
     useEffect(() => {
         if (isAuthenticated && !isLoading && user) {
@@ -26,12 +36,15 @@ const LoginPage: React.FC = () => {
         try {
             setLoading(true);
             setErrorMessage(null);
+            message.loading({ content: 'Đang đăng nhập...', key: 'login', duration: 0 });
 
             await login(values.username, values.password);
+            message.success({ content: 'Đăng nhập thành công!', key: 'login' });
 
             // Redirect sẽ được xử lý bởi useEffect khi isAuthenticated thay đổi
         } catch (error: any) {
             console.error('Đăng nhập thất bại:', error);
+            message.error({ content: 'Đăng nhập thất bại', key: 'login' });
 
             // Xử lý các loại lỗi khác nhau
             if (error.response) {

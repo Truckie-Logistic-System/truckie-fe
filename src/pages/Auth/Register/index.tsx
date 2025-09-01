@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Checkbox, Card, Alert, DatePicker, Radio, Row, Col, Upload, message } from 'antd';
-import { GoogleOutlined, EyeInvisibleOutlined, EyeTwoTone, UserOutlined, MailOutlined, PhoneOutlined, UploadOutlined, BankOutlined, IdcardOutlined, LockOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Checkbox, Card, Alert, DatePicker, Radio, Row, Col, Upload, message, Spin } from 'antd';
+import { GoogleOutlined, EyeInvisibleOutlined, EyeTwoTone, UserOutlined, MailOutlined, PhoneOutlined, UploadOutlined, BankOutlined, IdcardOutlined, LockOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthPageLayout } from '../components';
 import { isStrongPassword } from '../../../utils';
@@ -12,12 +12,15 @@ const RegisterPage: React.FC = () => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const onFinish = async (values: any) => {
         try {
             setLoading(true);
             setError(null);
+            setSuccess(null);
+            message.loading({ content: 'Đang xử lý đăng ký...', key: 'register', duration: 0 });
 
             // Chuyển đổi định dạng ngày sinh
             const formattedDateOfBirth = values.dateOfBirth.format('YYYY-MM-DD');
@@ -31,26 +34,64 @@ const RegisterPage: React.FC = () => {
                 phoneNumber: values.phoneNumber,
                 gender: values.gender === 'male',
                 dateOfBirth: formattedDateOfBirth,
-                imageUrl: values.imageUrl || '',
-                // Thông tin công ty (luôn có)
+                imageUrl: values.imageUrl || 'string', // Đảm bảo luôn có giá trị
+                // Thông tin công ty
                 companyName: values.companyName,
                 representativeName: values.representativeName,
                 representativePhone: values.representativePhone,
                 businessLicenseNumber: values.businessLicenseNumber,
-                businessAddress: values.businessAddress,
+                businessAddress: values.businessAddress || 'string', // Đảm bảo luôn có giá trị
             };
 
             // Gọi API đăng ký
             const response = await authService.register(registerData);
 
-            // Hiển thị thông báo thành công
-            message.success('Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.');
+            if (response.success) {
+                message.success({
+                    content: `Đăng ký thành công! Tài khoản ${response.data.userResponse.username} đã được tạo.`,
+                    key: 'register',
+                    duration: 5 // Hiển thị lâu hơn để người dùng đọc được
+                });
 
-            // Chuyển hướng đến trang đăng nhập
-            navigate('/auth/login', { state: { registered: true } });
+                // Hiển thị thông báo thành công
+                let successMessage = `Tài khoản ${response.data.userResponse.username} đã được tạo thành công!`;
+
+                // Nếu status là OTP_PENDING, thông báo cho người dùng
+                if (response.data.status === 'OTP_PENDING') {
+                    successMessage += ' Vui lòng kiểm tra email để xác thực tài khoản.';
+                    setTimeout(() => {
+                        message.info({
+                            content: 'Vui lòng kiểm tra email để xác thực tài khoản.',
+                            duration: 5
+                        });
+                    }, 1000); // Hiển thị sau thông báo thành công để người dùng đọc được cả hai
+                }
+
+                setSuccess(successMessage);
+
+                // Chuyển hướng đến trang đăng nhập sau 3 giây
+                setTimeout(() => {
+                    navigate('/auth/login', { state: { registered: true, username: values.username } });
+                }, 3000);
+            } else {
+                // Xử lý trường hợp API trả về success: false
+                message.error({ content: 'Đăng ký thất bại', key: 'register' });
+                setError(response.message || 'Đăng ký thất bại. Vui lòng thử lại sau.');
+            }
         } catch (error: any) {
             console.error('Đăng ký thất bại:', error);
-            setError(error.message || 'Đăng ký thất bại. Vui lòng thử lại sau.');
+
+            // Xử lý thông báo lỗi cụ thể
+            let errorMessage = 'Đăng ký thất bại. Vui lòng thử lại sau.';
+
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            message.error({ content: 'Đăng ký thất bại', key: 'register' });
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -93,12 +134,24 @@ const RegisterPage: React.FC = () => {
         },
         onChange(info) {
             if (info.file.status === 'done') {
+                // Giả định API trả về URL ảnh trong response.url
+                const imageUrl = info.file.response?.url || `https://example.com/images/${info.file.name}`;
+                form.setFieldsValue({ imageUrl });
                 message.success(`${info.file.name} tải lên thành công`);
-                // Trong thực tế, bạn sẽ lấy URL từ response của API upload
-                form.setFieldsValue({ imageUrl: `https://example.com/images/${info.file.name}` });
             } else if (info.file.status === 'error') {
                 message.error(`${info.file.name} tải lên thất bại.`);
             }
+        },
+        beforeUpload(file) {
+            const isImage = file.type.startsWith('image/');
+            if (!isImage) {
+                message.error('Bạn chỉ có thể tải lên file hình ảnh!');
+            }
+            const isLt2M = file.size / 1024 / 1024 < 2;
+            if (!isLt2M) {
+                message.error('Hình ảnh phải nhỏ hơn 2MB!');
+            }
+            return isImage && isLt2M;
         },
     };
 
@@ -123,6 +176,17 @@ const RegisterPage: React.FC = () => {
                         type="error"
                         showIcon
                         closable
+                        className="mb-4"
+                    />
+                )}
+
+                {success && (
+                    <Alert
+                        message="Đăng ký thành công"
+                        description={success}
+                        type="success"
+                        showIcon
+                        icon={<CheckCircleOutlined />}
                         className="mb-4"
                     />
                 )}
