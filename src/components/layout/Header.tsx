@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Layout, Menu, Button, Drawer, Space } from 'antd';
-import { MenuOutlined, EnvironmentOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
+import { Layout, Menu, Button, Drawer, Space, Dropdown, Avatar } from 'antd';
+import { MenuOutlined, EnvironmentOutlined, MailOutlined, PhoneOutlined, UserOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '../../config';
+import { useAuth } from '../../context';
 
 const { Header: AntHeader } = Layout;
 
 const Header: React.FC = () => {
     const [visible, setVisible] = useState(false);
     const navigate = useNavigate();
+    const { user, isAuthenticated, logout } = useAuth();
 
     const showDrawer = () => {
         setVisible(true);
@@ -27,6 +29,27 @@ const Header: React.FC = () => {
         navigate('/auth/register');
         if (visible) onClose();
     };
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+        if (visible) onClose();
+    };
+
+    const userMenuItems = [
+        {
+            key: 'profile',
+            label: 'Thông tin tài khoản',
+            icon: <UserOutlined />,
+            onClick: () => navigate('/profile')
+        },
+        {
+            key: 'logout',
+            label: 'Đăng xuất',
+            icon: <LogoutOutlined />,
+            onClick: handleLogout
+        }
+    ];
 
     const menuItems = [
         { key: 'trangchu', label: 'Trang chủ' },
@@ -81,11 +104,26 @@ const Header: React.FC = () => {
                     />
                 </div>
 
+                {/* Auth Buttons - Desktop */}
                 <div className="hidden md:flex items-center space-x-4">
-                    <Button type="text" onClick={handleLogin}>Đăng nhập</Button>
-                    <Button type="primary" className="bg-blue-600" onClick={handleRegister}>
-                        Đăng ký
-                    </Button>
+                    {isAuthenticated ? (
+                        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                            <div className="flex items-center cursor-pointer">
+                                <Avatar
+                                    icon={<UserOutlined />}
+                                    className="mr-2 bg-blue-600"
+                                />
+                                <DownOutlined style={{ fontSize: '12px' }} />
+                            </div>
+                        </Dropdown>
+                    ) : (
+                        <>
+                            <Button type="text" onClick={handleLogin}>Đăng nhập</Button>
+                            <Button type="primary" className="bg-blue-600" onClick={handleRegister}>
+                                Đăng ký
+                            </Button>
+                        </>
+                    )}
                 </div>
 
                 {/* Mobile Menu Button */}
@@ -112,10 +150,41 @@ const Header: React.FC = () => {
                         className="border-0"
                     />
                     <div className="mt-4 flex flex-col space-y-2">
-                        <Button type="text" onClick={handleLogin}>Đăng nhập</Button>
-                        <Button type="primary" className="bg-blue-600" onClick={handleRegister}>
-                            Đăng ký
-                        </Button>
+                        {isAuthenticated ? (
+                            <>
+                                <div className="flex items-center py-2">
+                                    <Avatar
+                                        icon={<UserOutlined />}
+                                        className="mr-2 bg-blue-600"
+                                    />
+                                </div>
+                                <Button
+                                    type="text"
+                                    icon={<UserOutlined />}
+                                    onClick={() => {
+                                        navigate('/profile');
+                                        onClose();
+                                    }}
+                                >
+                                    Thông tin tài khoản
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    danger
+                                    icon={<LogoutOutlined />}
+                                    onClick={handleLogout}
+                                >
+                                    Đăng xuất
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button type="text" onClick={handleLogin}>Đăng nhập</Button>
+                                <Button type="primary" className="bg-blue-600" onClick={handleRegister}>
+                                    Đăng ký
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </Drawer>
             </AntHeader>
