@@ -66,7 +66,7 @@ export interface RefreshTokenResponse {
     message: string;
     statusCode: number;
     data: {
-        authToken: string;
+        accessToken: string;
         refreshToken: string;
     };
 }

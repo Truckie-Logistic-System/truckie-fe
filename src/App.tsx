@@ -1,8 +1,9 @@
+import React, { useEffect } from 'react';
 import AppRoutes from './routes';
 import { ConfigProvider } from 'antd';
 import { AuthProvider } from './context';
-import { useEffect } from 'react';
 import { APP_NAME } from './config';
+import ChatWidget from './components/chat/ChatWidget';
 
 function App() {
   // Set document title
@@ -21,6 +22,7 @@ function App() {
     >
       <AuthProvider>
         <AppRoutes />
+        <ChatWidget />
       </AuthProvider>
     </ConfigProvider>
   );

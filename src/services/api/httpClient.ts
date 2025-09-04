@@ -1,13 +1,11 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { AUTH_TOKEN_KEY } from '../../config';
-
-// Tạm thời import từ authService cũ, sau này sẽ cập nhật
-import authService from '../auth/authService';
+import { AUTH_ACCESS_TOKEN_KEY } from '../../config';
+import { handleApiError } from './errorHandler';
 
 // Create an axios instance with default config
 const httpClient = axios.create({
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:8080/api/v1', // Do not remove the /api/v1
     timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
@@ -37,9 +35,7 @@ const processQueue = (error: any, token: string | null = null) => {
 // Request interceptor for adding auth token
 httpClient.interceptors.request.use(
     (config) => {
-        // Không cần thêm token vào header nếu đã sử dụng HTTP-only cookie
-        // Tuy nhiên, giữ lại code này cho đến khi backend được cập nhật để hỗ trợ cookie
-        const token = localStorage.getItem(AUTH_TOKEN_KEY);
+        const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -77,11 +73,14 @@ httpClient.interceptors.response.use(
             isRefreshing = true;
 
             try {
+                // Import authService ở đây để tránh circular dependency
+                const authService = await import('../auth/authService').then(module => module.default);
+
                 // Thử refresh token
                 const response = await authService.refreshToken();
 
                 // Nếu refresh thành công, cập nhật token cho các request trong hàng đợi
-                const newToken = response.data.authToken;
+                const newToken = response.data.accessToken;
                 if (originalRequest.headers) {
                     originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 }
@@ -95,20 +94,23 @@ httpClient.interceptors.response.use(
                 // Nếu refresh thất bại, xử lý lỗi và đăng xuất
                 processQueue(refreshError, null);
 
+                // Import authService ở đây để tránh circular dependency
+                const authService = await import('../auth/authService').then(module => module.default);
+
                 // Đăng xuất người dùng
                 authService.logout();
 
                 // Chuyển hướng đến trang đăng nhập
                 window.location.href = '/auth/login';
 
-                return Promise.reject(refreshError);
+                return Promise.reject(handleApiError(refreshError, 'Phiên đăng nhập hết hạn'));
             } finally {
                 isRefreshing = false;
             }
         }
 
         // Xử lý các lỗi khác
-        return Promise.reject(error);
+        return Promise.reject(handleApiError(error));
     }
 );
 

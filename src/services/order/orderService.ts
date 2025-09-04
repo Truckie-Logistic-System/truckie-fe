@@ -1,12 +1,13 @@
 import httpClient from '../api/httpClient';
-import type { Order } from '@/models/Order';
+import type { Order, OrderDetail } from '@/models/Order';
 import type {
     OrderCreateDto,
     OrderUpdateDto,
     OrderResponse,
     OrdersResponse,
     PaginatedOrdersResponse,
-    OrderTrackingApiResponse
+    OrderTrackingApiResponse,
+    OrderDetailsResponse
 } from './types';
 import type { PaginationParams } from '../api/types';
 
@@ -20,7 +21,7 @@ const orderService = {
      */
     getAllOrders: async (): Promise<Order[]> => {
         try {
-            const response = await httpClient.get<OrdersResponse>('/orders');
+            const response = await httpClient.get<OrdersResponse>('/orders/get-all');
             return response.data.data;
         } catch (error: any) {
             console.error('Error fetching orders:', error);
@@ -57,6 +58,21 @@ const orderService = {
         } catch (error: any) {
             console.error(`Error fetching order ${id}:`, error);
             throw new Error(error.response?.data?.message || 'Không thể tải thông tin đơn hàng');
+        }
+    },
+
+    /**
+     * Get order details by order ID
+     * @param orderId Order ID
+     * @returns Promise with order details array
+     */
+    getOrderDetailsByOrderId: async (orderId: string): Promise<OrderDetail[]> => {
+        try {
+            const response = await httpClient.get<OrderDetailsResponse>(`/order-detail/order/${orderId}`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error(`Error fetching order details for order ${orderId}:`, error);
+            throw new Error(error.response?.data?.message || 'Không thể tải chi tiết đơn hàng');
         }
     },
 

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '@/models/User';
-import { AUTH_TOKEN_KEY } from '@/config';
+import { AUTH_ACCESS_TOKEN_KEY } from '@/config';
 import authService from '@/services/auth';
 
 interface AuthContextType {
@@ -27,7 +27,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Check if user is logged in
         const checkAuth = async () => {
             try {
-                const token = localStorage.getItem(AUTH_TOKEN_KEY);
+                const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
                 if (!token) {
                     setIsLoading(false);
                     return;

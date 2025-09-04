@@ -1,56 +1,101 @@
 // Order model
 export interface Order {
     id: string;
-    customerId: string;
-    customerName: string;
-    origin: string;
-    destination: string;
-    status: OrderStatus;
-    createdAt: string;
-    updatedAt?: string;
-    completedAt?: string;
-    driverId?: string;
-    driverName?: string;
-    estimatedDistance?: number;
-    estimatedDuration?: number;
-    actualDistance?: number;
-    actualDuration?: number;
-    price?: number;
+    totalPrice: number;
     notes?: string;
+    totalQuantity: number;
+    totalWeight: number;
+    orderCode: string;
+    receiverName: string;
+    receiverPhone: string;
+    status: OrderStatus;
+    packageDescription?: string;
+    createdAt: string;
+    updatedAt: string;
+    senderId?: string;
+    deliveryId?: string;
+    pickupAddressId?: string;
+    categoryId?: string;
+    orderDetails?: OrderDetail[];
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
+export interface OrderDetail {
+    weight: number;
+    description?: string;
+    status: string;
+    startTime?: string;
+    estimatedStartTime?: string;
+    endTime?: string;
+    estimatedEndTime?: string;
+    createdAt: string;
+    updatedAt: string;
+    trackingCode: string;
+    orderId: string;
+    orderSizeId?: string;
+    vehicleAssignmentId?: string;
+}
+
+export type OrderStatus =
+    | 'PENDING'
+    | 'PROCESSING'
+    | 'CANCELLED'
+    | 'CONTRACT_DRAFT'
+    | 'CONTRACT_DENIED'
+    | 'CONTRACT_SIGNED'
+    | 'ON_PLANNING'
+    | 'ASSIGNED_TO_DRIVER'
+    | 'DRIVER_CONFIRM'
+    | 'PICKED_UP'
+    | 'SEALED_COMPLETED'
+    | 'ON_DELIVERED'
+    | 'ONGOING_DELIVERED'
+    | 'IN_DELIVERED'
+    | 'IN_TROUBLES'
+    | 'RESOLVED'
+    | 'COMPENSATION'
+    | 'DELIVERED'
+    | 'SUCCESSFUL'
+    | 'REJECT_ORDER'
+    | 'RETURNING'
+    | 'RETURNED';
 
 export interface OrderCreateRequest {
-    origin: string;
-    destination: string;
+    receiverName: string;
+    receiverPhone: string;
+    packageDescription?: string;
     notes?: string;
+    pickupAddressId: string;
+    categoryId: string;
+    orderDetails: {
+        weight: number;
+        description?: string;
+        orderSizeId: string;
+    }[];
 }
 
 export interface OrderUpdateRequest {
     status?: OrderStatus;
-    driverId?: string;
     notes?: string;
 }
 
 export interface OrderResponse {
     id: string;
-    customerId: string;
-    customerName: string;
-    origin: string;
-    destination: string;
-    status: string;
-    createdAt: string;
-    updatedAt?: string;
-    completedAt?: string;
-    driverId?: string;
-    driverName?: string;
-    estimatedDistance?: number;
-    estimatedDuration?: number;
-    actualDistance?: number;
-    actualDuration?: number;
-    price?: number;
+    totalPrice: number;
     notes?: string;
+    totalQuantity: number;
+    totalWeight: number;
+    orderCode: string;
+    receiverName: string;
+    receiverPhone: string;
+    status: string;
+    packageDescription?: string;
+    createdAt: string;
+    updatedAt: string;
+    senderId?: string;
+    deliveryId?: string;
+    pickupAddressId?: string;
+    categoryId?: string;
+    orderDetails?: OrderDetail[];
 }
 
 // Chuyển đổi từ API response sang model
@@ -69,10 +114,11 @@ export const filterOrdersByStatus = (orders: Order[], status: OrderStatus | 'all
 
 // Tính tổng doanh thu từ danh sách orders
 export const calculateTotalRevenue = (orders: Order[]): number => {
-    return orders.reduce((total, order) => total + (order.price || 0), 0);
+    return orders.reduce((total, order) => total + (order.totalPrice || 0), 0);
 };
 
 // Kiểm tra xem order có thể hủy không
 export const canCancelOrder = (order: Order): boolean => {
-    return order.status === 'pending' || order.status === 'processing';
+    const cancellableStatuses: OrderStatus[] = ['PENDING', 'PROCESSING', 'CONTRACT_DRAFT'];
+    return cancellableStatuses.includes(order.status);
 }; 

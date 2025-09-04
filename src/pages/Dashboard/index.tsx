@@ -7,6 +7,9 @@ import StaffDashboard from './StaffDashboard';
 
 const { Title, Paragraph, Text } = Typography;
 
+// Define the valid role types
+type UserRole = 'admin' | 'staff' | 'customer' | 'driver';
+
 const Dashboard: React.FC = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -41,7 +44,7 @@ const Dashboard: React.FC = () => {
 
                 <div className="mt-6">
                     <Title level={4}>Các tính năng có sẵn cho vai trò của bạn:</Title>
-                    {user?.role === 'admin' && (
+                    {(user?.role as UserRole) === 'admin' && (
                         <ul className="list-disc pl-6 mt-2">
                             <li>Quản lý tất cả người dùng</li>
                             <li>Cấu hình hệ thống</li>
@@ -49,7 +52,7 @@ const Dashboard: React.FC = () => {
                             <li>Quản lý quyền</li>
                         </ul>
                     )}
-                    {user?.role === 'staff' && (
+                    {(user?.role as UserRole) === 'staff' && (
                         <ul className="list-disc pl-6 mt-2">
                             <li>Quản lý đơn hàng</li>
                             <li>Xử lý yêu cầu khách hàng</li>

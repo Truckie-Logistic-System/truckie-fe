@@ -12,6 +12,9 @@ import {
     FileTextOutlined,
     BarChartOutlined,
     BellOutlined,
+    ExclamationCircleOutlined,
+    CustomerServiceOutlined,
+    ToolOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -58,12 +61,13 @@ const AdminSidebar: React.FC = () => {
                 {
                     key: '/admin/reports',
                     icon: <BarChartOutlined />,
-                    label: <Link to="/admin/reports">Báo cáo</Link>,
+                    label: <Link to="/admin/reports">Thống kê</Link>,
                 },
                 {
                     key: '/admin/settings',
                     icon: <SettingOutlined />,
                     label: <Link to="/admin/settings">Cài đặt</Link>,
+
                 },
             ];
         }
@@ -72,6 +76,21 @@ const AdminSidebar: React.FC = () => {
         if (user?.role === 'staff') {
             return [
                 ...baseItems,
+                {
+                    key: '/staff/issues',
+                    icon: <ToolOutlined />,
+                    label: <Link to="/staff/issues">Sự cố</Link>,
+                },
+                {
+                    key: '/staff/penalties',
+                    icon: <ExclamationCircleOutlined />,
+                    label: <Link to="/staff/penalties">Vi phạm</Link>,
+                },
+                {
+                    key: '/staff/customer-support',
+                    icon: <CustomerServiceOutlined />,
+                    label: <Link to="/staff/customer-support">CSKH</Link>,
+                },
                 {
                     key: '/staff/deliveries',
                     icon: <CarOutlined />,

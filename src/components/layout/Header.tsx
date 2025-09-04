@@ -113,6 +113,7 @@ const Header: React.FC = () => {
                                     icon={<UserOutlined />}
                                     className="mr-2 bg-blue-600"
                                 />
+                                <span className="mr-2 text-blue-600 font-medium">Hello {user?.username}</span>
                                 <DownOutlined style={{ fontSize: '12px' }} />
                             </div>
                         </Dropdown>
@@ -157,6 +158,7 @@ const Header: React.FC = () => {
                                         icon={<UserOutlined />}
                                         className="mr-2 bg-blue-600"
                                     />
+                                    <span className="text-blue-600 font-medium">Hello {user?.username}</span>
                                 </div>
                                 <Button
                                     type="text"
