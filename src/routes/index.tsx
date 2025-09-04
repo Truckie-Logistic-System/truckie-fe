@@ -7,8 +7,9 @@ import TrackAsiaMapPage from '../pages/TrackAsiaMap';
 import Dashboard, { AdminDashboard, StaffDashboard } from '../pages/Dashboard';
 import PenaltyHistory from '../pages/Staff/PenaltyHistory';
 import CustomerSupport from '../pages/Staff/CustomerSupport';
-import { OrderList, OrderDetailPage } from '../pages/Staff/Order';
+import { OrderList as StaffOrderList, OrderDetailPage } from '../pages/Staff/Order';
 import { IssueList, IssueDetail } from '../pages/Staff/Issue';
+import { OrderList as AdminOrderList, OrderDetailPage as AdminOrderDetailPage, OrderEdit as AdminOrderEdit } from '../pages/Admin/Order';
 import { PermissionRoute } from '../components/auth';
 import { MainLayout, AdminLayout } from '../components/layout';
 
@@ -117,7 +118,7 @@ const router = createBrowserRouter([
             },
             {
                 path: 'orders',
-                element: <OrderList />,
+                element: <StaffOrderList />,
             },
             {
                 path: 'orders/:id',
@@ -169,6 +170,18 @@ const router = createBrowserRouter([
             {
                 path: 'dashboard',
                 element: <AdminDashboard />,
+            },
+            {
+                path: 'orders',
+                element: <AdminOrderList />,
+            },
+            {
+                path: 'orders/:id',
+                element: <AdminOrderDetailPage />,
+            },
+            {
+                path: 'orders/:id/edit',
+                element: <AdminOrderEdit />,
             },
             {
                 path: 'users',

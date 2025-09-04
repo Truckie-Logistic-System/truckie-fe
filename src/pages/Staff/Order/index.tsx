@@ -1,4 +1,4 @@
-import OrderList from './OrderList';
-import OrderDetailPage from './OrderDetail';
+import OrderList from './components/OrderList';
+import OrderDetailPage from './components/OrderDetail';
 
 export { OrderList, OrderDetailPage }; 
