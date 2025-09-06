@@ -2,14 +2,14 @@ import React from 'react';
 import { Avatar } from 'antd';
 import { UserOutlined, CustomerServiceOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { ChatMessage as ChatMessageType } from '@/models/Chat';
+import type { ChatMessage } from '@/models/Chat';
 
-interface ChatMessageProps {
-    message: ChatMessageType;
+interface StaffChatMessageProps {
+    message: ChatMessage;
     isOwnMessage: boolean;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
+const StaffChatMessage: React.FC<StaffChatMessageProps> = ({ message, isOwnMessage }) => {
     const messageTime = dayjs(message.timestamp).format('HH:mm');
     const isSystemMessage = message.senderType === 'anonymous' && message.content.startsWith('SYSTEM:');
 
@@ -27,14 +27,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
         <div className={`flex mb-4 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
             {!isOwnMessage && (
                 <Avatar
-                    icon={<CustomerServiceOutlined />}
-                    className="mr-2 bg-blue-500"
+                    icon={message.senderType === 'staff' ? <CustomerServiceOutlined /> : <UserOutlined />}
+                    className={`mr-2 ${message.senderType === 'staff' ? 'bg-blue-500' : 'bg-green-500'}`}
                 />
             )}
             <div className="max-w-[70%]">
                 <div
                     className={`px-4 py-2 rounded-lg ${isOwnMessage
-                        ? 'bg-green-500 text-white rounded-tr-none'
+                        ? 'bg-blue-500 text-white rounded-tr-none'
                         : 'bg-gray-100 text-gray-800 rounded-tl-none'
                         }`}
                 >
@@ -48,12 +48,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
             </div>
             {isOwnMessage && (
                 <Avatar
-                    icon={<UserOutlined />}
-                    className="ml-2 bg-green-500"
+                    icon={<CustomerServiceOutlined />}
+                    className="ml-2 bg-blue-500"
                 />
             )}
         </div>
     );
 };
 
-export default ChatMessage; 
+export default StaffChatMessage; 

@@ -31,23 +31,49 @@ export const useChatContext = () => {
 
 interface ChatProviderProps {
     children: ReactNode;
+    isStaff?: boolean;
 }
 
-export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
+export const ChatProvider: React.FC<ChatProviderProps> = ({ children, isStaff = false }) => {
     const [conversations, setConversations] = useState<ChatConversation[]>(MOCK_CONVERSATIONS);
     const [activeConversation, setActiveConversation] = useState<ChatConversation | null>(null);
     const [isOpen, setIsOpen] = useState(false); // Mặc định không mở chat window
     const [isMinimized, setIsMinimized] = useState(false);
     const { user } = useAuth();
 
+    // Nếu là customer/guest, chỉ hiển thị cuộc hội thoại của họ
+    useEffect(() => {
+        if (!isStaff && user?.id) {
+            // Lọc cuộc hội thoại của customer hiện tại
+            const userConversation = conversations.find(conv => conv.customerId === user.id);
+            if (userConversation) {
+                setActiveConversation(userConversation);
+            }
+        } else if (!isStaff) {
+            // Nếu là guest, tạo cuộc hội thoại mới khi họ mở chat
+            setActiveConversation(null);
+        }
+    }, [isStaff, user, conversations]);
+
     // Calculate total unread messages
-    const unreadCount = conversations.reduce((count, conv) => count + conv.unreadCount, 0);
+    const unreadCount = conversations.reduce((count, conv) => {
+        // Nếu là staff, đếm tất cả các tin nhắn chưa đọc
+        // Nếu là customer/guest, chỉ đếm tin nhắn chưa đọc trong cuộc hội thoại của họ
+        if (isStaff) {
+            return count + conv.unreadCount;
+        } else if (user?.id && conv.customerId === user.id) {
+            return count + conv.unreadCount;
+        } else if (!user && !conv.customerId) {
+            return count + conv.unreadCount;
+        }
+        return count;
+    }, 0);
 
     // Simulate receiving a new message every 30 seconds for demo
     useEffect(() => {
         let timeoutId: NodeJS.Timeout;
 
-        if (user?.role === 'staff') {
+        if (isStaff) {
             const simulateNewMessage = () => {
                 const randomIndex = Math.floor(Math.random() * conversations.length);
                 const conversation = { ...conversations[randomIndex] };
@@ -83,12 +109,53 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             };
 
             timeoutId = setTimeout(simulateNewMessage, 30000);
+        } else if (!isStaff && activeConversation && activeConversation.status !== 'closed') {
+            // Simulate staff response for customer/guest
+            const simulateStaffResponse = () => {
+                const staffResponses = [
+                    'Xin chào, tôi có thể giúp gì cho bạn?',
+                    'Cảm ơn bạn đã liên hệ với chúng tôi.',
+                    'Vui lòng đợi một chút, tôi đang kiểm tra thông tin.',
+                    'Chúng tôi sẽ xử lý yêu cầu của bạn sớm nhất có thể.'
+                ];
+
+                const randomResponse = staffResponses[Math.floor(Math.random() * staffResponses.length)];
+
+                const newMessage: ChatMessage = {
+                    id: uuidv4(),
+                    senderId: 'staff-auto',
+                    senderName: 'Nhân viên hỗ trợ',
+                    senderType: 'staff',
+                    content: randomResponse,
+                    timestamp: new Date().toISOString(),
+                    isRead: false,
+                };
+
+                const updatedConversation = {
+                    ...activeConversation,
+                    lastMessage: randomResponse,
+                    lastMessageTime: newMessage.timestamp,
+                    messages: [...activeConversation.messages, newMessage],
+                    unreadCount: activeConversation.unreadCount + 1
+                };
+
+                const updatedConversations = conversations.map(c =>
+                    c.id === updatedConversation.id ? updatedConversation : c
+                );
+
+                setConversations(updatedConversations);
+                setActiveConversation(updatedConversation);
+
+                timeoutId = setTimeout(simulateStaffResponse, Math.random() * 20000 + 10000); // 10-30s
+            };
+
+            timeoutId = setTimeout(simulateStaffResponse, Math.random() * 5000 + 5000); // 5-10s
         }
 
         return () => {
             clearTimeout(timeoutId);
         };
-    }, [conversations, activeConversation, user]);
+    }, [conversations, activeConversation, isStaff]);
 
     const toggleChat = () => {
         // Khi mở chat, luôn mở với kích thước lớn (không thu nhỏ)
@@ -141,7 +208,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             id: uuidv4(),
             senderId: user?.id || 'anonymous',
             senderName: user?.username || 'Khách hàng ẩn danh',
-            senderType: user?.role === 'staff' ? 'staff' : (user ? 'customer' : 'anonymous'),
+            senderType: isStaff ? 'staff' : (user ? 'customer' : 'anonymous'),
             content,
             timestamp: new Date().toISOString(),
             isRead: false,
