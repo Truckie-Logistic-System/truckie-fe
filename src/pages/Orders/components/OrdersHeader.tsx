@@ -11,7 +11,7 @@ const OrdersHeader: React.FC = () => {
             <p className="text-blue-100">Quản lý và theo dõi tất cả đơn hàng</p>
           </div>
           <Link
-            to="/orders/create"
+            to="/customer/create-order"
             className="px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-200 flex items-center gap-2 text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
             <svg

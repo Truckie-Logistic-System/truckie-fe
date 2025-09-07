@@ -25,20 +25,25 @@ const authService = {
             const loginData: LoginRequest = { username, password };
             const response = await httpClient.post<LoginResponse>('/auths', loginData);
 
-            // Lưu token vào localStorage (tạm thời, sau này sẽ dùng HTTP-only cookie)
-            if (response.data.success) {
-                localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, response.data.data.authToken);
-                localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
-                localStorage.setItem('user_role', response.data.data.user.role.roleName.toLowerCase());
-
-                // Thêm dòng hello username
-                response.data.message = `Hello ${response.data.data.user.username}! ${response.data.message}`;
+            // Check if the API returned success: false
+            if (!response.data.success) {
+                console.warn('Login API returned success: false with message:', response.data.message);
+                throw new Error(response.data.message || 'Đăng nhập thất bại');
             }
+
+            // Lưu token vào localStorage (tạm thời, sau này sẽ dùng HTTP-only cookie)
+            localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, response.data.data.authToken);
+            localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
+            localStorage.setItem('user_role', response.data.data.user.role.roleName.toLowerCase());
+
+            // Thêm dòng hello username
+            response.data.message = `Hello ${response.data.data.user.username}! ${response.data.message}`;
 
             return response.data;
         } catch (error) {
             console.error('Login error:', error);
-            throw handleApiError(error, 'Đăng nhập thất bại');
+            // Make sure to pass the error directly to preserve all error information
+            throw error;
         }
     },
 
@@ -50,10 +55,18 @@ const authService = {
     register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
         try {
             const response = await httpClient.post<RegisterResponse>('/auths/customer/register', userData);
+
+            // Check if the API returned success: false
+            if (!response.data.success) {
+                console.warn('Register API returned success: false with message:', response.data.message);
+                throw new Error(response.data.message || 'Đăng ký thất bại');
+            }
+
             return response.data;
         } catch (error) {
             console.error('Registration error:', error);
-            throw handleApiError(error, 'Đăng ký thất bại');
+            // Pass the error directly to preserve all error information
+            throw error;
         }
     },
 

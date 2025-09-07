@@ -1,19 +1,5 @@
-import type { Order, OrderDetail } from '@/models/Order';
+import type { Order, OrderDetail, OrderCreateRequest as OrderCreateRequestModel } from '@/models/Order';
 import type { ApiResponse, PaginatedResponse } from '../api/types';
-
-export interface OrderCreateDto {
-    receiverName: string;
-    receiverPhone: string;
-    packageDescription?: string;
-    notes?: string;
-    pickupAddressId: string;
-    categoryId: string;
-    orderDetails: {
-        weight: number;
-        description?: string;
-        orderSizeId: string;
-    }[];
-}
 
 export interface OrderUpdateDto {
     status?: string;

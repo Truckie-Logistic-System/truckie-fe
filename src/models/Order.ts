@@ -60,15 +60,21 @@ export type OrderStatus =
     | 'RETURNED';
 
 export interface OrderCreateRequest {
-    receiverName: string;
-    receiverPhone: string;
-    packageDescription?: string;
-    notes?: string;
-    pickupAddressId: string;
-    categoryId: string;
+    orderRequest: {
+        notes: string;
+        totalWeight: number;
+        receiverName: string;
+        receiverPhone: string;
+        packageDescription: string;
+        estimateStartTime: string;
+        deliveryAddressId: string;
+        pickupAddressId: string;
+        senderId: string;
+        categoryId: string;
+    };
     orderDetails: {
         weight: number;
-        description?: string;
+        description: string;
         orderSizeId: string;
     }[];
 }

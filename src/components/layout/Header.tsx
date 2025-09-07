@@ -60,8 +60,8 @@ const Header: React.FC = () => {
   ];
 
   const menuItems = [
-    { key: "trangchu", label: "Trang chủ" },
-    { key: "orders", label: "Đơn hàng" },
+    { key: "trangchu", label: <Link to="/">Trang chủ</Link> },
+    { key: "orders", label: <Link to="/customer/orders">Đơn hàng</Link> },
     { key: "giaithuong", label: "Giải thưởng" },
     { key: "hoatdong", label: "Hoạt động & Thành tựu" },
     { key: "tuyendung", label: "Tuyển dụng" },

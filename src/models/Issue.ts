@@ -6,7 +6,7 @@ export interface Issue {
     locationLongitude: number | null;
     status: IssueStatus;
     vehicleAssignment?: VehicleAssignment;
-    staff?: User;
+    staff?: IssueUser;
     issueType?: IssueType;
 }
 
@@ -67,10 +67,10 @@ export interface Driver {
     licenseClass?: string;
     dateOfPassing?: string;
     status: string;
-    user?: User;
+    user?: IssueUser;
 }
 
-export interface User {
+export interface IssueUser {
     id: string;
     username: string;
     fullName: string;

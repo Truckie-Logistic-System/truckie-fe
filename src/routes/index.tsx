@@ -17,6 +17,7 @@ import {
   OrderDetailPage as AdminOrderDetailPage,
   OrderEdit as AdminOrderEdit,
 } from "../pages/Admin/Order";
+import { OrdersList, CreateOrder } from "../pages/Orders";
 import { PermissionRoute } from "../components/auth";
 import { MainLayout, AdminLayout } from "../components/layout";
 
@@ -90,11 +91,15 @@ const router = createBrowserRouter([
       },
       {
         path: "orders",
-        element: <div>Đơn hàng của tôi</div>, // Sẽ được thay thế bằng component riêng cho khách hàng
+        element: <OrdersList />,
       },
       {
         path: "orders/:id",
-        element: <div>Chi tiết đơn hàng</div>, // Sẽ được thay thế bằng component riêng cho khách hàng
+        element: <OrderDetailPage />,
+      },
+      {
+        path: "create-order",
+        element: <CreateOrder />,
       },
     ],
   },

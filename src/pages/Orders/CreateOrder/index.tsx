@@ -1,844 +1,551 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MainLayout } from "../../../components/layout";
-import { addressService } from "../../../services/addressService";
-import { orderService } from "../../../services/orderService";
-import { orderSizeService } from "../../../services/orderSizeService";
-import { categoryService } from "../../../services/categoryService";
-import type { Address, OrderSize, Category } from "../../../types";
-import { toast } from "react-toastify";
-import { AUTH_ACCESS_TOKEN_KEY } from "../../../config";
-import { useAuth } from "../../../context/AuthContext";
+import { Button, Form, Input, Select, InputNumber, Steps, Card, Typography, notification, Spin } from "antd";
+import { useAuth } from "../../../context";
+import orderService from "../../../services/order";
+import categoryService from "../../../services/category";
+import addressService from "../../../services/address";
+import orderSizeService from "../../../services/order-size";
+import type { OrderCreateRequest } from "../../../models/Order";
+import type { Category } from "../../../models/Category";
+import type { Address } from "../../../models/Address";
+import type { OrderSize } from "../../../models/OrderSize";
+import { formatCurrency } from "../../../utils/formatters";
+
+const { Step } = Steps;
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 const CreateOrder = () => {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orderSizes, setOrderSizes] = useState<OrderSize[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-
-  // Helper function to get UTC+7 time in format YYYY-MM-DDTHH:mm:ss
-  const getVietnamTime = () => {
-    const now = new Date();
-    // Add 7 hours to UTC (Vietnam timezone)
-    const vietnamTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-    // Format as YYYY-MM-DDTHH:mm:ss (without milliseconds and Z)
-    return vietnamTime.toISOString().slice(0, 19);
-  };
-
-  // OrderRequest fields
-  const [orderRequest, setOrderRequest] = useState({
-    notes: "",
-    totalWeight: 0,
-    receiverName: "",
-    receiverPhone: "",
-    packageDescription: "",
-    estimateStartTime: getVietnamTime(),
-    deliveryAddressId: "",
-    pickupAddressId: "",
-    senderId: "c71a95b2-6ee4-464f-aacd-bb6eae80db35",
-    categoryId: "",
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formValues, setFormValues] = useState<any>({
+    weight: 1,
+    description: "Mô tả kích thước",
+    notes: "Không có ghi chú",
+    packageDescription: "Gói hàng thông thường"
   });
 
-  // OrderDetails (array, for now just one item)
-  const [orderDetails, setOrderDetails] = useState([
-    {
-      weight: 0,
-      description: "",
-      orderSizeId: "",
-    },
-  ]);
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const [form] = Form.useForm();
 
-  // Fetch addresses and orderSizes on component mount
+  // Cập nhật giá trị form từ state khi component mount
+  useEffect(() => {
+    form.setFieldsValue(formValues);
+  }, [form, formValues]);
+
+  // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
-      // Check if user is authenticated before making API calls
-      if (!isAuthenticated || !user) {
-        console.log(
-          "CreateOrder: User not authenticated, redirecting to login"
-        );
-        navigate("/login");
-        return;
-      }
-
-      const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
-      if (!token) {
-        console.log("CreateOrder: No token found, redirecting to login");
-        navigate("/login");
-        return;
-      }
-
       try {
-        console.log("CreateOrder: Starting to fetch data...");
-        console.log("CreateOrder: Current token:", token);
-        console.log("CreateOrder: User:", user);
-        console.log("CreateOrder: isAuthenticated:", isAuthenticated);
+        setLoading(true);
 
-        const [addressData, orderSizeData, categoryData] = await Promise.all([
-          addressService.getAllAddress(),
-          orderSizeService.getAllOrderSize(),
-          categoryService.getAllCategory(),
+        const [addressesData, orderSizesData, categoriesData] = await Promise.all([
+          addressService.getAllAddresses(),
+          orderSizeService.getAllOrderSizes(),
+          categoryService.getAllCategories()
         ]);
 
-        console.log("Fetched addresses:", addressData);
-        console.log("Fetched order sizes:", orderSizeData);
-        console.log("Fetched categories:", categoryData);
-        console.log(
-          "CreateOrder: Token after successful fetch:",
-          localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)
-        );
+        // Thêm trường fullAddress nếu chưa có
+        const addressesWithFullAddress = addressesData.map(address => ({
+          ...address,
+          fullAddress: address.fullAddress || `${address.street}, ${address.ward}, ${address.province}`
+        }));
 
-        setAddresses(addressData);
-        setOrderSizes(orderSizeData);
-        setCategories(categoryData);
-
-        console.log("🏠 Addresses loaded:", addressData?.length || 0, "items");
-        console.log(
-          "📦 OrderSizes loaded:",
-          orderSizeData?.length || 0,
-          "items"
-        );
-        console.log(
-          "🏷️ Categories loaded:",
-          categoryData?.length || 0,
-          "items"
-        );
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        console.log(
-          "CreateOrder: Token after error:",
-          localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)
-        );
-
-        // If error is 401, don't show error toast since user will be redirected to login
-        if ((error as any)?.response?.status !== 401) {
-          toast.error("Không thể tải dữ liệu. Vui lòng thử lại.");
-        }
+        setAddresses(addressesWithFullAddress);
+        setOrderSizes(orderSizesData);
+        setCategories(categoriesData);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || "Không thể tải dữ liệu");
+        notification.error({
+          message: "Lỗi",
+          description: "Không thể tải dữ liệu cần thiết. Vui lòng thử lại sau.",
+        });
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchData();
-  }, [isAuthenticated, user, navigate]);
-  const handleInputChange = (field: string, value: string | boolean) => {
-    console.log(`📝 handleInputChange: ${field} = "${value}"`);
-    let processedValue = value;
+  }, []);
 
-    // Convert datetime-local to format YYYY-MM-DDTHH:mm:ss
-    if (field === "estimateStartTime" && typeof value === "string") {
-      const date = new Date(value);
-      // Ensure we have a valid date and format it properly
-      if (!isNaN(date.getTime())) {
-        // Convert to UTC+7 (Vietnam time) and format as YYYY-MM-DDTHH:mm:ss
-        const vietnamTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-        processedValue = vietnamTime.toISOString().slice(0, 19);
-      } else {
-        processedValue = getVietnamTime();
-      }
-      console.log("Datetime converted (UTC+7):", value, "->", processedValue);
-    }
+  const handleSubmit = async (values: any) => {
+    console.log("Form submitted with values:", values);
 
-    setOrderRequest((prev) => {
-      const updated = { ...prev, [field]: processedValue };
-      console.log(`📊 Updated orderRequest.${field}:`, processedValue);
-      return updated;
-    });
-  };
+    // Kết hợp giá trị từ form và state
+    const finalValues = {
+      ...formValues,
+      ...values
+    };
 
-  const handleOrderDetailsChange = (
-    index: number,
-    field: string,
-    value: string | number
-  ) => {
-    setOrderDetails((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
-    );
-  };
+    // Log all form values to check if they're being properly collected
+    console.log("Final form values detail:");
+    console.log("- receiverName:", finalValues.receiverName);
+    console.log("- receiverPhone:", finalValues.receiverPhone);
+    console.log("- categoryId:", finalValues.categoryId);
+    console.log("- packageDescription:", finalValues.packageDescription);
+    console.log("- weight:", finalValues.weight);
+    console.log("- orderSizeId:", finalValues.orderSizeId);
+    console.log("- description:", finalValues.description);
+    console.log("- pickupAddressId:", finalValues.pickupAddressId);
+    console.log("- deliveryAddressId:", finalValues.deliveryAddressId);
+    console.log("- notes:", finalValues.notes);
 
-  const addOrderDetail = () => {
-    setOrderDetails((prev) => [
-      ...prev,
-      {
-        weight: 0,
-        description: "",
-        orderSizeId: "",
-      },
-    ]);
-  };
-
-  const removeOrderDetail = (index: number) => {
-    if (orderDetails.length > 1) {
-      setOrderDetails((prev) => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleNext = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleSubmit = async () => {
-    // Check authentication before submitting
     if (!isAuthenticated || !user) {
-      toast.error("Vui lòng đăng nhập để tạo đơn hàng.");
-      navigate("/login");
+      notification.error({
+        message: "Chưa đăng nhập",
+        description: "Vui lòng đăng nhập để tạo đơn hàng.",
+      });
+      navigate("/auth/login");
       return;
     }
 
-    const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
-    if (!token) {
-      toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-      navigate("/login");
-      return;
-    }
-
-    setIsSubmitting(true);
     try {
-      // Build FormOrders payload
-      const payload = {
+      setIsSubmitting(true);
+      console.log("Starting order creation process...");
+
+      // Validate all required fields are present
+      const requiredFields = [
+        'receiverName',
+        'receiverPhone',
+        'categoryId',
+        'packageDescription',
+        'weight',
+        'orderSizeId',
+        'description',
+        'pickupAddressId',
+        'deliveryAddressId'
+      ];
+
+      const missingFields = requiredFields.filter(field => !finalValues[field]);
+      console.log("Missing fields:", missingFields);
+
+      if (missingFields.length > 0) {
+        throw new Error(`Thiếu thông tin: ${missingFields.join(', ')}`);
+      }
+
+      // Prepare order data
+      const orderData: OrderCreateRequest = {
         orderRequest: {
-          ...orderRequest,
-          // Ensure estimateStartTime is in format YYYY-MM-DDTHH:mm:ss
-          estimateStartTime: (() => {
-            const time = orderRequest.estimateStartTime;
-            if (time) {
-              const date = new Date(time);
-              // Convert to UTC+7 and format as YYYY-MM-DDTHH:mm:ss
-              const vietnamTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-              const formattedTime = vietnamTime.toISOString().slice(0, 19);
-              console.log("Final estimateStartTime format:", formattedTime);
-              return formattedTime;
-            }
-            const defaultTime = getVietnamTime();
-            console.log("Using default estimateStartTime:", defaultTime);
-            return defaultTime;
-          })(),
+          notes: finalValues.notes || "",
+          totalWeight: finalValues.weight,
+          receiverName: finalValues.receiverName,
+          receiverPhone: finalValues.receiverPhone,
+          packageDescription: finalValues.packageDescription,
+          // Sửa định dạng thời gian để phù hợp với LocalDateTime của Java
+          // Loại bỏ phần 'Z' và giữ định dạng yyyy-MM-ddTHH:mm:ss
+          estimateStartTime: new Date().toISOString().split('.')[0],
+          deliveryAddressId: finalValues.deliveryAddressId,
+          pickupAddressId: finalValues.pickupAddressId,
+          senderId: "c71a95b2-6ee4-464f-aacd-bb6eae80db35",
+          categoryId: "11111111-1111-1111-1111-111111111111"
         },
-        orderDetails,
+        orderDetails: [
+          {
+            weight: finalValues.weight,
+            description: finalValues.description,
+            orderSizeId: finalValues.orderSizeId,
+          },
+        ],
       };
 
-      console.log("=== REQUEST MODEL DEBUG ===");
-      console.log("🔍 Request Model Structure:");
-      console.log("📦 Full payload:", JSON.stringify(payload, null, 2));
-      console.log("📋 Request Model Type:", typeof payload);
-      console.log("📝 OrderRequest object:", payload.orderRequest);
-      console.log("📃 OrderDetails array:", payload.orderDetails);
-      console.log("🔢 OrderDetails count:", payload.orderDetails.length);
-      console.log("=== PAYLOAD DEBUG ===");
-      console.log("Full payload:", JSON.stringify(payload, null, 2));
-      console.log("OrderRequest fields:");
-      console.log("- notes:", payload.orderRequest.notes);
-      console.log("- totalWeight:", payload.orderRequest.totalWeight);
-      console.log("- receiverName:", payload.orderRequest.receiverName);
-      console.log("- receiverPhone:", payload.orderRequest.receiverPhone);
-      console.log(
-        "- packageDescription:",
-        payload.orderRequest.packageDescription
-      );
-      console.log(
-        "- estimateStartTime:",
-        payload.orderRequest.estimateStartTime
-      );
-      console.log(
-        "- deliveryAddressId:",
-        payload.orderRequest.deliveryAddressId
-      );
-      console.log("- pickupAddressId:", payload.orderRequest.pickupAddressId);
-      console.log("- senderId:", payload.orderRequest.senderId);
-      console.log("- categoryId:", payload.orderRequest.categoryId);
-      console.log("OrderDetails array:");
-      payload.orderDetails.forEach((detail, index) => {
-        console.log(`- Detail ${index}:`, {
-          weight: detail.weight,
-          description: detail.description,
-          orderSizeId: detail.orderSizeId,
-        });
+      console.log("Order data prepared:", orderData);
+
+      // Call API to create order
+      console.log("Calling createOrder API...");
+      await orderService.createOrder(orderData);
+      console.log("Order created successfully");
+
+      notification.success({
+        message: "Thành công",
+        description: "Đơn hàng đã được tạo thành công!",
       });
-      console.log("Current token before submit:", token);
-      console.log("User authenticated:", isAuthenticated);
-      console.log("User data:", user);
-      console.log("=== END PAYLOAD DEBUG ===");
 
-      console.log("🚀 === FINAL REQUEST MODEL ===");
-      console.log("📤 Sending to API:", JSON.stringify(payload, null, 2));
-      console.log("🏷️ Model validation:");
-      console.log("  ✅ orderRequest exists:", !!payload.orderRequest);
-      console.log("  ✅ orderDetails exists:", !!payload.orderDetails);
-      console.log(
-        "  ✅ orderDetails is array:",
-        Array.isArray(payload.orderDetails)
-      );
-      console.log("  📊 orderDetails length:", payload.orderDetails.length);
-      console.log("🚀 === END FINAL REQUEST MODEL ===");
-
-      // Call orderService.createOrder
-      const createdOrder = await orderService.createOrder(payload);
-      console.log("Order created successfully:", createdOrder);
-
-      toast.success("Đơn hàng đã được tạo thành công!");
-      navigate("/orders");
-    } catch (error) {
-      console.error("Failed to create order:", error);
-      console.log("Error response:", (error as any)?.response);
-      console.log("Error status:", (error as any)?.response?.status);
-      console.log("Error data:", (error as any)?.response?.data);
-      console.log(
-        "Current token after error:",
-        localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)
-      );
-
-      if ((error as any)?.response?.status === 401) {
-        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        navigate("/login");
-      } else {
-        toast.error("Tạo đơn hàng thất bại. Vui lòng thử lại.");
-      }
+      // Redirect to orders list
+      navigate("/customer/orders");
+    } catch (err: any) {
+      console.error("Error creating order:", err);
+      notification.error({
+        message: "Lỗi",
+        description: err.message || "Không thể tạo đơn hàng. Vui lòng thử lại.",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <MainLayout>
-      <div className="min-h-screen bg-gray-50">
-        {/* Progress Steps */}
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          {/* Back Button */}
-          <div className="mb-6">
-            <Link
-              to="/orders"
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              Quay lại danh sách đơn hàng
-            </Link>
+  const steps = [
+    {
+      title: "Thông tin người nhận",
+      content: (
+        <div className="space-y-4">
+          <Form.Item
+            name="receiverName"
+            label="Tên người nhận"
+            rules={[{ required: true, message: "Vui lòng nhập tên người nhận" }]}
+          >
+            <Input placeholder="Nhập tên người nhận" />
+          </Form.Item>
+
+          <Form.Item
+            name="receiverPhone"
+            label="Số điện thoại"
+            rules={[
+              { required: true, message: "Vui lòng nhập số điện thoại" },
+              { pattern: /^[0-9]{10}$/, message: "Số điện thoại không hợp lệ" },
+            ]}
+          >
+            <Input placeholder="Nhập số điện thoại" />
+          </Form.Item>
+        </div>
+      ),
+    },
+    {
+      title: "Thông tin gói hàng",
+      content: (
+        <div className="space-y-4">
+          <Form.Item
+            name="categoryId"
+            label="Loại hàng"
+            rules={[{ required: true, message: "Vui lòng chọn loại hàng" }]}
+          >
+            <Select placeholder="Chọn loại hàng">
+              {categories.map((category) => (
+                <Option key={category.id} value={category.id}>
+                  {category.categoryName}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="packageDescription"
+            label="Mô tả gói hàng"
+            rules={[{ required: true, message: "Vui lòng nhập mô tả gói hàng" }]}
+          >
+            <Input.TextArea rows={3} placeholder="Mô tả chi tiết về gói hàng" />
+          </Form.Item>
+
+          <Form.Item
+            name="weight"
+            label="Cân nặng (kg)"
+            rules={[
+              { required: true, message: "Vui lòng nhập cân nặng" },
+              { type: 'number', min: 0.1, message: "Cân nặng phải lớn hơn 0" }
+            ]}
+          >
+            <InputNumber min={0.1} step={0.1} style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item
+            name="orderSizeId"
+            label="Kích thước"
+            rules={[{ required: true, message: "Vui lòng chọn kích thước" }]}
+          >
+            <Select placeholder="Chọn kích thước">
+              {orderSizes.map((size) => (
+                <Option key={size.id} value={size.id}>
+                  {size.description}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="Ghi chú về kích thước"
+            rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
+          >
+            <Input.TextArea rows={2} placeholder="Thông tin thêm về kích thước" />
+          </Form.Item>
+        </div>
+      ),
+    },
+    {
+      title: "Địa chỉ & Ghi chú",
+      content: (
+        <div className="space-y-4">
+          <Form.Item
+            name="pickupAddressId"
+            label="Địa chỉ lấy hàng"
+            rules={[{ required: true, message: "Vui lòng chọn địa chỉ lấy hàng" }]}
+          >
+            <Select placeholder="Chọn địa chỉ lấy hàng">
+              {addresses.map((address) => (
+                <Option key={address.id} value={address.id}>
+                  {address.fullAddress}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="deliveryAddressId"
+            label="Địa chỉ giao hàng"
+            rules={[{ required: true, message: "Vui lòng chọn địa chỉ giao hàng" }]}
+          >
+            <Select placeholder="Chọn địa chỉ giao hàng">
+              {addresses.map((address) => (
+                <Option key={address.id} value={address.id}>
+                  {address.fullAddress}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="notes"
+            label="Ghi chú"
+            rules={[{ required: true, message: "Vui lòng nhập ghi chú" }]}
+          >
+            <Input.TextArea rows={4} placeholder="Ghi chú thêm cho đơn hàng" />
+          </Form.Item>
+        </div>
+      ),
+    },
+    {
+      title: "Xác nhận",
+      content: (
+        <div className="space-y-6">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <Text className="text-blue-600 font-medium">Vui lòng kiểm tra thông tin đơn hàng trước khi xác nhận.</Text>
           </div>
 
-          <div className="flex items-center justify-between mb-8">
-            {[
-              { step: 1, title: "Thông Tin Giao Nhận" },
-              { step: 2, title: "Loại Hàng và Yêu cầu" },
-              { step: 3, title: "Thông Tin Giao Hàng" },
-            ].map((item, index) => (
-              <div key={item.step} className="flex items-center">
-                <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${currentStep >= item.step
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-500"
-                    }`}
-                >
-                  {item.step}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Title level={5}>Thông tin người nhận</Title>
+              <div className="space-y-2">
+                <div>
+                  <Text type="secondary">Tên người nhận:</Text>
+                  <div className="font-medium">{form.getFieldValue('receiverName')}</div>
                 </div>
-                <div className="ml-3">
-                  <span
-                    className={`text-sm font-medium ${currentStep >= item.step
-                      ? "text-blue-600"
-                      : "text-gray-500"
-                      }`}
-                  >
-                    {item.title}
-                  </span>
+                <div>
+                  <Text type="secondary">Số điện thoại:</Text>
+                  <div className="font-medium">{form.getFieldValue('receiverPhone')}</div>
                 </div>
-                {index < 2 && (
-                  <div
-                    className={`w-12 h-0.5 mx-4 ${currentStep > item.step ? "bg-blue-600" : "bg-gray-200"
-                      }`}
-                  />
-                )}
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Form Content */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            {currentStep === 1 && (
-              <div className="space-y-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">
-                  Thông Tin Đơn Hàng
-                </h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tên người nhận
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={orderRequest.receiverName}
-                      onChange={(e) =>
-                        handleInputChange("receiverName", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Số điện thoại người nhận
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={orderRequest.receiverPhone}
-                      onChange={(e) =>
-                        handleInputChange("receiverPhone", e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Địa chỉ gửi (ID)
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={orderRequest.pickupAddressId}
-                      onChange={(e) =>
-                        handleInputChange("pickupAddressId", e.target.value)
-                      }
-                    >
-                      <option value="">Chọn địa chỉ gửi</option>
-                      {addresses.map((address) => (
-                        <option key={address.id} value={address.id}>
-                          {address.street}, {address.ward}, {address.province}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Địa chỉ nhận (ID)
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={orderRequest.deliveryAddressId}
-                      onChange={(e) =>
-                        handleInputChange("deliveryAddressId", e.target.value)
-                      }
-                    >
-                      <option value="">Chọn địa chỉ nhận</option>
-                      {addresses.map((address) => (
-                        <option key={address.id} value={address.id}>
-                          {address.street}, {address.ward}, {address.province}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Thời gian dự kiến
-                    </label>
-                    <input
-                      type="datetime-local"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={
-                        orderRequest.estimateStartTime
-                          ? orderRequest.estimateStartTime.slice(0, 16) // Format: YYYY-MM-DDTHH:mm
-                          : ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange("estimateStartTime", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Loại hàng (Category)
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={orderRequest.categoryId}
-                      onChange={(e) =>
-                        handleInputChange("categoryId", e.target.value)
-                      }
-                    >
-                      <option value="">Chọn loại hàng hóa</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.categoryName}
-                        </option>
-                      ))}
-                    </select>
+            <div>
+              <Title level={5}>Thông tin gói hàng</Title>
+              <div className="space-y-2">
+                <div>
+                  <Text type="secondary">Loại hàng:</Text>
+                  <div className="font-medium">
+                    {categories.find(c => c.id === form.getFieldValue('categoryId'))?.categoryName}
                   </div>
                 </div>
                 <div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Mô tả kiện hàng
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={orderRequest.packageDescription}
-                      onChange={(e) =>
-                        handleInputChange("packageDescription", e.target.value)
-                      }
-                    />
-                  </div>
+                  <Text type="secondary">Cân nặng:</Text>
+                  <div className="font-medium">{form.getFieldValue('weight')} kg</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ghi chú
-                  </label>
-                  <textarea
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    rows={2}
-                    value={orderRequest.notes}
-                    onChange={(e) => handleInputChange("notes", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ID người gửi
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    value={orderRequest.senderId}
-                    onChange={(e) =>
-                      handleInputChange("senderId", e.target.value)
-                    }
-                  />
-                </div>
-              </div>
-            )}
-
-            {currentStep === 2 && (
-              <div className="space-y-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">
-                  Loại Hàng và Yêu cầu
-                </h2>
-
-                <div className="space-y-4">
-                  {/* Order Details Section */}
-                  <div className="border-t pt-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-md font-medium text-gray-900">
-                        Chi Tiết Đơn Hàng
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={addOrderDetail}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        Thêm chi tiết
-                      </button>
-                    </div>
-
-                    {orderDetails.map((detail, index) => (
-                      <div
-                        key={index}
-                        className="border border-gray-200 rounded-lg p-4 mb-4 relative"
-                      >
-                        {orderDetails.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeOrderDetail(index)}
-                            className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-colors"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                        )}
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Trọng lượng (kg)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              value={detail.weight}
-                              onChange={(e) =>
-                                handleOrderDetailsChange(
-                                  index,
-                                  "weight",
-                                  Number(e.target.value)
-                                )
-                              }
-                              placeholder="Nhập trọng lượng"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Loại xe tải
-                            </label>
-                            <select
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              value={detail.orderSizeId}
-                              onChange={(e) =>
-                                handleOrderDetailsChange(
-                                  index,
-                                  "orderSizeId",
-                                  e.target.value
-                                )
-                              }
-                            >
-                              <option value="">Chọn loại xe tải</option>
-                              {orderSizes.map((size) => (
-                                <option key={size.id} value={size.id}>
-                                  {size.description} ({size.minWeight}-
-                                  {size.maxWeight} kg)
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Mô tả chi tiết
-                            </label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              value={detail.description}
-                              onChange={(e) =>
-                                handleOrderDetailsChange(
-                                  index,
-                                  "description",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Mô tả chi tiết kiện hàng"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Show truck size details when selected */}
-                        {detail.orderSizeId && (
-                          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                            {(() => {
-                              const selectedSize = orderSizes.find(
-                                (s) => s.id === detail.orderSizeId
-                              );
-                              return selectedSize ? (
-                                <div className="text-sm text-gray-600">
-                                  <p>
-                                    <strong>Thông số xe:</strong>
-                                  </p>
-                                  <p>
-                                    Trọng lượng: {selectedSize.minWeight} -{" "}
-                                    {selectedSize.maxWeight} kg
-                                  </p>
-                                  <p>
-                                    Kích thước: {selectedSize.minLength}×
-                                    {selectedSize.minWidth}×
-                                    {selectedSize.minHeight} -{" "}
-                                    {selectedSize.maxLength}×
-                                    {selectedSize.maxWidth}×
-                                    {selectedSize.maxHeight} m
-                                  </p>
-                                </div>
-                              ) : null;
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* urgentDelivery removed, not in API payload */}
-                </div>
-              </div>
-            )}
-
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">
-                  Thông Tin Giao Hàng
-                </h2>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Ghi chú thêm
-                    </label>
-                    <textarea
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                      rows={4}
-                      placeholder="Thêm ghi chú cho đơn hàng (tùy chọn)"
-                      value={orderRequest.notes}
-                      onChange={(e) =>
-                        handleInputChange("notes", e.target.value)
-                      }
-                    />
-                  </div>
-
-                  {/* Order Summary */}
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <h3 className="font-medium text-gray-900">
-                      Tóm tắt đơn hàng
-                    </h3>
-
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Điểm gửi (ID):</span>
-                        <span className="text-gray-900">
-                          {orderRequest.pickupAddressId || "Chưa nhập"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Điểm nhận (ID):</span>
-                        <span className="text-gray-900">
-                          {orderRequest.deliveryAddressId || "Chưa nhập"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">
-                          Loại hàng (Category ID):
-                        </span>
-                        <span className="text-gray-900">
-                          {orderRequest.categoryId || "Chưa chọn"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-3 mt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-gray-900">
-                          Ước tính phí vận chuyển:
-                        </span>
-                        <span className="text-lg font-semibold text-blue-600">
-                          150,000 VND
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Phí cuối cùng sẽ được xác nhận sau khi tài xế nhận đơn
-                      </p>
-                    </div>
+                  <Text type="secondary">Kích thước:</Text>
+                  <div className="font-medium">
+                    {orderSizes.find(s => s.id === form.getFieldValue('orderSizeId'))?.description}
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
-              {currentStep > 1 ? (
-                <button
-                  onClick={handleBack}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Quay lại
-                </button>
-              ) : (
-                <div></div>
-              )}
+            <div>
+              <Title level={5}>Địa chỉ lấy hàng</Title>
+              <div className="font-medium">
+                {addresses.find(a => a.id === form.getFieldValue('pickupAddressId'))?.fullAddress}
+              </div>
+            </div>
 
-              {currentStep < 3 ? (
-                <button
-                  onClick={handleNext}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Tiếp tục
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg
-                        className="animate-spin w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Đang tạo...
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 9l4-4 4 4m0 6l-4 4-4-4"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 5v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2h8a2 2 0 012 2z"
-                        />
-                      </svg>
-                      Tạo đơn hàng
-                    </>
-                  )}
-                </button>
-              )}
+            <div>
+              <Title level={5}>Địa chỉ giao hàng</Title>
+              <div className="font-medium">
+                {addresses.find(a => a.id === form.getFieldValue('deliveryAddressId'))?.fullAddress}
+              </div>
+            </div>
+
+            <div>
+              <Title level={5}>Ghi chú</Title>
+              <div className="font-medium">{form.getFieldValue('notes') || 'Không có'}</div>
             </div>
           </div>
         </div>
+      ),
+    },
+  ];
+
+  const next = () => {
+    form.validateFields()
+      .then(values => {
+        console.log("Validated fields for current step:", values);
+        // Lưu giá trị hiện tại vào form và state
+        const currentValues = form.getFieldsValue(true);
+        console.log("Current form values:", currentValues);
+
+        // Cập nhật state với giá trị mới
+        setFormValues({
+          ...formValues,
+          ...currentValues
+        });
+
+        setCurrentStep(currentStep + 1);
+      })
+      .catch(errorInfo => {
+        console.error("Validation failed:", errorInfo);
+      });
+  };
+
+  const prev = () => {
+    // Lưu giá trị hiện tại trước khi quay lại bước trước
+    const currentValues = form.getFieldsValue(true);
+    console.log("Saving current values before going back:", currentValues);
+
+    // Cập nhật state với giá trị mới
+    setFormValues({
+      ...formValues,
+      ...currentValues
+    });
+
+    setCurrentStep(currentStep - 1);
+  };
+
+  // Validate all form fields before final submission
+  const validateForm = async () => {
+    try {
+      console.log("Validating form...");
+      // This will validate all fields in the form
+      await form.validateFields();
+      console.log("Form validation successful");
+      return true;
+    } catch (error) {
+      console.error("Form validation failed:", error);
+      // Validation failed
+      notification.error({
+        message: "Lỗi",
+        description: "Vui lòng điền đầy đủ thông tin trước khi gửi đơn hàng.",
+      });
+      return false;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Spin size="large" tip="Đang tải..." />
       </div>
-    </MainLayout>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Tạo đơn hàng mới</h1>
+            <p className="text-gray-600">Điền thông tin để tạo đơn hàng</p>
+          </div>
+          <Link
+            to="/customer/orders"
+            className="text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Quay lại danh sách
+          </Link>
+        </div>
+
+        <Steps current={currentStep} className="mb-8">
+          {steps.map(item => (
+            <Step key={item.title} title={item.title} />
+          ))}
+        </Steps>
+
+        <Card>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            initialValues={formValues}
+            onValuesChange={(changedValues, allValues) => {
+              // Cập nhật state khi giá trị form thay đổi
+              setFormValues({
+                ...formValues,
+                ...changedValues
+              });
+            }}
+          >
+            {steps[currentStep].content}
+
+            <div className="flex justify-between mt-8">
+              {currentStep > 0 && (
+                <Button onClick={prev}>
+                  Quay lại
+                </Button>
+              )}
+              {currentStep < steps.length - 1 && (
+                <Button type="primary" onClick={next}>
+                  Tiếp tục
+                </Button>
+              )}
+              {currentStep === steps.length - 1 && (
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    console.log("Create order button clicked - direct submit");
+                    // Lấy tất cả giá trị form hiện tại và kết hợp với state
+                    const currentFormValues = form.getFieldsValue(true);
+                    const allValues = {
+                      ...formValues,
+                      ...currentFormValues
+                    };
+                    console.log("All form values before submit:", allValues);
+
+                    // Cập nhật state formValues
+                    setFormValues(allValues);
+
+                    // Kiểm tra các trường bắt buộc
+                    const requiredFields = [
+                      'receiverName',
+                      'receiverPhone',
+                      'categoryId',
+                      'packageDescription',
+                      'weight',
+                      'orderSizeId',
+                      'description',
+                      'pickupAddressId',
+                      'deliveryAddressId'
+                    ];
+
+                    const missingFields = requiredFields.filter(field => !allValues[field]);
+
+                    if (missingFields.length > 0) {
+                      console.error("Missing required fields:", missingFields);
+                      notification.error({
+                        message: "Thiếu thông tin",
+                        description: `Vui lòng điền đầy đủ thông tin: ${missingFields.join(', ')}`
+                      });
+                      return;
+                    }
+
+                    // Đặt lại giá trị form từ state để đảm bảo tất cả các trường có giá trị
+                    form.setFieldsValue(allValues);
+
+                    // Nếu đầy đủ thông tin, submit form
+                    form.submit();
+                  }}
+                  loading={isSubmitting}
+                >
+                  Tạo đơn hàng
+                </Button>
+              )}
+            </div>
+          </Form>
+        </Card>
+      </div>
+    </div>
   );
 };
 

@@ -3,12 +3,13 @@ import type { ReactNode } from "react";
 import type { User } from "@/models/User";
 import { AUTH_ACCESS_TOKEN_KEY } from "@/config";
 import authService from "@/services/auth";
+import type { LoginResponse } from "@/services/auth/types";
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<LoginResponse>;
   logout: () => void;
   getRedirectPath: () => string;
 }
@@ -57,38 +58,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (username: string, password: string) => {
-    setIsLoading(true);
     try {
       // Call the authentication API
       const response = await authService.login(username, password);
 
-      if (response.success) {
-        const apiUser = response.data.user;
+      // If we get here, the login was successful
+      const apiUser = response.data.user;
 
-        // Map API user to our User type
-        const userData: User = {
-          id: apiUser.id,
-          username: apiUser.username,
-          email: apiUser.email,
-          role: apiUser.role.roleName.toLowerCase() as
-            | "admin"
-            | "customer"
-            | "staff"
-            | "driver",
-        };
+      // Map API user to our User type
+      const userData: User = {
+        id: apiUser.id,
+        username: apiUser.username,
+        email: apiUser.email,
+        role: apiUser.role.roleName.toLowerCase() as
+          | "admin"
+          | "customer"
+          | "staff"
+          | "driver",
+      };
 
-        // Store role for future use
-        localStorage.setItem("user_role", userData.role);
+      // Store role for future use
+      localStorage.setItem("user_role", userData.role);
 
-        setUser(userData);
-      } else {
-        throw new Error(response.message || "Đăng nhập thất bại");
-      }
+      setUser(userData);
+      return response; // Return the response for success handling
     } catch (error) {
       console.error("Login failed:", error);
+      // Ensure error is propagated to the calling component
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 

@@ -3,17 +3,24 @@ import httpClient from "./api";
 
 // Export services
 import authService from "./auth";
-import api from "./api";
+import orderService from "./order";
 import { vietmapService, openmapService, trackasiaService } from "./map";
+import issueService from "./issue";
+import penaltyService from "./penalty";
+import categoryService from "./category";
+import addressService from "./address";
+import orderSizeService from "./order-size";
 
 // Export types
 export * from "./api/types";
 export * from "./auth/types";
 export * from "./order/types";
 export * from "./map/types";
-import { categoryService } from "./categoryService";
-import { addressService } from "./addressService";
-import { orderService } from "./orderService";
+export * from "./issue/types";
+export * from "./penalty/types";
+export * from "./category/types";
+export * from "./address/types";
+export * from "./order-size/types";
 
 export {
   httpClient,
@@ -22,7 +29,9 @@ export {
   vietmapService,
   openmapService,
   trackasiaService,
+  issueService,
+  penaltyService,
   categoryService,
   addressService,
-  api,
+  orderSizeService
 };

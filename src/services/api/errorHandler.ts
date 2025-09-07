@@ -2,6 +2,8 @@ import axios, { AxiosError } from 'axios';
 
 interface ApiErrorResponse {
     message?: string;
+    success?: boolean;
+    statusCode?: number;
     [key: string]: any;
 }
 
@@ -12,6 +14,11 @@ interface ApiErrorResponse {
  * @returns Thông báo lỗi người dùng có thể hiểu được
  */
 export const handleApiError = (error: unknown, defaultMessage: string = 'Đã xảy ra lỗi'): Error => {
+    // If the error is already an Error instance with a message, return it
+    if (error instanceof Error && error.message) {
+        return error;
+    }
+
     // Nếu là lỗi Axios
     if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError<ApiErrorResponse>;
@@ -21,6 +28,16 @@ export const handleApiError = (error: unknown, defaultMessage: string = 'Đã x�
             return new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.');
         }
 
+        // Kiểm tra nếu API trả về success: false với message
+        if (axiosError.response.data && typeof axiosError.response.data === 'object') {
+            if (axiosError.response.data.success === false && axiosError.response.data.message) {
+                return new Error(axiosError.response.data.message);
+            }
+            if (axiosError.response.data.message) {
+                return new Error(axiosError.response.data.message);
+            }
+        }
+
         // Xử lý các mã lỗi HTTP cụ thể
         switch (axiosError.response.status) {
             case 400:
@@ -28,7 +45,7 @@ export const handleApiError = (error: unknown, defaultMessage: string = 'Đã x�
                     axiosError.response.data?.message || 'Yêu cầu không hợp lệ. Vui lòng kiểm tra lại dữ liệu.'
                 );
             case 401:
-                return new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+                return new Error('Tên đăng nhập hoặc mật khẩu không đúng.');
             case 403:
                 return new Error('Bạn không có quyền truy cập tài nguyên này.');
             case 404:

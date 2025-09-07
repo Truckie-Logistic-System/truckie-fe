@@ -5,7 +5,7 @@ import { handleApiError } from './errorHandler';
 
 // Create an axios instance with default config
 const httpClient = axios.create({
-    baseURL: 'http://localhost:8080/api/v1', // Do not remove the /api/v1
+    baseURL: 'http://localhost:8080/api/v1', // Make sure this matches your backend URL
     timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
@@ -35,6 +35,9 @@ const processQueue = (error: any, token: string | null = null) => {
 // Request interceptor for adding auth token
 httpClient.interceptors.request.use(
     (config) => {
+        console.log("Making API request:", config.method?.toUpperCase(), config.url);
+        console.log("Request data:", config.data);
+
         const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -42,17 +45,50 @@ httpClient.interceptors.request.use(
         return config;
     },
     (error) => {
+        console.error("Request interceptor error:", error);
         return Promise.reject(error);
     }
 );
 
 // Response interceptor for handling errors
 httpClient.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log("API response success:", response.status, response.config.url);
+
+        // Check if the API returned success: false
+        if (response.data && response.data.success === false) {
+            console.warn("API returned success: false with message:", response.data.message);
+
+            // For auth endpoints, let the service handle the error
+            const isAuthEndpoint = response.config.url && (
+                response.config.url.includes('/auths')
+            );
+
+            if (!isAuthEndpoint) {
+                // For non-auth endpoints, reject with the error
+                return Promise.reject(new Error(response.data.message || 'Đã xảy ra lỗi'));
+            }
+        }
+
+        return response;
+    },
     async (error: AxiosError) => {
+        console.error("API response error:", error.message, error.response?.status, error.config?.url);
+
         const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
-        // Nếu lỗi 401 (Unauthorized) và chưa thử refresh token
+        // Don't attempt token refresh for auth endpoints
+        const isAuthEndpoint = originalRequest.url && (
+            originalRequest.url.includes('/auths') &&
+            !originalRequest.url.includes('/token/refresh')
+        );
+
+        // Skip token refresh for login/register endpoints
+        if (isAuthEndpoint) {
+            return Promise.reject(handleApiError(error));
+        }
+
+        // Nếu lỗi 401 (Unauthorized) và chưa thử refresh token và không phải là endpoint auth
         if (error.response?.status === 401 && !originalRequest._retry) {
             if (isRefreshing) {
                 // Nếu đang refresh, thêm request vào hàng đợi
@@ -100,8 +136,10 @@ httpClient.interceptors.response.use(
                 // Đăng xuất người dùng
                 authService.logout();
 
-                // Chuyển hướng đến trang đăng nhập
-                window.location.href = '/auth/login';
+                // Chuyển hướng đến trang đăng nhập chỉ khi không phải đang ở trang đăng nhập
+                if (!window.location.pathname.includes('/auth/login')) {
+                    window.location.href = '/auth/login';
+                }
 
                 return Promise.reject(handleApiError(refreshError, 'Phiên đăng nhập hết hạn'));
             } finally {
