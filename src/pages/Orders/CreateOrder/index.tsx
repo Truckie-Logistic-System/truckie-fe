@@ -7,7 +7,7 @@ import { orderSizeService } from "../../../services/orderSizeService";
 import { categoryService } from "../../../services/categoryService";
 import type { Address, OrderSize, Category } from "../../../types";
 import { toast } from "react-toastify";
-import { AUTH_TOKEN_KEY } from "../../../config";
+import { AUTH_ACCESS_TOKEN_KEY } from "../../../config";
 import { useAuth } from "../../../context/AuthContext";
 
 const CreateOrder = () => {
@@ -63,7 +63,7 @@ const CreateOrder = () => {
         return;
       }
 
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
       if (!token) {
         console.log("CreateOrder: No token found, redirecting to login");
         navigate("/login");
@@ -87,7 +87,7 @@ const CreateOrder = () => {
         console.log("Fetched categories:", categoryData);
         console.log(
           "CreateOrder: Token after successful fetch:",
-          localStorage.getItem(AUTH_TOKEN_KEY)
+          localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)
         );
 
         setAddresses(addressData);
@@ -109,7 +109,7 @@ const CreateOrder = () => {
         console.error("Failed to fetch data:", error);
         console.log(
           "CreateOrder: Token after error:",
-          localStorage.getItem(AUTH_TOKEN_KEY)
+          localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)
         );
 
         // If error is 401, don't show error toast since user will be redirected to login
@@ -192,7 +192,7 @@ const CreateOrder = () => {
       return;
     }
 
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
     if (!token) {
       toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
       navigate("/login");
@@ -291,7 +291,7 @@ const CreateOrder = () => {
       console.log("Error data:", (error as any)?.response?.data);
       console.log(
         "Current token after error:",
-        localStorage.getItem(AUTH_TOKEN_KEY)
+        localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)
       );
 
       if ((error as any)?.response?.status === 401) {
@@ -341,30 +341,27 @@ const CreateOrder = () => {
             ].map((item, index) => (
               <div key={item.step} className="flex items-center">
                 <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                    currentStep >= item.step
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-500"
-                  }`}
+                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${currentStep >= item.step
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-500"
+                    }`}
                 >
                   {item.step}
                 </div>
                 <div className="ml-3">
                   <span
-                    className={`text-sm font-medium ${
-                      currentStep >= item.step
-                        ? "text-blue-600"
-                        : "text-gray-500"
-                    }`}
+                    className={`text-sm font-medium ${currentStep >= item.step
+                      ? "text-blue-600"
+                      : "text-gray-500"
+                      }`}
                   >
                     {item.title}
                   </span>
                 </div>
                 {index < 2 && (
                   <div
-                    className={`w-12 h-0.5 mx-4 ${
-                      currentStep > item.step ? "bg-blue-600" : "bg-gray-200"
-                    }`}
+                    className={`w-12 h-0.5 mx-4 ${currentStep > item.step ? "bg-blue-600" : "bg-gray-200"
+                      }`}
                   />
                 )}
               </div>

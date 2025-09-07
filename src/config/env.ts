@@ -8,7 +8,7 @@ export const API_URL = import.meta.env.VITE_API_URL;
 export const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT);
 
 // Authentication
-export const AUTH_ACCESS_TOKEN_KEY = import.meta.env.VITE_AUTH_ACCESS_TOKEN_KEY;
+export const AUTH_ACCESS_TOKEN_KEY = import.meta.env.AUTH_ACCESS_TOKEN_KEY;
 export const AUTH_REFRESH_TOKEN_KEY = import.meta.env
   .VITE_AUTH_REFRESH_TOKEN_KEY;
 
