@@ -34,14 +34,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        // TODO: Implement API call to get user profile
-        // For now, we'll just simulate a user based on stored role
+        // Lấy thông tin người dùng từ localStorage
         const userRole = localStorage.getItem("user_role") || "customer";
+        const userId = localStorage.getItem("userId");
+        const username = localStorage.getItem("username");
+        const email = localStorage.getItem("email");
 
+        // Nếu không có userId, đăng xuất và kết thúc
+        if (!userId) {
+          authService.logout();
+          setIsLoading(false);
+          return;
+        }
+
+        // Nếu không có username hoặc email, không tạo user
+        if (!username || !email) {
+          authService.logout();
+          setIsLoading(false);
+          return;
+        }
+
+        // Tạo đối tượng user từ dữ liệu lưu trữ
         const userData: User = {
-          id: "1",
-          username: "demo_user",
-          email: "demo@example.com",
+          id: userId,
+          username: username,
+          email: email,
           role: userRole as "admin" | "customer" | "staff" | "driver",
         };
 
@@ -77,8 +94,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           | "driver",
       };
 
-      // Store role for future use
+      // Store user data for future use
       localStorage.setItem("user_role", userData.role);
+      localStorage.setItem("userId", userData.id);
+      localStorage.setItem("username", userData.username);
+      localStorage.setItem("email", userData.email);
 
       setUser(userData);
       return response; // Return the response for success handling

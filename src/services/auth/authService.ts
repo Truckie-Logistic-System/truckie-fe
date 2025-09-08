@@ -31,10 +31,13 @@ const authService = {
                 throw new Error(response.data.message || 'Đăng nhập thất bại');
             }
 
-            // Lưu token vào localStorage (tạm thời, sau này sẽ dùng HTTP-only cookie)
+            // Lưu token và thông tin người dùng vào localStorage
             localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, response.data.data.authToken);
             localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
             localStorage.setItem('user_role', response.data.data.user.role.roleName.toLowerCase());
+            localStorage.setItem('userId', response.data.data.user.id);
+            localStorage.setItem('username', response.data.data.user.username);
+            localStorage.setItem('email', response.data.data.user.email);
 
             // Thêm dòng hello username
             response.data.message = `Hello ${response.data.data.user.username}! ${response.data.message}`;
@@ -110,6 +113,9 @@ const authService = {
         localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY);
         localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
         localStorage.removeItem('user_role');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('username');
+        localStorage.removeItem('email');
     },
 
     /**

@@ -7,6 +7,7 @@ import TrackAsiaMapPage from "../pages/TrackAsiaMap";
 import Dashboard, { AdminDashboard, StaffDashboard } from "../pages/Dashboard";
 import PenaltyHistory from "../pages/Staff/PenaltyHistory";
 import CustomerSupport from "../pages/Staff/CustomerSupport";
+import ProfilePage from "../pages/Profile";
 import {
   OrderList as StaffOrderList,
   OrderDetailPage,
@@ -23,16 +24,6 @@ import { MainLayout, AdminLayout } from "../components/layout";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
-  // Trang chủ - ai cũng có thể truy cập
-  {
-    path: "/",
-    element: (
-      <MainLayout>
-        <HomePage />
-      </MainLayout>
-    ),
-  },
-
   // Các trang xác thực - chỉ dành cho người chưa đăng nhập
   {
     path: "/auth/login",
@@ -69,37 +60,99 @@ const router = createBrowserRouter([
     ),
   },
 
-  // Route cho khách hàng - yêu cầu đăng nhập và vai trò customer
+  // Trang chủ và các trang cho khách hàng - không có tiền tố /customer
   {
-    path: "/customer",
+    path: "/",
     element: (
-      <PermissionRoute
-        authenticationRequired="authenticated"
-        allowedRoles={["customer"]}
-        authRedirectPath="/auth/login"
-        roleRedirectPath="/"
-      >
-        <MainLayout>
-          <Outlet />
-        </MainLayout>
-      </PermissionRoute>
+      <MainLayout>
+        <Outlet />
+      </MainLayout>
     ),
     children: [
+      // Trang chủ - ai cũng có thể truy cập
+      {
+        index: true,
+        element: <HomePage />,
+      },
+
+      // Các trang yêu cầu đăng nhập và vai trò customer
       {
         path: "dashboard",
-        element: <Dashboard />,
+        element: (
+          <PermissionRoute
+            authenticationRequired="authenticated"
+            allowedRoles={["customer"]}
+            authRedirectPath="/auth/login"
+            roleRedirectPath="/"
+          >
+            <Dashboard />
+          </PermissionRoute>
+        ),
       },
       {
         path: "orders",
-        element: <OrdersList />,
+        element: (
+          <PermissionRoute
+            authenticationRequired="authenticated"
+            allowedRoles={["customer"]}
+            authRedirectPath="/auth/login"
+            roleRedirectPath="/"
+          >
+            <OrdersList />
+          </PermissionRoute>
+        ),
       },
       {
         path: "orders/:id",
-        element: <OrderDetailPage />,
+        element: (
+          <PermissionRoute
+            authenticationRequired="authenticated"
+            allowedRoles={["customer"]}
+            authRedirectPath="/auth/login"
+            roleRedirectPath="/"
+          >
+            <OrderDetailPage />
+          </PermissionRoute>
+        ),
       },
       {
         path: "create-order",
-        element: <CreateOrder />,
+        element: (
+          <PermissionRoute
+            authenticationRequired="authenticated"
+            allowedRoles={["customer"]}
+            authRedirectPath="/auth/login"
+            roleRedirectPath="/"
+          >
+            <CreateOrder />
+          </PermissionRoute>
+        ),
+      },
+      {
+        path: "profile",
+        element: (
+          <PermissionRoute
+            authenticationRequired="authenticated"
+            allowedRoles={["customer"]}
+            authRedirectPath="/auth/login"
+            roleRedirectPath="/"
+          >
+            <ProfilePage />
+          </PermissionRoute>
+        ),
+      },
+      {
+        path: "profile/:userId",
+        element: (
+          <PermissionRoute
+            authenticationRequired="authenticated"
+            allowedRoles={["customer"]}
+            authRedirectPath="/auth/login"
+            roleRedirectPath="/"
+          >
+            <ProfilePage />
+          </PermissionRoute>
+        ),
       },
     ],
   },
@@ -164,6 +217,14 @@ const router = createBrowserRouter([
         path: "notifications",
         element: <div>Thông báo</div>, // Thay thế bằng component thực tế
       },
+      {
+        path: "profile",
+        element: <ProfilePage />,
+      },
+      {
+        path: "profile/:userId",
+        element: <ProfilePage />,
+      },
     ],
   },
 
@@ -204,20 +265,16 @@ const router = createBrowserRouter([
         element: <div>Quản lý người dùng</div>, // Thay thế bằng component thực tế
       },
       {
-        path: "drivers",
-        element: <div>Quản lý tài xế</div>, // Thay thế bằng component thực tế
-      },
-      {
-        path: "staff",
-        element: <div>Quản lý nhân viên</div>, // Thay thế bằng component thực tế
-      },
-      {
-        path: "reports",
-        element: <div>Báo cáo thống kê</div>, // Thay thế bằng component thực tế
-      },
-      {
         path: "settings",
         element: <div>Cài đặt hệ thống</div>, // Thay thế bằng component thực tế
+      },
+      {
+        path: "profile",
+        element: <ProfilePage />,
+      },
+      {
+        path: "profile/:userId",
+        element: <ProfilePage />,
       },
     ],
   },
@@ -240,54 +297,36 @@ const router = createBrowserRouter([
     children: [
       {
         path: "dashboard",
-        element: <Dashboard />,
+        element: <div>Bảng điều khiển tài xế</div>, // Thay thế bằng component thực tế
       },
       {
         path: "deliveries",
-        element: <div>Driver Deliveries</div>, // Thay thế bằng component thực tế
+        element: <div>Đơn hàng cần giao</div>, // Thay thế bằng component thực tế
+      },
+      {
+        path: "history",
+        element: <div>Lịch sử giao hàng</div>, // Thay thế bằng component thực tế
+      },
+      {
+        path: "profile",
+        element: <ProfilePage />,
       },
     ],
   },
 
-  // Các route bản đồ - yêu cầu đăng nhập (không kiểm tra vai trò)
-  // {
-  //     path: '/viet-map',
-  //     element: (
-  //         <PermissionRoute authenticationRequired="authenticated">
-  //             <VietMapPage />
-  //         </PermissionRoute>
-  //     ),
-  // },
-  // {
-  //     path: '/open-map',
-  //     element: (
-  //         <PermissionRoute authenticationRequired="authenticated">
-  //             <OpenMapPage />
-  //         </PermissionRoute>
-  //     ),
-  // },
+  // Các trang bản đồ - có thể truy cập tự do
   {
-    path: "/trackasia-map",
-    element: (
-      <PermissionRoute authenticationRequired="authenticated">
-        <TrackAsiaMapPage />
-      </PermissionRoute>
-    ),
+    path: "/maps/vietmap",
+    element: <VietMapPage />,
   },
-
-  // Route mặc định khi không tìm thấy trang
   {
-    path: "*",
-    element: (
-      <MainLayout>
-        <div>Không tìm thấy trang</div>
-      </MainLayout>
-    ), // Thay thế bằng component 404 thực tế
+    path: "/maps/openmap",
+    element: <OpenMapPage />,
+  },
+  {
+    path: "/maps/trackasia",
+    element: <TrackAsiaMapPage />,
   },
 ]);
 
-const AppRoutes = () => {
-  return <RouterProvider router={router} />;
-};
-
-export default AppRoutes;
+export default router;
