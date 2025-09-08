@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import AppRoutes from './routes';
+import router from './routes';
 import { ConfigProvider } from 'antd';
 import { AuthProvider, useAuth } from './context';
 import { APP_NAME } from './config';
 import ChatWidget from './components/chat/ChatWidget';
 import StaffChatWidget from './components/chat/StaffChatWidget';
+import { RouterProvider } from 'react-router-dom';
 
 // Component để chọn đúng ChatWidget dựa trên vai trò
 const ChatWidgetSelector: React.FC = () => {
@@ -34,7 +35,7 @@ function App() {
       }}
     >
       <AuthProvider>
-        <AppRoutes />
+        <RouterProvider router={router} />
         <ChatWidgetSelector />
       </AuthProvider>
     </ConfigProvider>

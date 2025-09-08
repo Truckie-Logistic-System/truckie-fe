@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout, Menu, Button, Drawer, Space, Dropdown, Avatar } from "antd";
 import {
   MenuOutlined,
@@ -9,7 +9,7 @@ import {
   LogoutOutlined,
   DownOutlined,
 } from "@ant-design/icons";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "../../config";
 import { useAuth } from "../../context";
 
@@ -18,7 +18,19 @@ const { Header: AntHeader } = Layout;
 const Header: React.FC = () => {
   const [visible, setVisible] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  const [selectedKey, setSelectedKey] = useState("trangchu");
+
+  // Cập nhật selectedKey dựa trên đường dẫn hiện tại
+  useEffect(() => {
+    const pathname = location.pathname;
+    if (pathname === "/") {
+      setSelectedKey("trangchu");
+    } else if (pathname.startsWith("/orders")) {
+      setSelectedKey("orders");
+    }
+  }, [location]);
 
   const showDrawer = () => {
     setVisible(true);
@@ -49,7 +61,9 @@ const Header: React.FC = () => {
       key: "profile",
       label: "Thông tin tài khoản",
       icon: <UserOutlined />,
-      onClick: () => navigate("/profile"),
+      onClick: () => navigate(user?.role === "customer" ? "/profile" :
+        user?.role === "staff" ? "/staff/profile" :
+          user?.role === "admin" ? "/admin/profile" : "/"),
     },
     {
       key: "logout",
@@ -61,10 +75,7 @@ const Header: React.FC = () => {
 
   const menuItems = [
     { key: "trangchu", label: <Link to="/">Trang chủ</Link> },
-    { key: "orders", label: <Link to="/customer/orders">Đơn hàng</Link> },
-    { key: "giaithuong", label: "Giải thưởng" },
-    { key: "hoatdong", label: "Hoạt động & Thành tựu" },
-    { key: "tuyendung", label: "Tuyển dụng" },
+    { key: "orders", label: <Link to="/orders">Đơn hàng</Link> },
   ];
 
   return (
@@ -94,72 +105,75 @@ const Header: React.FC = () => {
       </div>
 
       {/* Main Header */}
-      <AntHeader className="bg-white shadow-sm px-4 md:px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center">
-          <Link to="/" className="text-blue-600 font-bold text-xl">
-            truckie
-          </Link>
-        </div>
+      <AntHeader className="bg-white shadow-sm px-4 md:px-6 h-16">
+        <div className="container mx-auto h-full flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link to="/" className="text-blue-600 font-bold text-xl">
+              truckie
+            </Link>
+          </div>
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center">
-          <Menu
-            mode="horizontal"
-            className="border-0"
-            selectedKeys={["trangchu"]}
-            items={[
-              { key: "trangchu", label: "Trang chủ" },
-              { key: "orders", label: "Đơn hàng" },
-              { key: "giaithuong", label: "Giải thưởng" },
-              { key: "hoatdong", label: "Hoạt động & Thành tựu" },
-              { key: "tuyendung", label: "Tuyển dụng" },
-            ]}
-          />
-        </div>
+          {/* Desktop Menu - Centered */}
+          <div className="hidden lg:flex flex-1 justify-center">
+            <Menu
+              mode="horizontal"
+              className="border-0"
+              selectedKeys={[selectedKey]}
+              items={menuItems}
+              style={{
+                minWidth: '300px',
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '40px'
+              }}
+            />
+          </div>
 
-        {/* Auth Buttons - Desktop */}
-        <div className="hidden md:flex items-center space-x-4">
-          {isAuthenticated ? (
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <div className="flex items-center cursor-pointer">
-                <Avatar icon={<UserOutlined />} className="mr-2 bg-blue-600" />
-                <span className="mr-2 text-blue-600 font-medium">
-                  Hello {user?.username}
-                </span>
-                <DownOutlined style={{ fontSize: "12px" }} />
-              </div>
-            </Dropdown>
-          ) : (
-            <>
-              <Button type="text" onClick={handleLogin}>
-                Đăng nhập
-              </Button>
-              <Button
-                type="primary"
-                className="bg-blue-600"
-                onClick={handleRegister}
-              >
-                Đăng ký
-              </Button>
-            </>
-          )}
-        </div>
+          {/* Auth Buttons - Desktop */}
+          <div className="hidden lg:flex items-center space-x-4">
+            {isAuthenticated ? (
+              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                <div className="flex items-center cursor-pointer">
+                  <Avatar icon={<UserOutlined />} className="mr-2 bg-blue-600" />
+                  <span className="mr-2 text-blue-600 font-medium">
+                    Hello {user?.username}
+                  </span>
+                  <DownOutlined style={{ fontSize: "12px" }} />
+                </div>
+              </Dropdown>
+            ) : (
+              <>
+                <Button type="text" onClick={handleLogin}>
+                  Đăng nhập
+                </Button>
+                <Button
+                  type="primary"
+                  className="bg-blue-600"
+                  onClick={handleRegister}
+                >
+                  Đăng ký
+                </Button>
+              </>
+            )}
+          </div>
 
-        {/* Mobile Menu Button */}
-        <div className="md:hidden">
-          <Button
-            type="text"
-            icon={<MenuOutlined />}
-            onClick={showDrawer}
-            className="flex items-center justify-center"
-          />
+          {/* Mobile Menu Button */}
+          <div className="lg:hidden">
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              onClick={showDrawer}
+              className="flex items-center justify-center"
+            />
+          </div>
         </div>
 
         {/* Mobile Menu Drawer */}
         <Drawer title="Menu" placement="right" onClose={onClose} open={visible}>
           <Menu
             mode="vertical"
-            selectedKeys={["trangchu"]}
+            selectedKeys={[selectedKey]}
             items={menuItems}
             className="border-0"
           />
