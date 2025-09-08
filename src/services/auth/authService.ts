@@ -5,7 +5,9 @@ import type {
     LoginResponse,
     RegisterRequest,
     RegisterResponse,
-    RefreshTokenResponse
+    RefreshTokenResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse
 } from './types';
 import { mapUserResponseToModel } from '@/models/User';
 import { handleApiError } from '../api/errorHandler';
@@ -89,9 +91,21 @@ const authService = {
                 refreshToken
             });
 
-            if (response.data.success) {
+            // Kiểm tra response có thành công không
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Làm mới token thất bại');
+            }
+
+            // Lưu token mới vào localStorage
+            if (response.data.data && response.data.data.accessToken && response.data.data.refreshToken) {
                 localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, response.data.data.accessToken);
                 localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
+
+                // Cập nhật Authorization header cho các request tiếp theo
+                httpClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.data.accessToken}`;
+            } else {
+                console.error('Invalid refresh token response format:', response.data);
+                throw new Error('Định dạng phản hồi token không hợp lệ');
             }
 
             return response.data;
@@ -132,6 +146,45 @@ const authService = {
      */
     getUserRole: (): string | null => {
         return localStorage.getItem('user_role');
+    },
+
+    /**
+     * Change user password
+     * @param data Password change data
+     * @returns Promise with change password response
+     */
+    changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
+        try {
+            console.log('Sending change password request:', {
+                ...data,
+                oldPassword: '***',
+                newPassword: '***',
+                confirmNewPassword: '***'
+            });
+
+            const response = await httpClient.put<ChangePasswordResponse>('/auths/change-password', data);
+
+            console.log('Change password response:', response.data);
+
+            if (!response.data.success) {
+                console.error('Change password failed with message:', response.data.message);
+                throw new Error(response.data.message || 'Đổi mật khẩu thất bại');
+            }
+
+            return response.data;
+        } catch (error: any) {
+            console.error('Change password error:', error);
+
+            // Xử lý lỗi cụ thể từ API
+            if (error.response && error.response.data) {
+                const errorData = error.response.data;
+                if (errorData.message) {
+                    throw new Error(errorData.message);
+                }
+            }
+
+            throw handleApiError(error, 'Đổi mật khẩu thất bại');
+        }
     }
 };
 

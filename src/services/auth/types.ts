@@ -71,6 +71,20 @@ export interface RefreshTokenResponse {
     };
 }
 
+export interface ChangePasswordRequest {
+    username: string;
+    oldPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+}
+
+export interface ChangePasswordResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: null;
+}
+
 export interface AuthState {
     user: User | null;
     isAuthenticated: boolean;

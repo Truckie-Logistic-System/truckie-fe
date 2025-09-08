@@ -5,8 +5,8 @@ import {
   Button,
   Checkbox,
   Card,
-  Alert,
   message,
+  App,
 } from "antd";
 import {
   GoogleOutlined,
@@ -27,6 +27,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated, getRedirectPath, user } = useAuth();
+  const { message: messageApi } = App.useApp();
 
   // Check if user was redirected from registration
   React.useEffect(() => {
@@ -56,30 +57,24 @@ const LoginPage: React.FC = () => {
 
         // Call login function
         login(values.username, values.password)
-          .then(response => {
-            // Success is handled by the useEffect that watches isAuthenticated
-            message.success(`Đăng nhập thành công! Chào mừng ${response.data.user.username}`);
-          })
           .catch(error => {
             console.error("Đăng nhập thất bại:", error);
 
             // Extract error message
-            let errorMsg = "Đã có lỗi xảy ra khi đăng nhập";
+            let errorMsg = "Tên đăng nhập hoặc mật khẩu không đúng";
 
             if (axios.isAxiosError(error)) {
               if (error.response) {
-                message.error(error.response.data.message);
-                errorMsg = error.response.data.message;
+                errorMsg = error.response.data.message || errorMsg;
               } else if (error.request) {
                 // No response received
-                errorMsg = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn";
+                errorMsg = "Không thể kết nối đến máy chủ";
               }
             } else if (error instanceof Error) {
               errorMsg = error.message;
             }
 
             setErrorMessage(errorMsg);
-            message.error("Đăng nhập thất bại");
           })
           .finally(() => {
             setLoading(false);
@@ -117,15 +112,9 @@ const LoginPage: React.FC = () => {
         </div>
 
         {errorMessage && (
-          <Alert
-            message="Đăng nhập thất bại"
-            description={errorMessage}
-            type="error"
-            showIcon
-            closable
-            className="mb-4"
-            onClose={() => setErrorMessage(null)}
-          />
+          <div className="text-red-500 text-center mb-4">
+            {errorMessage}
+          </div>
         )}
 
         <div>

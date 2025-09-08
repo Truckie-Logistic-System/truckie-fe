@@ -29,6 +29,9 @@ const Header: React.FC = () => {
       setSelectedKey("trangchu");
     } else if (pathname.startsWith("/orders")) {
       setSelectedKey("orders");
+    } else if (pathname.includes("/profile")) {
+      // Không chọn tab nào khi ở trang profile
+      setSelectedKey("");
     }
   }, [location]);
 

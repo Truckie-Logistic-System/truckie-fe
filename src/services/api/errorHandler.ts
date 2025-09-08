@@ -41,6 +41,12 @@ export const handleApiError = (error: unknown, defaultMessage: string = 'Đã x�
         // Xử lý các mã lỗi HTTP cụ thể
         switch (axiosError.response.status) {
             case 400:
+                // For password change errors, try to get more specific message
+                if (axiosError.config?.url?.includes('change-password')) {
+                    const errorMessage = axiosError.response.data?.message ||
+                        'Yêu cầu đổi mật khẩu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
+                    return new Error(errorMessage);
+                }
                 return new Error(
                     axiosError.response.data?.message || 'Yêu cầu không hợp lệ. Vui lòng kiểm tra lại dữ liệu.'
                 );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, message, Divider, Typography, Row, Col } from 'antd';
+import { Form, Input, Button, App, Divider, Typography, Row, Col } from 'antd';
 import { SaveOutlined, BankOutlined, UserOutlined, PhoneOutlined, IdcardOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import type { CustomerResponse, CustomerUpdateRequest } from '../../../services/customer';
 import { updateCustomerProfile } from '../../../services/customer';
@@ -16,6 +16,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSucce
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const queryClient = useQueryClient();
+    const { message } = App.useApp();
 
     // Khởi tạo form với dữ liệu hiện tại
     React.useEffect(() => {
@@ -36,11 +37,16 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSucce
             // Làm mới dữ liệu cache
             queryClient.invalidateQueries({ queryKey: ['customerProfile'] });
 
-            message.success('Cập nhật thông tin thành công!');
+            // Thông báo thành công sẽ được hiển thị bởi component cha
+            console.log('Profile updated successfully');
             onSuccess();
         } catch (error) {
             console.error('Error updating profile:', error);
-            message.error('Không thể cập nhật thông tin. Vui lòng thử lại sau.');
+            message.error({
+                content: 'Không thể cập nhật thông tin. Vui lòng thử lại sau.',
+                duration: 5,
+                className: 'custom-message-error'
+            });
         } finally {
             setLoading(false);
         }

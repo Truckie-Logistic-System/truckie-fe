@@ -6,6 +6,7 @@ import { APP_NAME } from './config';
 import ChatWidget from './components/chat/ChatWidget';
 import StaffChatWidget from './components/chat/StaffChatWidget';
 import { RouterProvider } from 'react-router-dom';
+import MessageProvider from './components/common/MessageProvider';
 
 // Component để chọn đúng ChatWidget dựa trên vai trò
 const ChatWidgetSelector: React.FC = () => {
@@ -34,10 +35,12 @@ function App() {
         },
       }}
     >
-      <AuthProvider>
-        <RouterProvider router={router} />
-        <ChatWidgetSelector />
-      </AuthProvider>
+      <MessageProvider>
+        <AuthProvider>
+          <RouterProvider router={router} />
+          <ChatWidgetSelector />
+        </AuthProvider>
+      </MessageProvider>
     </ConfigProvider>
   );
 }

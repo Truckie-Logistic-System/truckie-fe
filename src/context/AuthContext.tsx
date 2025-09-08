@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@/models/User";
-import { AUTH_ACCESS_TOKEN_KEY } from "@/config";
+import { AUTH_ACCESS_TOKEN_KEY, AUTH_REFRESH_TOKEN_KEY } from "@/config";
 import authService from "@/services/auth";
-import type { LoginResponse } from "@/services/auth/types";
+import type { LoginResponse, RefreshTokenResponse } from "@/services/auth/types";
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<LoginResponse>;
   logout: () => void;
+  refreshToken: () => Promise<RefreshTokenResponse>;
   getRedirectPath: () => string;
 }
 
@@ -29,7 +30,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
+        const refreshToken = localStorage.getItem(AUTH_REFRESH_TOKEN_KEY);
+
         if (!token) {
+          // Nếu không có access token nhưng có refresh token, thử refresh
+          if (refreshToken) {
+            try {
+              await authService.refreshToken();
+              // Sau khi refresh thành công, kiểm tra lại auth
+              checkAuth();
+              return;
+            } catch (refreshError) {
+              console.error("Token refresh failed during auth check:", refreshError);
+              authService.logout();
+              setIsLoading(false);
+              return;
+            }
+          }
+
           setIsLoading(false);
           return;
         }
@@ -109,6 +127,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshToken = async () => {
+    try {
+      const response = await authService.refreshToken();
+      return response;
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      logout();
+      throw error;
+    }
+  };
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -138,6 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     logout,
+    refreshToken,
     getRedirectPath,
   };
 

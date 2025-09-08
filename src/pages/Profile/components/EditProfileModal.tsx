@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button, Typography } from 'antd';
+import { Modal, Button, Typography, App } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
 import type { CustomerResponse } from '../../../services/customer';
 import EditProfileForm from './EditProfileForm';
@@ -12,6 +12,7 @@ interface EditProfileModalProps {
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const { message } = App.useApp();
 
     const showModal = () => {
         setIsModalOpen(true);
@@ -23,6 +24,15 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData }) => 
 
     const handleSuccess = () => {
         setIsModalOpen(false);
+
+        // Đảm bảo thông báo thành công vẫn hiển thị sau khi modal đóng
+        setTimeout(() => {
+            message.success({
+                content: 'Thông tin công ty đã được cập nhật thành công',
+                duration: 5,
+                className: 'custom-message-success'
+            });
+        }, 100);
     };
 
     return (
