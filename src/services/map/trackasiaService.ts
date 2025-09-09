@@ -97,50 +97,6 @@ const formatTime = (seconds: number): string => {
 
 const trackasiaService = {
     /**
-     * Tìm kiếm địa điểm với TrackAsia API
-     * @param query Từ khóa tìm kiếm
-     * @param proximity Vị trí trung tâm để tìm kiếm gần đó [lng, lat]
-     * @returns Danh sách kết quả tìm kiếm
-     */
-    searchPlaces: async (
-        query: string,
-        proximity?: [number, number]
-    ): Promise<GeocodingResult[]> => {
-        try {
-            // Hủy request cũ nếu đang có request đang chạy
-            if (currentSearchController) {
-                currentSearchController.abort();
-            }
-
-            // Tạo controller mới cho request này
-            currentSearchController = new AbortController();
-
-            let url = `${TRACKASIA_API_BASE_URL}/geocoding/v5/mapbox.places/${encodeURIComponent(
-                query
-            )}.json?access_token=${TRACKASIA_MAP_API_KEY}&language=vi`;
-
-            if (proximity) {
-                url += `&proximity=${proximity[0]},${proximity[1]}`;
-            }
-
-            const response = await axios.get<GeocodingResponse>(url, {
-                signal: currentSearchController.signal,
-            });
-
-            // Xóa controller sau khi request hoàn thành
-            currentSearchController = null;
-
-            return response.data.features;
-        } catch (error: any) {
-            // Nếu lỗi không phải do hủy request
-            if (error.name !== 'AbortError') {
-                console.error('Error searching places:', error);
-            }
-            return [];
-        }
-    },
-
-    /**
      * Tìm kiếm địa điểm với TrackAsia API v2
      * @param query Từ khóa tìm kiếm
      * @param location Vị trí hiện tại để tìm kiếm gần đó [lat, lng]
@@ -235,59 +191,6 @@ const trackasiaService = {
             return null;
         } catch (error) {
             console.error('Error reverse geocoding:', error);
-            return null;
-        }
-    },
-
-    /**
-     * Tìm đường đi giữa hai điểm
-     * @param origin Điểm xuất phát [lng, lat]
-     * @param destination Điểm đích [lng, lat]
-     * @returns Thông tin về tuyến đường
-     */
-    getRoute: async (
-        origin: [number, number],
-        destination: [number, number]
-    ): Promise<RouteResponse | null> => {
-        try {
-            const url = `https://api.track-asia.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?access_token=${TRACKASIA_MAP_API_KEY}&steps=true&geometries=geojson&language=vi`;
-            const response = await axios.get<DirectionsResponse>(url);
-
-            if (response.data.routes && response.data.routes.length > 0) {
-                const route = response.data.routes[0];
-
-                // Chuyển đổi sang định dạng RouteResponse
-                return {
-                    distance: route.distance,
-                    duration: route.duration,
-                    geometry: {
-                        coordinates: [], // Cần giải mã geometry nếu cần
-                        type: "LineString"
-                    },
-                    legs: route.legs.map(leg => ({
-                        steps: leg.steps.map(step => ({
-                            distance: step.distance,
-                            duration: step.duration,
-                            geometry: {
-                                coordinates: [], // Cần giải mã geometry nếu cần
-                                type: "LineString"
-                            },
-                            name: step.name,
-                            mode: "driving",
-                            maneuver: {
-                                type: step.maneuver.type,
-                                modifier: step.maneuver.modifier,
-                                location: step.maneuver.location,
-                                instruction: step.maneuver.instruction
-                            }
-                        }))
-                    }))
-                };
-            }
-
-            return null;
-        } catch (error) {
-            console.error('Error getting route:', error);
             return null;
         }
     },

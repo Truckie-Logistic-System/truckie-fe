@@ -644,7 +644,7 @@ const TrackAsiaMapPage: React.FC = () => {
         // Update selected location
         setSelectedLocation({ lng, lat });
 
-        // Use the new reverse geocoding API
+        // Use the reverse geocoding API
         reverseGeocodeV2(lat, lng)
             .then(response => {
                 if (response.status === 'OK' && response.results.length > 0) {
@@ -667,61 +667,23 @@ const TrackAsiaMapPage: React.FC = () => {
                     }
                     setAddressDetails(details);
                 } else {
-                    // Fallback to nearby search
-                    searchNearbyPlaces(lat, lng, 100)
-                        .then(nearbyResponse => {
-                            if (nearbyResponse.status === 'OK' && nearbyResponse.results.length > 0) {
-                                const place = nearbyResponse.results[0];
-                                setCurrentAddress(place.formatted_address);
+                    // Nếu không tìm thấy địa chỉ, hiển thị tọa độ
+                    setCurrentAddress(`Vị trí: ${lng.toFixed(6)}, ${lat.toFixed(6)}`);
 
-                                // Get place details
-                                getPlaceDetails(place.place_id)
-                                    .then(detailsResponse => {
-                                        if (detailsResponse) {
-                                            // Thêm khoảng cách nếu có vị trí hiện tại
-                                            let details = formatAddressDetailsFromPlace(detailsResponse.result);
-                                            if (currentLocation) {
-                                                const distance = calculateDistanceWrapper(
-                                                    currentLocation.lat,
-                                                    currentLocation.lng,
-                                                    lat,
-                                                    lng
-                                                );
-                                                details = {
-                                                    ...details,
-                                                    distance: formatDistance(distance)
-                                                };
-                                            }
-                                            setAddressDetails(details);
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error('Error getting place details:', error);
-                                    });
-                            } else {
-                                setCurrentAddress(`Vị trí: ${lng.toFixed(6)}, ${lat.toFixed(6)}`);
-
-                                // Thêm khoảng cách nếu có vị trí hiện tại
-                                if (currentLocation) {
-                                    const distance = calculateDistanceWrapper(
-                                        currentLocation.lat,
-                                        currentLocation.lng,
-                                        lat,
-                                        lng
-                                    );
-                                    setAddressDetails({
-                                        distance: formatDistance(distance)
-                                    });
-                                } else {
-                                    setAddressDetails(null);
-                                }
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error getting nearby places:', error);
-                            setCurrentAddress(`Vị trí: ${lng.toFixed(6)}, ${lat.toFixed(6)}`);
-                            setAddressDetails(null);
+                    // Thêm khoảng cách nếu có vị trí hiện tại
+                    if (currentLocation) {
+                        const distance = calculateDistanceWrapper(
+                            currentLocation.lat,
+                            currentLocation.lng,
+                            lat,
+                            lng
+                        );
+                        setAddressDetails({
+                            distance: formatDistance(distance)
                         });
+                    } else {
+                        setAddressDetails(null);
+                    }
                 }
             })
             .catch(error => {
@@ -1989,41 +1951,7 @@ const TrackAsiaMapPage: React.FC = () => {
         return null;
     };
 
-    const searchNearbyPlaces = async (lat: number, lng: number, radius: number) => {
-        // Use trackasiaService.searchPlaces with a nearby query
-        const query = "nearby";
-        const location: [number, number] = [lng, lat];
-        const results = await trackasiaService.searchPlaces(query, location);
 
-        // Chuyển đổi kết quả sang định dạng cũ
-        return {
-            status: 'OK',
-            results: results.map(result => ({
-                place_id: result.id || '',
-                formatted_address: result.place_name || '',
-                geometry: {
-                    location: {
-                        lat: result.center[1],
-                        lng: result.center[0]
-                    }
-                }
-            }))
-        };
-    };
-
-    // Interface for reverse geocoding result
-    interface GeocodingResultItem {
-        formatted_address: string;
-        address_components: any[];
-        name: string;
-        place_id: string;
-    }
-
-    // Type for prediction with distance
-    type PredictionWithDistance = AutocompleteResult & {
-        location?: { lat: number; lng: number };
-        distance?: number;
-    };
 
     return (
         <div className="h-screen w-full relative">

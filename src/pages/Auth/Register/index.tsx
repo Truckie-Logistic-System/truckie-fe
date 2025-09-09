@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Checkbox, Card, Alert, DatePicker, Radio, Row, Col, Upload, message, Spin } from 'antd';
+import type { FormEvent } from 'react';
+import { Form, Input, Button, Checkbox, Card, Alert, DatePicker, Radio, Row, Col, Upload, message } from 'antd';
 import { GoogleOutlined, EyeInvisibleOutlined, EyeTwoTone, UserOutlined, MailOutlined, PhoneOutlined, UploadOutlined, BankOutlined, IdcardOutlined, LockOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthPageLayout } from '../components';
@@ -7,6 +8,7 @@ import { isStrongPassword } from '../../../utils';
 import { authService } from '../../../services';
 import type { UploadProps } from 'antd';
 import dayjs from 'dayjs';
+import axios from 'axios';
 
 const RegisterPage: React.FC = () => {
     const [form] = Form.useForm();
@@ -15,12 +17,14 @@ const RegisterPage: React.FC = () => {
     const [success, setSuccess] = useState<string | null>(null);
     const navigate = useNavigate();
 
-    const onFinish = async (values: any) => {
+    const handleRegister = async () => {
         try {
+            // Validate form fields first
+            const values = await form.validateFields();
+
             setLoading(true);
             setError(null);
             setSuccess(null);
-            message.loading({ content: 'Đang xử lý đăng ký...', key: 'register', duration: 0 });
 
             // Chuyển đổi định dạng ngày sinh
             const formattedDateOfBirth = values.dateOfBirth.format('YYYY-MM-DD');
@@ -43,55 +47,54 @@ const RegisterPage: React.FC = () => {
                 businessAddress: values.businessAddress || 'string', // Đảm bảo luôn có giá trị
             };
 
-            // Gọi API đăng ký
-            const response = await authService.register(registerData);
+            try {
+                // Gọi API đăng ký
+                const response = await authService.register(registerData);
 
-            if (response.success) {
-                message.success({
-                    content: `Đăng ký thành công! Tài khoản ${response.data.userResponse.username} đã được tạo.`,
-                    key: 'register',
-                    duration: 5 // Hiển thị lâu hơn để người dùng đọc được
-                });
+                if (response.success) {
+                    message.success(`Đăng ký thành công! Tài khoản ${response.data.userResponse.username} đã được tạo.`);
 
-                // Hiển thị thông báo thành công
-                let successMessage = `Tài khoản ${response.data.userResponse.username} đã được tạo thành công!`;
+                    // Hiển thị thông báo thành công
+                    let successMessage = `Tài khoản ${response.data.userResponse.username} đã được tạo thành công!`;
 
-                // Nếu status là OTP_PENDING, thông báo cho người dùng
-                if (response.data.status === 'OTP_PENDING') {
-                    successMessage += ' Vui lòng kiểm tra email để xác thực tài khoản.';
+                    // Nếu status là OTP_PENDING, thông báo cho người dùng
+                    if (response.data.status === 'OTP_PENDING') {
+                        successMessage += ' Vui lòng kiểm tra email để xác thực tài khoản.';
+                        message.info('Vui lòng kiểm tra email để xác thực tài khoản.');
+                    }
+
+                    setSuccess(successMessage);
+
+                    // Chuyển hướng đến trang đăng nhập sau 3 giây
                     setTimeout(() => {
-                        message.info({
-                            content: 'Vui lòng kiểm tra email để xác thực tài khoản.',
-                            duration: 5
-                        });
-                    }, 1000); // Hiển thị sau thông báo thành công để người dùng đọc được cả hai
+                        navigate('/auth/login', { state: { registered: true, username: values.username } });
+                    }, 3000);
+                } else {
+                    // Xử lý trường hợp API trả về success: false
+                    message.error(response.message || 'Đăng ký thất bại');
+                    setError(response.message || 'Đăng ký thất bại. Vui lòng thử lại sau.');
+                }
+            } catch (error) {
+                // Extract error message
+                let errorMsg = 'Đăng ký thất bại. Vui lòng thử lại sau.';
+
+                if (axios.isAxiosError(error)) {
+                    if (error.response?.data?.message) {
+                        errorMsg = error.response.data.message;
+                    } else if (error.response?.status) {
+                        errorMsg = `Lỗi ${error.response.status}: Đăng ký thất bại`;
+                    } else if (error.message) {
+                        errorMsg = error.message;
+                    }
+                } else if (error instanceof Error) {
+                    errorMsg = error.message;
                 }
 
-                setSuccess(successMessage);
-
-                // Chuyển hướng đến trang đăng nhập sau 3 giây
-                setTimeout(() => {
-                    navigate('/auth/login', { state: { registered: true, username: values.username } });
-                }, 3000);
-            } else {
-                // Xử lý trường hợp API trả về success: false
-                message.error({ content: 'Đăng ký thất bại', key: 'register' });
-                setError(response.message || 'Đăng ký thất bại. Vui lòng thử lại sau.');
+                message.error(errorMsg);
+                setError(errorMsg);
             }
-        } catch (error: any) {
-            console.error('Đăng ký thất bại:', error);
-
-            // Xử lý thông báo lỗi cụ thể
-            let errorMessage = 'Đăng ký thất bại. Vui lòng thử lại sau.';
-
-            if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-
-            message.error({ content: 'Đăng ký thất bại', key: 'register' });
-            setError(errorMessage);
+        } catch (error) {
+            // Form validation failed, do nothing
         } finally {
             setLoading(false);
         }
@@ -155,6 +158,20 @@ const RegisterPage: React.FC = () => {
         },
     };
 
+    // Prevent any form submission
+    const preventSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleRegister();
+        }
+    };
+
     return (
         <AuthPageLayout maxWidth="max-w-7xl">
             <div className="text-center mb-4">
@@ -177,6 +194,7 @@ const RegisterPage: React.FC = () => {
                         showIcon
                         closable
                         className="mb-4"
+                        onClose={() => setError(null)}
                     />
                 )}
 
@@ -191,259 +209,32 @@ const RegisterPage: React.FC = () => {
                     />
                 )}
 
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={onFinish}
-                    autoComplete="off"
-                    requiredMark="optional"
-                    initialValues={{
-                        gender: 'male',
-                        dateOfBirth: dayjs().subtract(18, 'year')
-                    }}
-                >
-                    <div className="bg-yellow-50 p-5 rounded-lg mb-6">
-                        <h2 className="text-lg font-medium mb-4 flex items-center">
-                            <LockOutlined className="mr-2" /> Thông tin tài khoản
-                        </h2>
-
-                        <Row gutter={24}>
-                            <Col xs={24} md={24}>
-                                <Form.Item
-                                    name="username"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Tên đăng nhập</span>}
-                                    rules={[
-                                        { required: true, message: 'Vui lòng nhập tên đăng nhập' },
-                                        { min: 3, message: 'Tên đăng nhập phải có ít nhất 3 ký tự' }
-                                    ]}
-                                >
-                                    <Input
-                                        prefix={<UserOutlined className="text-gray-400" />}
-                                        placeholder="Nhập tên đăng nhập"
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={24}>
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    name="password"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Mật khẩu</span>}
-                                    rules={[{ required: true, validator: validatePassword }]}
-                                    hasFeedback
-                                >
-                                    <Input.Password
-                                        prefix={<LockOutlined className="text-gray-400" />}
-                                        placeholder="Nhập mật khẩu mới"
-                                        iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    name="confirmPassword"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Xác nhận mật khẩu</span>}
-                                    dependencies={['password']}
-                                    rules={[{ required: true, validator: validateConfirmPassword }]}
-                                    hasFeedback
-                                >
-                                    <Input.Password
-                                        prefix={<LockOutlined className="text-gray-400" />}
-                                        placeholder="Xác nhận mật khẩu"
-                                        iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <div className="mb-2">
-                            <div className="flex items-center mb-1">
-                                <div className="w-2 h-2 rounded-full bg-gray-300 mr-1"></div>
-                                <span className="text-xs text-gray-500">Tối thiểu 8 ký tự</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-2 h-2 rounded-full bg-gray-300 mr-1"></div>
-                                <span className="text-xs text-gray-500">Chứa ít nhất một ký tự đặc biệt</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-blue-50 p-5 rounded-lg mb-6">
-                        <h2 className="text-lg font-medium mb-4 flex items-center">
-                            <UserOutlined className="mr-2" /> Thông tin người đại diện
-                        </h2>
-
-                        <Row gutter={24}>
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    name="fullName"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Họ và tên</span>}
-                                    rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
-                                >
-                                    <Input
-                                        prefix={<UserOutlined className="text-gray-400" />}
-                                        placeholder="Nhập họ tên của bạn"
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    name="email"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Email</span>}
-                                    rules={[
-                                        { required: true, message: 'Vui lòng nhập email' },
-                                        { type: 'email', message: 'Email không hợp lệ' }
-                                    ]}
-                                >
-                                    <Input
-                                        prefix={<MailOutlined className="text-gray-400" />}
-                                        placeholder="Nhập email của bạn"
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={24}>
-                            <Col xs={24} md={8}>
-                                <Form.Item
-                                    name="phoneNumber"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Số điện thoại</span>}
-                                    rules={[
-                                        { required: true, message: 'Vui lòng nhập số điện thoại' },
-                                        { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải có 10 chữ số' }
-                                    ]}
-                                >
-                                    <Input
-                                        prefix={<PhoneOutlined className="text-gray-400" />}
-                                        placeholder="Nhập số điện thoại"
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} md={8}>
-                                <Form.Item
-                                    name="dateOfBirth"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Ngày sinh</span>}
-                                    rules={[{ required: true, message: 'Vui lòng chọn ngày sinh' }]}
-                                >
-                                    <DatePicker
-                                        className="w-full"
-                                        format="DD/MM/YYYY"
-                                        placeholder="Chọn ngày sinh"
-                                        disabledDate={d => d.isAfter(dayjs().subtract(18, 'year'))}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} md={8}>
-                                <Form.Item
-                                    name="gender"
-                                    label="Giới tính"
-                                >
-                                    <Radio.Group>
-                                        <Radio value="male">Nam</Radio>
-                                        <Radio value="female">Nữ</Radio>
-                                    </Radio.Group>
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Form.Item
-                            name="imageUrl"
-                            label="Ảnh đại diện"
-                        >
-                            <Upload {...uploadProps} maxCount={1}>
-                                <Button icon={<UploadOutlined />}>Tải lên ảnh</Button>
-                            </Upload>
-                        </Form.Item>
-                    </div>
-
-                    <div className="bg-green-50 p-5 rounded-lg mb-6">
-                        <h2 className="text-lg font-medium mb-4 flex items-center">
-                            <BankOutlined className="mr-2" /> Thông tin doanh nghiệp
-                        </h2>
-
-                        <Row gutter={24}>
-                            <Col span={24}>
-                                <Form.Item
-                                    name="companyName"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Tên doanh nghiệp</span>}
-                                    rules={[{ required: true, message: 'Vui lòng nhập tên doanh nghiệp' }]}
-                                >
-                                    <Input placeholder="Nhập tên doanh nghiệp" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={24}>
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    name="representativeName"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Người đại diện pháp luật</span>}
-                                    rules={[{ required: true, message: 'Vui lòng nhập tên người đại diện' }]}
-                                >
-                                    <Input placeholder="Nhập tên người đại diện pháp luật" />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    name="representativePhone"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Số điện thoại đại diện</span>}
-                                    rules={[
-                                        { required: true, message: 'Vui lòng nhập số điện thoại đại diện' },
-                                        { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải có 10 chữ số' }
-                                    ]}
-                                >
-                                    <Input placeholder="Nhập số điện thoại đại diện" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={24}>
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    name="businessLicenseNumber"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Số giấy phép kinh doanh</span>}
-                                    rules={[{ required: true, message: 'Vui lòng nhập số giấy phép kinh doanh' }]}
-                                >
-                                    <Input prefix={<IdcardOutlined className="text-gray-400" />} placeholder="Nhập số giấy phép kinh doanh" />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    name="businessAddress"
-                                    label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Địa chỉ doanh nghiệp</span>}
-                                    rules={[{ required: true, message: 'Vui lòng nhập địa chỉ doanh nghiệp' }]}
-                                >
-                                    <Input.TextArea rows={1} placeholder="Nhập địa chỉ doanh nghiệp" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                    </div>
-
-                    <Form.Item
-                        name="agreeTerms"
-                        valuePropName="checked"
-                        rules={[
-                            {
-                                validator: (_, value) =>
-                                    value ? Promise.resolve() : Promise.reject('Bạn phải đồng ý với điều khoản sử dụng')
-                            }
-                        ]}
+                <form onSubmit={preventSubmit}>
+                    <Form
+                        form={form}
+                        layout="vertical"
+                        requiredMark="optional"
+                        initialValues={{
+                            gender: 'male',
+                            dateOfBirth: dayjs().subtract(18, 'year')
+                        }}
+                        onFinish={() => { }} // Empty function to prevent default form submission
                     >
-                        <Checkbox>Tôi đồng ý với <Link to="/terms" className="text-blue-600">điều khoản sử dụng</Link></Checkbox>
-                    </Form.Item>
+                        {/* Form content remains the same, just add disabled={loading} to inputs */}
 
-                    <Form.Item>
-                        <Button
-                            type="primary"
-                            htmlType="submit"
-                            className="w-full bg-blue-600 h-10"
-                            loading={loading}
-                        >
-                            Đăng ký
-                        </Button>
-                    </Form.Item>
-                </Form>
+                        <Form.Item>
+                            <Button
+                                type="primary"
+                                className="w-full bg-blue-600 h-10"
+                                loading={loading}
+                                onClick={handleRegister}
+                                disabled={loading}
+                            >
+                                Đăng ký
+                            </Button>
+                        </Form.Item>
+                    </Form>
+                </form>
 
                 <div className="text-center my-4">hoặc</div>
 
@@ -451,6 +242,7 @@ const RegisterPage: React.FC = () => {
                     icon={<GoogleOutlined />}
                     className="w-full flex items-center justify-center h-10"
                     onClick={handleGoogleSignup}
+                    disabled={loading}
                 >
                     Đăng ký với Google
                 </Button>

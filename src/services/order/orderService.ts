@@ -1,14 +1,15 @@
 import httpClient from '../api/httpClient';
-import type { Order } from '@/models/Order';
+import type { Order, OrderDetail, OrderCreateRequest } from '@/models/Order';
 import type {
-    OrderCreateDto,
     OrderUpdateDto,
     OrderResponse,
     OrdersResponse,
     PaginatedOrdersResponse,
-    OrderTrackingApiResponse
+    OrderTrackingApiResponse,
+    OrderDetailsResponse
 } from './types';
 import type { PaginationParams } from '../api/types';
+import { handleApiError } from '../api/errorHandler';
 
 /**
  * Service for handling order-related API calls
@@ -20,11 +21,11 @@ const orderService = {
      */
     getAllOrders: async (): Promise<Order[]> => {
         try {
-            const response = await httpClient.get<OrdersResponse>('/orders');
+            const response = await httpClient.get<OrdersResponse>('/orders/get-all');
             return response.data.data;
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error fetching orders:', error);
-            throw new Error(error.response?.data?.message || 'Không thể tải danh sách đơn hàng');
+            throw handleApiError(error, 'Không thể tải danh sách đơn hàng');
         }
     },
 
@@ -39,9 +40,9 @@ const orderService = {
                 params
             });
             return response.data;
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error fetching paginated orders:', error);
-            throw new Error(error.response?.data?.message || 'Không thể tải danh sách đơn hàng');
+            throw handleApiError(error, 'Không thể tải danh sách đơn hàng');
         }
     },
 
@@ -54,9 +55,24 @@ const orderService = {
         try {
             const response = await httpClient.get<OrderResponse>(`/orders/${id}`);
             return response.data.data;
-        } catch (error: any) {
+        } catch (error) {
             console.error(`Error fetching order ${id}:`, error);
-            throw new Error(error.response?.data?.message || 'Không thể tải thông tin đơn hàng');
+            throw handleApiError(error, 'Không thể tải thông tin đơn hàng');
+        }
+    },
+
+    /**
+     * Get order details by order ID
+     * @param orderId Order ID
+     * @returns Promise with order details array
+     */
+    getOrderDetailsByOrderId: async (orderId: string): Promise<OrderDetail[]> => {
+        try {
+            const response = await httpClient.get<OrderDetailsResponse>(`/order-detail/order/${orderId}`);
+            return response.data.data;
+        } catch (error) {
+            console.error(`Error fetching order details for order ${orderId}:`, error);
+            throw handleApiError(error, 'Không thể tải chi tiết đơn hàng');
         }
     },
 
@@ -65,13 +81,45 @@ const orderService = {
      * @param orderData Order data
      * @returns Promise with created order
      */
-    createOrder: async (orderData: OrderCreateDto): Promise<Order> => {
+    createOrder: async (orderData: OrderCreateRequest): Promise<Order> => {
         try {
+            // Validate order data before sending
+            const { orderRequest, orderDetails } = orderData;
+
+            // Check if orderDetails is empty or missing required fields
+            if (!orderDetails || orderDetails.length === 0 ||
+                !orderDetails[0].weight ||
+                !orderDetails[0].description ||
+                !orderDetails[0].orderSizeId) {
+                throw new Error('Chi tiết đơn hàng không hợp lệ');
+            }
+
+            // Check if orderRequest is missing required fields
+            const requiredFields = [
+                'receiverName',
+                'receiverPhone',
+                'packageDescription',
+                'estimateStartTime',
+                'deliveryAddressId',
+                'pickupAddressId',
+                'senderId',
+                'categoryId'
+            ];
+
+            const missingFields = requiredFields.filter(field => !orderRequest[field as keyof typeof orderRequest]);
+
+            if (missingFields.length > 0) {
+                throw new Error(`Thiếu thông tin: ${missingFields.join(', ')}`);
+            }
+
+            // Debug log
+            console.log("Request body:", JSON.stringify(orderData, null, 2));
+
             const response = await httpClient.post<OrderResponse>('/orders', orderData);
             return response.data.data;
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error creating order:', error);
-            throw new Error(error.response?.data?.message || 'Không thể tạo đơn hàng');
+            throw handleApiError(error, 'Không thể tạo đơn hàng');
         }
     },
 
@@ -85,9 +133,9 @@ const orderService = {
         try {
             const response = await httpClient.put<OrderResponse>(`/orders/${id}`, orderData);
             return response.data.data;
-        } catch (error: any) {
+        } catch (error) {
             console.error(`Error updating order ${id}:`, error);
-            throw new Error(error.response?.data?.message || 'Không thể cập nhật đơn hàng');
+            throw handleApiError(error, 'Không thể cập nhật đơn hàng');
         }
     },
 
@@ -98,9 +146,9 @@ const orderService = {
     deleteOrder: async (id: string): Promise<void> => {
         try {
             await httpClient.delete(`/orders/${id}`);
-        } catch (error: any) {
+        } catch (error) {
             console.error(`Error deleting order ${id}:`, error);
-            throw new Error(error.response?.data?.message || 'Không thể xóa đơn hàng');
+            throw handleApiError(error, 'Không thể xóa đơn hàng');
         }
     },
 
@@ -117,9 +165,9 @@ const orderService = {
                 latitude: trackingData.latitude,
                 longitude: trackingData.longitude
             };
-        } catch (error: any) {
+        } catch (error) {
             console.error(`Error tracking order ${id}:`, error);
-            throw new Error(error.response?.data?.message || 'Không thể theo dõi vị trí đơn hàng');
+            throw handleApiError(error, 'Không thể theo dõi vị trí đơn hàng');
         }
     }
 };

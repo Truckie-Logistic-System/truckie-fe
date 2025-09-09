@@ -66,9 +66,23 @@ export interface RefreshTokenResponse {
     message: string;
     statusCode: number;
     data: {
-        authToken: string;
+        accessToken: string;
         refreshToken: string;
     };
+}
+
+export interface ChangePasswordRequest {
+    username: string;
+    oldPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+}
+
+export interface ChangePasswordResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: null;
 }
 
 export interface AuthState {

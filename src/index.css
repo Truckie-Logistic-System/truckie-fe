@@ -111,3 +111,23 @@ button:not(.ant-btn):focus-visible {
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* Custom message styles */
+.custom-message-success {
+  z-index: 9999 !important;
+  font-weight: 500;
+}
+
+.custom-message-error {
+  z-index: 9999 !important;
+  font-weight: 500;
+}
+
+.ant-message {
+  z-index: 9999 !important;
+}
+
+.ant-message-notice-content {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+}
