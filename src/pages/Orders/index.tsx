@@ -2,22 +2,34 @@ import React, { useState, useEffect } from "react";
 import { OrdersHeader, OrdersContent } from "./components";
 import orderService from "../../services/order";
 import type { Order } from "../../models/Order";
-import { Skeleton, Alert } from "antd";
+import { Skeleton, Alert, App } from "antd";
+import { useAuth } from "../../context";
 
 const OrdersPage: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const { message } = App.useApp();
+    const { user } = useAuth();
 
     useEffect(() => {
         const fetchOrders = async () => {
             try {
                 setLoading(true);
-                const data = await orderService.getAllOrders();
+
+                // Kiểm tra xem có userId không
+                const userId = user?.id || localStorage.getItem('userId');
+                if (!userId) {
+                    throw new Error("Không tìm thấy thông tin người dùng");
+                }
+
+                // Sử dụng API endpoint mới để lấy đơn hàng theo userId
+                const data = await orderService.getOrdersByUserId(userId);
                 setOrders(data);
                 setError(null);
             } catch (err: any) {
                 setError(err.message || "Không thể tải danh sách đơn hàng");
+                message.error(err.message || "Không thể tải danh sách đơn hàng");
                 console.error("Error fetching orders:", err);
             } finally {
                 setLoading(false);
@@ -30,7 +42,7 @@ const OrdersPage: React.FC = () => {
         return () => {
             // Cancel any pending requests if needed
         };
-    }, []);
+    }, [user, message]);
 
     return (
         <>

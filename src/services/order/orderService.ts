@@ -259,6 +259,21 @@ const orderService = {
       throw handleApiError(error, "Không thể theo dõi vị trí đơn hàng");
     }
   },
+
+  /**
+   * Get all orders for a specific customer by user ID
+   * @param userId User ID
+   * @returns Promise with array of orders
+   */
+  getOrdersByUserId: async (userId: string): Promise<Order[]> => {
+    try {
+      const response = await httpClient.get<OrdersResponse>(`/orders/get-orders-for-cus-by-user-id/${userId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching orders for user ${userId}:`, error);
+      throw handleApiError(error, "Không thể tải danh sách đơn hàng");
+    }
+  },
 };
 
 export default orderService;

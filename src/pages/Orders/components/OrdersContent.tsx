@@ -65,13 +65,17 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
 
   // Function to get pickup and delivery addresses from order
   const getPickupAddress = (order: Order): string => {
-    // This would need to be updated based on your actual data structure
-    return order.pickupAddressId || "Chưa có địa chỉ lấy hàng";
+    if (order.pickupAddress) {
+      return `${order.pickupAddress.street}, ${order.pickupAddress.ward}, ${order.pickupAddress.province}`;
+    }
+    return "Chưa có địa chỉ lấy hàng";
   };
 
   const getDeliveryAddress = (order: Order): string => {
-    // This would need to be updated based on your actual data structure
-    return order.deliveryId || "Chưa có địa chỉ giao hàng";
+    if (order.deliveryAddress) {
+      return `${order.deliveryAddress.street}, ${order.deliveryAddress.ward}, ${order.deliveryAddress.province}`;
+    }
+    return "Chưa có địa chỉ giao hàng";
   };
 
   return (
@@ -167,7 +171,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                           Ngày tạo đơn
                         </p>
                         <p className="text-gray-700">
-                          {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "N/A"}
                         </p>
                       </div>
                     </div>
