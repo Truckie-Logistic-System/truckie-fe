@@ -15,6 +15,12 @@ export interface UserResponse {
     id: string;
     username: string;
     email: string;
+    fullName?: string;
+    phoneNumber?: string;
+    gender?: boolean;
+    dateOfBirth?: string;
+    imageUrl?: string;
+    status?: string;
     role: {
         roleName: string;
         permissions?: string[];

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, Typography } from 'antd';
 import ChangePasswordForm from './ChangePasswordForm';
-import type { UserResponse } from '@/services/customer';
+import type { UserResponse } from '@/models/User';
 
 const { Text } = Typography;
 

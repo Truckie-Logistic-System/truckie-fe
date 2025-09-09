@@ -8,4 +8,5 @@ export * from './Penalty';
 export * from './Issue';
 export * from './Map';
 export * from './Chat';
-export * from './Driver'; 
+export * from './Driver';
+export * from './Customer'; 

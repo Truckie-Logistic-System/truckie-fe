@@ -10,6 +10,8 @@ import type {
 } from './types';
 import type { PaginationParams } from '../api/types';
 import { handleApiError } from '../api/errorHandler';
+import { useAuth } from '@/context';
+import customerService from '../customer/customerService';
 
 /**
  * Service for handling order-related API calls
@@ -83,39 +85,71 @@ const orderService = {
      */
     createOrder: async (orderData: OrderCreateRequest): Promise<Order> => {
         try {
-            // Validate order data before sending
-            const { orderRequest, orderDetails } = orderData;
-
-            // Check if orderDetails is empty or missing required fields
-            if (!orderDetails || orderDetails.length === 0 ||
-                !orderDetails[0].weight ||
-                !orderDetails[0].description ||
-                !orderDetails[0].orderSizeId) {
-                throw new Error('Chi tiết đơn hàng không hợp lệ');
-            }
-
-            // Check if orderRequest is missing required fields
+            // Validate required fields
             const requiredFields = [
                 'receiverName',
                 'receiverPhone',
+                'categoryId',
                 'packageDescription',
-                'estimateStartTime',
-                'deliveryAddressId',
+                'weight',
+                'orderSizeId',
+                'description',
                 'pickupAddressId',
-                'senderId',
-                'categoryId'
+                'deliveryAddressId'
             ];
 
-            const missingFields = requiredFields.filter(field => !orderRequest[field as keyof typeof orderRequest]);
+            const missingFields = requiredFields.filter(field => !orderData[field as keyof OrderCreateRequest]);
 
             if (missingFields.length > 0) {
                 throw new Error(`Thiếu thông tin: ${missingFields.join(', ')}`);
             }
 
-            // Debug log
-            console.log("Request body:", JSON.stringify(orderData, null, 2));
+            // Lấy ID người dùng từ localStorage
+            const userId = localStorage.getItem('userId');
+            if (!userId) {
+                throw new Error('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.');
+            }
 
-            const response = await httpClient.post<OrderResponse>('/orders', orderData);
+            // Gọi API để lấy thông tin customer từ userId
+            const customerData = await customerService.getCustomerProfile(userId);
+            if (!customerData || !customerData.id) {
+                throw new Error('Không thể lấy thông tin khách hàng. Vui lòng thử lại sau.');
+            }
+
+            // Tạo ngày giờ ước tính bắt đầu (mặc định là 1 ngày sau)
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            // Format date as YYYY-MM-DDThh:mm:ss for LocalDateTime
+            const estimateStartTime = tomorrow.toISOString().replace(/\.\d{3}Z$/, "");
+
+            // Chuyển đổi dữ liệu sang định dạng API mong đợi
+            const apiOrderData = {
+                orderRequest: {
+                    receiverName: orderData.receiverName,
+                    receiverPhone: orderData.receiverPhone,
+                    packageDescription: orderData.packageDescription,
+                    notes: orderData.notes || "Không có ghi chú",
+                    pickupAddressId: orderData.pickupAddressId,
+                    deliveryAddressId: orderData.deliveryAddressId,
+                    categoryId: orderData.categoryId,
+                    senderId: customerData.id, // Sử dụng customerId thay vì userId
+                    estimateStartTime: estimateStartTime,
+                    totalWeight: orderData.weight // Thêm trường totalWeight từ weight
+                },
+                orderDetails: [
+                    {
+                        weight: orderData.weight,
+                        description: orderData.description,
+                        orderSizeId: orderData.orderSizeId
+                    }
+                ]
+            };
+
+            // Debug log
+            console.log("Request body:", JSON.stringify(apiOrderData, null, 2));
+
+            const response = await httpClient.post<OrderResponse>('/orders', apiOrderData);
             return response.data.data;
         } catch (error) {
             console.error('Error creating order:', error);

@@ -1,13 +1,14 @@
 import { useParams } from 'react-router-dom';
 import { Card, Spin, Alert, Tabs, Row, Col, Typography } from 'antd';
 import { UserOutlined, TeamOutlined, LockOutlined } from '@ant-design/icons';
-import { getCustomerProfile } from '../../services/customer';
+import customerService from '../../services/customer/customerService';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context';
 import ProfileSummaryCard from './components/ProfileSummaryCard';
 import CompanyInfoTab from './components/CompanyInfoTab';
 import PersonalInfoTab from './components/PersonalInfoTab';
 import PasswordChangeTab from './components/PasswordChangeTab';
+import type { Customer } from '@/models/Customer';
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
@@ -19,7 +20,7 @@ const ProfilePage = () => {
 
     const { data: customerData, isLoading, error } = useQuery({
         queryKey: ['customerProfile', currentUserId],
-        queryFn: () => getCustomerProfile(currentUserId),
+        queryFn: () => customerService.getCustomerProfile(currentUserId),
         enabled: !!currentUserId,
         retry: 2,
         refetchOnWindowFocus: false,
@@ -46,7 +47,7 @@ const ProfilePage = () => {
         );
     }
 
-    const user = customerData?.userResponse;
+    const userResponse = customerData?.userResponse;
     const isOwnProfile = !userId || userId === authUser?.id;
 
     return (
@@ -61,7 +62,7 @@ const ProfilePage = () => {
                 <Row gutter={[24, 24]}>
                     {/* Profile Summary Card */}
                     <Col xs={24} md={8}>
-                        <ProfileSummaryCard user={user} />
+                        <ProfileSummaryCard user={userResponse} />
                     </Col>
 
                     {/* Main Content */}
@@ -82,7 +83,7 @@ const ProfilePage = () => {
                                     tab={<span className="flex items-center gap-2"><UserOutlined />Thông tin cá nhân</span>}
                                     key="personal"
                                 >
-                                    <PersonalInfoTab user={user} />
+                                    <PersonalInfoTab user={userResponse} />
                                 </TabPane>
 
                                 <TabPane
@@ -90,7 +91,7 @@ const ProfilePage = () => {
                                     key="security"
                                 >
                                     <PasswordChangeTab
-                                        user={user}
+                                        user={userResponse}
                                         isOwnProfile={isOwnProfile}
                                     />
                                 </TabPane>

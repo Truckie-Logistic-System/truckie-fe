@@ -2,8 +2,8 @@ import React from 'react';
 import { Card, Typography, Button } from 'antd';
 import { useAuth } from '../../context';
 import { useNavigate } from 'react-router-dom';
-import AdminDashboard from './AdminDashboard';
-import StaffDashboard from './StaffDashboard';
+import AdminDashboard from './components/AdminDashboard';
+import StaffDashboard from './components/StaffDashboard';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -88,5 +88,4 @@ const Dashboard: React.FC = () => {
     );
 };
 
-export { AdminDashboard, StaffDashboard };
 export default Dashboard; 

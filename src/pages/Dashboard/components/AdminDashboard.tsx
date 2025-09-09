@@ -1,7 +1,7 @@
 import React from 'react';
 import { Row, Col, Card, Statistic, Typography, Table, Tag } from 'antd';
 import { UserOutlined, ShoppingCartOutlined, CarOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { useAuth } from '../../context';
+import { useAuth } from '../../../context';
 
 const { Title } = Typography;
 

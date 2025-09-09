@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, App, Divider, Typography, Row, Col } from 'antd';
 import { SaveOutlined, BankOutlined, UserOutlined, PhoneOutlined, IdcardOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import type { CustomerResponse, CustomerUpdateRequest } from '../../../services/customer';
-import { updateCustomerProfile } from '../../../services/customer';
+import type { Customer } from '@/models/Customer';
+import type { CustomerUpdateRequest } from '@/services/customer/types';
+import customerService from '@/services/customer/customerService';
 import { useQueryClient } from '@tanstack/react-query';
 
 const { Text, Title } = Typography;
 
 interface EditProfileFormProps {
-    customerData: CustomerResponse;
+    customerData: Customer;
     onSuccess: () => void;
 }
 
@@ -32,7 +33,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSucce
     const handleSubmit = async (values: CustomerUpdateRequest) => {
         try {
             setLoading(true);
-            await updateCustomerProfile(customerData.id, values);
+            await customerService.updateCustomerProfile(customerData.id, values);
 
             // Làm mới dữ liệu cache
             queryClient.invalidateQueries({ queryKey: ['customerProfile'] });

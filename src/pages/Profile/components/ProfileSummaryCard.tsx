@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, Avatar, Typography } from 'antd';
 import { UserOutlined, MailOutlined, PhoneOutlined, IdcardOutlined } from '@ant-design/icons';
-import type { UserResponse } from '@/services/customer';
+import type { UserResponse } from '@/models/User';
 
 const { Title, Text } = Typography;
 

@@ -1,27 +1,13 @@
-import React, { useState } from "react";
-import {
-  Form,
-  Input,
-  Button,
-  Checkbox,
-  Card,
-  message,
-  App,
-} from "antd";
-import {
-  GoogleOutlined,
-  EyeInvisibleOutlined,
-  EyeTwoTone,
-  UserOutlined,
-  LockOutlined,
-} from "@ant-design/icons";
+import React, { useState, useEffect } from "react";
+import { Card, App } from "antd";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { AuthPageLayout } from "../components";
 import { useAuth } from "../../../context";
 import axios from "axios";
+import LoginForm from "./components/LoginForm";
+import SocialLogin from "./components/SocialLogin";
 
 const LoginPage: React.FC = () => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -30,66 +16,52 @@ const LoginPage: React.FC = () => {
   const { message: messageApi } = App.useApp();
 
   // Check if user was redirected from registration
-  React.useEffect(() => {
+  useEffect(() => {
     const state = location.state as
       | { registered?: boolean; username?: string }
       | undefined;
 
     if (state?.registered && state?.username) {
-      form.setFieldsValue({ username: state.username });
+      messageApi.success(`Đăng ký thành công! Vui lòng đăng nhập với tài khoản ${state.username}`);
     }
-  }, [location.state, form]);
+  }, [location.state, messageApi]);
 
   // Check if user is already authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated && user) {
       const redirectPath = getRedirectPath();
       navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, navigate, getRedirectPath, user]);
 
-  const handleLoginClick = () => {
-    // Validate fields manually
-    form.validateFields()
-      .then(values => {
-        setLoading(true);
-        setErrorMessage(null);
+  const handleLoginSubmit = (values: { username: string; password: string; remember: boolean }) => {
+    setLoading(true);
+    setErrorMessage(null);
 
-        // Call login function
-        login(values.username, values.password)
-          .catch(error => {
-            console.error("Đăng nhập thất bại:", error);
+    // Call login function
+    login(values.username, values.password)
+      .catch(error => {
+        console.error("Đăng nhập thất bại:", error);
 
-            // Extract error message
-            let errorMsg = "Tên đăng nhập hoặc mật khẩu không đúng";
+        // Extract error message
+        let errorMsg = "Tên đăng nhập hoặc mật khẩu không đúng";
 
-            if (axios.isAxiosError(error)) {
-              if (error.response) {
-                errorMsg = error.response.data.message || errorMsg;
-              } else if (error.request) {
-                // No response received
-                errorMsg = "Không thể kết nối đến máy chủ";
-              }
-            } else if (error instanceof Error) {
-              errorMsg = error.message;
-            }
+        if (axios.isAxiosError(error)) {
+          if (error.response) {
+            errorMsg = error.response.data.message || errorMsg;
+          } else if (error.request) {
+            // No response received
+            errorMsg = "Không thể kết nối đến máy chủ";
+          }
+        } else if (error instanceof Error) {
+          errorMsg = error.message;
+        }
 
-            setErrorMessage(errorMsg);
-          })
-          .finally(() => {
-            setLoading(false);
-          });
+        setErrorMessage(errorMsg);
       })
-      .catch(() => {
-        // Form validation failed, do nothing
+      .finally(() => {
+        setLoading(false);
       });
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLoginClick();
-    }
   };
 
   const handleGoogleLogin = () => {
@@ -111,97 +83,17 @@ const LoginPage: React.FC = () => {
           <p className="text-gray-500 text-sm">Chào mừng bạn quay lại!</p>
         </div>
 
-        {errorMessage && (
-          <div className="text-red-500 text-center mb-4">
-            {errorMessage}
-          </div>
-        )}
+        <LoginForm
+          loading={loading}
+          onFinish={handleLoginSubmit}
+          errorMessage={errorMessage}
+          initialUsername={(location.state as any)?.username}
+        />
 
-        <div>
-          <Form
-            form={form}
-            layout="vertical"
-            requiredMark="optional"
-            initialValues={{ remember: true }}
-          >
-            <Form.Item
-              name="username"
-              label={
-                <span className="flex items-center">
-                  <span className="text-red-500 mr-1">*</span>Tên đăng nhập
-                </span>
-              }
-              rules={[{ required: true, message: "Vui lòng nhập tên đăng nhập" }]}
-            >
-              <Input
-                prefix={<UserOutlined className="text-gray-400" />}
-                placeholder="Nhập tên đăng nhập của bạn"
-                autoFocus
-                onKeyPress={handleKeyPress}
-                disabled={loading}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="password"
-              label={
-                <span className="flex items-center">
-                  <span className="text-red-500 mr-1">*</span>Mật khẩu
-                </span>
-              }
-              rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined className="text-gray-400" />}
-                placeholder="Nhập mật khẩu"
-                iconRender={(visible) =>
-                  visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
-                }
-                onKeyPress={handleKeyPress}
-                disabled={loading}
-              />
-            </Form.Item>
-
-            <div className="flex justify-between items-center mb-4">
-              <Form.Item name="remember" valuePropName="checked" noStyle>
-                <Checkbox disabled={loading}>Ghi nhớ đăng nhập 30 ngày</Checkbox>
-              </Form.Item>
-              <Link to="/auth/forgot-password" className="text-blue-600 text-sm">
-                Quên mật khẩu
-              </Link>
-            </div>
-
-            <Form.Item>
-              <Button
-                type="primary"
-                className="w-full bg-blue-600 h-10"
-                loading={loading}
-                onClick={handleLoginClick}
-                disabled={loading}
-              >
-                Đăng nhập
-              </Button>
-            </Form.Item>
-          </Form>
-        </div>
-
-        <div className="text-center my-4">hoặc</div>
-
-        <Button
-          icon={<GoogleOutlined />}
-          className="w-full flex items-center justify-center h-10"
-          onClick={handleGoogleLogin}
-          disabled={loading}
-        >
-          Đăng nhập với Google
-        </Button>
-
-        <div className="text-center mt-4">
-          <span className="text-gray-500">Chưa có tài khoản? </span>
-          <Link to="/auth/register" className="text-blue-600">
-            Đăng ký ngay
-          </Link>
-        </div>
+        <SocialLogin
+          loading={loading}
+          onGoogleLogin={handleGoogleLogin}
+        />
       </Card>
     </AuthPageLayout>
   );

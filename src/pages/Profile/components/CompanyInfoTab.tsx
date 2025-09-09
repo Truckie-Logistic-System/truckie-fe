@@ -1,13 +1,13 @@
 import React from 'react';
 import { Card, Row, Col, Typography, Divider } from 'antd';
 import { BankOutlined, IdcardOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import type { CustomerResponse } from '@/services/customer';
+import type { Customer } from '@/models/Customer';
 import EditProfileModal from './EditProfileModal';
 
 const { Title, Text } = Typography;
 
 interface CompanyInfoTabProps {
-    customerData: CustomerResponse | undefined;
+    customerData: Customer | undefined;
     isOwnProfile: boolean;
 }
 

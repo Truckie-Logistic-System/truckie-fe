@@ -1,5 +1,7 @@
 export interface OrderSize {
     id: string;
+    name: string; // Thêm thuộc tính name
+    price: number; // Thêm thuộc tính price
     minWeight: number;
     maxWeight: number;
     minLength: number;

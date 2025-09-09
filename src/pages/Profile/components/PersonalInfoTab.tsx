@@ -1,6 +1,6 @@
 import React from 'react';
 import { Row, Col, Typography } from 'antd';
-import type { UserResponse } from '@/services/customer';
+import type { UserResponse } from '@/models/User';
 
 const { Text } = Typography;
 

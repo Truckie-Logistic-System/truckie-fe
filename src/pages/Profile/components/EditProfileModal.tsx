@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Modal, Button, Typography, App } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
-import type { CustomerResponse } from '../../../services/customer';
+import type { Customer } from '@/models/Customer';
 import EditProfileForm from './EditProfileForm';
 
 const { Text } = Typography;
 
 interface EditProfileModalProps {
-    customerData: CustomerResponse;
+    customerData: Customer;
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData }) => {

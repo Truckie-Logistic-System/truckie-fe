@@ -4,13 +4,15 @@ import { LoginPage, RegisterPage } from "../pages/Auth";
 import VietMapPage from "../pages/VietMap";
 import OpenMapPage from "../pages/OpenMap";
 import TrackAsiaMapPage from "../pages/TrackAsiaMap";
-import Dashboard, { AdminDashboard, StaffDashboard } from "../pages/Dashboard";
+import Dashboard from "../pages/Dashboard";
+import AdminDashboard from "../pages/Dashboard/components/AdminDashboard";
+import StaffDashboard from "../pages/Dashboard/components/StaffDashboard";
 import PenaltyHistory from "../pages/Staff/PenaltyHistory";
 import CustomerSupport from "../pages/Staff/CustomerSupport";
 import ProfilePage from "../pages/Profile";
 import {
   OrderList as StaffOrderList,
-  OrderDetailPage,
+  OrderDetailPage as StaffOrderDetailPage,
 } from "../pages/Staff/Order";
 import { IssueList, IssueDetail } from "../pages/Staff/Issue";
 import {
@@ -18,7 +20,9 @@ import {
   OrderDetailPage as AdminOrderDetailPage,
   OrderEdit as AdminOrderEdit,
 } from "../pages/Admin/Order";
-import { OrdersList, CreateOrder } from "../pages/Orders";
+import OrdersPage from "../pages/Orders";
+import OrderDetailPage from "../pages/Orders/OrderDetail";
+import CreateOrder from "../pages/Orders/CreateOrder";
 import { PermissionRoute } from "../components/auth";
 import { MainLayout, AdminLayout } from "../components/layout";
 import DriverPage from "../pages/Admin/Driver";
@@ -101,7 +105,7 @@ const router = createBrowserRouter([
             authRedirectPath="/auth/login"
             roleRedirectPath="/"
           >
-            <OrdersList />
+            <OrdersPage />
           </PermissionRoute>
         ),
       },
@@ -194,7 +198,7 @@ const router = createBrowserRouter([
       },
       {
         path: "orders/:id",
-        element: <OrderDetailPage />,
+        element: <StaffOrderDetailPage />,
       },
       {
         path: "issues",

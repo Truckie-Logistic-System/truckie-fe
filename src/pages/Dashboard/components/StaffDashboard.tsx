@@ -6,7 +6,7 @@ import {
     CheckCircleOutlined,
     ExclamationCircleOutlined
 } from '@ant-design/icons';
-import { useAuth } from '../../context';
+import { useAuth } from '../../../context';
 
 const { Title } = Typography;
 

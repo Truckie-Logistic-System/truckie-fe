@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Radio, Tag, Avatar, Divider } from 'antd';
+import { Modal, Radio, Tag, Avatar, Divider, ConfigProvider } from 'antd';
 import { CheckCircleOutlined, StopOutlined, CarOutlined } from '@ant-design/icons';
 import type { DriverModel } from '../../../../services/driver';
 
@@ -96,39 +96,135 @@ const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
             </div>
 
             <div className="mb-2">
-                <div className="text-gray-500 mb-2">Chọn trạng thái mới:</div>
-                <Radio.Group
-                    value={status}
-                    onChange={(e) => onStatusChange(e.target.value)}
-                    className="w-full"
-                    disabled={loading}
+                <div className="font-medium text-gray-700 mb-3">Chọn trạng thái mới:</div>
+                <ConfigProvider
+                    theme={{
+                        components: {
+                            Radio: {
+                                buttonBg: 'transparent',
+                                buttonCheckedBg: 'transparent',
+                                buttonSolidCheckedColor: 'white',
+                            }
+                        }
+                    }}
                 >
-                    <div className="grid grid-cols-1 gap-3">
-                        <Radio.Button
-                            value="ACTIVE"
-                            className={`flex items-center h-auto py-2 px-3 ${status === 'ACTIVE' ? 'bg-green-50 border-green-500' : ''} ${loading ? 'opacity-70' : ''}`}
-                            disabled={loading}
-                        >
-                            <CheckCircleOutlined className="text-green-500 mr-2" />
-                            <div>
-                                <div className="font-medium">Hoạt động</div>
-                                <div className="text-xs text-gray-500">Tài xế có thể nhận và thực hiện đơn hàng</div>
-                            </div>
-                        </Radio.Button>
+                    <Radio.Group
+                        value={status}
+                        onChange={(e) => onStatusChange(e.target.value)}
+                        style={{ width: '100%' }}
+                        disabled={loading}
+                        optionType="button"
+                        buttonStyle="solid"
+                    >
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                            <Radio.Button
+                                value="ACTIVE"
+                                style={{
+                                    height: 'auto',
+                                    padding: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    border: `2px solid ${status === 'ACTIVE' ? '#16a34a' : '#22c55e'}`,
+                                    backgroundColor: status === 'ACTIVE' ? '#16a34a' : 'white',
+                                    borderRadius: '8px',
+                                }}
+                                disabled={loading}
+                            >
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                    opacity: loading ? 0.7 : 1
+                                }}>
+                                    <div style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '50%',
+                                        backgroundColor: status === 'ACTIVE' ? '#22c55e' : '#dcfce7',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        marginRight: '12px',
+                                        flexShrink: 0
+                                    }}>
+                                        <CheckCircleOutlined style={{
+                                            fontSize: '20px',
+                                            color: status === 'ACTIVE' ? 'white' : '#16a34a'
+                                        }} />
+                                    </div>
+                                    <div>
+                                        <div style={{
+                                            fontWeight: 'bold',
+                                            fontSize: '18px',
+                                            color: status === 'ACTIVE' ? 'white' : '#16a34a'
+                                        }}>
+                                            Hoạt động
+                                        </div>
+                                        <div style={{
+                                            fontSize: '14px',
+                                            color: status === 'ACTIVE' ? '#dcfce7' : '#22c55e'
+                                        }}>
+                                            Tài xế có thể nhận và thực hiện đơn hàng
+                                        </div>
+                                    </div>
+                                </div>
+                            </Radio.Button>
 
-                        <Radio.Button
-                            value="BANNED"
-                            className={`flex items-center h-auto py-2 px-3 ${status === 'BANNED' ? 'bg-red-50 border-red-500' : ''} ${loading ? 'opacity-70' : ''}`}
-                            disabled={loading}
-                        >
-                            <StopOutlined className="text-red-500 mr-2" />
-                            <div>
-                                <div className="font-medium">Cấm hoạt động</div>
-                                <div className="text-xs text-gray-500">Tài xế không thể nhận và thực hiện đơn hàng</div>
-                            </div>
-                        </Radio.Button>
-                    </div>
-                </Radio.Group>
+                            <Radio.Button
+                                value="BANNED"
+                                style={{
+                                    height: 'auto',
+                                    padding: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    border: `2px solid ${status === 'BANNED' ? '#dc2626' : '#ef4444'}`,
+                                    backgroundColor: status === 'BANNED' ? '#dc2626' : 'white',
+                                    borderRadius: '8px',
+                                }}
+                                disabled={loading}
+                            >
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                    opacity: loading ? 0.7 : 1
+                                }}>
+                                    <div style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '50%',
+                                        backgroundColor: status === 'BANNED' ? '#ef4444' : '#fee2e2',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        marginRight: '12px',
+                                        flexShrink: 0
+                                    }}>
+                                        <StopOutlined style={{
+                                            fontSize: '20px',
+                                            color: status === 'BANNED' ? 'white' : '#dc2626'
+                                        }} />
+                                    </div>
+                                    <div>
+                                        <div style={{
+                                            fontWeight: 'bold',
+                                            fontSize: '18px',
+                                            color: status === 'BANNED' ? 'white' : '#dc2626'
+                                        }}>
+                                            Cấm hoạt động
+                                        </div>
+                                        <div style={{
+                                            fontSize: '14px',
+                                            color: status === 'BANNED' ? '#fee2e2' : '#ef4444'
+                                        }}>
+                                            Tài xế không thể nhận và thực hiện đơn hàng
+                                        </div>
+                                    </div>
+                                </div>
+                            </Radio.Button>
+                        </div>
+                    </Radio.Group>
+                </ConfigProvider>
             </div>
         </Modal>
     );
