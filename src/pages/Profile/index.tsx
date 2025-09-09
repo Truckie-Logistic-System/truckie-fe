@@ -1,14 +1,14 @@
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Spin, Alert, Tabs, Row, Col, Typography } from 'antd';
+import { Card, Tabs, Skeleton, Alert, Row, Col, Typography } from 'antd';
 import { UserOutlined, TeamOutlined, LockOutlined } from '@ant-design/icons';
-import customerService from '../../services/customer/customerService';
-import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context';
 import ProfileSummaryCard from './components/ProfileSummaryCard';
-import CompanyInfoTab from './components/CompanyInfoTab';
 import PersonalInfoTab from './components/PersonalInfoTab';
+import CompanyInfoTab from './components/CompanyInfoTab';
 import PasswordChangeTab from './components/PasswordChangeTab';
-import type { Customer } from '@/models/Customer';
+import customerService from '../../services/customer/customerService';
+import type { Customer } from '../../models/Customer';
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
@@ -18,18 +18,50 @@ const ProfilePage = () => {
     const { user: authUser } = useAuth();
     const currentUserId = userId || localStorage.getItem('userId') || authUser?.id || '';
 
-    const { data: customerData, isLoading, error } = useQuery({
-        queryKey: ['customerProfile', currentUserId],
-        queryFn: () => customerService.getCustomerProfile(currentUserId),
-        enabled: !!currentUserId,
-        retry: 2,
-        refetchOnWindowFocus: false,
-    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<any>(null);
+    const [customerData, setCustomerData] = useState<Customer | null>(null);
 
-    if (isLoading) {
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const data = await customerService.getCustomerProfile(currentUserId);
+                setCustomerData(data);
+            } catch (err) {
+                setError(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [currentUserId]);
+
+    if (loading) {
         return (
-            <div className="flex justify-center items-center h-screen">
-                <Spin size="large" />
+            <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {/* Profile summary skeleton */}
+                    <div className="md:col-span-1">
+                        <Card>
+                            <div className="flex flex-col items-center">
+                                <Skeleton.Avatar active size={80} className="mb-4" />
+                                <Skeleton.Input active size="large" style={{ width: 150 }} className="mb-2" />
+                                <Skeleton.Input active size="small" style={{ width: 100 }} className="mb-4" />
+                                <Skeleton.Button active size="default" shape="round" />
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Profile details skeleton */}
+                    <div className="md:col-span-3">
+                        <Card>
+                            <Skeleton.Input active size="large" style={{ width: 150 }} className="mb-4" />
+                            <Skeleton active paragraph={{ rows: 8 }} />
+                        </Card>
+                    </div>
+                </div>
             </div>
         );
     }

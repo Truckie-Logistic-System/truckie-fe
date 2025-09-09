@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Space, Button, Input, Select, Card, Spin, message, Tooltip } from 'antd';
+import { Table, Tag, Space, Button, Input, Select, Card, Skeleton, message, Tooltip } from 'antd';
 import { SearchOutlined, ReloadOutlined, EyeOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import issueService from '@/services/issue';
@@ -165,19 +165,28 @@ const IssueList: React.FC = () => {
                     </Button>
                 </div>
 
-                <Spin spinning={loading}>
-                    <Table
-                        columns={columns}
-                        dataSource={filteredIssues}
-                        rowKey="id"
-                        pagination={{
-                            pageSize: 10,
-                            showSizeChanger: true,
-                            pageSizeOptions: ['10', '20', '50'],
-                            showTotal: (total) => `Tổng số ${total} sự cố`
-                        }}
-                    />
-                </Spin>
+                <Table
+                    columns={columns}
+                    dataSource={filteredIssues}
+                    rowKey="id"
+                    pagination={{
+                        pageSize: 10,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50'],
+                        showTotal: (total) => `Tổng số ${total} vấn đề`
+                    }}
+                    loading={{
+                        spinning: loading,
+                        indicator: <></>
+                    }}
+                    locale={{
+                        emptyText: loading ? (
+                            <div className="py-5">
+                                <Skeleton active paragraph={{ rows: 5 }} />
+                            </div>
+                        ) : 'Không có dữ liệu'
+                    }}
+                />
             </Card>
         </div>
     );

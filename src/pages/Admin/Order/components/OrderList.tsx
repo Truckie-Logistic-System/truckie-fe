@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Space, Button, Input, Select, Card, Spin, message, Modal } from 'antd';
+import { Table, Tag, Space, Button, Input, Select, Card, Spin, message, Modal, Skeleton } from 'antd';
 import { SearchOutlined, ReloadOutlined, EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import orderService from '@/services/order/orderService';
@@ -323,6 +323,13 @@ const OrderList: React.FC = () => {
                             showSizeChanger: true,
                             pageSizeOptions: ['10', '20', '50'],
                             showTotal: (total) => `Tổng số ${total} đơn hàng`
+                        }}
+                        locale={{
+                            emptyText: loading ? (
+                                <div className="py-5">
+                                    <Skeleton active paragraph={{ rows: 5 }} />
+                                </div>
+                            ) : 'Không có dữ liệu'
                         }}
                     />
                 </Spin>

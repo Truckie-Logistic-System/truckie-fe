@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Card,
     Typography,
     Input,
     Tabs,
     Select,
+    Skeleton,
+    Button,
 } from 'antd';
 import {
     SearchOutlined,
     MessageOutlined,
     CheckCircleOutlined,
     QuestionCircleOutlined,
+    ReloadOutlined,
 } from '@ant-design/icons';
-import type { ChatConversation } from '@/models/Chat';
+import type { ChatConversation, ChatMessage } from '@/models/Chat';
 import { MOCK_CONVERSATIONS } from '@/models/Chat';
 import { v4 as uuidv4 } from 'uuid';
 import StatisticsCards from './components/StatisticsCards';
@@ -29,6 +32,8 @@ const CustomerSupport: React.FC = () => {
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [activeConversation, setActiveConversation] = useState<ChatConversation | null>(null);
     const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const handleSearch = (value: string) => {
         setSearchText(value);
@@ -122,53 +127,42 @@ const CustomerSupport: React.FC = () => {
 
             <StatisticsCards conversations={conversations} />
 
-            <Card className="mt-6">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center">
-                        <Input
-                            placeholder="Tìm kiếm theo tên khách hàng hoặc nội dung tin nhắn"
-                            prefix={<SearchOutlined />}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            style={{ width: 350 }}
-                            allowClear
-                        />
-                    </div>
-                    <div>
-                        <Select defaultValue="all" style={{ width: 150 }}>
-                            <Option value="all">Tất cả trạng thái</Option>
-                            <Option value="active">Đang hoạt động</Option>
-                            <Option value="pending">Đang chờ</Option>
-                            <Option value="closed">Đã đóng</Option>
-                        </Select>
-                    </div>
+            <Card
+                title="Hội thoại hỗ trợ khách hàng"
+                className="mt-6"
+                extra={
+                    <Button
+                        icon={<ReloadOutlined />}
+                        onClick={() => setRefreshTrigger(prev => prev + 1)}
+                        loading={loading}
+                    >
+                        Làm mới
+                    </Button>
+                }
+            >
+                <div className="mb-4">
+                    <Input
+                        placeholder="Tìm kiếm theo tên khách hàng, email hoặc nội dung"
+                        prefix={<SearchOutlined />}
+                        value={searchText}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        style={{ width: 300 }}
+                        disabled={loading}
+                    />
                 </div>
 
-                <Tabs defaultActiveKey="all">
-                    <TabPane tab="Tất cả" key="all">
-                        <ConversationTable
-                            conversations={filteredConversations}
-                            onOpenChat={openChat}
-                            getStatusColor={getStatusColor}
-                            getStatusIcon={getStatusIcon}
-                        />
-                    </TabPane>
-                    <TabPane tab="Đang hoạt động" key="active">
-                        <ConversationTable
-                            conversations={filteredConversations.filter(c => c.status === 'active')}
-                            onOpenChat={openChat}
-                            getStatusColor={getStatusColor}
-                            getStatusIcon={getStatusIcon}
-                        />
-                    </TabPane>
-                    <TabPane tab="Đang chờ" key="pending">
-                        <ConversationTable
-                            conversations={filteredConversations.filter(c => c.status === 'pending')}
-                            onOpenChat={openChat}
-                            getStatusColor={getStatusColor}
-                            getStatusIcon={getStatusIcon}
-                        />
-                    </TabPane>
-                </Tabs>
+                {loading ? (
+                    <div className="py-4">
+                        <Skeleton active paragraph={{ rows: 10 }} />
+                    </div>
+                ) : (
+                    <ConversationTable
+                        conversations={filteredConversations}
+                        onOpenChat={openChat}
+                        getStatusColor={getStatusColor}
+                        getStatusIcon={getStatusIcon}
+                    />
+                )}
             </Card>
 
             <ChatDrawer

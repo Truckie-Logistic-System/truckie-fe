@@ -10,7 +10,7 @@ import {
     Space,
     Divider,
     message,
-    Spin,
+    Skeleton,
     Typography,
     Row,
     Col,
@@ -290,8 +290,41 @@ const OrderEdit: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-full p-8">
-                <Spin size="large" />
+            <div className="p-6">
+                {/* Header skeleton */}
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center">
+                        <Skeleton.Button active size="large" shape="round" className="mr-4" />
+                        <Skeleton.Input active size="large" style={{ width: 200 }} />
+                    </div>
+                    <Skeleton.Button active size="default" shape="round" />
+                </div>
+
+                <Row gutter={16}>
+                    <Col span={16}>
+                        {/* Order Information skeleton */}
+                        <Card title="Thông tin đơn hàng" className="mb-6">
+                            <Skeleton active paragraph={{ rows: 8 }} />
+                        </Card>
+
+                        {/* Order Items skeleton */}
+                        <Card title="Danh sách sản phẩm" className="mb-6">
+                            <Skeleton active paragraph={{ rows: 8 }} />
+                        </Card>
+                    </Col>
+
+                    <Col span={8}>
+                        {/* Customer Information skeleton */}
+                        <Card title="Thông tin khách hàng" className="mb-6">
+                            <Skeleton active paragraph={{ rows: 4 }} />
+                        </Card>
+
+                        {/* Address Information skeleton */}
+                        <Card title="Thông tin địa chỉ" className="mb-6">
+                            <Skeleton active paragraph={{ rows: 4 }} />
+                        </Card>
+                    </Col>
+                </Row>
             </div>
         );
     }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Button, Spin, message, Tag, Divider, Table, Timeline, Modal } from 'antd';
+import { Card, Descriptions, Button, Skeleton, message, Tag, Divider, Table, Timeline, Modal } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import orderService from '@/services/order/orderService';
 import type { Order, OrderDetail, OrderStatus } from '@/models';
@@ -228,8 +228,28 @@ const OrderDetailPage: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-screen">
-                <Spin size="large" />
+            <div className="p-6">
+                {/* Header skeleton */}
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center">
+                        <Skeleton.Button active size="large" shape="round" className="mr-4" />
+                        <Skeleton.Input active size="large" style={{ width: 200 }} />
+                    </div>
+                    <div className="flex gap-3">
+                        <Skeleton.Button active size="default" shape="round" />
+                        <Skeleton.Button active size="default" shape="round" />
+                    </div>
+                </div>
+
+                {/* Order info skeleton */}
+                <Card className="shadow-md mb-4">
+                    <Skeleton active paragraph={{ rows: 6 }} />
+                </Card>
+
+                {/* Order details skeleton */}
+                <Card className="shadow-md">
+                    <Skeleton active paragraph={{ rows: 6 }} />
+                </Card>
             </div>
         );
     }
