@@ -1,7 +1,7 @@
 import React from "react";
 import { Form, Input, Button, InputNumber, Select, Card } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
-import type { OrderSize } from "../../models/OrderSize";
+import type { OrderSize } from "../../../models/OrderSize";
 
 interface OrderDetailFormListProps {
   name?: string;

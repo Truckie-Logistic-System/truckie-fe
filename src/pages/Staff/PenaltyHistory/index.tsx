@@ -11,7 +11,8 @@ import {
     Popconfirm,
     Select,
     Spin,
-    Result
+    Result,
+    Skeleton
 } from 'antd';
 import {
     SearchOutlined,
@@ -283,11 +284,22 @@ const PenaltyHistory: React.FC = () => {
                     columns={columns}
                     dataSource={filteredPenalties}
                     rowKey="id"
-                    loading={isLoading}
                     pagination={{
                         pageSize: 10,
                         showSizeChanger: true,
-                        showTotal: (total) => `Tổng cộng ${total} vi phạm`,
+                        pageSizeOptions: ['10', '20', '50'],
+                        showTotal: (total) => `Tổng số ${total} khoản phạt`
+                    }}
+                    loading={{
+                        spinning: isLoading,
+                        indicator: <></>
+                    }}
+                    locale={{
+                        emptyText: isLoading ? (
+                            <div className="py-5">
+                                <Skeleton active paragraph={{ rows: 5 }} />
+                            </div>
+                        ) : 'Không có dữ liệu'
                     }}
                 />
             </Card>

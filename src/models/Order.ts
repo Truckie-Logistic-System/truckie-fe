@@ -4,18 +4,21 @@ export interface Order {
   totalPrice: number;
   notes?: string;
   totalQuantity: number;
-  totalWeight: number;
+  totalWeight?: number;
   orderCode: string;
   receiverName: string;
   receiverPhone: string;
   status: OrderStatus;
   packageDescription?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   senderId?: string;
   deliveryId?: string;
   pickupAddressId?: string;
   categoryId?: string;
+  deliveryAddress?: Address;
+  pickupAddress?: Address;
+  sender?: Sender;
   orderDetails?: OrderDetail[];
 }
 
@@ -31,8 +34,26 @@ export interface OrderDetail {
   updatedAt: string;
   trackingCode: string;
   orderId: string;
-  orderSizeId?: string;
-  vehicleAssignmentId?: string;
+  orderSizeId?: {
+    id: string;
+    minWeight: number;
+    maxWeight: number;
+    minLength: number;
+    maxLength: number;
+    minHeight: number;
+    maxHeight: number;
+    minWidth: number;
+    maxWidth: number;
+    status: string;
+    description: string;
+  };
+  vehicleAssignmentId?: {
+    id: string;
+    vehicleId: string;
+    driverId: string;
+    description: string;
+    status: string;
+  };
 }
 
 export interface OrderDetailCreateRequest {
@@ -137,3 +158,45 @@ export const canCancelOrder = (order: Order): boolean => {
   ];
   return cancellableStatuses.includes(order.status);
 };
+
+export interface Address {
+  id: string;
+  province: string;
+  ward: string;
+  street: string;
+  addressType: boolean;
+  latitude: number;
+  longitude: number;
+  customerId: string;
+}
+
+export interface Sender {
+  id: string;
+  companyName?: string;
+  representativeName?: string;
+  representativePhone?: string;
+  businessLicenseNumber?: string;
+  businessAddress?: string;
+  status?: string;
+  userResponse?: UserResponse;
+}
+
+export interface UserResponse {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  gender: boolean;
+  dateOfBirth: string;
+  imageUrl: string;
+  status: string;
+  role: Role;
+}
+
+export interface Role {
+  id: string;
+  roleName: string;
+  description: string;
+  isActive: boolean;
+}

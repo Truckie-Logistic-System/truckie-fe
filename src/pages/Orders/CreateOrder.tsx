@@ -7,7 +7,7 @@ import {
   Card,
   Typography,
   notification,
-  Spin,
+  Skeleton,
 } from "antd";
 import orderService from "../../services/order";
 import categoryService from "../../services/category";
@@ -17,7 +17,7 @@ import type { OrderCreateRequest } from "../../models/Order";
 import type { Category } from "../../models/Category";
 import type { Address } from "../../models/Address";
 import type { OrderSize } from "../../models/OrderSize";
-import { OrderDetailFormList } from "../../components/common";
+import { OrderDetailFormList } from "./components";
 import { formatToVietnamTime } from "../../utils/dateUtils";
 import {
   ReceiverInfoStep,
@@ -221,8 +221,22 @@ export default function CreateOrder() {
   const renderForm = () => {
     if (loading) {
       return (
-        <div className="flex justify-center items-center py-12">
-          <Spin size="large" tip="Đang tải dữ liệu..." />
+        <div className="py-8">
+          <div className="mb-6">
+            <Skeleton.Input active size="large" style={{ width: '50%' }} />
+            <div className="mt-3">
+              <Skeleton.Input active size="small" style={{ width: '70%' }} />
+            </div>
+          </div>
+
+          <Card>
+            <Skeleton.Button active size="large" shape="circle" className="mb-4" />
+            <Skeleton active paragraph={{ rows: 8 }} />
+            <div className="mt-6 flex justify-end">
+              <Skeleton.Button active size="large" shape="round" className="mr-3" />
+              <Skeleton.Button active size="large" shape="round" />
+            </div>
+          </Card>
         </div>
       );
     }

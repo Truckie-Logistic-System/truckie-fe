@@ -1,6 +1,6 @@
 import React from "react";
 import { Form, Button, Card, Typography } from "antd";
-import { SizeWeightList } from "../../components/common";
+import { SizeWeightList } from "./index";
 
 const { Title } = Typography;
 
