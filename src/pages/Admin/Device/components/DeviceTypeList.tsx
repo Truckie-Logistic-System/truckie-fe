@@ -18,12 +18,14 @@ interface DeviceTypeListProps {
     onRefresh?: () => void;
 }
 
-const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>(({
-    messageApi,
-    deviceTypes: propDeviceTypes,
-    loading: propLoading,
-    onRefresh
-}, ref) => {
+const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props, ref) => {
+    const {
+        messageApi,
+        deviceTypes: propDeviceTypes,
+        loading: propLoading,
+        onRefresh
+    } = props;
+
     const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);

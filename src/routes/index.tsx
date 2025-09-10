@@ -34,6 +34,7 @@ import StaffPage from "../pages/Admin/Staff";
 import StaffDetail from "../pages/Admin/Staff/StaffDetail";
 import StaffRegister from "../pages/Admin/Staff/StaffRegister";
 import DeviceManagement from "../pages/Admin/Device";
+import CategoryManagement from "../pages/Admin/Category";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -82,10 +83,24 @@ const router = createBrowserRouter([
       </MainLayout>
     ),
     children: [
-      // Trang chủ - ai cũng có thể truy cập
+      // Trang chủ - chỉ cho phép customer hoặc người chưa đăng nhập
       {
         index: true,
-        element: <HomePage />,
+        element: (
+          <PermissionRoute
+            authenticationRequired="any"
+            allowedRoles={["customer"]}
+            roleRedirectPath={(auth) => {
+              // Chuyển hướng dựa trên vai trò
+              if (auth?.user?.role === "admin") return "/admin/dashboard";
+              if (auth?.user?.role === "staff") return "/staff/dashboard";
+              if (auth?.user?.role === "driver") return "/driver/dashboard";
+              return "/"; // Mặc định cho customer
+            }}
+          >
+            <HomePage />
+          </PermissionRoute>
+        ),
       },
 
       // Các trang yêu cầu đăng nhập và vai trò customer
@@ -310,6 +325,10 @@ const router = createBrowserRouter([
         element: <DeviceManagement />,
       },
       {
+        path: "categories",
+        element: <CategoryManagement />,
+      },
+      {
         path: "settings",
         element: <div>Cài đặt hệ thống</div>, // Thay thế bằng component thực tế
       },
@@ -359,18 +378,60 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Các trang bản đồ - có thể truy cập tự do
+  // Các trang bản đồ - chỉ cho phép customer hoặc người chưa đăng nhập
   {
     path: "/maps/vietmap",
-    element: <VietMapPage />,
+    element: (
+      <PermissionRoute
+        authenticationRequired="any"
+        allowedRoles={["customer"]}
+        roleRedirectPath={(auth) => {
+          // Chuyển hướng dựa trên vai trò
+          if (auth?.user?.role === "admin") return "/admin/dashboard";
+          if (auth?.user?.role === "staff") return "/staff/dashboard";
+          if (auth?.user?.role === "driver") return "/driver/dashboard";
+          return "/"; // Mặc định cho customer
+        }}
+      >
+        <VietMapPage />
+      </PermissionRoute>
+    ),
   },
   {
     path: "/maps/openmap",
-    element: <OpenMapPage />,
+    element: (
+      <PermissionRoute
+        authenticationRequired="any"
+        allowedRoles={["customer"]}
+        roleRedirectPath={(auth) => {
+          // Chuyển hướng dựa trên vai trò
+          if (auth?.user?.role === "admin") return "/admin/dashboard";
+          if (auth?.user?.role === "staff") return "/staff/dashboard";
+          if (auth?.user?.role === "driver") return "/driver/dashboard";
+          return "/"; // Mặc định cho customer
+        }}
+      >
+        <OpenMapPage />
+      </PermissionRoute>
+    ),
   },
   {
     path: "/maps/trackasia",
-    element: <TrackAsiaMapPage />,
+    element: (
+      <PermissionRoute
+        authenticationRequired="any"
+        allowedRoles={["customer"]}
+        roleRedirectPath={(auth) => {
+          // Chuyển hướng dựa trên vai trò
+          if (auth?.user?.role === "admin") return "/admin/dashboard";
+          if (auth?.user?.role === "staff") return "/staff/dashboard";
+          if (auth?.user?.role === "driver") return "/driver/dashboard";
+          return "/"; // Mặc định cho customer
+        }}
+      >
+        <TrackAsiaMapPage />
+      </PermissionRoute>
+    ),
   },
 ]);
 

@@ -15,7 +15,8 @@ import {
     CustomerServiceOutlined,
     ToolOutlined,
     ShopOutlined,
-    MobileOutlined
+    MobileOutlined,
+    TagsOutlined
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -61,8 +62,13 @@ const AdminSidebar: React.FC = () => {
                 },
                 {
                     key: '/admin/devices',
-                    icon: <VideoCameraOutlined />,
+                    icon: <MobileOutlined />,
                     label: <Link to="/admin/devices">Thiết bị</Link>,
+                },
+                {
+                    key: '/admin/categories',
+                    icon: <TagsOutlined />,
+                    label: <Link to="/admin/categories">Loại hàng</Link>,
                 },
                 {
                     key: '/admin/reports',

@@ -21,13 +21,14 @@ interface DeviceListProps {
     onRefresh?: () => void;
 }
 
-const DeviceList = forwardRef<DeviceListRef, DeviceListProps>(({
-    messageApi,
-    devices: propDevices,
-    deviceTypes: propDeviceTypes,
-    loading: propLoading,
-    onRefresh
-}, ref) => {
+const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
+    const {
+        messageApi,
+        devices: propDevices,
+        deviceTypes: propDeviceTypes,
+        loading: propLoading,
+        onRefresh
+    } = props;
     const [devices, setDevices] = useState<Device[]>([]);
     const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]); // This would need a proper vehicle service
