@@ -28,6 +28,11 @@ import { MainLayout, AdminLayout } from "../components/layout";
 import DriverPage from "../pages/Admin/Driver";
 import DriverDetail from "../pages/Admin/Driver/DriverDetail";
 import RegisterDriver from "../pages/Admin/Driver/RegisterDriver";
+import CustomerPage from "../pages/Admin/Customer";
+import CustomerDetail from "../pages/Admin/Customer/CustomerDetail";
+import StaffPage from "../pages/Admin/Staff";
+import StaffDetail from "../pages/Admin/Staff/StaffDetail";
+import StaffRegister from "../pages/Admin/Staff/StaffRegister";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -280,8 +285,24 @@ const router = createBrowserRouter([
         element: <DriverDetail />,
       },
       {
-        path: "users",
-        element: <div>Quản lý người dùng</div>, // Thay thế bằng component thực tế
+        path: "customers",
+        element: <CustomerPage />,
+      },
+      {
+        path: "customers/:id",
+        element: <CustomerDetail />,
+      },
+      {
+        path: "staff",
+        element: <StaffPage />,
+      },
+      {
+        path: "staff/register",
+        element: <StaffRegister />,
+      },
+      {
+        path: "staff/:id",
+        element: <StaffDetail />,
       },
       {
         path: "settings",
