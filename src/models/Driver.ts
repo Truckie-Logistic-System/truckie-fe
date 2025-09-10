@@ -7,13 +7,17 @@ export interface DriverRoleResponse {
     isActive: boolean;
 }
 
-export interface DriverUserResponse extends UserResponse {
+export interface DriverUserResponse {
+    id: string;
+    username: string;
     fullName: string;
+    email: string;
     phoneNumber: string;
     gender: boolean;
     dateOfBirth: string;
     imageUrl: string;
     status: string;
+    role: DriverRoleResponse;
 }
 
 export interface DriverModel {

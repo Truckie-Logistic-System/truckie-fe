@@ -3,13 +3,36 @@ import { Card, Table } from 'antd';
 import { FileTextOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import OrderStatusDisplay from './OrderStatusDisplay';
-import type { OrderDetail } from '../../../models';
+import type { OrderDetail, Order } from '../../../models';
 
 interface OrderDetailsTableProps {
-    orderDetails: OrderDetail[];
+    orderDetails?: OrderDetail[];
+    order?: Order;
 }
 
-const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({ orderDetails }) => {
+const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({ orderDetails, order }) => {
+    // Nếu có order, lấy orderDetails từ order
+    const detailsData = order?.orderDetails || orderDetails || [];
+
+    // Nếu không có dữ liệu, hiển thị thông báo
+    if (detailsData.length === 0) {
+        return (
+            <Card
+                title={
+                    <div className="flex items-center">
+                        <FileTextOutlined className="mr-2 text-blue-500" />
+                        <span>Chi tiết vận chuyển</span>
+                    </div>
+                }
+                className="shadow-md rounded-xl mb-6"
+            >
+                <div className="p-4 text-center text-gray-500">
+                    Không có thông tin chi tiết vận chuyển
+                </div>
+            </Card>
+        );
+    }
+
     // Định nghĩa các cột cho bảng chi tiết đơn hàng
     const columns = [
         {
@@ -81,7 +104,7 @@ const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({ orderDetails }) =
         >
             <Table
                 columns={columns}
-                dataSource={orderDetails}
+                dataSource={detailsData}
                 rowKey="trackingCode"
                 pagination={false}
                 className="border rounded-lg overflow-hidden"

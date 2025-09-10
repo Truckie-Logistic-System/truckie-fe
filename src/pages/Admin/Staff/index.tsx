@@ -1,74 +1,73 @@
 import React, { useState } from 'react';
 import { App } from 'antd';
-import { UserAddOutlined, IdcardOutlined } from '@ant-design/icons';
+import { TeamOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import driverService from '../../../services/driver';
-import type { DriverModel } from '../../../services/driver';
+import userService from '../../../services/user';
+import type { UserModel } from '../../../services/user/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import DriverTable from './components/DriverTable';
+import StaffTable from './components/StaffTable';
 import StatusChangeModal from './components/StatusChangeModal';
 import UserManagementLayout from '../../../components/features/admin/UserManagementLayout';
 
-const DriverPage: React.FC = () => {
+const StaffPage: React.FC = () => {
     const navigate = useNavigate();
     const { message } = App.useApp();
     const queryClient = useQueryClient();
     const [isStatusModalVisible, setIsStatusModalVisible] = useState(false);
-    const [selectedDriver, setSelectedDriver] = useState<DriverModel | null>(null);
+    const [selectedStaff, setSelectedStaff] = useState<UserModel | null>(null);
     const [newStatus, setNewStatus] = useState<string>('');
     const [searchText, setSearchText] = useState('');
 
-    const { data: driversData, isLoading, error, refetch, isFetching } = useQuery({
-        queryKey: ['drivers'],
-        queryFn: driverService.getAllDrivers
+    const { data: staffData, isLoading, error, refetch, isFetching } = useQuery({
+        queryKey: ['staff'],
+        queryFn: () => userService.searchUsersByRole('STAFF')
     });
 
     const updateStatusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string; status: string }) => driverService.updateDriverStatus(id, status),
+        mutationFn: ({ id, status }: { id: string; status: string }) => userService.updateUserStatus(id, status),
         onSuccess: () => {
-            message.success('Cập nhật trạng thái tài xế thành công');
-            queryClient.invalidateQueries({ queryKey: ['drivers'] });
+            message.success('Cập nhật trạng thái nhân viên thành công');
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
             setIsStatusModalVisible(false);
         },
         onError: () => {
-            message.error('Cập nhật trạng thái tài xế thất bại');
+            message.error('Cập nhật trạng thái nhân viên thất bại');
         }
     });
 
-    const handleViewDetails = (driverId: string) => {
-        navigate(`/admin/drivers/${driverId}`);
+    const handleViewDetails = (staffId: string) => {
+        navigate(`/admin/staff/${staffId}`);
     };
 
-    const handleStatusChange = (driver: DriverModel) => {
-        setSelectedDriver(driver);
-        setNewStatus(driver.status);
+    const handleStatusChange = (staff: UserModel) => {
+        setSelectedStaff(staff);
+        setNewStatus(staff.status);
         setIsStatusModalVisible(true);
     };
 
     const handleStatusUpdate = () => {
-        if (selectedDriver && newStatus) {
-            updateStatusMutation.mutate({ id: selectedDriver.id, status: newStatus });
+        if (selectedStaff && newStatus) {
+            updateStatusMutation.mutate({ id: selectedStaff.id, status: newStatus });
         }
     };
 
-    const handleAddDriver = () => {
-        navigate('/admin/drivers/register');
+    const handleAddStaff = () => {
+        navigate('/admin/staff/register');
     };
 
-    const filteredDrivers = driversData?.filter(driver => {
+    const filteredStaff = staffData?.filter(staff => {
         if (!searchText) return true;
         const searchLower = searchText.toLowerCase();
         return (
-            driver.userResponse.fullName.toLowerCase().includes(searchLower) ||
-            (driver.userResponse.email && driver.userResponse.email.toLowerCase().includes(searchLower)) ||
-            driver.userResponse.phoneNumber.toLowerCase().includes(searchLower) ||
-            driver.identityNumber.toLowerCase().includes(searchLower) ||
-            driver.driverLicenseNumber.toLowerCase().includes(searchLower)
+            staff.fullName.toLowerCase().includes(searchLower) ||
+            staff.email.toLowerCase().includes(searchLower) ||
+            staff.phoneNumber.toLowerCase().includes(searchLower) ||
+            staff.username.toLowerCase().includes(searchLower)
         );
     });
 
-    const activeCount = driversData?.filter(driver => driver.status.toLowerCase() === 'active').length || 0;
-    const bannedCount = driversData?.filter(driver => driver.status.toLowerCase() === 'banned').length || 0;
+    const activeCount = staffData?.filter(staff => staff.status.toLowerCase() === 'active').length || 0;
+    const bannedCount = staffData?.filter(staff => staff.status.toLowerCase() === 'banned').length || 0;
 
     if (error) {
         return (
@@ -86,24 +85,24 @@ const DriverPage: React.FC = () => {
 
     return (
         <UserManagementLayout
-            title="Quản lý tài xế"
-            icon={<IdcardOutlined />}
-            description="Quản lý thông tin và trạng thái của các tài xế trong hệ thống"
-            addButtonText="Thêm tài xế mới"
+            title="Quản lý nhân viên"
+            icon={<TeamOutlined />}
+            description="Quản lý thông tin và trạng thái của các nhân viên trong hệ thống"
+            addButtonText="Thêm nhân viên mới"
             addButtonIcon={<UserAddOutlined />}
-            onAddClick={handleAddDriver}
+            onAddClick={handleAddStaff}
             searchText={searchText}
             onSearchChange={setSearchText}
             onRefresh={refetch}
             isLoading={isLoading}
             isFetching={isFetching}
-            totalCount={driversData?.length || 0}
+            totalCount={staffData?.length || 0}
             activeCount={activeCount}
             bannedCount={bannedCount}
-            tableTitle="Danh sách tài xế"
+            tableTitle="Danh sách nhân viên"
             tableComponent={
-                <DriverTable
-                    data={filteredDrivers || []}
+                <StaffTable
+                    data={filteredStaff || []}
                     loading={isLoading}
                     onViewDetails={handleViewDetails}
                     onStatusChange={handleStatusChange}
@@ -113,7 +112,7 @@ const DriverPage: React.FC = () => {
                 <StatusChangeModal
                     visible={isStatusModalVisible}
                     loading={updateStatusMutation.isPending}
-                    driver={selectedDriver}
+                    staff={selectedStaff}
                     status={newStatus}
                     onStatusChange={setNewStatus}
                     onOk={handleStatusUpdate}
@@ -124,4 +123,4 @@ const DriverPage: React.FC = () => {
     );
 };
 
-export default DriverPage; 
+export default StaffPage; 
