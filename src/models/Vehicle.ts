@@ -21,9 +21,31 @@ export interface VehicleAssignment {
     id: string;
     vehicleId: string;
     driver_id_1: string;
-    driver_id_2: string;
-    description: string;
+    driver_id_2?: string;
+    description?: string;
     status: string;
+}
+
+export interface CreateVehicleAssignmentRequest {
+    vehicleId: string;
+    driverId_1: string;
+    driverId_2?: string;
+    description?: string;
+    status: string;
+}
+
+export interface UpdateVehicleAssignmentRequest {
+    vehicleId?: string;
+    driverId_1?: string;
+    driverId_2?: string;
+    description?: string;
+    status?: string;
+}
+
+export enum VehicleAssignmentStatus {
+    ACTIVE = "ACTIVE",
+    INACTIVE = "INACTIVE",
+    PENDING = "PENDING"
 }
 
 // VehicleMaintenance đã được di chuyển sang file VehicleMaintenance.ts

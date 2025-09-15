@@ -41,6 +41,10 @@ import VehicleMaintenancePage from "../pages/Admin/VehicleMaintenance";
 import VehicleMaintenanceDetail from "../pages/Admin/VehicleMaintenance/VehicleMaintenanceDetail";
 import CreateMaintenance from "../pages/Admin/VehicleMaintenance/CreateMaintenance";
 import EditMaintenance from "../pages/Admin/VehicleMaintenance/EditMaintenance";
+import AdminVehicleAssignmentPage from "../pages/Admin/VehicleAssignment";
+import AdminVehicleAssignmentDetailPage from "../pages/Admin/VehicleAssignment/VehicleAssignmentDetail";
+import StaffVehicleAssignmentPage from "../pages/Staff/VehicleAssignment";
+import StaffVehicleAssignmentDetailPage from "../pages/Staff/VehicleAssignment/VehicleAssignmentDetail";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -236,6 +240,14 @@ const router = createBrowserRouter([
         element: <IssueDetail />,
       },
       {
+        path: "vehicle-assignments",
+        element: <StaffVehicleAssignmentPage />,
+      },
+      {
+        path: "vehicle-assignments/:id",
+        element: <StaffVehicleAssignmentDetailPage />,
+      },
+      {
         path: "deliveries",
         element: <div>Quản lý vận chuyển</div>, // Thay thế bằng component thực tế
       },
@@ -337,6 +349,14 @@ const router = createBrowserRouter([
       {
         path: "vehicles/:id",
         element: <VehicleDetailPage />,
+      },
+      {
+        path: "vehicle-assignments",
+        element: <AdminVehicleAssignmentPage />,
+      },
+      {
+        path: "vehicle-assignments/:id",
+        element: <AdminVehicleAssignmentDetailPage />,
       },
       {
         path: "vehicle-maintenances",

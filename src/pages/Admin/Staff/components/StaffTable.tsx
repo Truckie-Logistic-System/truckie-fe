@@ -1,7 +1,9 @@
 import React from 'react';
-import { Table, Button, Space, Avatar, Tooltip, Skeleton, Tag } from 'antd';
-import { EyeOutlined, SwapOutlined, TeamOutlined, PhoneOutlined, MailOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Avatar, Tooltip, Skeleton } from 'antd';
+import { EyeOutlined, SwapOutlined, TeamOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
 import type { UserModel } from '../../../../services/user/types';
+import { UserStatusTag } from '../../../../components/common';
+import { UserStatusEnum } from '../../../../constants/enums';
 
 interface StaffTableProps {
     data: UserModel[];
@@ -16,22 +18,6 @@ const StaffTable: React.FC<StaffTableProps> = ({
     onViewDetails,
     onStatusChange
 }) => {
-    const getStatusColor = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'active': return 'green';
-            case 'banned': return 'red';
-            default: return 'default';
-        }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'active': return 'Hoạt động';
-            case 'banned': return 'Bị cấm';
-            default: return status;
-        }
-    };
-
     const columns = [
         {
             title: 'Nhân viên',
@@ -76,21 +62,7 @@ const StaffTable: React.FC<StaffTableProps> = ({
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            render: (status: string) => {
-                const color = getStatusColor(status);
-                const text = getStatusText(status);
-                const isActive = status.toLowerCase() === 'active';
-
-                return (
-                    <Tag
-                        color={color}
-                        className="px-3 py-1 text-sm"
-                        icon={isActive ? <CheckCircleOutlined /> : <StopOutlined />}
-                    >
-                        {text}
-                    </Tag>
-                );
-            },
+            render: (status: string) => <UserStatusTag status={status as UserStatusEnum} />,
         },
         {
             title: 'Thao tác',

@@ -12,7 +12,8 @@ import {
     Select,
     Spin,
     Result,
-    Skeleton
+    Skeleton,
+    Badge
 } from 'antd';
 import {
     SearchOutlined,
@@ -20,7 +21,11 @@ import {
     EditOutlined,
     DeleteOutlined,
     EyeOutlined,
-    ReloadOutlined
+    ReloadOutlined,
+    WarningOutlined,
+    DollarOutlined,
+    CheckCircleOutlined,
+    ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -34,7 +39,7 @@ import { useAuth } from '@/context';
 import type { GetPenaltiesResponse } from '@/services/penalty/types';
 import { DateSelectGroup } from '@/components/common';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 const PenaltyHistory: React.FC = () => {
@@ -42,6 +47,7 @@ const PenaltyHistory: React.FC = () => {
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
     const [currentPenalty, setCurrentPenalty] = useState<Penalty | null>(null);
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
+    const [isFetching, setIsFetching] = useState<boolean>(false);
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
     const queryClient = useQueryClient();
@@ -55,7 +61,10 @@ const PenaltyHistory: React.FC = () => {
         refetch
     } = useQuery<GetPenaltiesResponse, Error>({
         queryKey: ['penalties'],
-        queryFn: penaltyService.getPenalties,
+        queryFn: () => {
+            setIsFetching(true);
+            return penaltyService.getPenalties().finally(() => setIsFetching(false));
+        },
         enabled: isAuthenticated,
         staleTime: 5 * 60 * 1000, // 5 phút
     });
@@ -151,6 +160,100 @@ const PenaltyHistory: React.FC = () => {
         );
     }, [penaltiesResponse?.data, searchText]);
 
+    // Thống kê vi phạm theo trạng thái
+    const getPenaltyStats = () => {
+        if (!penaltiesResponse?.data) return {
+            pendingCount: 0,
+            paidCount: 0,
+            disputedCount: 0,
+            totalAmount: 0
+        };
+
+        const penalties = penaltiesResponse.data;
+
+        const pendingCount = penalties.filter(p => p.status === PenaltyStatus.PENDING).length;
+        const paidCount = penalties.filter(p => p.status === PenaltyStatus.PAID).length;
+        const disputedCount = penalties.filter(p => p.status === PenaltyStatus.DISPUTED).length;
+
+        const totalAmount = penalties.reduce((sum, penalty) => sum + penalty.penaltyAmount, 0);
+
+        return { pendingCount, paidCount, disputedCount, totalAmount };
+    };
+
+    const stats = getPenaltyStats();
+
+    // Render stats card theo layout của Admin
+    const renderStatCards = () => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Chờ thanh toán</Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-orange-800">{stats.pendingCount}</Title>
+                        )}
+                    </div>
+                    <Badge count={isLoading ? 0 : stats.pendingCount} color="orange" showZero>
+                        <div className="bg-orange-200 p-2 rounded-full">
+                            <ExclamationCircleOutlined className="text-3xl text-orange-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Đang khiếu nại</Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-blue-800">{stats.disputedCount}</Title>
+                        )}
+                    </div>
+                    <Badge count={isLoading ? 0 : stats.disputedCount} color="blue" showZero>
+                        <div className="bg-blue-200 p-2 rounded-full">
+                            <WarningOutlined className="text-3xl text-blue-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Đã thanh toán</Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-green-700">{stats.paidCount}</Title>
+                        )}
+                    </div>
+                    <Badge count={isLoading ? 0 : stats.paidCount} color="green" showZero>
+                        <div className="bg-green-200 p-2 rounded-full">
+                            <CheckCircleOutlined className="text-3xl text-green-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Tổng tiền phạt</Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 120 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-purple-700">{stats.totalAmount.toLocaleString()} VND</Title>
+                        )}
+                    </div>
+                    <div className="bg-purple-200 p-2 rounded-full">
+                        <DollarOutlined className="text-3xl text-purple-600" />
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+
     const columns = [
         {
             title: 'Loại vi phạm',
@@ -204,12 +307,17 @@ const PenaltyHistory: React.FC = () => {
             render: (_: any, record: Penalty) => (
                 <Space size="small">
                     <Button
-                        type="text"
+                        type="primary"
+                        size="small"
                         icon={<EyeOutlined />}
                         onClick={() => handleViewPenalty(record)}
-                    />
+                        className="bg-blue-500 hover:bg-blue-600"
+                    >
+                        Chi tiết
+                    </Button>
                     <Button
-                        type="text"
+                        type="default"
+                        size="small"
                         icon={<EditOutlined />}
                         onClick={() => handleEditPenalty(record)}
                     />
@@ -220,7 +328,8 @@ const PenaltyHistory: React.FC = () => {
                         cancelText="Không"
                     >
                         <Button
-                            type="text"
+                            type="default"
+                            size="small"
                             danger
                             icon={<DeleteOutlined />}
                         />
@@ -231,7 +340,7 @@ const PenaltyHistory: React.FC = () => {
     ];
 
     // Render loading state
-    if (isLoading) {
+    if (isLoading && !penaltiesResponse) {
         return (
             <div className="p-6 flex justify-center items-center h-64">
                 <Spin size="large" tip="Đang tải dữ liệu..." />
@@ -258,51 +367,80 @@ const PenaltyHistory: React.FC = () => {
     }
 
     return (
-        <div className="p-6">
-            <Card>
-                <div className="flex justify-between items-center mb-4">
-                    <Title level={3}>Lịch sử vi phạm</Title>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={handleAddPenalty}
-                    >
-                        Thêm vi phạm mới
-                    </Button>
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <Title level={2} className="flex items-center m-0 text-blue-800">
+                            <WarningOutlined className="mr-3 text-blue-600" /> Lịch sử vi phạm
+                        </Title>
+                        <Text type="secondary">Quản lý thông tin các vi phạm và khoản phạt trong hệ thống</Text>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={handleAddPenalty}
+                            className="bg-blue-600 hover:bg-blue-700"
+                            size="large"
+                        >
+                            Thêm vi phạm mới
+                        </Button>
+                        <Button
+                            type="default"
+                            icon={<ReloadOutlined spin={isFetching} />}
+                            onClick={() => refetch()}
+                            size="large"
+                            loading={isFetching}
+                        >
+                            Làm mới
+                        </Button>
+                    </div>
                 </div>
 
-                <div className="mb-4">
-                    <Input
-                        placeholder="Tìm kiếm vi phạm..."
-                        prefix={<SearchOutlined />}
-                        onChange={e => debouncedSearch(e.target.value)}
-                        className="w-full md:w-80"
+                {renderStatCards()}
+
+                <Card className="shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                        <Title level={4} className="m-0 mb-4 md:mb-0">Danh sách vi phạm</Title>
+                        <div className="flex w-full md:w-auto">
+                            <Input
+                                placeholder="Tìm kiếm vi phạm..."
+                                prefix={<SearchOutlined />}
+                                onChange={e => debouncedSearch(e.target.value)}
+                                className="w-full md:w-80"
+                                disabled={isLoading}
+                            />
+                        </div>
+                    </div>
+
+                    <Table
+                        columns={columns}
+                        dataSource={filteredPenalties}
+                        rowKey="id"
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            pageSizeOptions: ['10', '20', '50'],
+                            showTotal: (total) => `Tổng ${total} khoản phạt`
+                        }}
+                        loading={{
+                            spinning: isLoading,
+                            indicator: <></>
+                        }}
+                        className="penalty-table"
+                        rowClassName="hover:bg-blue-50 transition-colors"
+                        locale={{
+                            emptyText: isLoading ? (
+                                <div className="py-5">
+                                    <Skeleton active paragraph={{ rows: 5 }} />
+                                </div>
+                            ) : 'Không có dữ liệu'
+                        }}
+                        scroll={{ x: 'max-content' }}
                     />
-                </div>
-
-                <Table
-                    columns={columns}
-                    dataSource={filteredPenalties}
-                    rowKey="id"
-                    pagination={{
-                        pageSize: 10,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50'],
-                        showTotal: (total) => `Tổng số ${total} khoản phạt`
-                    }}
-                    loading={{
-                        spinning: isLoading,
-                        indicator: <></>
-                    }}
-                    locale={{
-                        emptyText: isLoading ? (
-                            <div className="py-5">
-                                <Skeleton active paragraph={{ rows: 5 }} />
-                            </div>
-                        ) : 'Không có dữ liệu'
-                    }}
-                />
-            </Card>
+                </Card>
+            </div>
 
             <PenaltyModal
                 visible={isModalVisible}

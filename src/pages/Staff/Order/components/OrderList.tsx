@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Button, Input, Select, Card, Skeleton, message, Modal, Row, Col, Statistic } from 'antd';
+import { Table, Button, Input, Card, Skeleton, message, Row, Col, Typography, Badge } from 'antd';
 import {
     SearchOutlined,
     ReloadOutlined,
@@ -14,23 +14,26 @@ import {
     CarOutlined,
     DollarOutlined,
     RollbackOutlined,
-    ToolOutlined
+    ShoppingCartOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import orderService from '@/services/order/orderService';
-import type { Order, OrderStatus } from '@/models/Order';
+import type { Order } from '@/models/Order';
+import { OrderStatusEnum } from '@/constants/enums';
 import dayjs from 'dayjs';
-import { DateSelectGroup } from '@/components/common';
+import { DateSelectGroup, OrderStatusTag } from '@/components/common';
 import { useMediaQuery } from 'react-responsive';
 import type { ColumnsType } from 'antd/es/table';
+import { OrderStatusFilterGroup } from '@/components/features/order';
 
-const { Option } = Select;
+const { Title, Text } = Typography;
 
 const OrderList: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [searchText, setSearchText] = useState<string>('');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('');
+    const [isFetching, setIsFetching] = useState<boolean>(false);
     const navigate = useNavigate();
 
     // Responsive design
@@ -44,6 +47,7 @@ const OrderList: React.FC = () => {
     // Hàm lấy danh sách đơn hàng từ API
     const fetchOrders = async () => {
         setLoading(true);
+        setIsFetching(true);
         try {
             const data = await orderService.getAllOrders();
             setOrders(data);
@@ -52,6 +56,7 @@ const OrderList: React.FC = () => {
             console.error('Error fetching orders:', error);
         } finally {
             setLoading(false);
+            setIsFetching(false);
         }
     };
 
@@ -68,7 +73,7 @@ const OrderList: React.FC = () => {
             order.receiverPhone.toLowerCase().includes(searchText.toLowerCase())
         );
 
-        const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+        const matchesStatus = !statusFilter || order.status === statusFilter;
 
         return matchesSearch && matchesStatus;
     });
@@ -76,163 +81,35 @@ const OrderList: React.FC = () => {
     // Thống kê đơn hàng theo trạng thái
     const getOrderStats = () => {
         const pendingOrders = orders.filter(order =>
-            ['PENDING', 'PROCESSING', 'CONTRACT_DRAFT'].includes(order.status)).length;
+            [OrderStatusEnum.PENDING, OrderStatusEnum.PROCESSING, OrderStatusEnum.CONTRACT_DRAFT].includes(order.status as OrderStatusEnum)).length;
 
         const inProgressOrders = orders.filter(order =>
-            ['ON_PLANNING', 'ASSIGNED_TO_DRIVER', 'DRIVER_CONFIRM', 'PICKED_UP', 'ON_DELIVERED', 'ONGOING_DELIVERED', 'IN_DELIVERED'].includes(order.status)).length;
+            [OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.DRIVER_CONFIRM,
+            OrderStatusEnum.PICKED_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED,
+            OrderStatusEnum.IN_DELIVERED].includes(order.status as OrderStatusEnum)).length;
 
         const completedOrders = orders.filter(order =>
-            ['DELIVERED', 'SUCCESSFUL'].includes(order.status)).length;
+            [OrderStatusEnum.DELIVERED, OrderStatusEnum.SUCCESSFUL].includes(order.status as OrderStatusEnum)).length;
 
         const issueOrders = orders.filter(order =>
-            ['CANCELLED', 'REJECT_ORDER', 'IN_TROUBLES', 'RETURNING', 'RETURNED'].includes(order.status)).length;
+            [OrderStatusEnum.CANCELLED, OrderStatusEnum.REJECT_ORDER, OrderStatusEnum.IN_TROUBLES,
+            OrderStatusEnum.RETURNING, OrderStatusEnum.RETURNED].includes(order.status as OrderStatusEnum)).length;
 
         return { pendingOrders, inProgressOrders, completedOrders, issueOrders };
     };
 
     const stats = getOrderStats();
 
-    // Render trạng thái đơn hàng
-    const renderOrderStatus = (status: OrderStatus) => {
-        let color = 'default';
-        let label: string = status;
-        let icon = null;
+    // Tính toán số lượng đơn hàng theo trạng thái cho filter
+    const getStatusCounts = () => {
+        const counts: Record<OrderStatusEnum, number> = {} as Record<OrderStatusEnum, number>;
 
-        switch (status) {
-            // Trạng thái ban đầu
-            case 'PENDING':
-                color = 'orange';
-                label = 'Chờ xử lý';
-                icon = <ClockCircleOutlined />;
-                break;
-            case 'PROCESSING':
-                color = 'blue';
-                label = 'Đang xử lý';
-                icon = <ClockCircleOutlined />;
-                break;
-            case 'CANCELLED':
-                color = 'red';
-                label = 'Đã hủy';
-                icon = <ExclamationCircleOutlined />;
-                break;
+        orders.forEach(order => {
+            const status = order.status as OrderStatusEnum;
+            counts[status] = (counts[status] || 0) + 1;
+        });
 
-            // Trạng thái hợp đồng
-            case 'CONTRACT_DRAFT':
-                color = 'cyan';
-                label = 'Bản nháp hợp đồng';
-                icon = <FileOutlined />;
-                break;
-            case 'CONTRACT_DENIED':
-                color = 'red';
-                label = 'Hợp đồng bị từ chối';
-                icon = <ExclamationCircleOutlined />;
-                break;
-            case 'CONTRACT_SIGNED':
-                color = 'green';
-                label = 'Hợp đồng đã ký';
-                icon = <CheckCircleOutlined />;
-                break;
-
-            // Trạng thái lập kế hoạch và phân công
-            case 'ON_PLANNING':
-                color = 'purple';
-                label = 'Đang lập kế hoạch';
-                icon = <ClockCircleOutlined />;
-                break;
-            case 'ASSIGNED_TO_DRIVER':
-                color = 'geekblue';
-                label = 'Đã phân công cho tài xế';
-                icon = <UserOutlined />;
-                break;
-            case 'DRIVER_CONFIRM':
-                color = 'blue';
-                label = 'Tài xế đã xác nhận';
-                icon = <CheckCircleOutlined />;
-                break;
-
-            // Trạng thái vận chuyển
-            case 'PICKED_UP':
-                color = 'cyan';
-                label = 'Đã lấy hàng';
-                icon = <InboxOutlined />;
-                break;
-            case 'SEALED_COMPLETED':
-                color = 'cyan';
-                label = 'Đã niêm phong';
-                icon = <LockOutlined />;
-                break;
-            case 'ON_DELIVERED':
-                color = 'blue';
-                label = 'Đang vận chuyển';
-                icon = <CarOutlined />;
-                break;
-            case 'ONGOING_DELIVERED':
-                color = 'blue';
-                label = 'Đang giao hàng';
-                icon = <CarOutlined />;
-                break;
-            case 'IN_DELIVERED':
-                color = 'blue';
-                label = 'Đang giao hàng';
-                icon = <CarOutlined />;
-                break;
-
-            // Trạng thái vấn đề
-            case 'IN_TROUBLES':
-                color = 'red';
-                label = 'Gặp sự cố';
-                icon = <ExclamationCircleOutlined />;
-                break;
-            case 'RESOLVED':
-                color = 'green';
-                label = 'Đã giải quyết';
-                icon = <CheckCircleOutlined />;
-                break;
-            case 'COMPENSATION':
-                color = 'orange';
-                label = 'Đang bồi thường';
-                icon = <DollarOutlined />;
-                break;
-
-            // Trạng thái hoàn thành
-            case 'DELIVERED':
-                color = 'green';
-                label = 'Đã giao hàng';
-                icon = <CheckCircleOutlined />;
-                break;
-            case 'SUCCESSFUL':
-                color = 'green';
-                label = 'Hoàn thành';
-                icon = <CheckCircleOutlined />;
-                break;
-
-            // Trạng thái từ chối và hoàn trả
-            case 'REJECT_ORDER':
-                color = 'red';
-                label = 'Đơn hàng bị từ chối';
-                icon = <ExclamationCircleOutlined />;
-                break;
-            case 'RETURNING':
-                color = 'orange';
-                label = 'Đang hoàn trả';
-                icon = <RollbackOutlined />;
-                break;
-            case 'RETURNED':
-                color = 'volcano';
-                label = 'Đã hoàn trả';
-                icon = <RollbackOutlined />;
-                break;
-
-            default:
-                color = 'default';
-                label = status;
-        }
-
-        return (
-            <Tag color={color} icon={icon} className="py-1 px-2 text-sm font-medium">
-                {label}
-            </Tag>
-        );
+        return counts;
     };
 
     // Định nghĩa các cột cho bảng
@@ -292,7 +169,7 @@ const OrderList: React.FC = () => {
                 title: 'Trạng thái',
                 dataIndex: 'status',
                 key: 'status',
-                render: (status: OrderStatus) => renderOrderStatus(status),
+                render: (status: string) => <OrderStatusTag status={status as OrderStatusEnum} />,
                 width: 150,
             },
             {
@@ -337,107 +214,128 @@ const OrderList: React.FC = () => {
         return baseColumns;
     };
 
-    return (
-        <div className="p-6">
-            <div className="mb-6">
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12} md={6}>
-                        <Card className="bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-l-orange-500 shadow-md hover:shadow-lg transition-shadow">
-                            <Statistic
-                                title={<span className="text-orange-700 font-medium">Đơn chờ xử lý</span>}
-                                value={stats.pendingOrders}
-                                valueStyle={{ color: '#d97706' }}
-                                prefix={<ClockCircleOutlined />}
-                            />
-                        </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-l-blue-500 shadow-md hover:shadow-lg transition-shadow">
-                            <Statistic
-                                title={<span className="text-blue-700 font-medium">Đang vận chuyển</span>}
-                                value={stats.inProgressOrders}
-                                valueStyle={{ color: '#2563eb' }}
-                                prefix={<CarOutlined />}
-                            />
-                        </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-500 shadow-md hover:shadow-lg transition-shadow">
-                            <Statistic
-                                title={<span className="text-green-700 font-medium">Hoàn thành</span>}
-                                value={stats.completedOrders}
-                                valueStyle={{ color: '#059669' }}
-                                prefix={<CheckCircleOutlined />}
-                            />
-                        </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        <Card className="bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-l-red-500 shadow-md hover:shadow-lg transition-shadow">
-                            <Statistic
-                                title={<span className="text-red-700 font-medium">Có vấn đề</span>}
-                                value={stats.issueOrders}
-                                valueStyle={{ color: '#dc2626' }}
-                                prefix={<ExclamationCircleOutlined />}
-                            />
-                        </Card>
-                    </Col>
-                </Row>
-            </div>
-
-            <Card
-                title={
-                    <div className="flex items-center">
-                        <ToolOutlined className="mr-2 text-teal-500" />
-                        <span>Danh sách đơn hàng</span>
+    // Render stats card theo layout của Admin
+    const renderStatCards = () => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Đơn chờ xử lý</Text>
+                        {loading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-orange-800">{stats.pendingOrders}</Title>
+                        )}
                     </div>
-                }
-                className="shadow-md overflow-hidden border-0 rounded-lg"
-                headStyle={{ borderBottom: '2px solid #f0f0f0', padding: '16px 24px' }}
-                bodyStyle={{ padding: '24px' }}
-            >
-                <div className="mb-6 flex flex-wrap gap-4 items-center">
-                    <Input
-                        placeholder="Tìm kiếm theo mã đơn, tên người nhận, số điện thoại..."
-                        prefix={<SearchOutlined className="text-gray-400" />}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        style={{ width: 300 }}
-                        allowClear
-                        className="rounded-md"
-                    />
+                    <Badge count={loading ? 0 : stats.pendingOrders} color="orange" showZero>
+                        <div className="bg-orange-200 p-2 rounded-full">
+                            <ClockCircleOutlined className="text-3xl text-orange-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Đang vận chuyển</Text>
+                        {loading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-blue-800">{stats.inProgressOrders}</Title>
+                        )}
+                    </div>
+                    <Badge count={loading ? 0 : stats.inProgressOrders} color="blue" showZero>
+                        <div className="bg-blue-200 p-2 rounded-full">
+                            <CarOutlined className="text-3xl text-blue-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Hoàn thành</Text>
+                        {loading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-green-700">{stats.completedOrders}</Title>
+                        )}
+                    </div>
+                    <Badge count={loading ? 0 : stats.completedOrders} color="green" showZero>
+                        <div className="bg-green-200 p-2 rounded-full">
+                            <CheckCircleOutlined className="text-3xl text-green-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Có vấn đề</Text>
+                        {loading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-red-700">{stats.issueOrders}</Title>
+                        )}
+                    </div>
+                    <Badge count={loading ? 0 : stats.issueOrders} color="red" showZero>
+                        <div className="bg-red-200 p-2 rounded-full">
+                            <ExclamationCircleOutlined className="text-3xl text-red-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+        </div>
+    );
 
-                    <Select
-                        defaultValue="all"
-                        style={{ width: 200 }}
-                        onChange={(value) => setStatusFilter(value)}
-                        className="rounded-md"
-                    >
-                        <Option value="all">Tất cả trạng thái</Option>
-                        <Option value="PENDING">Chờ xử lý</Option>
-                        <Option value="PROCESSING">Đang xử lý</Option>
-                        <Option value="CONTRACT_DRAFT">Bản nháp hợp đồng</Option>
-                        <Option value="CONTRACT_SIGNED">Hợp đồng đã ký</Option>
-                        <Option value="ON_PLANNING">Đang lập kế hoạch</Option>
-                        <Option value="ASSIGNED_TO_DRIVER">Đã phân công tài xế</Option>
-                        <Option value="PICKED_UP">Đã lấy hàng</Option>
-                        <Option value="ON_DELIVERED">Đang vận chuyển</Option>
-                        <Option value="DELIVERED">Đã giao hàng</Option>
-                        <Option value="SUCCESSFUL">Hoàn thành</Option>
-                        <Option value="CANCELLED">Đã hủy</Option>
-                        <Option value="RETURNED">Đã hoàn trả</Option>
-                    </Select>
-
+    return (
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <Title level={2} className="flex items-center m-0 text-blue-800">
+                            <ShoppingCartOutlined className="mr-3 text-blue-600" /> Quản lý đơn hàng
+                        </Title>
+                        <Text type="secondary">Quản lý thông tin và trạng thái của các đơn hàng trong hệ thống</Text>
+                    </div>
                     <Button
                         type="primary"
-                        icon={<ReloadOutlined />}
+                        icon={<ReloadOutlined spin={isFetching} />}
                         onClick={fetchOrders}
-                        className="rounded-md bg-teal-500 hover:bg-teal-600 border-teal-500"
+                        className="bg-blue-600 hover:bg-blue-700"
+                        size="large"
+                        loading={isFetching}
                     >
                         Làm mới
                     </Button>
                 </div>
 
-                <div className="overflow-x-auto">
+                {renderStatCards()}
+
+                <Card className="shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                        <Title level={4} className="m-0 mb-4 md:mb-0">Danh sách đơn hàng</Title>
+                        <div className="flex flex-col md:flex-row w-full md:w-auto gap-2">
+                            <Input
+                                placeholder="Tìm kiếm theo mã đơn, tên người nhận, số điện thoại..."
+                                prefix={<SearchOutlined />}
+                                className="w-full md:w-64"
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mb-4 overflow-x-auto">
+                        <OrderStatusFilterGroup
+                            value={statusFilter}
+                            onChange={(value) => setStatusFilter(value as string)}
+                            disabled={loading}
+                            counts={getStatusCounts()}
+                        />
+                    </div>
+
                     <Table
                         columns={getColumns()}
                         dataSource={filteredOrders}
@@ -446,12 +344,14 @@ const OrderList: React.FC = () => {
                             pageSize: 10,
                             showSizeChanger: true,
                             pageSizeOptions: ['10', '20', '50'],
-                            showTotal: (total) => `Tổng số ${total} đơn hàng`
+                            showTotal: (total) => `Tổng ${total} đơn hàng`
                         }}
                         loading={{
                             spinning: loading,
                             indicator: <></>
                         }}
+                        className="order-table"
+                        rowClassName="hover:bg-blue-50 transition-colors"
                         locale={{
                             emptyText: loading ? (
                                 <div className="py-5">
@@ -464,23 +364,9 @@ const OrderList: React.FC = () => {
                             onClick: () => handleViewDetails(record.id),
                             style: { cursor: 'pointer' }
                         })}
-                        rowClassName={(record) => {
-                            // Highlight rows based on status
-                            if (['DELIVERED', 'SUCCESSFUL'].includes(record.status)) {
-                                return 'bg-green-50 hover:bg-green-100';
-                            }
-                            if (['IN_TROUBLES', 'CANCELLED', 'REJECT_ORDER'].includes(record.status)) {
-                                return 'bg-red-50 hover:bg-red-100';
-                            }
-                            if (['PENDING', 'PROCESSING'].includes(record.status)) {
-                                return 'bg-yellow-50 hover:bg-yellow-100';
-                            }
-                            return 'hover:bg-blue-50';
-                        }}
-                        className="border border-gray-200 rounded-lg overflow-hidden"
                     />
-                </div>
-            </Card>
+                </Card>
+            </div>
         </div>
     );
 };

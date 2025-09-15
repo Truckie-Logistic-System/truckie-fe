@@ -18,7 +18,8 @@ import {
     MobileOutlined,
     TagsOutlined,
     CarFilled,
-    IdcardOutlined
+    IdcardOutlined,
+    SwapOutlined
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -63,6 +64,11 @@ const AdminSidebar: React.FC = () => {
                     label: <Link to="/admin/vehicles">Phương tiện</Link>,
                 },
                 {
+                    key: '/admin/vehicle-assignments',
+                    icon: <SwapOutlined />,
+                    label: <Link to="/admin/vehicle-assignments">Phân công xe</Link>,
+                },
+                {
                     key: '/admin/vehicle-maintenances',
                     icon: <ToolOutlined />,
                     label: <Link to="/admin/vehicle-maintenances">Bảo trì phương tiện</Link>,
@@ -103,6 +109,11 @@ const AdminSidebar: React.FC = () => {
                     key: '/staff/issues',
                     icon: <ExclamationCircleOutlined />,
                     label: <Link to="/staff/issues">Vấn đề</Link>,
+                },
+                {
+                    key: '/staff/vehicle-assignments',
+                    icon: <SwapOutlined />,
+                    label: <Link to="/staff/vehicle-assignments">Phân công xe</Link>,
                 },
                 {
                     key: '/staff/penalties',
