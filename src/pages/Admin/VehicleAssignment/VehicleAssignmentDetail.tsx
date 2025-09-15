@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     Row,
     Col,
     Card,
     Avatar,
-    Tag,
-    Skeleton,
     Button,
     Breadcrumb,
     Divider,
@@ -19,9 +17,6 @@ import {
     UserOutlined,
     PhoneOutlined,
     MailOutlined,
-    CheckCircleOutlined,
-    CloseCircleOutlined,
-    ClockCircleOutlined,
     InfoCircleOutlined,
     EditOutlined,
     ArrowLeftOutlined,
@@ -31,9 +26,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vehicleAssignmentService } from "../../../services/vehicle-assignment";
 import vehicleService from "../../../services/vehicle";
 import driverService from "../../../services/driver";
-import { VehicleAssignmentStatus } from "../../../models/Vehicle";
+import { VehicleAssignmentEnum } from "../../../constants/enums";
 import type { VehicleAssignment, UpdateVehicleAssignmentRequest } from "../../../models";
-import VehicleAssignmentForm from "./components/VehicleAssignmentForm";
+import { VehicleAssignmentForm, VehicleAssignmentDetailSkeleton } from "./components";
+import { VehicleAssignmentTag } from "../../../components/common";
 
 const VehicleAssignmentDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -106,45 +102,6 @@ const VehicleAssignmentDetailPage: React.FC = () => {
         },
     });
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case VehicleAssignmentStatus.ACTIVE:
-                return "success";
-            case VehicleAssignmentStatus.INACTIVE:
-                return "error";
-            case VehicleAssignmentStatus.PENDING:
-                return "warning";
-            default:
-                return "default";
-        }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case VehicleAssignmentStatus.ACTIVE:
-                return "Hoạt động";
-            case VehicleAssignmentStatus.INACTIVE:
-                return "Không hoạt động";
-            case VehicleAssignmentStatus.PENDING:
-                return "Chờ xử lý";
-            default:
-                return status;
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case VehicleAssignmentStatus.ACTIVE:
-                return <CheckCircleOutlined />;
-            case VehicleAssignmentStatus.INACTIVE:
-                return <CloseCircleOutlined />;
-            case VehicleAssignmentStatus.PENDING:
-                return <ClockCircleOutlined />;
-            default:
-                return <InfoCircleOutlined />;
-        }
-    };
-
     const handleEdit = () => {
         setIsEditModalOpen(true);
     };
@@ -193,6 +150,10 @@ const VehicleAssignmentDetailPage: React.FC = () => {
         );
     }
 
+    if (isLoading) {
+        return <VehicleAssignmentDetailSkeleton />;
+    }
+
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
             {/* Breadcrumb and actions */}
@@ -234,11 +195,7 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                 </div>
             </div>
 
-            {isLoading ? (
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <Skeleton active paragraph={{ rows: 10 }} />
-                </div>
-            ) : assignment ? (
+            {assignment && (
                 <>
                     <Row gutter={[16, 16]}>
                         <Col span={24}>
@@ -262,13 +219,7 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                                     <Col span={8} className="text-center">
                                         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                             <div className="text-gray-500 text-xs mb-1">Trạng thái</div>
-                                            <Tag
-                                                color={getStatusColor(assignment.status)}
-                                                icon={getStatusIcon(assignment.status)}
-                                                className="px-3 py-1 text-sm"
-                                            >
-                                                {getStatusText(assignment.status)}
-                                            </Tag>
+                                            <VehicleAssignmentTag status={assignment.status as VehicleAssignmentEnum} />
                                         </div>
                                     </Col>
                                     <Col span={8}>
@@ -531,7 +482,7 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                         )}
                     </Row>
                 </>
-            ) : null}
+            )}
 
             {/* Edit Modal */}
             <Modal

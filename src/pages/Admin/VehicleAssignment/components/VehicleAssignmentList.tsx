@@ -1,13 +1,14 @@
 import React, { useState } from "react";
-import { Table, Button, Space, Tag, Popconfirm, App, Tooltip } from "antd";
+import { Table, Button, Space, Popconfirm, App, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import type { VehicleAssignment } from "../../../../models";
-import { VehicleAssignmentStatus } from "../../../../models/Vehicle";
+import { VehicleAssignmentEnum } from "../../../../constants/enums";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import vehicleService from "../../../../services/vehicle";
 import driverService from "../../../../services/driver";
+import { VehicleAssignmentTag } from "../../../../components/common";
 
 interface VehicleAssignmentListProps {
     data: VehicleAssignment[];
@@ -56,32 +57,6 @@ const VehicleAssignmentList: React.FC<VehicleAssignmentListProps> = ({
             return response;
         },
     });
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case VehicleAssignmentStatus.ACTIVE:
-                return "success";
-            case VehicleAssignmentStatus.INACTIVE:
-                return "error";
-            case VehicleAssignmentStatus.PENDING:
-                return "warning";
-            default:
-                return "default";
-        }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case VehicleAssignmentStatus.ACTIVE:
-                return "Hoạt động";
-            case VehicleAssignmentStatus.INACTIVE:
-                return "Không hoạt động";
-            case VehicleAssignmentStatus.PENDING:
-                return "Chờ xử lý";
-            default:
-                return status;
-        }
-    };
 
     // Helper function to truncate text and add tooltip
     const truncateText = (text: string, maxLength: number = 20) => {
@@ -153,7 +128,7 @@ const VehicleAssignmentList: React.FC<VehicleAssignmentListProps> = ({
             key: "status",
             width: 120,
             render: (status) => (
-                <Tag color={getStatusColor(status)}>{getStatusText(status)}</Tag>
+                <VehicleAssignmentTag status={status as VehicleAssignmentEnum} />
             ),
         },
         {

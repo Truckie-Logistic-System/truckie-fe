@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { Modal, App } from "antd";
 import { SwapOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import VehicleAssignmentList from "./components/VehicleAssignmentList";
-import VehicleAssignmentForm from "./components/VehicleAssignmentForm";
+import { VehicleAssignmentList, VehicleAssignmentForm, VehicleAssignmentSkeleton } from "./components";
 import type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest } from "../../../models";
 import { vehicleAssignmentService } from "../../../services/vehicle-assignment";
 import EntityManagementLayout from "../../../components/features/admin/EntityManagementLayout";
-import { VehicleAssignmentStatus } from "../../../models/Vehicle";
+import { VehicleAssignmentEnum } from "../../../constants/enums";
+import { VehicleAssignmentTag } from "../../../components/common";
 
 const VehicleAssignmentPage: React.FC = () => {
     const { message } = App.useApp();
@@ -104,7 +104,7 @@ const VehicleAssignmentPage: React.FC = () => {
             // Khi tạo mới, đảm bảo status là ACTIVE
             const newValues: CreateVehicleAssignmentRequest = {
                 ...values as CreateVehicleAssignmentRequest,
-                status: VehicleAssignmentStatus.ACTIVE
+                status: VehicleAssignmentEnum.ASSIGNED_TO_DRIVER
             };
             createMutation.mutate(newValues);
         }
@@ -123,12 +123,17 @@ const VehicleAssignmentPage: React.FC = () => {
 
     // Count assignments by status
     const activeCount = assignmentsData?.data?.filter(
-        assignment => assignment.status === VehicleAssignmentStatus.ACTIVE
+        assignment => assignment.status === VehicleAssignmentEnum.ASSIGNED_TO_DRIVER
     ).length || 0;
 
     const inactiveCount = assignmentsData?.data?.filter(
-        assignment => assignment.status === VehicleAssignmentStatus.INACTIVE
+        assignment => assignment.status === VehicleAssignmentEnum.UNASSIGNED
     ).length || 0;
+
+    // Render skeleton if loading
+    if (isLoading) {
+        return <VehicleAssignmentSkeleton />;
+    }
 
     return (
         <EntityManagementLayout
@@ -155,7 +160,7 @@ const VehicleAssignmentPage: React.FC = () => {
                 ) : (
                     <VehicleAssignmentList
                         data={filteredAssignments || []}
-                        loading={isLoading}
+                        loading={isFetching}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         isAdmin={true}
