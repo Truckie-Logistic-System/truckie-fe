@@ -1,7 +1,9 @@
 import React from 'react';
 import type { ReactNode } from 'react';
-import { Button, Typography, Breadcrumb, Card, Row, Col, Avatar, Tag, Skeleton } from 'antd';
+import { Button, Typography, Breadcrumb, Card, Row, Col, Avatar, Skeleton } from 'antd';
 import { ArrowLeftOutlined, HomeOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
+import { UserStatusEnum } from '@/constants/enums';
+import { UserStatusTag } from '@/components/common/tags';
 
 const { Title, Text } = Typography;
 
@@ -152,13 +154,7 @@ const EntityDetailLayout: React.FC<EntityDetailLayoutProps> = ({
                                 icon={<UserIcon gender={entityData?.gender} />}
                             />
                             <Title level={4} className="m-0 mb-2">{entityData?.fullName || 'Không có tên'}</Title>
-                            <Tag
-                                color={getStatusColor(entityData?.status)}
-                                className="px-3 py-1 text-sm"
-                                icon={entityData?.status?.toLowerCase() === 'active' ? <CheckCircleOutlined /> : <StopOutlined />}
-                            >
-                                {getStatusText(entityData?.status)}
-                            </Tag>
+                            <UserStatusTag status={entityData?.status as UserStatusEnum} />
                         </div>
 
                         <div className="mb-6">

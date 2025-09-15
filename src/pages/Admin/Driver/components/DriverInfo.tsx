@@ -13,6 +13,8 @@ import {
     WomanOutlined
 } from '@ant-design/icons';
 import type { DriverModel } from '../../../../services/driver';
+import { LicenseClassEnum, CommonStatusEnum } from '@/constants/enums';
+import { LicenseClassTag, CommonStatusTag } from '@/components/common/tags';
 
 const { Title, Text } = Typography;
 
@@ -227,7 +229,7 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                                         <Text strong>Ngày hết hạn</Text>
                                         <div className="text-gray-500">Ngày hết hạn giấy phép lái xe</div>
                                         {new Date(driver.dateOfExpiry) < new Date() && (
-                                            <Tag color="red" className="mt-1">Đã hết hạn</Tag>
+                                            <CommonStatusTag status={CommonStatusEnum.INACTIVE} className="mt-1" />
                                         )}
                                     </div>
                                 ),
@@ -242,7 +244,7 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                             <Text strong>Hạng giấy phép</Text>
                         </div>
                         <Tooltip title="Hạng giấy phép lái xe">
-                            <Tag color="blue" className="px-3 py-1 text-lg">{driver.licenseClass}</Tag>
+                            <LicenseClassTag licenseClass={driver.licenseClass as LicenseClassEnum} className="px-3 py-1 text-lg" />
                         </Tooltip>
                     </div>
                 </Card>

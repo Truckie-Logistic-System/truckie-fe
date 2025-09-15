@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Switch, Space, Skeleton, Tag } from 'antd';
+import { Table, Button, Modal, Form, Input, InputNumber, Switch, Space, Skeleton } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
 import { PlusOutlined, EditOutlined, SwapOutlined, CheckCircleOutlined, StopOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { deviceService } from '../../../../services/device';
 import type { DeviceType, CreateDeviceTypeRequest, UpdateDeviceTypeRequest } from '../../../../models';
 import StatusChangeModal from '../../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../../components/common/StatusChangeModal';
+import { MaintenanceTypeTag } from '@/components/common/tags';
 
 export interface DeviceTypeListRef {
     showAddModal: () => void;
@@ -239,13 +240,7 @@ const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props
             dataIndex: 'isActive',
             key: 'isActive',
             render: (isActive: boolean) => (
-                <Tag
-                    color={getStatusColor(isActive)}
-                    icon={isActive ? <CheckCircleOutlined /> : <StopOutlined />}
-                    className="px-3 py-1"
-                >
-                    {getStatusText(isActive)}
-                </Tag>
+                <MaintenanceTypeTag status={isActive} />
             ),
         },
         {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { App } from 'antd';
 import { TeamOutlined, UserAddOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,8 @@ import StaffTable from './components/StaffTable';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
 import EntityManagementLayout from '../../../components/features/admin/EntityManagementLayout';
+import { UserStatusEnum } from '@/constants/enums';
+import { UserStatusTag } from '@/components/common/tags';
 
 const StaffPage: React.FC = () => {
     const navigate = useNavigate();
@@ -70,7 +72,23 @@ const StaffPage: React.FC = () => {
     const activeCount = staffData?.filter(staff => staff.status.toLowerCase() === 'active').length || 0;
     const bannedCount = staffData?.filter(staff => staff.status.toLowerCase() === 'banned').length || 0;
 
-    // Status handling functions
+    // Hàm chuyển đổi status sang UserStatusEnum
+    const mapToUserStatusEnum = (status: string | boolean): UserStatusEnum => {
+        if (typeof status === 'boolean') {
+            return status ? UserStatusEnum.ACTIVE : UserStatusEnum.BANNED;
+        }
+
+        switch (String(status).toLowerCase()) {
+            case 'active':
+                return UserStatusEnum.ACTIVE;
+            case 'banned':
+                return UserStatusEnum.BANNED;
+            default:
+                return UserStatusEnum.ACTIVE;
+        }
+    };
+
+    // Status handling functions - giữ lại để tương thích với StatusChangeModal
     const getStatusColor = (status: string | boolean) => {
         if (typeof status === 'string') {
             switch (status.toLowerCase()) {

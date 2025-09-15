@@ -34,6 +34,8 @@ import driverService from "../../../services/driver";
 import { VehicleAssignmentStatus } from "../../../models/Vehicle";
 import type { VehicleAssignment, UpdateVehicleAssignmentRequest } from "../../../models";
 import VehicleAssignmentForm from "../../Admin/VehicleAssignment/components/VehicleAssignmentForm";
+import { VehicleAssignmentTag } from '@/components/common/tags';
+import { VehicleAssignmentEnum } from '@/constants/enums';
 
 const VehicleAssignmentDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -106,44 +108,7 @@ const VehicleAssignmentDetailPage: React.FC = () => {
         },
     });
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case VehicleAssignmentStatus.ACTIVE:
-                return "success";
-            case VehicleAssignmentStatus.INACTIVE:
-                return "error";
-            case VehicleAssignmentStatus.PENDING:
-                return "warning";
-            default:
-                return "default";
-        }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case VehicleAssignmentStatus.ACTIVE:
-                return "Hoạt động";
-            case VehicleAssignmentStatus.INACTIVE:
-                return "Không hoạt động";
-            case VehicleAssignmentStatus.PENDING:
-                return "Chờ xử lý";
-            default:
-                return status;
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case VehicleAssignmentStatus.ACTIVE:
-                return <CheckCircleOutlined />;
-            case VehicleAssignmentStatus.INACTIVE:
-                return <CloseCircleOutlined />;
-            case VehicleAssignmentStatus.PENDING:
-                return <ClockCircleOutlined />;
-            default:
-                return <InfoCircleOutlined />;
-        }
-    };
+    // Đã sử dụng VehicleAssignmentTag thay cho các hàm status
 
     const handleEdit = () => {
         setIsEditModalOpen(true);
@@ -262,13 +227,7 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                                     <Col span={8} className="text-center">
                                         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                             <div className="text-gray-500 text-xs mb-1">Trạng thái</div>
-                                            <Tag
-                                                color={getStatusColor(assignment.status)}
-                                                icon={getStatusIcon(assignment.status)}
-                                                className="px-3 py-1 text-sm"
-                                            >
-                                                {getStatusText(assignment.status)}
-                                            </Tag>
+                                            <VehicleAssignmentTag status={assignment.status as VehicleAssignmentEnum} className="px-3 py-1 text-sm" />
                                         </div>
                                     </Col>
                                     <Col span={8}>

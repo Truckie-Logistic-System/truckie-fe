@@ -6,6 +6,8 @@ import { ArrowLeftOutlined, EditOutlined, CarOutlined, ToolOutlined, TagOutlined
 
 import vehicleService from '../../../services/vehicle/vehicleService';
 import { formatCurrency } from '../../../utils/formatters';
+import { VehicleStatusEnum } from '@/constants/enums';
+import { VehicleStatusTag, MaintenanceTypeTag } from '@/components/common/tags';
 
 const VehicleMaintenanceDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -117,7 +119,7 @@ const VehicleMaintenanceDetail: React.FC = () => {
                             : 'Chưa xác định'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Loại bảo dưỡng">
-                        <Tag color="blue">{maintenance.maintenanceTypeEntity.maintenanceTypeName}</Tag>
+                        <MaintenanceTypeTag status={maintenance.maintenanceTypeEntity.isActive} className="text-base" />
                     </Descriptions.Item>
                 </Descriptions>
             </Card>
@@ -162,9 +164,7 @@ const VehicleMaintenanceDetail: React.FC = () => {
                         {maintenance.vehicleEntity.capacity} kg
                     </Descriptions.Item>
                     <Descriptions.Item label="Trạng thái">
-                        <Tag color={maintenance.vehicleEntity.status === 'ACTIVE' ? 'green' : 'red'}>
-                            {maintenance.vehicleEntity.status === 'ACTIVE' ? 'Đang hoạt động' : 'Không hoạt động'}
-                        </Tag>
+                        <VehicleStatusTag status={maintenance.vehicleEntity.status as VehicleStatusEnum} />
                     </Descriptions.Item>
                 </Descriptions>
             </Card>
@@ -183,9 +183,7 @@ const VehicleMaintenanceDetail: React.FC = () => {
                         {maintenance.maintenanceTypeEntity.maintenanceTypeName}
                     </Descriptions.Item>
                     <Descriptions.Item label="Trạng thái">
-                        <Tag color={maintenance.maintenanceTypeEntity.isActive ? 'green' : 'red'}>
-                            {maintenance.maintenanceTypeEntity.isActive ? 'Hoạt động' : 'Không hoạt động'}
-                        </Tag>
+                        <MaintenanceTypeTag status={maintenance.maintenanceTypeEntity.isActive} />
                     </Descriptions.Item>
                     <Descriptions.Item label="Mô tả" span={2}>
                         {maintenance.maintenanceTypeEntity.description}

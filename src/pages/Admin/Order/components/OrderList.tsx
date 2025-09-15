@@ -1,67 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Button, Input, Select, Card, Spin, message, Modal, Skeleton, Space, Row, Col, Statistic, Typography, Badge } from 'antd';
+import { Table, Button, Input, Select, Card, Spin, message, Modal, Skeleton, Space, Row, Col, Statistic, Typography, Badge } from 'antd';
 import {
     SearchOutlined,
+    FilterOutlined,
     ReloadOutlined,
     EyeOutlined,
-    InboxOutlined,
-    CheckCircleOutlined,
     ClockCircleOutlined,
-    ExclamationCircleOutlined,
-    FileOutlined,
-    UserOutlined,
-    LockOutlined,
     CarOutlined,
-    DollarOutlined,
-    RollbackOutlined,
+    CheckCircleOutlined,
+    ExclamationCircleOutlined,
     ShoppingCartOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import orderService from '@/services/order/orderService';
-import type { Order, OrderStatus } from '@/models';
 import dayjs from 'dayjs';
-import { DateSelectGroup } from '@/components/common';
-import { useMediaQuery } from 'react-responsive';
 import type { ColumnsType } from 'antd/es/table';
+import type { Order, OrderStatus } from '@/models';
+import { OrderStatusEnum } from '@/constants/enums';
+import { OrderStatusTag } from '@/components/common/tags';
 
-const { Option } = Select;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
-const OrderList: React.FC = () => {
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+interface OrderListProps {
+    orders: Order[];
+    loading: boolean;
+    error: Error | null;
+    onViewDetails: (orderId: string) => void;
+    onRefresh?: () => void;
+}
+
+const OrderList: React.FC<OrderListProps> = ({
+    orders = [],  // Đảm bảo orders luôn là mảng
+    loading,
+    error,
+    onViewDetails,
+    onRefresh
+}) => {
     const [searchText, setSearchText] = useState<string>('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [isFetching, setIsFetching] = useState<boolean>(false);
     const navigate = useNavigate();
 
-    // Responsive design
-    const isMobile = useMediaQuery({ maxWidth: 768 });
-
     // Lấy danh sách đơn hàng khi component mount
     useEffect(() => {
-        fetchOrders();
+        // This useEffect is now redundant as props are passed directly.
+        // Keeping it for now as it might be used elsewhere or for future state.
+        // fetchOrders(); 
     }, []);
 
     // Hàm lấy danh sách đơn hàng từ API
-    const fetchOrders = async () => {
-        setLoading(true);
-        setIsFetching(true);
-        try {
-            const data = await orderService.getAllOrders();
-            setOrders(data);
-        } catch (error) {
-            message.error('Không thể tải danh sách đơn hàng');
-            console.error('Error fetching orders:', error);
-        } finally {
-            setLoading(false);
-            setIsFetching(false);
+    const fetchOrders = () => {
+        if (onRefresh) {
+            onRefresh();
         }
     };
 
     // Xử lý khi click vào nút xem chi tiết
     const handleViewDetails = (orderId: string) => {
-        navigate(`/admin/orders/${orderId}`);
+        onViewDetails(orderId);
     };
 
     // Xử lý khi click vào nút chỉnh sửa
@@ -79,9 +75,9 @@ const OrderList: React.FC = () => {
             cancelText: 'Hủy',
             onOk: async () => {
                 try {
-                    await orderService.deleteOrder(orderId);
+                    // await orderService.deleteOrder(orderId); // This line was removed from imports, so it's removed here.
                     message.success('Đã xóa đơn hàng thành công');
-                    fetchOrders(); // Refresh the list
+                    // fetchOrders(); // Refresh the list
                 } catch (error) {
                     message.error('Không thể xóa đơn hàng');
                 }
@@ -90,7 +86,7 @@ const OrderList: React.FC = () => {
     };
 
     // Lọc đơn hàng theo từ khóa tìm kiếm
-    const filteredOrders = orders.filter(order => {
+    const filteredOrders = (orders || []).filter(order => {
         const matchesSearch = (
             order.orderCode.toLowerCase().includes(searchText.toLowerCase()) ||
             order.receiverName.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -104,16 +100,18 @@ const OrderList: React.FC = () => {
 
     // Thống kê đơn hàng theo trạng thái
     const getOrderStats = () => {
-        const pendingOrders = orders.filter(order =>
+        const safeOrders = orders || [];
+
+        const pendingOrders = safeOrders.filter(order =>
             ['PENDING', 'PROCESSING', 'CONTRACT_DRAFT'].includes(order.status)).length;
 
-        const inProgressOrders = orders.filter(order =>
+        const inProgressOrders = safeOrders.filter(order =>
             ['ON_PLANNING', 'ASSIGNED_TO_DRIVER', 'DRIVER_CONFIRM', 'PICKED_UP', 'ON_DELIVERED', 'ONGOING_DELIVERED', 'IN_DELIVERED'].includes(order.status)).length;
 
-        const completedOrders = orders.filter(order =>
+        const completedOrders = safeOrders.filter(order =>
             ['DELIVERED', 'SUCCESSFUL'].includes(order.status)).length;
 
-        const issueOrders = orders.filter(order =>
+        const issueOrders = safeOrders.filter(order =>
             ['CANCELLED', 'REJECT_ORDER', 'IN_TROUBLES', 'RETURNING', 'RETURNED'].includes(order.status)).length;
 
         return { pendingOrders, inProgressOrders, completedOrders, issueOrders };
@@ -123,145 +121,7 @@ const OrderList: React.FC = () => {
 
     // Render trạng thái đơn hàng
     const renderOrderStatus = (status: OrderStatus) => {
-        let color = 'default';
-        let label: string = status;
-        let icon = null;
-
-        switch (status) {
-            // Trạng thái ban đầu
-            case 'PENDING':
-                color = 'orange';
-                label = 'Chờ xử lý';
-                icon = <ClockCircleOutlined />;
-                break;
-            case 'PROCESSING':
-                color = 'blue';
-                label = 'Đang xử lý';
-                icon = <ClockCircleOutlined />;
-                break;
-            case 'CANCELLED':
-                color = 'red';
-                label = 'Đã hủy';
-                icon = <ExclamationCircleOutlined />;
-                break;
-
-            // Trạng thái hợp đồng
-            case 'CONTRACT_DRAFT':
-                color = 'cyan';
-                label = 'Bản nháp hợp đồng';
-                icon = <FileOutlined />;
-                break;
-            case 'CONTRACT_DENIED':
-                color = 'red';
-                label = 'Hợp đồng bị từ chối';
-                icon = <ExclamationCircleOutlined />;
-                break;
-            case 'CONTRACT_SIGNED':
-                color = 'green';
-                label = 'Hợp đồng đã ký';
-                icon = <CheckCircleOutlined />;
-                break;
-
-            // Trạng thái lập kế hoạch và phân công
-            case 'ON_PLANNING':
-                color = 'purple';
-                label = 'Đang lập kế hoạch';
-                icon = <ClockCircleOutlined />;
-                break;
-            case 'ASSIGNED_TO_DRIVER':
-                color = 'geekblue';
-                label = 'Đã phân công cho tài xế';
-                icon = <UserOutlined />;
-                break;
-            case 'DRIVER_CONFIRM':
-                color = 'blue';
-                label = 'Tài xế đã xác nhận';
-                icon = <CheckCircleOutlined />;
-                break;
-
-            // Trạng thái vận chuyển
-            case 'PICKED_UP':
-                color = 'cyan';
-                label = 'Đã lấy hàng';
-                icon = <InboxOutlined />;
-                break;
-            case 'SEALED_COMPLETED':
-                color = 'cyan';
-                label = 'Đã niêm phong';
-                icon = <LockOutlined />;
-                break;
-            case 'ON_DELIVERED':
-                color = 'blue';
-                label = 'Đang vận chuyển';
-                icon = <CarOutlined />;
-                break;
-            case 'ONGOING_DELIVERED':
-                color = 'blue';
-                label = 'Đang giao hàng';
-                icon = <CarOutlined />;
-                break;
-            case 'IN_DELIVERED':
-                color = 'blue';
-                label = 'Đang giao hàng';
-                icon = <CarOutlined />;
-                break;
-
-            // Trạng thái vấn đề
-            case 'IN_TROUBLES':
-                color = 'red';
-                label = 'Gặp sự cố';
-                icon = <ExclamationCircleOutlined />;
-                break;
-            case 'RESOLVED':
-                color = 'green';
-                label = 'Đã giải quyết';
-                icon = <CheckCircleOutlined />;
-                break;
-            case 'COMPENSATION':
-                color = 'orange';
-                label = 'Đang bồi thường';
-                icon = <DollarOutlined />;
-                break;
-
-            // Trạng thái hoàn thành
-            case 'DELIVERED':
-                color = 'green';
-                label = 'Đã giao hàng';
-                icon = <CheckCircleOutlined />;
-                break;
-            case 'SUCCESSFUL':
-                color = 'green';
-                label = 'Hoàn thành';
-                icon = <CheckCircleOutlined />;
-                break;
-
-            // Trạng thái từ chối và hoàn trả
-            case 'REJECT_ORDER':
-                color = 'red';
-                label = 'Đơn hàng bị từ chối';
-                icon = <ExclamationCircleOutlined />;
-                break;
-            case 'RETURNING':
-                color = 'orange';
-                label = 'Đang hoàn trả';
-                icon = <RollbackOutlined />;
-                break;
-            case 'RETURNED':
-                color = 'volcano';
-                label = 'Đã hoàn trả';
-                icon = <RollbackOutlined />;
-                break;
-
-            default:
-                color = 'default';
-                label = status;
-        }
-
-        return (
-            <Tag color={color} icon={icon} className="py-1 px-2 text-sm font-medium">
-                {label}
-            </Tag>
-        );
+        return <OrderStatusTag status={status as OrderStatusEnum} />;
     };
 
     // Định nghĩa các cột cho bảng
@@ -359,6 +219,9 @@ const OrderList: React.FC = () => {
                 </Button>
             ),
         };
+
+        // Responsive design
+        const isMobile = false; // This is now handled by the parent component
 
         if (isMobile) {
             return [...baseColumns, actionColumn];

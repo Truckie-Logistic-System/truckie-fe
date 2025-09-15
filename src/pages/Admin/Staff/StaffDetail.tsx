@@ -21,6 +21,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import userService from '../../../services/user';
 import type { UserModel } from '../../../services/user/types';
 import { format } from 'date-fns';
+import { UserStatusEnum } from '@/constants/enums';
+import { UserStatusTag } from '@/components/common/tags';
 
 const { Title, Text } = Typography;
 
@@ -203,13 +205,7 @@ const StaffDetail: React.FC = () => {
                                 className="mb-4 border-4 border-blue-100"
                             />
                             <Title level={3} className="mb-1">{data.fullName}</Title>
-                            <Tag
-                                color={getStatusColor(data.status)}
-                                className="px-3 py-1"
-                                icon={data.status?.toLowerCase() === 'active' ? <CheckCircleOutlined /> : <StopOutlined />}
-                            >
-                                {getStatusText(data.status)}
-                            </Tag>
+                            <UserStatusTag status={data.status as UserStatusEnum} />
                         </div>
 
                         <Divider className="my-4" />

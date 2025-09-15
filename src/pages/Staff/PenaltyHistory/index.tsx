@@ -3,7 +3,6 @@ import {
     Table,
     Button,
     Space,
-    Tag,
     Input,
     Card,
     Typography,
@@ -33,7 +32,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import penaltyService from '@/services/penalty';
 import type { Penalty } from '@/models/Penalty';
-import { PenaltyStatus, penaltyStatusColors } from '@/models/Penalty';
+import { PenaltyStatus } from '@/models/Penalty';
+import { PenaltyStatusEnum } from '@/constants/enums';
+import { PenaltyStatusTag } from '@/components/common/tags';
 import PenaltyModal from './components/PenaltyModal';
 import { useAuth } from '@/context';
 import type { GetPenaltiesResponse } from '@/services/penalty/types';
@@ -291,9 +292,7 @@ const PenaltyHistory: React.FC = () => {
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => (
-                <Tag color={penaltyStatusColors[status as PenaltyStatus] || 'default'}>
-                    {status}
-                </Tag>
+                <PenaltyStatusTag status={status as PenaltyStatusEnum} />
             ),
             filters: Object.values(PenaltyStatus).map(status => ({
                 text: status,

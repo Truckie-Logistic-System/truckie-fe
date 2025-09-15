@@ -1,37 +1,36 @@
 import React from 'react';
 import { Table, Button, Space, Avatar, Tooltip, Skeleton, Tag } from 'antd';
-import { EyeOutlined, SwapOutlined, ShopOutlined, PhoneOutlined, MailOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
-import type { UserModel } from '../../../../services/user/types';
+import {
+    UserOutlined,
+    MailOutlined,
+    PhoneOutlined,
+    EyeOutlined,
+    SwapOutlined,
+    CheckCircleOutlined,
+    ShopOutlined
+} from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
+import type { UserModel } from '@/services/user/types';
+import { UserStatusEnum } from '@/constants/enums';
+import { UserStatusTag } from '@/components/common/tags';
 
 interface CustomerTableProps {
     data: UserModel[];
     loading: boolean;
-    onViewDetails: (userId: string) => void;
+    onViewDetails: (id: string) => void;
     onStatusChange: (user: UserModel) => void;
+    getStatusColor: (status: string) => string;
+    getStatusText: (status: string) => string;
 }
 
 const CustomerTable: React.FC<CustomerTableProps> = ({
     data,
     loading,
     onViewDetails,
-    onStatusChange
+    onStatusChange,
+    getStatusColor,
+    getStatusText
 }) => {
-    const getStatusColor = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'active': return 'green';
-            case 'banned': return 'red';
-            default: return 'default';
-        }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'active': return 'Hoạt động';
-            case 'banned': return 'Bị cấm';
-            default: return status;
-        }
-    };
-
     const columns = [
         {
             title: 'Khách hàng',
@@ -76,21 +75,9 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            render: (status: string) => {
-                const color = getStatusColor(status);
-                const text = getStatusText(status);
-                const isActive = status.toLowerCase() === 'active';
-
-                return (
-                    <Tag
-                        color={color}
-                        className="px-3 py-1 text-sm"
-                        icon={isActive ? <CheckCircleOutlined /> : <StopOutlined />}
-                    >
-                        {text}
-                    </Tag>
-                );
-            },
+            render: (status: string) => (
+                <UserStatusTag status={status as UserStatusEnum} />
+            ),
         },
         {
             title: 'Thao tác',

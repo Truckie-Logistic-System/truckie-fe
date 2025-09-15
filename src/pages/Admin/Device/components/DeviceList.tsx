@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Space, Skeleton, Tag } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Space, Skeleton } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
 import { PlusOutlined, EditOutlined, SwapOutlined, CheckCircleOutlined, StopOutlined, MobileOutlined } from '@ant-design/icons';
 import { deviceService } from '../../../../services/device';
@@ -8,6 +8,8 @@ import dayjs from 'dayjs';
 import StatusChangeModal from '../../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../../components/common/StatusChangeModal';
 import DateSelectGroup from '../../../../components/common/DateSelectGroup';
+import { DeviceStatusEnum } from '@/constants/enums';
+import { DeviceStatusTag } from '@/components/common/tags';
 
 export interface DeviceListRef {
     showAddModal: () => void;
@@ -307,13 +309,7 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => (
-                <Tag
-                    color={getStatusColor(status)}
-                    icon={status?.toLowerCase() === 'active' ? <CheckCircleOutlined /> : <StopOutlined />}
-                    className="px-3 py-1"
-                >
-                    {getStatusText(status)}
-                </Tag>
+                <DeviceStatusTag status={status as DeviceStatusEnum} />
             ),
         },
         {

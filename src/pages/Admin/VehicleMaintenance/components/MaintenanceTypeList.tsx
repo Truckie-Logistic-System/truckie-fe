@@ -1,5 +1,5 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Table, Button, Space, App, Tag, Skeleton } from 'antd';
+import { Table, Button, Space, App, Skeleton } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { EditOutlined, SwapOutlined, CheckCircleOutlined, StopOutlined, ToolOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { maintenanceTypeService } from '../../../../services/maintenance-type';
 import MaintenanceTypeModal from './MaintenanceTypeModal';
 import StatusChangeModal from '../../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../../components/common/StatusChangeModal';
+import { MaintenanceTypeTag } from '@/components/common/tags';
 
 export interface MaintenanceTypeListRef {
     showAddModal: () => void;
@@ -128,13 +129,7 @@ const MaintenanceTypeList = forwardRef<MaintenanceTypeListRef, {}>((props, ref) 
             dataIndex: 'isActive',
             key: 'isActive',
             render: (isActive: boolean) => (
-                <Tag
-                    color={getStatusColor(isActive)}
-                    icon={isActive ? <CheckCircleOutlined /> : <StopOutlined />}
-                    className="px-3 py-1"
-                >
-                    {getStatusText(isActive)}
-                </Tag>
+                <MaintenanceTypeTag status={isActive} />
             ),
             filters: [
                 { text: 'Hoạt động', value: true },

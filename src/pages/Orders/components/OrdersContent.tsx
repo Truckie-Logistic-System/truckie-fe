@@ -2,64 +2,41 @@ import React from "react";
 import { Link } from "react-router-dom";
 import type { Order, OrderStatus } from "../../../models/Order";
 import { formatCurrency } from "../../../utils/formatters";
+import { OrderStatusEnum } from "@/constants/enums";
+import { OrderStatusTag } from "@/components/common/tags";
 
 interface OrdersContentProps {
   orders: Order[];
 }
 
 const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
-  const getStatusColor = (status: OrderStatus) => {
+  // Hàm chuyển đổi OrderStatus sang OrderStatusEnum
+  const mapToOrderStatusEnum = (status: OrderStatus): OrderStatusEnum => {
     switch (status) {
       case "DELIVERED":
       case "SUCCESSFUL":
-        return "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg";
+        return OrderStatusEnum.DELIVERED;
       case "ON_DELIVERED":
       case "ONGOING_DELIVERED":
       case "IN_DELIVERED":
-      case "PICKED_UP":
-        return "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg";
+        return OrderStatusEnum.ON_DELIVERED;
       case "PENDING":
+        return OrderStatusEnum.PENDING;
       case "PROCESSING":
-        return "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg";
+        return OrderStatusEnum.PROCESSING;
       case "CANCELLED":
       case "REJECT_ORDER":
-        return "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg";
-      case "IN_TROUBLES":
-        return "bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-lg";
-      case "RETURNING":
-      case "RETURNED":
-        return "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg";
-      default:
-        return "bg-gradient-to-r from-gray-500 to-slate-500 text-white shadow-lg";
-    }
-  };
-
-  const getStatusText = (status: OrderStatus) => {
-    switch (status) {
-      case "DELIVERED":
-      case "SUCCESSFUL":
-        return "Đã giao";
-      case "ON_DELIVERED":
-      case "ONGOING_DELIVERED":
-      case "IN_DELIVERED":
-        return "Đang vận chuyển";
-      case "PENDING":
-        return "Chờ xử lý";
-      case "PROCESSING":
-        return "Đang xử lý";
-      case "CANCELLED":
-      case "REJECT_ORDER":
-        return "Đã hủy";
+        return OrderStatusEnum.CANCELLED;
       case "PICKED_UP":
-        return "Đã lấy hàng";
+        return OrderStatusEnum.PICKED_UP;
       case "IN_TROUBLES":
-        return "Gặp sự cố";
+        return OrderStatusEnum.IN_TROUBLES;
       case "RETURNING":
-        return "Đang hoàn trả";
+        return OrderStatusEnum.RETURNING;
       case "RETURNED":
-        return "Đã hoàn trả";
+        return OrderStatusEnum.RETURNED;
       default:
-        return "Không xác định";
+        return OrderStatusEnum.PENDING;
     }
   };
 
@@ -110,13 +87,11 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                         #{order.orderCode}
                       </h3>
                     </div>
-                    <span
-                      className={`px-4 py-2 text-sm font-semibold rounded-full shadow-sm ${getStatusColor(
-                        order.status
-                      )}`}
-                    >
-                      {getStatusText(order.status)}
-                    </span>
+                    <OrderStatusTag
+                      status={mapToOrderStatusEnum(order.status)}
+                      size="large"
+                      className="shadow-sm"
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

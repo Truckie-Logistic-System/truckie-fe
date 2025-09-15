@@ -140,7 +140,7 @@ const VehicleDetailPage: React.FC = () => {
                 color = 'blue';
         }
 
-        return <Tag color={color}>{text}</Tag>;
+        return <VehicleStatusTag status={text as VehicleStatusEnum} />;
     };
 
     const getStatusText = (status: string | boolean) => {
@@ -337,6 +337,10 @@ const VehicleDetailPage: React.FC = () => {
             render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : 'Chưa xác định',
         },
     ];
+
+    const renderStatus = (text: string) => {
+        return <VehicleStatusTag status={text as VehicleStatusEnum} />;
+    };
 
     if (loading) {
         return (

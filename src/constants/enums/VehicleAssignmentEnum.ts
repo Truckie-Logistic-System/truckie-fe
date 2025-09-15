@@ -7,7 +7,11 @@ export enum VehicleAssignmentEnum {
     ON_STANDBY = 'ON_STANDBY',         // Idle but ready for assignment
     MAINTENANCE_HOLD = 'MAINTENANCE_HOLD',   // Blocked due to maintenance
     DECOMMISSIONED = 'DECOMMISSIONED',      // Permanently retired, cannot be reassigned
-    COMPLETE = 'COMPLETE'
+    COMPLETE = 'COMPLETE',
+    ASSIGNED = 'ASSIGNED',
+    AVAILABLE = 'AVAILABLE',
+    IN_TRIP = 'IN_TRIP',
+    COMPLETED = 'COMPLETED'
 }
 
 export const VehicleAssignmentColors = {
@@ -19,7 +23,11 @@ export const VehicleAssignmentColors = {
     [VehicleAssignmentEnum.ON_STANDBY]: 'bg-yellow-500 text-white',
     [VehicleAssignmentEnum.MAINTENANCE_HOLD]: 'bg-orange-500 text-white',
     [VehicleAssignmentEnum.DECOMMISSIONED]: 'bg-red-700 text-white',
-    [VehicleAssignmentEnum.COMPLETE]: 'bg-green-500 text-white'
+    [VehicleAssignmentEnum.COMPLETE]: 'bg-green-500 text-white',
+    [VehicleAssignmentEnum.ASSIGNED]: 'bg-blue-500 text-white',
+    [VehicleAssignmentEnum.AVAILABLE]: 'bg-green-500 text-white',
+    [VehicleAssignmentEnum.IN_TRIP]: 'bg-yellow-500 text-white',
+    [VehicleAssignmentEnum.COMPLETED]: 'bg-green-500 text-white'
 };
 
 export const VehicleAssignmentLabels = {
@@ -31,5 +39,9 @@ export const VehicleAssignmentLabels = {
     [VehicleAssignmentEnum.ON_STANDBY]: 'Đang chờ',
     [VehicleAssignmentEnum.MAINTENANCE_HOLD]: 'Đang bảo trì',
     [VehicleAssignmentEnum.DECOMMISSIONED]: 'Đã ngừng hoạt động',
-    [VehicleAssignmentEnum.COMPLETE]: 'Hoàn thành'
+    [VehicleAssignmentEnum.COMPLETE]: 'Hoàn thành',
+    [VehicleAssignmentEnum.ASSIGNED]: 'Đã giao cho tài xế',
+    [VehicleAssignmentEnum.AVAILABLE]: 'Có sẵn',
+    [VehicleAssignmentEnum.IN_TRIP]: 'Đang di chuyển',
+    [VehicleAssignmentEnum.COMPLETED]: 'Hoàn thành'
 }; 

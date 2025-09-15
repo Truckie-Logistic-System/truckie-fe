@@ -26,6 +26,8 @@ import type { UserModel } from '../../../services/user/types';
 import type { Customer } from '../../../models/Customer';
 import type { Order } from '../../../models/Order';
 import { format } from 'date-fns';
+import { UserStatusEnum } from '@/constants/enums';
+import { UserStatusTag } from '@/components/common/tags';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -344,13 +346,7 @@ const CustomerDetail: React.FC = () => {
                                 className="mb-4 border-4 border-blue-100"
                             />
                             <Title level={3} className="mb-1">{userData.fullName}</Title>
-                            <Tag
-                                color={getStatusColor(userData.status)}
-                                className="px-3 py-1"
-                                icon={userData.status?.toLowerCase() === 'active' ? <CheckCircleOutlined /> : <StopOutlined />}
-                            >
-                                {getStatusText(userData.status)}
-                            </Tag>
+                            <UserStatusTag status={userData.status as UserStatusEnum} />
                         </div>
 
                         <Divider className="my-4" />

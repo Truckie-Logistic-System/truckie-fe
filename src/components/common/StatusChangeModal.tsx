@@ -2,6 +2,8 @@ import React from 'react';
 import { Modal, Radio, Avatar, ConfigProvider } from 'antd';
 import { CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
 import type { ReactNode } from 'react';
+import { CommonStatusEnum } from '@/constants/enums';
+import { CommonStatusTag } from '@/components/common/tags';
 
 export interface StatusOption {
     value: string | boolean;
@@ -46,14 +48,27 @@ const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
     onOk,
     onCancel
 }) => {
-    // Helper function to get background color class based on status
-    const getStatusBgColor = (status: string | boolean) => {
-        const color = typeof status === 'string' ? getStatusColor(status) : (status ? 'green' : 'red');
+    // Chuyển đổi currentStatus thành CommonStatusEnum
+    const mapToCommonStatus = (status: string | boolean): CommonStatusEnum => {
+        if (typeof status === 'boolean') {
+            return status ? CommonStatusEnum.ACTIVE : CommonStatusEnum.INACTIVE;
+        }
 
-        switch (color) {
-            case 'green': return 'bg-green-100 text-green-700';
-            case 'red': return 'bg-red-100 text-red-700';
-            default: return 'bg-gray-100 text-gray-700';
+        switch (String(status).toLowerCase()) {
+            case 'active':
+                return CommonStatusEnum.ACTIVE;
+            case 'inactive':
+                return CommonStatusEnum.INACTIVE;
+            case 'deleted':
+                return CommonStatusEnum.DELETED;
+            case 'pending':
+                return CommonStatusEnum.PENDING;
+            case 'processing':
+                return CommonStatusEnum.PROCESSING;
+            case 'completed':
+                return CommonStatusEnum.COMPLETED;
+            default:
+                return CommonStatusEnum.INACTIVE;
         }
     };
 
@@ -94,11 +109,7 @@ const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
                     <div className="text-lg font-medium">{entityName}</div>
                     {entityDescription && <div className="text-gray-500">{entityDescription}</div>}
                     <div className="mt-1">
-                        <span
-                            className={`px-2 py-1 text-xs rounded-full ${getStatusBgColor(currentStatus)}`}
-                        >
-                            {getStatusText(currentStatus)}
-                        </span>
+                        <CommonStatusTag status={mapToCommonStatus(currentStatus)} size="small" />
                     </div>
                 </div>
             </div>

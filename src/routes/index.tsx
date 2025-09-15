@@ -16,7 +16,7 @@ import {
 } from "../pages/Staff/Order";
 import { IssueList, IssueDetail } from "../pages/Staff/Issue";
 import {
-  OrderList as AdminOrderList,
+  OrderPage as AdminOrderList,
   OrderDetailPage as AdminOrderDetailPage,
   OrderEdit as AdminOrderEdit,
 } from "../pages/Admin/Order";

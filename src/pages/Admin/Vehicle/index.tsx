@@ -12,6 +12,8 @@ import VehicleTypeForm from './components/VehicleTypeForm';
 import type { CreateVehicleTypeRequest, UpdateVehicleTypeRequest } from '../../../services/vehicle/types';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
+import { VehicleStatusEnum } from '@/constants/enums';
+import { VehicleStatusTag } from '@/components/common/tags';
 
 const { Title } = Typography;
 const { TabPane } = Tabs;
@@ -239,30 +241,7 @@ const VehiclePage: React.FC = () => {
     };
 
     const getStatusTag = (status: string) => {
-        let color = 'default';
-        let text = status;
-
-        switch (status.toLowerCase()) {
-            case 'active':
-            case 'hoạt động':
-                color = 'green';
-                text = 'Hoạt động';
-                break;
-            case 'inactive':
-            case 'không hoạt động':
-                color = 'red';
-                text = 'Không hoạt động';
-                break;
-            case 'maintenance':
-            case 'bảo trì':
-                color = 'orange';
-                text = 'Đang bảo trì';
-                break;
-            default:
-                color = 'blue';
-        }
-
-        return <Tag color={color}>{text}</Tag>;
+        return <VehicleStatusTag status={status as VehicleStatusEnum} />;
     };
 
     const getStatusText = (status: string | boolean) => {
