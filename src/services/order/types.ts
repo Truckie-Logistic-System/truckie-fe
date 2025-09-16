@@ -19,4 +19,5 @@ export type OrderResponse = ApiResponse<Order>;
 export type OrdersResponse = ApiResponse<Order[]>;
 export type OrderDetailsResponse = ApiResponse<OrderDetail[]>;
 export type PaginatedOrdersResponse = ApiResponse<PaginatedResponse<Order>>;
-export type OrderTrackingApiResponse = ApiResponse<OrderTrackingResponse>; 
+export type OrderTrackingApiResponse = ApiResponse<OrderTrackingResponse>;
+export type VehicleAssignmentResponse = ApiResponse<OrderDetail[]>; 

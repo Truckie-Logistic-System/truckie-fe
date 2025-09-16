@@ -12,6 +12,7 @@ import type {
   PaginatedOrdersResponse,
   OrderTrackingApiResponse,
   OrderDetailsResponse,
+  VehicleAssignmentResponse,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -257,6 +258,23 @@ const orderService = {
     } catch (error) {
       console.error(`Error tracking order ${id}:`, error);
       throw handleApiError(error, "Không thể theo dõi vị trí đơn hàng");
+    }
+  },
+
+  /**
+   * Update vehicle assignment for order details
+   * @param orderId Order ID
+   * @returns Promise with updated order details
+   */
+  updateVehicleAssignmentForDetails: async (orderId: string): Promise<OrderDetail[]> => {
+    try {
+      const response = await httpClient.put<VehicleAssignmentResponse>(
+        `/order-details/update-vehicle-assignment-for-details?orderId=${orderId}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error updating vehicle assignment for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể cập nhật phân công xe cho đơn hàng");
     }
   },
 
