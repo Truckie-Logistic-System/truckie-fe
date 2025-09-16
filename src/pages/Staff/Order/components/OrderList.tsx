@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Input, Card, Skeleton, message, Row, Col, Typography, Badge } from 'antd';
+import { Table, Button, Input, Card, Skeleton, message, Row, Col, Typography, Badge, Select } from 'antd';
 import {
     SearchOutlined,
     ReloadOutlined,
@@ -14,7 +14,8 @@ import {
     CarOutlined,
     DollarOutlined,
     RollbackOutlined,
-    ShoppingCartOutlined
+    ShoppingCartOutlined,
+    FilterOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import orderService from '@/services/order/orderService';
@@ -24,15 +25,15 @@ import dayjs from 'dayjs';
 import { DateSelectGroup, OrderStatusTag } from '@/components/common';
 import { useMediaQuery } from 'react-responsive';
 import type { ColumnsType } from 'antd/es/table';
-import { OrderStatusFilterGroup } from '@/components/features/order';
 
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 const OrderList: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [searchText, setSearchText] = useState<string>('');
-    const [statusFilter, setStatusFilter] = useState<string>('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [isFetching, setIsFetching] = useState<boolean>(false);
     const navigate = useNavigate();
 
@@ -73,7 +74,7 @@ const OrderList: React.FC = () => {
             order.receiverPhone.toLowerCase().includes(searchText.toLowerCase())
         );
 
-        const matchesStatus = !statusFilter || order.status === statusFilter;
+        const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
 
         return matchesSearch && matchesStatus;
     });
@@ -315,7 +316,7 @@ const OrderList: React.FC = () => {
                 <Card className="shadow-sm mb-6">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-4">
                         <Title level={4} className="m-0 mb-4 md:mb-0">Danh sách đơn hàng</Title>
-                        <div className="flex flex-col md:flex-row w-full md:w-auto gap-2">
+                        <div className="flex w-full md:w-auto gap-2">
                             <Input
                                 placeholder="Tìm kiếm theo mã đơn, tên người nhận, số điện thoại..."
                                 prefix={<SearchOutlined />}
@@ -324,16 +325,28 @@ const OrderList: React.FC = () => {
                                 onChange={(e) => setSearchText(e.target.value)}
                                 disabled={loading}
                             />
+                            <Select
+                                defaultValue="all"
+                                style={{ width: 200 }}
+                                onChange={(value) => setStatusFilter(value)}
+                                className="rounded-md"
+                                disabled={loading}
+                            >
+                                <Option value="all">Tất cả trạng thái</Option>
+                                <Option value="PENDING">Chờ xử lý</Option>
+                                <Option value="PROCESSING">Đang xử lý</Option>
+                                <Option value="CONTRACT_DRAFT">Bản nháp hợp đồng</Option>
+                                <Option value="CONTRACT_SIGNED">Hợp đồng đã ký</Option>
+                                <Option value="ON_PLANNING">Đang lập kế hoạch</Option>
+                                <Option value="ASSIGNED_TO_DRIVER">Đã phân công tài xế</Option>
+                                <Option value="PICKED_UP">Đã lấy hàng</Option>
+                                <Option value="ON_DELIVERED">Đang vận chuyển</Option>
+                                <Option value="DELIVERED">Đã giao hàng</Option>
+                                <Option value="SUCCESSFUL">Hoàn thành</Option>
+                                <Option value="CANCELLED">Đã hủy</Option>
+                                <Option value="RETURNED">Đã hoàn trả</Option>
+                            </Select>
                         </div>
-                    </div>
-
-                    <div className="mb-4 overflow-x-auto">
-                        <OrderStatusFilterGroup
-                            value={statusFilter}
-                            onChange={(value) => setStatusFilter(value as string)}
-                            disabled={loading}
-                            counts={getStatusCounts()}
-                        />
                     </div>
 
                     <Table
