@@ -3,8 +3,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Button, Typography } from "antd";
 
-const { Text, Title } = Typography;
-
+const { Title } = Typography;
+const OrdersHeader: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto mt-5">
       <div className="flex justify-between items-center mb-6">
@@ -19,7 +19,6 @@ const { Text, Title } = Typography;
             Giao Hàng Mới
           </Button>
         </Link>
-
       </div>
     </div>
   );

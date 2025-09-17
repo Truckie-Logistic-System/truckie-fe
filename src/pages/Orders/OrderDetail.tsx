@@ -4,30 +4,30 @@ import {
   Button,
   Modal,
   App,
+  Form,
+  Input,
+  DatePicker,
+  InputNumber,
   Card,
-  Row,
-  Col,
-  Typography,
-  Tag,
-  Image,
-  Empty,
-  Divider,
 } from "antd";
 import {
   ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
+  FileTextOutlined,
   DollarOutlined,
-  ArrowRightOutlined,
-  ArrowLeftOutlined as ArrowLeft,
   CameraOutlined,
   TruckOutlined,
+  UserOutlined,
   WarningOutlined,
-  FileImageOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import orderService from "../../services/order/orderService";
+import { contractService } from "../../services/contract";
 import type { Order } from "../../models";
+import type { CreateContractRequest } from "../../services/contract/types";
+import dayjs from "dayjs";
 import {
   OrderDetailSkeleton,
   OrderStatusCard,
@@ -39,8 +39,7 @@ import {
   VehicleAssignmentCard,
 } from "../../components/features/order";
 
-
-const { TabPane } = Tabs;
+const { confirm } = Modal;
 
 const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -48,15 +47,17 @@ const OrderDetailPage: React.FC = () => {
   const messageApi = App.useApp().message;
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [contractModalVisible, setContractModalVisible] =
+    useState<boolean>(false);
+  const [contractForm] = Form.useForm();
+  const [creatingContract, setCreatingContract] = useState<boolean>(false);
 
-  // Lấy thông tin đơn hàng khi component mount
   useEffect(() => {
     if (id) {
       fetchOrderDetails(id);
     }
   }, [id]);
 
-  // Hàm lấy thông tin chi tiết đơn hàng từ API
   const fetchOrderDetails = async (orderId: string) => {
     setLoading(true);
     try {
@@ -70,7 +71,6 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
-  // Xử lý khi click nút xóa đơn hàng
   const handleDelete = () => {
     if (!id) return;
 
@@ -95,10 +95,52 @@ const OrderDetailPage: React.FC = () => {
     });
   };
 
-  // Xử lý khi click nút sửa đơn hàng
   const handleEdit = () => {
     if (!id) return;
     navigate(`/orders/${id}/edit`);
+  };
+
+  const handleCreateContract = () => {
+    if (!id || !order) return;
+    contractForm.setFieldsValue({
+      contractName: `Hợp đồng đơn hàng ${order.orderCode}`,
+      effectiveDate: dayjs(),
+      expirationDate: dayjs().add(1, "year"),
+      supportedValue: order.totalPrice || 0,
+      description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
+      orderId: id,
+      staffId: "",
+    });
+
+    setContractModalVisible(true);
+  };
+
+  // Xử lý submit form tạo hợp đồng
+  const handleContractSubmit = async (values: any) => {
+    setCreatingContract(true);
+    try {
+      const contractData: CreateContractRequest = {
+        ...values,
+        effectiveDate: values.effectiveDate.format("YYYY-MM-DDTHH:mm:ss"),
+        expirationDate: values.expirationDate.format("YYYY-MM-DDTHH:mm:ss"),
+        orderId: id!,
+        staffId: "", // TODO: Get from auth context
+      };
+
+      const result = await contractService.createContract(contractData);
+
+      if (result.success) {
+        messageApi.success("Hợp đồng đã được tạo thành công");
+        setContractModalVisible(false);
+        contractForm.resetFields();
+      } else {
+        messageApi.error(result.message);
+      }
+    } catch (error) {
+      messageApi.error("Có lỗi xảy ra khi tạo hợp đồng");
+    } finally {
+      setCreatingContract(false);
+    }
   };
 
   if (loading) {
@@ -146,6 +188,14 @@ const OrderDetailPage: React.FC = () => {
               </p>
             </div>
             <div className="flex gap-3">
+              <Button
+                type="default"
+                icon={<FileTextOutlined />}
+                onClick={handleCreateContract}
+                className="bg-green-500 hover:bg-green-600 border-green-500 text-white"
+              >
+                Tạo hợp đồng
+              </Button>
               <Button
                 type="primary"
                 icon={<EditOutlined />}
@@ -220,532 +270,292 @@ const OrderDetailPage: React.FC = () => {
           )}
 
         {/* Deposit Information */}
-        <Card className="mb-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <DollarOutlined className="text-blue-500 text-xl" />
-            <Typography.Title level={4} className="mb-0">
-              Thông tin cọc tiền
-            </Typography.Title>
+        <Card className="shadow-md rounded-xl mb-6">
+          <div className="flex items-center mb-4">
+            <DollarOutlined className="text-2xl text-green-600 mr-3" />
+            <h3 className="text-lg font-semibold">Thông tin cọc tiền</h3>
           </div>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} md={8}>
-              <div className="border-l-4 border-blue-400 pl-4">
-                <Typography.Text type="secondary">Số tiền cọc</Typography.Text>
-                <div className="text-lg font-semibold text-blue-600">
-                  {order.depositAmount
-                    ? `${order.depositAmount.toLocaleString("vi-VN")} VNĐ`
-                    : "Chưa có thông tin"}
-                </div>
-              </div>
-            </Col>
-            <Col xs={24} sm={12} md={8}>
-              <div className="border-l-4 border-green-400 pl-4">
-                <Typography.Text type="secondary">
-                  Trạng thái thanh toán
-                </Typography.Text>
-                <div className="text-lg font-semibold">
-                  <Tag
-                    color={
-                      order.depositStatus === "paid"
-                        ? "green"
-                        : order.depositStatus === "pending"
-                        ? "orange"
-                        : "gray"
-                    }
-                  >
-                    {order.depositStatus === "paid"
-                      ? "Đã thanh toán"
-                      : order.depositStatus === "pending"
-                      ? "Đang chờ"
-                      : "Chưa có thông tin"}
-                  </Tag>
-                </div>
-              </div>
-            </Col>
-            <Col xs={24} sm={12} md={8}>
-              <div className="border-l-4 border-purple-400 pl-4">
-                <Typography.Text type="secondary">
-                  Ngày thanh toán
-                </Typography.Text>
-                <div className="text-lg font-semibold text-gray-700">
-                  {order.depositPaidDate
-                    ? new Date(order.depositPaidDate).toLocaleDateString(
-                        "vi-VN"
-                      )
-                    : "Chưa có thông tin"}
-                </div>
-              </div>
-            </Col>
-          </Row>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Số tiền cọc</p>
+              <p className="text-lg font-bold text-green-600">
+                {(order as any)?.depositAmount
+                  ? `${(order as any).depositAmount?.toLocaleString()} VNĐ`
+                  : "Chưa có thông tin"}
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Trạng thái thanh toán</p>
+              <p className="text-lg font-semibold">
+                {(order as any)?.depositStatus || "Chưa có thông tin"}
+              </p>
+            </div>
+          </div>
         </Card>
 
-        {/* Trip Information */}
-        <Card className="mb-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <ArrowRightOutlined className="text-green-500 text-xl" />
-            <Typography.Title level={4} className="mb-0">
-              Thông tin lượt đi/về
-            </Typography.Title>
+        {/* Driver Information */}
+        <Card className="shadow-md rounded-xl mb-6">
+          <div className="flex items-center mb-4">
+            <UserOutlined className="text-2xl text-blue-600 mr-3" />
+            <h3 className="text-lg font-semibold">Thông tin tài xế</h3>
           </div>
-          <Row gutter={[24, 16]}>
-            <Col xs={24} md={12}>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <ArrowRightOutlined className="text-blue-500" />
-                  <Typography.Text strong className="text-blue-700">
-                    Lượt đi
-                  </Typography.Text>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Thời gian xuất phát:</span>
-                    <span className="font-semibold">
-                      {order.outboundDepartureTime
-                        ? new Date(order.outboundDepartureTime).toLocaleString(
-                            "vi-VN"
-                          )
-                        : "Chưa có thông tin"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Thời gian đến:</span>
-                    <span className="font-semibold">
-                      {order.outboundArrivalTime
-                        ? new Date(order.outboundArrivalTime).toLocaleString(
-                            "vi-VN"
-                          )
-                        : "Chưa có thông tin"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Trạng thái:</span>
-                    <Tag
-                      color={
-                        order.outboundStatus === "completed"
-                          ? "green"
-                          : order.outboundStatus === "in-progress"
-                          ? "blue"
-                          : "gray"
-                      }
-                    >
-                      {order.outboundStatus === "completed"
-                        ? "Hoàn thành"
-                        : order.outboundStatus === "in-progress"
-                        ? "Đang thực hiện"
-                        : "Chưa có thông tin"}
-                    </Tag>
-                  </div>
-                </div>
-              </div>
-            </Col>
-            <Col xs={24} md={12}>
-              <div className="bg-orange-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <ArrowLeft className="text-orange-500" />
-                  <Typography.Text strong className="text-orange-700">
-                    Lượt về
-                  </Typography.Text>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Thời gian xuất phát:</span>
-                    <span className="font-semibold">
-                      {order.returnDepartureTime
-                        ? new Date(order.returnDepartureTime).toLocaleString(
-                            "vi-VN"
-                          )
-                        : "Chưa có thông tin"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Thời gian đến:</span>
-                    <span className="font-semibold">
-                      {order.returnArrivalTime
-                        ? new Date(order.returnArrivalTime).toLocaleString(
-                            "vi-VN"
-                          )
-                        : "Chưa có thông tin"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Trạng thái:</span>
-                    <Tag
-                      color={
-                        order.returnStatus === "completed"
-                          ? "green"
-                          : order.returnStatus === "in-progress"
-                          ? "blue"
-                          : "gray"
-                      }
-                    >
-                      {order.returnStatus === "completed"
-                        ? "Hoàn thành"
-                        : order.returnStatus === "in-progress"
-                        ? "Đang thực hiện"
-                        : "Chưa có thông tin"}
-                    </Tag>
-                  </div>
-                </div>
-              </div>
-            </Col>
-          </Row>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Tên tài xế</p>
+              <p className="text-lg font-semibold">
+                {(order as any)?.driverName || "Chưa có thông tin"}
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Số điện thoại</p>
+              <p className="text-lg font-semibold">
+                {(order as any)?.driverPhone || "Chưa có thông tin"}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Vehicle Information */}
+        <Card className="shadow-md rounded-xl mb-6">
+          <div className="flex items-center mb-4">
+            <TruckOutlined className="text-2xl text-purple-600 mr-3" />
+            <h3 className="text-lg font-semibold">Thông tin xe nhận đơn</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Biển số xe</p>
+              <p className="text-lg font-semibold">
+                {(order as any)?.vehiclePlate || "Chưa có thông tin"}
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Loại xe</p>
+              <p className="text-lg font-semibold">
+                {(order as any)?.vehicleType || "Chưa có thông tin"}
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Tải trọng</p>
+              <p className="text-lg font-semibold">
+                {(order as any)?.vehicleCapacity || "Chưa có thông tin"}
+              </p>
+            </div>
+          </div>
         </Card>
 
         {/* Delivery Proof Images */}
-        <Card className="mb-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <CameraOutlined className="text-purple-500 text-xl" />
-            <Typography.Title level={4} className="mb-0">
-              Minh chứng hình ảnh giao hàng
-            </Typography.Title>
+        <Card className="shadow-md rounded-xl mb-6">
+          <div className="flex items-center mb-4">
+            <CameraOutlined className="text-2xl text-orange-600 mr-3" />
+            <h3 className="text-lg font-semibold">Minh chứng giao hàng</h3>
           </div>
-          {order.deliveryProofImages && order.deliveryProofImages.length > 0 ? (
-            <Row gutter={[16, 16]}>
-              {order.deliveryProofImages.map((image, index) => (
-                <Col xs={24} sm={12} md={8} lg={6} key={index}>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                    <Image
-                      src={image.url}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(order as any)?.deliveryImages &&
+            (order as any).deliveryImages.length > 0 ? (
+              (order as any).deliveryImages.map(
+                (image: string, index: number) => (
+                  <div
+                    key={index}
+                    className="border rounded-lg overflow-hidden"
+                  >
+                    <img
+                      src={image}
                       alt={`Ảnh giao hàng ${index + 1}`}
-                      className="w-full h-32 object-cover rounded"
-                      placeholder={
-                        <div className="w-full h-32 flex items-center justify-center bg-gray-100">
-                          <FileImageOutlined className="text-2xl text-gray-400" />
-                        </div>
-                      }
+                      className="w-full h-32 object-cover cursor-pointer hover:opacity-80"
+                      onClick={() => window.open(image, "_blank")}
                     />
-                    <div className="mt-2 text-sm text-gray-600">
-                      <div>
-                        Thời gian:{" "}
-                        {image.timestamp
-                          ? new Date(image.timestamp).toLocaleString("vi-VN")
-                          : "N/A"}
-                      </div>
-                      <div>Mô tả: {image.description || "Không có mô tả"}</div>
-                    </div>
                   </div>
-                </Col>
-              ))}
-            </Row>
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="Chưa có hình ảnh minh chứng giao hàng"
-            />
-          )}
-        </Card>
-
-        {/* Shipping Proof Documentation */}
-        <Card className="mb-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <FileImageOutlined className="text-indigo-500 text-xl" />
-            <Typography.Title level={4} className="mb-0">
-              Minh chứng chuyển phí
-            </Typography.Title>
-          </div>
-          {order.shippingProofDocuments &&
-          order.shippingProofDocuments.length > 0 ? (
-            <div className="space-y-4">
-              {order.shippingProofDocuments.map((doc, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-lg p-4"
-                >
-                  <Row gutter={[16, 8]} align="middle">
-                    <Col xs={24} sm={12}>
-                      <div className="flex items-center gap-3">
-                        <FileImageOutlined className="text-indigo-500 text-lg" />
-                        <div>
-                          <div className="font-semibold">
-                            {doc.fileName || "Tài liệu chuyển phí"}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Tải lên:{" "}
-                            {doc.uploadDate
-                              ? new Date(doc.uploadDate).toLocaleDateString(
-                                  "vi-VN"
-                                )
-                              : "N/A"}
-                          </div>
-                        </div>
-                      </div>
-                    </Col>
-                    <Col xs={24} sm={8}>
-                      <Tag color="blue">{doc.documentType || "Tài liệu"}</Tag>
-                    </Col>
-                    <Col xs={24} sm={4}>
-                      <Button
-                        type="link"
-                        onClick={() => window.open(doc.url, "_blank")}
-                        disabled={!doc.url}
-                      >
-                        Xem
-                      </Button>
-                    </Col>
-                  </Row>
-                  {doc.description && (
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                      <Typography.Text type="secondary">
-                        {doc.description}
-                      </Typography.Text>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="Chưa có minh chứng chuyển phí"
-            />
-          )}
-        </Card>
-        {/* Detailed Vehicle Assignment */}
-        <Card className="mb-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <TruckOutlined className="text-blue-500 text-xl" />
-            <Typography.Title level={4} className="mb-0">
-              Chuyển xe nhận đơn
-            </Typography.Title>
-          </div>
-          {order.orderDetails &&
-          order.orderDetails.length > 0 &&
-          order.orderDetails[0].vehicleAssignmentId ? (
-            <div className="space-y-4">
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={12}>
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <Typography.Text strong className="text-blue-700">
-                      Thông tin xe
-                    </Typography.Text>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex justify-between">
-                        <span>Biển số xe:</span>
-                        <span className="font-semibold">
-                          {order.orderDetails[0].vehicleAssignmentId.vehicle
-                            ?.licensePlate || "Chưa có thông tin"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Loại xe:</span>
-                        <span className="font-semibold">
-                          {order.orderDetails[0].vehicleAssignmentId.vehicle
-                            ?.vehicleType || "Chưa có thông tin"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Trọng tải:</span>
-                        <span className="font-semibold">
-                          {order.orderDetails[0].vehicleAssignmentId.vehicle
-                            ?.capacity || "Chưa có thông tin"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-                <Col xs={24} md={12}>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <Typography.Text strong className="text-green-700">
-                      Thông tin tài xế
-                    </Typography.Text>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex justify-between">
-                        <span>Tên tài xế:</span>
-                        <span className="font-semibold">
-                          {order.orderDetails[0].vehicleAssignmentId.driver
-                            ?.fullName || "Chưa có thông tin"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Số điện thoại:</span>
-                        <span className="font-semibold">
-                          {order.orderDetails[0].vehicleAssignmentId.driver
-                            ?.phoneNumber || "Chưa có thông tin"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Kinh nghiệm:</span>
-                        <span className="font-semibold">
-                          {order.orderDetails[0].vehicleAssignmentId.driver
-                            ?.experience || "Chưa có thông tin"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-              <Divider />
-              <Row gutter={[16, 8]}>
-                <Col xs={24} sm={8}>
-                  <div className="text-center">
-                    <Typography.Text type="secondary">
-                      Ngày phân công
-                    </Typography.Text>
-                    <div className="font-semibold">
-                      {order.orderDetails[0].vehicleAssignmentId.assignedDate
-                        ? new Date(
-                            order.orderDetails[0].vehicleAssignmentId.assignedDate
-                          ).toLocaleDateString("vi-VN")
-                        : "Chưa có thông tin"}
-                    </div>
-                  </div>
-                </Col>
-                <Col xs={24} sm={8}>
-                  <div className="text-center">
-                    <Typography.Text type="secondary">
-                      Trạng thái
-                    </Typography.Text>
-                    <div>
-                      <Tag
-                        color={
-                          order.orderDetails[0].vehicleAssignmentId.status ===
-                          "assigned"
-                            ? "blue"
-                            : order.orderDetails[0].vehicleAssignmentId
-                                .status === "in-transit"
-                            ? "orange"
-                            : order.orderDetails[0].vehicleAssignmentId
-                                .status === "completed"
-                            ? "green"
-                            : "gray"
-                        }
-                      >
-                        {order.orderDetails[0].vehicleAssignmentId.status ===
-                        "assigned"
-                          ? "Đã phân công"
-                          : order.orderDetails[0].vehicleAssignmentId.status ===
-                            "in-transit"
-                          ? "Đang vận chuyển"
-                          : order.orderDetails[0].vehicleAssignmentId.status ===
-                            "completed"
-                          ? "Hoàn thành"
-                          : "Chưa có thông tin"}
-                      </Tag>
-                    </div>
-                  </div>
-                </Col>
-                <Col xs={24} sm={8}>
-                  <div className="text-center">
-                    <Typography.Text type="secondary">Ưu tiên</Typography.Text>
-                    <div>
-                      <Tag
-                        color={
-                          order.orderDetails[0].vehicleAssignmentId.priority ===
-                          "high"
-                            ? "red"
-                            : order.orderDetails[0].vehicleAssignmentId
-                                .priority === "medium"
-                            ? "orange"
-                            : "green"
-                        }
-                      >
-                        {order.orderDetails[0].vehicleAssignmentId.priority ===
-                        "high"
-                          ? "Cao"
-                          : order.orderDetails[0].vehicleAssignmentId
-                              .priority === "medium"
-                          ? "Trung bình"
-                          : order.orderDetails[0].vehicleAssignmentId
-                              .priority === "low"
-                          ? "Thấp"
-                          : "Chưa có thông tin"}
-                      </Tag>
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-            </div>
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="Chưa có thông tin phân công xe"
-            />
-          )}
-        </Card>
-
-        {/* Incident Reports */}
-        <Card className="mb-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <WarningOutlined className="text-red-500 text-xl" />
-            <Typography.Title level={4} className="mb-0">
-              Sự cố
-            </Typography.Title>
-          </div>
-          {order.incidents && order.incidents.length > 0 ? (
-            <div className="space-y-4">
-              {order.incidents.map((incident, index) => (
-                <div
-                  key={index}
-                  className="border-l-4 border-red-400 bg-red-50 p-4 rounded-r-lg"
-                >
-                  <Row gutter={[16, 8]}>
-                    <Col xs={24} sm={16}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <WarningOutlined className="text-red-500" />
-                        <Typography.Text strong className="text-red-700">
-                          {incident.incidentType || "Sự cố không xác định"}
-                        </Typography.Text>
-                      </div>
-                      <Typography.Text>
-                        {incident.description || "Không có mô tả chi tiết"}
-                      </Typography.Text>
-                    </Col>
-                    <Col xs={24} sm={8}>
-                      <div className="text-right">
-                        <div className="mb-1">
-                          <Tag
-                            color={
-                              incident.severity === "high"
-                                ? "red"
-                                : incident.severity === "medium"
-                                ? "orange"
-                                : "yellow"
-                            }
-                          >
-                            {incident.severity === "high"
-                              ? "Nghiêm trọng"
-                              : incident.severity === "medium"
-                              ? "Trung bình"
-                              : incident.severity === "low"
-                              ? "Nhẹ"
-                              : "Chưa xác định"}
-                          </Tag>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {incident.reportedDate
-                            ? new Date(incident.reportedDate).toLocaleString(
-                                "vi-VN"
-                              )
-                            : "Chưa có thông tin"}
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
-                  {incident.resolution && (
-                    <div className="mt-3 pt-3 border-t border-red-200">
-                      <Typography.Text strong>Giải pháp: </Typography.Text>
-                      <Typography.Text>{incident.resolution}</Typography.Text>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                <WarningOutlined className="text-2xl text-green-600" />
+                )
+              )
+            ) : (
+              <div className="col-span-4 bg-gray-50 p-8 rounded-lg text-center">
+                <CameraOutlined className="text-4xl text-gray-400 mb-2" />
+                <p className="text-gray-500">
+                  Chưa có hình ảnh minh chứng giao hàng
+                </p>
               </div>
-              <Typography.Title level={5} className="text-green-700 mb-2">
-                Không có sự cố
-              </Typography.Title>
-              <Typography.Text type="secondary">
-                Đơn hàng được vận chuyển an toàn, không có sự cố nào được báo
-                cáo.
-              </Typography.Text>
+            )}
+          </div>
+        </Card>
+
+        {/* Transport Fee Proof */}
+        <Card className="shadow-md rounded-xl mb-6">
+          <div className="flex items-center mb-4">
+            <DollarOutlined className="text-2xl text-teal-600 mr-3" />
+            <h3 className="text-lg font-semibold">Minh chứng chuyển phí</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Số tiền chuyển phí</p>
+              <p className="text-lg font-bold text-teal-600">
+                {(order as any)?.transportFee
+                  ? `${(order as any).transportFee?.toLocaleString()} VNĐ`
+                  : "Chưa có thông tin"}
+              </p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-700">Hình thức thanh toán</p>
+              <p className="text-lg font-semibold">
+                {(order as any)?.paymentMethod || "Chưa có thông tin"}
+              </p>
+            </div>
+          </div>
+          {(order as any)?.transportFeeProof ? (
+            <div className="mt-4">
+              <p className="font-medium text-gray-700 mb-2">
+                Hình ảnh minh chứng:
+              </p>
+              <img
+                src={(order as any).transportFeeProof}
+                alt="Minh chứng chuyển phí"
+                className="max-w-xs h-48 object-cover rounded border cursor-pointer hover:opacity-80"
+                onClick={() =>
+                  window.open((order as any).transportFeeProof, "_blank")
+                }
+              />
+            </div>
+          ) : (
+            <div className="mt-4 bg-gray-50 p-4 rounded-lg text-center">
+              <p className="text-gray-500">
+                Chưa có hình ảnh minh chứng chuyển phí
+              </p>
+            </div>
+          )}
+        </Card>
+
+        {/* Issues Information */}
+        <Card className="shadow-md rounded-xl mb-6">
+          <div className="flex items-center mb-4">
+            <WarningOutlined className="text-2xl text-red-600 mr-3" />
+            <h3 className="text-lg font-semibold">Thông tin sự cố</h3>
+          </div>
+          {(order as any)?.issues && (order as any).issues.length > 0 ? (
+            <div className="space-y-4">
+              {(order as any).issues.map((issue: any, index: number) => (
+                <div
+                  key={index}
+                  className="border-l-4 border-red-500 bg-red-50 p-4 rounded"
+                >
+                  <div className="flex items-center mb-2">
+                    <WarningOutlined className="text-red-600 mr-2" />
+                    <p className="font-semibold text-red-800">
+                      {issue.title || `Sự cố #${index + 1}`}
+                    </p>
+                  </div>
+                  <p className="text-gray-700 mb-2">
+                    {issue.description || "Không có mô tả"}
+                  </p>
+                  <div className="flex justify-between text-sm text-gray-500">
+                    <span>Thời gian: {issue.createdAt || "Chưa xác định"}</span>
+                    <span
+                      className={`px-2 py-1 rounded ${
+                        issue.status === "RESOLVED"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {issue.status === "RESOLVED"
+                        ? "Đã giải quyết"
+                        : "Đang xử lý"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-green-50 p-4 rounded-lg text-center">
+              <CheckCircleOutlined className="text-2xl text-green-600 mb-2" />
+              <p className="text-green-700 font-medium">
+                Không có sự cố nào được báo cáo
+              </p>
             </div>
           )}
         </Card>
       </div>
+
+      {/* Contract Creation Modal */}
+      <Modal
+        title="Tạo hợp đồng"
+        open={contractModalVisible}
+        onCancel={() => setContractModalVisible(false)}
+        onOk={() => contractForm.submit()}
+        confirmLoading={creatingContract}
+        width={600}
+        okText="Tạo hợp đồng"
+        cancelText="Hủy"
+      >
+        <Form
+          form={contractForm}
+          layout="vertical"
+          onFinish={handleContractSubmit}
+        >
+          <Form.Item
+            label="Tên hợp đồng"
+            name="contractName"
+            rules={[{ required: true, message: "Vui lòng nhập tên hợp đồng" }]}
+          >
+            <Input placeholder="Nhập tên hợp đồng" />
+          </Form.Item>
+
+          <div style={{ display: "flex", gap: "16px" }}>
+            <Form.Item
+              label="Ngày hiệu lực"
+              name="effectiveDate"
+              style={{ flex: 1 }}
+              rules={[
+                { required: true, message: "Vui lòng chọn ngày hiệu lực" },
+              ]}
+            >
+              <DatePicker
+                style={{ width: "100%" }}
+                placeholder="Chọn ngày hiệu lực"
+                showTime
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Ngày hết hạn"
+              name="expirationDate"
+              style={{ flex: 1 }}
+              rules={[
+                { required: true, message: "Vui lòng chọn ngày hết hạn" },
+              ]}
+            >
+              <DatePicker
+                style={{ width: "100%" }}
+                placeholder="Chọn ngày hết hạn"
+                showTime
+              />
+            </Form.Item>
+          </div>
+
+          <Form.Item
+            label="Giá trị hỗ trợ"
+            name="supportedValue"
+            rules={[
+              { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="Nhập giá trị hỗ trợ"
+              formatter={(value) =>
+                `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+              }
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+              addonAfter="VNĐ"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Mô tả"
+            name="description"
+            rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
+          >
+            <Input.TextArea rows={4} placeholder="Nhập mô tả hợp đồng" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
