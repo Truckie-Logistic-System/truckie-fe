@@ -1,78 +1,96 @@
 import React, { useState, useEffect } from 'react';
+import { Typography, Card, Input, Button, Skeleton } from 'antd';
 import {
-    Card,
-    Typography,
-    Input,
-    Tabs,
-    Select,
-    Skeleton,
-    Button,
-} from 'antd';
-import {
-    SearchOutlined,
     MessageOutlined,
-    CheckCircleOutlined,
-    QuestionCircleOutlined,
+    SearchOutlined,
     ReloadOutlined,
+    CheckCircleOutlined,
+    QuestionCircleOutlined
 } from '@ant-design/icons';
 import type { ChatConversation, ChatMessage } from '@/models/Chat';
 import { MOCK_CONVERSATIONS } from '@/models/Chat';
-import { v4 as uuidv4 } from 'uuid';
-import StatisticsCards from './components/StatisticsCards';
 import ConversationTable from './components/ConversationTable';
 import ChatDrawer from './components/ChatDrawer';
+import StatisticsCards from './components/StatisticsCards';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
-const { Option } = Select;
 
 const CustomerSupport: React.FC = () => {
-    const [conversations, setConversations] = useState<ChatConversation[]>(MOCK_CONVERSATIONS);
+    const [conversations, setConversations] = useState<ChatConversation[]>([]);
+    const [filteredConversations, setFilteredConversations] = useState<ChatConversation[]>([]);
     const [searchText, setSearchText] = useState('');
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [activeConversation, setActiveConversation] = useState<ChatConversation | null>(null);
     const [message, setMessage] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+    // Fetch conversations
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                // Simulate API call
+                await new Promise((resolve) => setTimeout(resolve, 800));
+                setConversations(MOCK_CONVERSATIONS);
+                setFilteredConversations(MOCK_CONVERSATIONS);
+            } catch (error) {
+                console.error('Error fetching conversations:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [refreshTrigger]);
+
+    // Handle search
     const handleSearch = (value: string) => {
         setSearchText(value);
+        if (!value) {
+            setFilteredConversations(conversations);
+            return;
+        }
+
+        const filtered = conversations.filter(
+            (conversation) =>
+                conversation.customerName.toLowerCase().includes(value.toLowerCase()) ||
+                conversation.lastMessage.toLowerCase().includes(value.toLowerCase())
+        );
+        setFilteredConversations(filtered);
     };
 
-    const filteredConversations = conversations.filter(
-        (conversation) =>
-            conversation.customerName.toLowerCase().includes(searchText.toLowerCase()) ||
-            conversation.lastMessage.toLowerCase().includes(searchText.toLowerCase())
-    );
-
     const openChat = (conversation: ChatConversation) => {
-        // Mark all messages as read
+        // Mark messages as read
         const updatedConversation = {
             ...conversation,
             unreadCount: 0,
-            messages: conversation.messages.map((msg) => ({ ...msg, isRead: true })),
+            messages: conversation.messages.map(msg => ({ ...msg, isRead: true })),
         };
-
-        // Update conversations
-        setConversations(
-            conversations.map((c) => (c.id === conversation.id ? updatedConversation : c))
-        );
 
         setActiveConversation(updatedConversation);
         setDrawerVisible(true);
+
+        // Update in conversations list
+        setConversations(
+            conversations.map((c) => (c.id === conversation.id ? updatedConversation : c))
+        );
+        setFilteredConversations(
+            filteredConversations.map((c) => (c.id === conversation.id ? updatedConversation : c))
+        );
     };
 
     const handleSendMessage = () => {
         if (!message.trim() || !activeConversation) return;
 
-        const newMessage = {
-            id: uuidv4(),
+        const newMessage: ChatMessage = {
+            id: `msg-${Date.now()}`,
+            content: message,
             senderId: '201',
             senderName: 'Nhân viên CSKH',
-            senderType: 'staff' as const,
-            content: message,
+            senderType: 'staff',
             timestamp: new Date().toISOString(),
-            isRead: false,
+            isRead: true,
         };
 
         const updatedConversation = {
@@ -92,30 +110,6 @@ const CustomerSupport: React.FC = () => {
 
     const handleCloseConversation = () => {
         setDrawerVisible(false);
-    };
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'active':
-                return 'green';
-            case 'pending':
-                return 'orange';
-            case 'closed':
-                return 'default';
-            default:
-                return 'default';
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'active':
-                return <CheckCircleOutlined />;
-            case 'pending':
-                return <QuestionCircleOutlined />;
-            default:
-                return <MessageOutlined />;
-        }
     };
 
     return (
@@ -159,8 +153,6 @@ const CustomerSupport: React.FC = () => {
                     <ConversationTable
                         conversations={filteredConversations}
                         onOpenChat={openChat}
-                        getStatusColor={getStatusColor}
-                        getStatusIcon={getStatusIcon}
                     />
                 )}
             </Card>

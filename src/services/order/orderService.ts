@@ -12,6 +12,7 @@ import type {
   PaginatedOrdersResponse,
   OrderTrackingApiResponse,
   OrderDetailsResponse,
+  VehicleAssignmentResponse,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -20,6 +21,7 @@ import {
   getTomorrowVietnamTime,
 } from "../../utils/dateUtils";
 import customerService from "../customer/customerService";
+import { AUTH_ACCESS_TOKEN_KEY } from "@/config";
 
 /**
  * Service for handling order-related API calls
@@ -261,6 +263,58 @@ const orderService = {
   },
 
   /**
+   * Update vehicle assignment for order details
+   * @param orderId Order ID
+   * @returns Promise with updated order details
+   */
+  updateVehicleAssignmentForDetails: async (orderId: string): Promise<OrderDetail[]> => {
+    try {
+      // Get token from localStorage to ensure it's included
+      const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
+
+      const response = await httpClient.put<VehicleAssignmentResponse>(
+        `/order-details/update-vehicle-assignment-for-details?orderId=${orderId}`,
+        {}, // Empty body
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error updating vehicle assignment for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể cập nhật phân công xe cho đơn hàng");
+    }
+  },
+
+  /**
+ * Update vehicle assignment for a specific order detail
+ * @param orderDetailId Order Detail ID or tracking code
+ * @returns Promise with updated order detail
+ */
+  updateVehicleAssignmentForOrderDetail: async (orderId: string): Promise<OrderDetail> => {
+    try {
+      // Get token from localStorage to ensure it's included
+      const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
+
+      const response = await httpClient.put<{ data: OrderDetail }>(
+        `/order-details/update-vehicle-assignment-for-details?orderId=${orderId}`,
+        {}, // Empty body
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error updating vehicle assignment for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể cập nhật phân công xe cho đơn hàng");
+    }
+  },
+
+  /**
    * Get all orders for a specific customer by user ID
    * @param userId User ID
    * @returns Promise with array of orders
@@ -272,6 +326,53 @@ const orderService = {
     } catch (error) {
       console.error(`Error fetching orders for user ${userId}:`, error);
       throw handleApiError(error, "Không thể tải danh sách đơn hàng");
+    }
+  },
+
+  /**
+   * Get order details for a customer by order ID
+   * @param orderId Order ID
+   * @returns Promise with detailed order response
+   */
+  getOrderForCustomerByOrderId: async (orderId: string): Promise<any> => {
+    try {
+      const response = await httpClient.get<any>(`/orders/get-order-for-customer-by-order-id/${orderId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching customer order details for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể tải thông tin chi tiết đơn hàng");
+    }
+  },
+
+  /**
+ * Get orders with filters for a specific user
+ * @param userId User ID
+ * @param filters Filter parameters (year, quarter, status, addressId)
+ * @returns Promise with filtered orders
+ */
+  getFilteredOrdersByUserId: async (userId: string, filters: {
+    year?: number;
+    quarter?: number;
+    status?: string;
+    addressId?: string;
+  }): Promise<Order[]> => {
+    try {
+      // Build query parameters
+      const params: Record<string, string> = {};
+
+      if (filters.year) params.year = filters.year.toString();
+      if (filters.quarter) params.quarter = filters.quarter.toString();
+      if (filters.status) params.status = filters.status;
+      if (filters.addressId) params.addressId = filters.addressId;
+
+      const response = await httpClient.get<OrdersResponse>(
+        `/orders/get-orders-for-cus-by-user-id/${userId}`,
+        { params }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching filtered orders for user ${userId}:`, error);
+      throw handleApiError(error, "Không thể tải danh sách đơn hàng đã lọc");
     }
   },
 };

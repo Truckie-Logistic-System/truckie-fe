@@ -68,6 +68,26 @@ const customerService = {
             console.error(`Error fetching customer ${id}:`, error);
             throw handleApiError(error, 'Không thể tải thông tin khách hàng');
         }
+    },
+
+    /**
+     * Update customer status
+     * @param id Customer ID
+     * @param status New status
+     * @returns Promise with updated customer
+     */
+    updateCustomerStatus: async (id: string, status: string): Promise<Customer> => {
+        try {
+            const response = await httpClient.patch<CustomerResponse>(
+                `/customers/${id}/status`,
+                null,
+                { params: { status } }
+            );
+            return response.data.data;
+        } catch (error) {
+            console.error(`Error updating customer status ${id}:`, error);
+            throw handleApiError(error, 'Không thể cập nhật trạng thái khách hàng');
+        }
     }
 };
 

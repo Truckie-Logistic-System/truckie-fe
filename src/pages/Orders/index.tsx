@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { OrdersHeader, OrdersContent } from "./components";
+import { OrdersHeader, OrdersContent, OrdersFilter } from "./components";
 import orderService from "../../services/order";
 import type { Order } from "../../models/Order";
 import { Skeleton, Alert, App } from "antd";

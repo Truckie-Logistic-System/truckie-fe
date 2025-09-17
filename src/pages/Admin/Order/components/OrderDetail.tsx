@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Modal, App, Tabs, Timeline, Card } from 'antd';
+import { Button, Modal, App, Tabs, Timeline, Card, Skeleton, Typography } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, CarOutlined, HistoryOutlined, ToolOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import orderService from '@/services/order/orderService';
 import type { Order } from '@/models';
 import dayjs from 'dayjs';
 import {
-    OrderDetailSkeleton,
     OrderStatusCard,
     OrderInfoCard,
     AddressCard,
@@ -18,6 +17,7 @@ import {
 
 const { confirm } = Modal;
 const { TabPane } = Tabs;
+const { Title } = Typography;
 
 const OrderDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -132,6 +132,7 @@ const OrderDetailPage: React.FC = () => {
                             icon={<CarOutlined />}
                             block
                             onClick={handleAssignDriver}
+                            className="bg-blue-600 hover:bg-blue-700"
                         >
                             Phân công tài xế
                         </Button>
@@ -156,6 +157,7 @@ const OrderDetailPage: React.FC = () => {
                             type="primary"
                             block
                             onClick={() => messageApi.info('Tính năng đang được phát triển')}
+                            className="bg-blue-600 hover:bg-blue-700"
                         >
                             Xác nhận thanh toán
                         </Button>
@@ -165,8 +167,49 @@ const OrderDetailPage: React.FC = () => {
         );
     };
 
+    // Render skeleton loading
+    const renderSkeletonLoading = () => {
+        return (
+            <div className="p-6">
+                <div className="flex items-center mb-6">
+                    <Button
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => navigate('/admin/orders')}
+                        className="mr-4"
+                    >
+                        Quay lại
+                    </Button>
+                    <Skeleton.Input style={{ width: 300 }} active size="large" />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                        <div className="mb-4 md:mb-0">
+                            <Skeleton.Input style={{ width: 120 }} active size="small" className="mb-2" />
+                            <Skeleton.Input style={{ width: 200 }} active size="default" />
+                        </div>
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <Skeleton.Input style={{ width: 100 }} active size="default" />
+                            <Skeleton.Input style={{ width: 100 }} active size="default" />
+                            <Skeleton.Input style={{ width: 100 }} active size="default" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md mb-6">
+                    <div className="p-4 border-b">
+                        <Skeleton.Input style={{ width: 200 }} active size="default" />
+                    </div>
+                    <div className="p-6">
+                        <Skeleton active paragraph={{ rows: 8 }} />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     if (loading) {
-        return <OrderDetailSkeleton />;
+        return renderSkeletonLoading();
     }
 
     if (!order) {
@@ -175,7 +218,7 @@ const OrderDetailPage: React.FC = () => {
                 <div className="bg-white rounded-xl shadow-md p-6 text-center">
                     <h2 className="text-xl font-semibold mb-2">Không tìm thấy đơn hàng</h2>
                     <p className="text-gray-500 mb-4">Đơn hàng không tồn tại hoặc đã bị xóa</p>
-                    <Button type="primary" onClick={() => navigate('/admin/orders')}>
+                    <Button type="primary" onClick={() => navigate('/admin/orders')} className="bg-blue-600 hover:bg-blue-700">
                         Quay lại danh sách đơn hàng
                     </Button>
                 </div>
@@ -184,48 +227,28 @@ const OrderDetailPage: React.FC = () => {
     }
 
     return (
-        <div>
-            {/* Header section with gradient background */}
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-                <div className="max-w-6xl mx-auto px-4 py-6">
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-                        <div className="mb-4 md:mb-0">
-                            <div className="flex items-center">
-                                <Button
-                                    type="default"
-                                    icon={<ArrowLeftOutlined />}
-                                    onClick={() => navigate('/admin/orders')}
-                                    className="mr-2 bg-white"
-                                >
-                                    Quay lại
-                                </Button>
-                                <h1 className="text-2xl font-bold">Quản lý đơn hàng</h1>
-                            </div>
-                            <p className="text-blue-100 mt-1">Mã đơn hàng: {order.orderCode}</p>
-                        </div>
-                        <div className="flex gap-3">
+        <div className="p-6">
+            {/* Header section */}
+            <div className="mb-6">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+                    <div className="mb-4 md:mb-0">
+                        <div className="flex items-center">
                             <Button
-                                type="primary"
-                                icon={<EditOutlined />}
-                                onClick={handleEdit}
+                                icon={<ArrowLeftOutlined />}
+                                onClick={() => navigate('/admin/orders')}
+                                className="mr-4"
                             >
-                                Chỉnh sửa
+                                Quay lại
                             </Button>
-                            <Button
-                                type="primary"
-                                danger
-                                icon={<DeleteOutlined />}
-                                onClick={handleDelete}
-                            >
-                                Xóa
-                            </Button>
+                            <Title level={2} className="m-0">Quản lý đơn hàng</Title>
                         </div>
+                        <p className="text-gray-500 mt-1">Mã đơn hàng: {order.orderCode}</p>
                     </div>
                 </div>
             </div>
 
             {/* Rest of the content */}
-            <div className="max-w-6xl mx-auto px-4 py-6">
+            <div className="max-w-full">
                 {/* Order Status Card */}
                 <OrderStatusCard order={order} />
 
@@ -273,22 +296,27 @@ const OrderDetailPage: React.FC = () => {
 
                                     {/* Sender Information */}
                                     {order.sender && (
-                                        <SenderInfoCard sender={order.sender} />
+                                        <SenderInfoCard order={order} />
                                     )}
 
                                     {/* Chi tiết vận chuyển */}
                                     {order.orderDetails && order.orderDetails.length > 0 && (
-                                        <OrderDetailsTable orderDetails={order.orderDetails} />
+                                        <OrderDetailsTable
+                                            order={order}
+                                            showAssignButton={true}
+                                            onRefresh={() => fetchOrderDetails(id as string)}
+                                            assigningVehicle={loading}
+                                        />
                                     )}
 
                                     {/* Order Size Information */}
                                     {order.orderDetails && order.orderDetails.length > 0 && order.orderDetails[0].orderSizeId && (
-                                        <OrderSizeCard orderSize={order.orderDetails[0].orderSizeId} />
+                                        <OrderSizeCard order={order} />
                                     )}
 
                                     {/* Vehicle Assignment Information */}
                                     {order.orderDetails && order.orderDetails.length > 0 && order.orderDetails[0].vehicleAssignmentId && (
-                                        <VehicleAssignmentCard vehicleAssignment={order.orderDetails[0].vehicleAssignmentId} />
+                                        <VehicleAssignmentCard order={order} onAssignDriver={handleAssignDriver} />
                                     )}
                                 </>
                             )}

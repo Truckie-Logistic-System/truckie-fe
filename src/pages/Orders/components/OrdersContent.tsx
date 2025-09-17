@@ -23,9 +23,11 @@ import {
 } from "@ant-design/icons";
 import { PackageIcon } from "lucide-react";
 import type { Order, OrderStatus } from "../../../models/Order";
+
 import { formatDate } from "../../../utils/formatters";
 const { Text, Title } = Typography;
 const { Option } = Select;
+
 
 interface OrdersContentProps {
   orders: Order[];
@@ -153,6 +155,12 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
       setPageSize(size);
       setCurrentPage(1); // Reset to first page when page size changes
     }
+  };
+
+  // Format date to Vietnam timezone with hours and minutes
+  const formatDateToVNTime = (date: string | undefined) => {
+    if (!date) return "N/A";
+    return dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
   };
 
   return (

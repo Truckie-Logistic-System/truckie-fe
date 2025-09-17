@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Modal, App, Tabs, Timeline, Card, Steps } from 'antd';
+import { Button, Modal, App, Tabs, Timeline, Card, Steps, Space } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckCircleOutlined,
@@ -9,10 +9,12 @@ import {
     CarOutlined,
     HistoryOutlined,
     ToolOutlined,
-    InfoCircleOutlined
+    InfoCircleOutlined,
+    CarryOutOutlined
 } from '@ant-design/icons';
 import orderService from '@/services/order/orderService';
 import type { Order } from '@/models/Order';
+import { OrderStatusEnum } from '@/constants/enums';
 import dayjs from 'dayjs';
 import {
     OrderDetailSkeleton,
@@ -36,6 +38,7 @@ const OrderDetailPage: React.FC = () => {
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [activeTab, setActiveTab] = useState<string>("info");
+    const [assigningVehicle, setAssigningVehicle] = useState<boolean>(false);
 
     // Lấy thông tin đơn hàng khi component mount
     useEffect(() => {
@@ -63,6 +66,24 @@ const OrderDetailPage: React.FC = () => {
         if (!id) return;
         messageApi.info(`Đã cập nhật trạng thái đơn hàng thành: ${status}`);
         // Implement status update functionality
+    };
+
+    // Hàm xử lý phân công xe cho đơn hàng
+    const handleAssignVehicle = async () => {
+        if (!id) return;
+
+        try {
+            setAssigningVehicle(true);
+            await orderService.updateVehicleAssignmentForOrderDetail(id);
+            messageApi.success('Đã phân công xe cho đơn hàng thành công');
+            // Refresh order details
+            fetchOrderDetails(id);
+        } catch (error) {
+            messageApi.error('Không thể phân công xe cho đơn hàng');
+            console.error('Error assigning vehicle:', error);
+        } finally {
+            setAssigningVehicle(false);
+        }
     };
 
     // Render lịch sử đơn hàng
@@ -251,7 +272,7 @@ const OrderDetailPage: React.FC = () => {
                                 </Button>
                                 <h1 className="text-2xl font-bold">Chi tiết đơn hàng</h1>
                             </div>
-                            <p className="text-blue-100 mt-1">Mã đơn hàng: {order.orderCode}</p>
+                            <p className="text-blue-100 mt-1">Mã đơn hàng: {order?.orderCode}</p>
                         </div>
                         <div className="flex gap-3">
                             <Button
@@ -323,7 +344,13 @@ const OrderDetailPage: React.FC = () => {
 
                                     {/* Chi tiết vận chuyển */}
                                     {order.orderDetails && order.orderDetails.length > 0 && (
-                                        <OrderDetailsTable orderDetails={order.orderDetails} />
+                                        <OrderDetailsTable
+                                            order={order}
+                                            orderDetails={order.orderDetails}
+                                            showAssignButton={true}
+                                            onRefresh={() => fetchOrderDetails(id as string)}
+                                            assigningVehicle={assigningVehicle}
+                                        />
                                     )}
 
                                     {/* Order Size Information */}

@@ -3,6 +3,7 @@ import type { ChatConversation } from '@/models/Chat';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Badge } from 'antd';
+import { ConversationStatusEnum, ConversationStatusColors } from '@/constants/enums';
 
 interface ChatConversationItemProps {
     conversation: ChatConversation;
@@ -20,17 +21,12 @@ const ChatConversationItem: React.FC<ChatConversationItemProps> = ({
         locale: vi,
     });
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'active':
-                return 'bg-green-500';
-            case 'pending':
-                return 'bg-yellow-500';
-            case 'closed':
-                return 'bg-gray-500';
-            default:
-                return 'bg-gray-500';
-        }
+    // Lấy màu từ ConversationStatusColors
+    const getStatusColorClass = (status: string): string => {
+        const statusEnum = status as ConversationStatusEnum;
+        // Chỉ lấy phần bg-color từ ConversationStatusColors
+        const colorClass = ConversationStatusColors[statusEnum]?.split(' ')[0] || 'bg-gray-500';
+        return colorClass;
     };
 
     return (
@@ -44,7 +40,7 @@ const ChatConversationItem: React.FC<ChatConversationItemProps> = ({
                     {conversation.customerName.charAt(0).toUpperCase()}
                 </div>
                 <div
-                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(
+                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColorClass(
                         conversation.status
                     )}`}
                 />

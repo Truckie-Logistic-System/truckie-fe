@@ -1,22 +1,20 @@
 import React from 'react';
-import { Table, Tag, Button, Space, Avatar } from 'antd';
+import { Table, Button, Space, Avatar } from 'antd';
 import { MessageOutlined, UserOutlined } from '@ant-design/icons';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import type { ChatConversation } from '@/models/Chat';
+import { ConversationStatusEnum } from '@/constants/enums';
+import { ConversationStatusTag } from '@/components/common/tags';
 
 interface ConversationTableProps {
     conversations: ChatConversation[];
     onOpenChat: (conversation: ChatConversation) => void;
-    getStatusColor: (status: string) => string;
-    getStatusIcon: (status: string) => React.ReactNode;
 }
 
 const ConversationTable: React.FC<ConversationTableProps> = ({
     conversations,
-    onOpenChat,
-    getStatusColor,
-    getStatusIcon
+    onOpenChat
 }) => {
     const columns = [
         {
@@ -55,9 +53,7 @@ const ConversationTable: React.FC<ConversationTableProps> = ({
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => (
-                <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
-                    {status === 'active' ? 'Đang hoạt động' : 'Đang chờ'}
-                </Tag>
+                <ConversationStatusTag status={status as ConversationStatusEnum} />
             ),
         },
         {

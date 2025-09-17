@@ -1,9 +1,58 @@
-// User model
+export interface Role {
+    id: string;
+    roleName: string;
+    description: string;
+    isActive: boolean;
+}
+
+export interface UserModel {
+    id: string;
+    username: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    gender: boolean;
+    dateOfBirth: string;
+    imageUrl: string;
+    status: string;
+    role: Role;
+}
+
+export interface UsersResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: UserModel[];
+}
+
+export interface UserResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: UserModel;
+}
+
+export interface UserStatusUpdateRequest {
+    status: string;
+}
+
+export interface RegisterEmployeeRequest {
+    username: string;
+    email: string;
+    password: string;
+    gender: boolean;
+    dateOfBirth: string;
+    imageUrl?: string;
+    fullName: string;
+    phoneNumber: string;
+}
+
+// For backward compatibility with existing code
 export interface User {
     id: string;
     username: string;
     email: string;
-    role: 'admin' | 'customer' | 'driver' | 'staff';
+    role: 'admin' | 'customer' | 'staff' | 'driver';
 }
 
 export interface UserCredentials {
@@ -11,29 +60,13 @@ export interface UserCredentials {
     password: string;
 }
 
-export interface UserResponse {
-    id: string;
-    username: string;
-    email: string;
-    fullName?: string;
-    phoneNumber?: string;
-    gender?: boolean;
-    dateOfBirth?: string;
-    imageUrl?: string;
-    status?: string;
-    role: {
-        roleName: string;
-        permissions?: string[];
-    };
-}
-
 // Chuyển đổi từ API response sang model
 export const mapUserResponseToModel = (apiUser: UserResponse): User => {
     return {
-        id: apiUser.id,
-        username: apiUser.username,
-        email: apiUser.email,
-        role: apiUser.role.roleName.toLowerCase() as 'admin' | 'customer' | 'staff' | 'driver'
+        id: apiUser.data.id,
+        username: apiUser.data.username,
+        email: apiUser.data.email,
+        role: apiUser.data.role.roleName.toLowerCase() as 'admin' | 'customer' | 'staff' | 'driver'
     };
 };
 

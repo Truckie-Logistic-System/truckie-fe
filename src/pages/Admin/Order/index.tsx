@@ -1,7 +1,7 @@
-import OrderList from './components/OrderList';
+import OrderPage from './OrderPage';
 import OrderDetailPage from './components/OrderDetail';
 import OrderEdit from './components/OrderEdit';
 
-export { OrderList, OrderDetailPage, OrderEdit };
+export { OrderPage, OrderDetailPage, OrderEdit };
 
-export default OrderList; 
+export default OrderPage; 

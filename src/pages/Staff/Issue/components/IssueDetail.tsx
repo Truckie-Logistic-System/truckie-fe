@@ -5,7 +5,6 @@ import {
     Descriptions,
     Button,
     Skeleton,
-    Tag,
     Divider,
     Timeline,
     Modal,
@@ -24,7 +23,10 @@ import {
 } from '@ant-design/icons';
 import issueService from '@/services/issue';
 import type { Issue, IssueStatus } from '@/models/Issue';
-import { getIssueStatusColor, getIssueStatusLabel, getVehicleInfo, getDriverFullName } from '@/models/Issue';
+import { IssueEnum, IssueStatusLabels } from '@/constants/enums';
+import { IssueStatusTag } from '@/components/common/tags';
+import { getDriverFullName, getVehicleInfo } from '@/models/Issue';
+import { enumToSelectOptions } from '@/utils/enumUtils';
 import dayjs from 'dayjs';
 
 const { confirm } = Modal;
@@ -214,9 +216,7 @@ const IssueDetail: React.FC = () => {
                         <Descriptions bordered column={{ xxl: 3, xl: 3, lg: 2, md: 2, sm: 1, xs: 1 }}>
                             <Descriptions.Item label="Mô tả">{issue.description}</Descriptions.Item>
                             <Descriptions.Item label="Trạng thái">
-                                <Tag color={getIssueStatusColor(issue.status)}>
-                                    {getIssueStatusLabel(issue.status)}
-                                </Tag>
+                                <IssueStatusTag status={issue.status as IssueEnum} />
                             </Descriptions.Item>
                             <Descriptions.Item label="Loại sự cố">
                                 {issue.issueType?.issueTypeName || 'Không xác định'}
@@ -290,12 +290,7 @@ const IssueDetail: React.FC = () => {
                         label="Trạng thái"
                         rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
                     >
-                        <Select>
-                            <Option value="PENDING">Chờ xử lý</Option>
-                            <Option value="IN_PROGRESS">Đang xử lý</Option>
-                            <Option value="RESOLVED">Đã giải quyết</Option>
-                            <Option value="CANCELLED">Đã hủy</Option>
-                        </Select>
+                        <Select options={enumToSelectOptions(IssueEnum, IssueStatusLabels)} />
                     </Form.Item>
                 </Form>
             </Modal>

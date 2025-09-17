@@ -39,7 +39,8 @@ import {
   VehicleAssignmentCard,
 } from "../../components/features/order";
 
-const { confirm } = Modal;
+
+const { TabPane } = Tabs;
 
 const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -499,7 +500,6 @@ const OrderDetailPage: React.FC = () => {
             />
           )}
         </Card>
-
         {/* Detailed Vehicle Assignment */}
         <Card className="mb-6 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
