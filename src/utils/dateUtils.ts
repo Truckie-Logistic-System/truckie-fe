@@ -1,23 +1,29 @@
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+// Configure dayjs to use timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return '-';
-  return dayjs(dateString).format('DD/MM/YYYY HH:mm');
+  return dayjs(dateString).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm');
 };
 
 export const formatDateShort = (dateString: string | null | undefined): string => {
   if (!dateString) return '-';
-  return dayjs(dateString).format('DD/MM/YYYY');
+  return dayjs(dateString).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
 };
 
 export const formatTime = (dateString: string | null | undefined): string => {
   if (!dateString) return '-';
-  return dayjs(dateString).format('HH:mm');
+  return dayjs(dateString).tz('Asia/Ho_Chi_Minh').format('HH:mm');
 };
 
 export const formatDateTime = (dateString: string | null | undefined): string => {
   if (!dateString) return '-';
-  return dayjs(dateString).format('DD/MM/YYYY HH:mm:ss');
+  return dayjs(dateString).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
 };
 
 /**

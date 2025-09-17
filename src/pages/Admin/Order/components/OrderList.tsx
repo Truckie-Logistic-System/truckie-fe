@@ -190,7 +190,7 @@ const OrderList: React.FC<OrderListProps> = ({
                 key: 'createdAt',
                 render: (date: string) => (
                     <span className="text-gray-600">
-                        {dayjs(date).format('DD/MM/YYYY HH:mm')}
+                        {dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss')}
                     </span>
                 ),
                 sorter: (a: Order, b: Order) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf(),

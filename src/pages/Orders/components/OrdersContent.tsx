@@ -4,6 +4,13 @@ import type { Order, OrderStatus } from "../../../models/Order";
 import { formatCurrency } from "../../../utils/formatters";
 import { OrderStatusEnum } from "@/constants/enums";
 import { OrderStatusTag } from "@/components/common/tags";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+// Configure dayjs to use timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface OrdersContentProps {
   orders: Order[];
@@ -12,6 +19,12 @@ interface OrdersContentProps {
 const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
   // Hàm chuyển đổi OrderStatus sang OrderStatusEnum
   const mapToOrderStatusEnum = (status: OrderStatus): OrderStatusEnum => {
+    // Directly use the enum value if it matches
+    if (Object.values(OrderStatusEnum).includes(status as OrderStatusEnum)) {
+      return status as OrderStatusEnum;
+    }
+
+    // Fallback mappings for any legacy or non-standard statuses
     switch (status) {
       case "DELIVERED":
       case "SUCCESSFUL":
@@ -53,6 +66,12 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
       return `${order.deliveryAddress.street}, ${order.deliveryAddress.ward}, ${order.deliveryAddress.province}`;
     }
     return "Chưa có địa chỉ giao hàng";
+  };
+
+  // Format date to Vietnam timezone with hours and minutes
+  const formatDateToVNTime = (date: string | undefined) => {
+    if (!date) return "N/A";
+    return dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
   };
 
   return (
@@ -146,7 +165,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                           Ngày tạo đơn
                         </p>
                         <p className="text-gray-700">
-                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "N/A"}
+                          {formatDateToVNTime(order.createdAt)}
                         </p>
                       </div>
                     </div>

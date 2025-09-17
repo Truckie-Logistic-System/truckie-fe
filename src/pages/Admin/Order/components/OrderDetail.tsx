@@ -244,23 +244,6 @@ const OrderDetailPage: React.FC = () => {
                         </div>
                         <p className="text-gray-500 mt-1">Mã đơn hàng: {order.orderCode}</p>
                     </div>
-                    <div className="flex gap-3">
-                        <Button
-                            type="primary"
-                            icon={<EditOutlined />}
-                            onClick={handleEdit}
-                            className="bg-blue-600 hover:bg-blue-700"
-                        >
-                            Chỉnh sửa
-                        </Button>
-                        <Button
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={handleDelete}
-                        >
-                            Xóa
-                        </Button>
-                    </div>
                 </div>
             </div>
 
@@ -318,7 +301,12 @@ const OrderDetailPage: React.FC = () => {
 
                                     {/* Chi tiết vận chuyển */}
                                     {order.orderDetails && order.orderDetails.length > 0 && (
-                                        <OrderDetailsTable order={order} />
+                                        <OrderDetailsTable
+                                            order={order}
+                                            showAssignButton={true}
+                                            onRefresh={() => fetchOrderDetails(id as string)}
+                                            assigningVehicle={loading}
+                                        />
                                     )}
 
                                     {/* Order Size Information */}

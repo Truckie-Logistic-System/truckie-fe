@@ -1,18 +1,65 @@
-import React from 'react';
-import { Card, Table } from 'antd';
-import { FileTextOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Card, Table, Button, App } from 'antd';
+import { FileTextOutlined, ClockCircleOutlined, CarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import OrderStatusDisplay from './OrderStatusDisplay';
 import type { OrderDetail, Order } from '../../../models';
+import orderService from '@/services/order/orderService';
+
+// Configure dayjs to use timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface OrderDetailsTableProps {
     orderDetails?: OrderDetail[];
     order?: Order;
+    showAssignButton?: boolean;
+    onRefresh?: () => void;
+    assigningVehicle?: boolean;
 }
 
-const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({ orderDetails, order }) => {
+const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({
+    orderDetails,
+    order,
+    showAssignButton = false,
+    onRefresh,
+    assigningVehicle = false
+}) => {
+    const messageApi = App.useApp().message;
+    const [loading, setLoading] = useState<boolean>(false);
     // Nếu có order, lấy orderDetails từ order
     const detailsData = order?.orderDetails || orderDetails || [];
+
+    // Function to handle vehicle assignment for the order
+    const handleAssignVehicle = async () => {
+        if (!order?.id) {
+            messageApi.error('Không tìm thấy ID của đơn hàng');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            messageApi.loading('Đang phân công xe...');
+            await orderService.updateVehicleAssignmentForOrderDetail(order.id);
+            messageApi.success('Đã phân công xe thành công');
+            if (onRefresh) {
+                onRefresh();
+            }
+        } catch (error) {
+            messageApi.error('Không thể phân công xe cho đơn hàng');
+            console.error('Error assigning vehicle:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Format date to Vietnam timezone with hours and minutes
+    const formatDateToVNTime = (date: string) => {
+        if (!date) return null;
+        return dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
+    };
 
     // Nếu không có dữ liệu, hiển thị thông báo
     if (detailsData.length === 0) {
@@ -34,7 +81,7 @@ const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({ orderDetails, ord
     }
 
     // Định nghĩa các cột cho bảng chi tiết đơn hàng
-    const columns = [
+    const baseColumns = [
         {
             title: 'Mã theo dõi',
             dataIndex: 'trackingCode',
@@ -75,7 +122,7 @@ const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({ orderDetails, ord
             render: (date: string) => (
                 <div className="flex items-center">
                     <ClockCircleOutlined className="text-blue-500 mr-1" />
-                    <span>{date ? dayjs(date).format('DD/MM/YYYY HH:mm') : 'Chưa bắt đầu'}</span>
+                    <span>{date ? formatDateToVNTime(date) : 'Chưa bắt đầu'}</span>
                 </div>
             ),
         },
@@ -86,18 +133,35 @@ const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({ orderDetails, ord
             render: (date: string) => (
                 <div className="flex items-center">
                     <ClockCircleOutlined className="text-green-500 mr-1" />
-                    <span>{date ? dayjs(date).format('DD/MM/YYYY HH:mm') : 'Chưa kết thúc'}</span>
+                    <span>{date ? formatDateToVNTime(date) : 'Chưa kết thúc'}</span>
                 </div>
             ),
         },
     ];
 
+    // We no longer need an action column for each row
+    // since we're using a single button for the entire order
+    const columns = baseColumns;
+
     return (
         <Card
             title={
-                <div className="flex items-center">
-                    <FileTextOutlined className="mr-2 text-blue-500" />
-                    <span>Chi tiết vận chuyển</span>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                        <FileTextOutlined className="mr-2 text-blue-500" />
+                        <span>Chi tiết vận chuyển</span>
+                    </div>
+                    {showAssignButton && order && (
+                        <Button
+                            type="primary"
+                            icon={<CarOutlined />}
+                            onClick={handleAssignVehicle}
+                            loading={loading || assigningVehicle}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            Phân công xe cho đơn
+                        </Button>
+                    )}
                 </div>
             }
             className="shadow-md rounded-xl mb-6"
@@ -105,7 +169,7 @@ const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({ orderDetails, ord
             <Table
                 columns={columns}
                 dataSource={detailsData}
-                rowKey="trackingCode"
+                rowKey="id"
                 pagination={false}
                 className="border rounded-lg overflow-hidden"
                 rowClassName="hover:bg-blue-50"

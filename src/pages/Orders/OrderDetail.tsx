@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Modal, App } from 'antd';
-import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Button, Modal, App, Tabs, Card } from 'antd';
+import {
+    ArrowLeftOutlined,
+    InfoCircleOutlined,
+    HistoryOutlined,
+    FileTextOutlined
+} from '@ant-design/icons';
 import orderService from '../../services/order/orderService';
-import type { Order } from '../../models';
 import {
     OrderDetailSkeleton,
     OrderStatusCard,
@@ -12,31 +16,43 @@ import {
     SenderInfoCard,
     OrderDetailsTable,
     OrderSizeCard,
-    VehicleAssignmentCard
+    VehicleAssignmentCard,
+    ContractCard,
+    TransactionsCard,
+    IssueImagesCard,
+    CompletionPhotosCard
 } from '../../components/features/order';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
-const { confirm } = Modal;
+// Configure dayjs to use timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const { TabPane } = Tabs;
 
 const OrderDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const messageApi = App.useApp().message;
-    const [order, setOrder] = useState<Order | null>(null);
+    const [orderData, setOrderData] = useState<any>(null);
     const [loading, setLoading] = useState<boolean>(true);
+    const [activeTab, setActiveTab] = useState<string>("info");
 
-    // Lấy thông tin đơn hàng khi component mount
+    // Fetch order details when component mounts
     useEffect(() => {
         if (id) {
             fetchOrderDetails(id);
         }
     }, [id]);
 
-    // Hàm lấy thông tin chi tiết đơn hàng từ API
+    // Function to fetch order details from API
     const fetchOrderDetails = async (orderId: string) => {
         setLoading(true);
         try {
-            const orderData = await orderService.getOrderById(orderId);
-            setOrder(orderData);
+            const data = await orderService.getOrderForCustomerByOrderId(orderId);
+            setOrderData(data);
         } catch (error) {
             messageApi.error('Không thể tải thông tin đơn hàng');
             console.error('Error fetching order details:', error);
@@ -45,53 +61,25 @@ const OrderDetailPage: React.FC = () => {
         }
     };
 
-    // Xử lý khi click nút xóa đơn hàng
-    const handleDelete = () => {
-        if (!id) return;
-
-        confirm({
-            title: 'Xác nhận xóa đơn hàng',
-            icon: <ExclamationCircleOutlined />,
-            content: 'Bạn có chắc chắn muốn xóa đơn hàng này không? Hành động này không thể hoàn tác.',
-            okText: 'Xóa',
-            okType: 'danger',
-            cancelText: 'Hủy',
-            onOk: async () => {
-                try {
-                    await orderService.deleteOrder(id);
-                    messageApi.success('Đơn hàng đã được xóa thành công');
-                    navigate('/orders');
-                } catch (error) {
-                    messageApi.error('Không thể xóa đơn hàng');
-                    console.error('Error deleting order:', error);
-                }
-            },
-        });
-    };
-
-    // Xử lý khi click nút sửa đơn hàng
-    const handleEdit = () => {
-        if (!id) return;
-        navigate(`/orders/${id}/edit`);
-    };
-
     if (loading) {
         return <OrderDetailSkeleton />;
     }
 
-    if (!order) {
+    if (!orderData || !orderData.getOrderResponse) {
         return (
             <div className="p-6">
                 <div className="bg-white rounded-xl shadow-md p-6 text-center">
                     <h2 className="text-xl font-semibold mb-2">Không tìm thấy đơn hàng</h2>
                     <p className="text-gray-500 mb-4">Đơn hàng không tồn tại hoặc đã bị xóa</p>
-                    <Button type="primary" onClick={() => navigate('/orders')}>
+                    <Button type="primary" onClick={() => navigate('/orders')} className="bg-blue-600 hover:bg-blue-700">
                         Quay lại danh sách đơn hàng
                     </Button>
                 </div>
             </div>
         );
     }
+
+    const order = orderData.getOrderResponse;
 
     return (
         <div>
@@ -113,75 +101,117 @@ const OrderDetailPage: React.FC = () => {
                             </div>
                             <p className="text-blue-100 mt-1">Mã đơn hàng: {order.orderCode}</p>
                         </div>
-                        <div className="flex gap-3">
-                            <Button
-                                type="primary"
-                                icon={<EditOutlined />}
-                                onClick={handleEdit}
-                            >
-                                Chỉnh sửa
-                            </Button>
-                            <Button
-                                type="primary"
-                                danger
-                                icon={<DeleteOutlined />}
-                                onClick={handleDelete}
-                            >
-                                Xóa
-                            </Button>
-                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Rest of the content */}
+            {/* Content section */}
             <div className="max-w-6xl mx-auto px-4 py-6">
                 {/* Order Status Card */}
                 <OrderStatusCard order={order} />
 
-                {/* Order Information Card */}
-                <OrderInfoCard order={order} />
+                {/* Tabs for different sections */}
+                <div className="bg-white rounded-xl shadow-md mb-6">
+                    <Tabs
+                        defaultActiveKey="info"
+                        onChange={setActiveTab}
+                        type="card"
+                        className="order-detail-tabs"
+                    >
+                        <TabPane
+                            tab={
+                                <span>
+                                    <InfoCircleOutlined /> Thông tin đơn hàng
+                                </span>
+                            }
+                            key="info"
+                        >
+                            {activeTab === "info" && (
+                                <>
+                                    {/* Order Information Card */}
+                                    <OrderInfoCard order={order} />
 
-                {/* Address Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    {/* Pickup Address */}
-                    {order.pickupAddress && (
-                        <AddressCard
-                            address={order.pickupAddress}
-                            title="Địa chỉ lấy hàng"
-                            type="pickup"
-                        />
-                    )}
+                                    {/* Address Information */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                        {/* Pickup Address */}
+                                        <AddressCard
+                                            address={order.pickupAddress || {}}
+                                            title="Địa chỉ lấy hàng"
+                                            type="pickup"
+                                        />
 
-                    {/* Delivery Address */}
-                    {order.deliveryAddress && (
-                        <AddressCard
-                            address={order.deliveryAddress}
-                            title="Địa chỉ giao hàng"
-                            type="delivery"
-                        />
-                    )}
+                                        {/* Delivery Address */}
+                                        <AddressCard
+                                            address={order.deliveryAddress || {}}
+                                            title="Địa chỉ giao hàng"
+                                            type="delivery"
+                                        />
+                                    </div>
+
+                                    {/* Sender Information */}
+                                    <SenderInfoCard sender={order.sender || {}} />
+
+                                    {/* Order Details Table */}
+                                    <OrderDetailsTable orderDetails={order.orderDetails || []} />
+
+                                    {/* Order Size Information */}
+                                    {order.orderDetails && order.orderDetails.length > 0 && order.orderDetails[0].orderSizeId && (
+                                        <OrderSizeCard orderSize={order.orderDetails[0].orderSizeId} />
+                                    )}
+
+                                    {/* Vehicle Assignment Information */}
+                                    {order.orderDetails && order.orderDetails.length > 0 && order.orderDetails[0].vehicleAssignmentId && (
+                                        <VehicleAssignmentCard vehicleAssignment={order.orderDetails[0].vehicleAssignmentId} />
+                                    )}
+                                </>
+                            )}
+                        </TabPane>
+                        <TabPane
+                            tab={
+                                <span>
+                                    <HistoryOutlined /> Lịch sử vận chuyển
+                                </span>
+                            }
+                            key="history"
+                        >
+                            {activeTab === "history" && (
+                                <div className="p-4">
+                                    {/* Issue Images */}
+                                    {orderData.getIssueImageResponse && orderData.getIssueImageResponse.length > 0 && (
+                                        <div className="mb-6">
+                                            <IssueImagesCard issueImages={orderData.getIssueImageResponse} />
+                                        </div>
+                                    )}
+
+                                    {/* Completion Photos */}
+                                    {orderData.photoCompletionResponse && Object.keys(orderData.photoCompletionResponse).length > 0 && (
+                                        <div className="mb-6">
+                                            <CompletionPhotosCard photoCompletion={orderData.photoCompletionResponse} />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </TabPane>
+                        <TabPane
+                            tab={
+                                <span>
+                                    <FileTextOutlined /> Hợp đồng & Thanh toán
+                                </span>
+                            }
+                            key="contract"
+                        >
+                            {activeTab === "contract" && (
+                                <div className="p-4">
+                                    {/* Contract Information */}
+                                    <ContractCard contract={orderData.contractResponse} />
+
+                                    {/* Transactions Information */}
+                                    <TransactionsCard transactions={orderData.transactionResponse} />
+                                </div>
+                            )}
+                        </TabPane>
+                    </Tabs>
                 </div>
-
-                {/* Sender Information */}
-                {order.sender && (
-                    <SenderInfoCard sender={order.sender} />
-                )}
-
-                {/* Chi tiết vận chuyển */}
-                {order.orderDetails && order.orderDetails.length > 0 && (
-                    <OrderDetailsTable orderDetails={order.orderDetails} />
-                )}
-
-                {/* Order Size Information */}
-                {order.orderDetails && order.orderDetails.length > 0 && order.orderDetails[0].orderSizeId && (
-                    <OrderSizeCard orderSize={order.orderDetails[0].orderSizeId} />
-                )}
-
-                {/* Vehicle Assignment Information */}
-                {order.orderDetails && order.orderDetails.length > 0 && order.orderDetails[0].vehicleAssignmentId && (
-                    <VehicleAssignmentCard vehicleAssignment={order.orderDetails[0].vehicleAssignmentId} />
-                )}
             </div>
         </div>
     );

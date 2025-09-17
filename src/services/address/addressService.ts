@@ -42,6 +42,21 @@ const addressService = {
     },
 
     /**
+     * Get addresses for a specific customer
+     * @param customerId Customer ID
+     * @returns Promise with array of addresses
+     */
+    getAddressesByCustomerId: async (customerId: string): Promise<Address[]> => {
+        try {
+            const response = await httpClient.get<AddressesResponse>(`/address/${customerId}/list`);
+            return response.data.data;
+        } catch (error) {
+            console.error(`Error fetching addresses for customer ${customerId}:`, error);
+            throw handleApiError(error, 'Không thể tải danh sách địa chỉ của khách hàng');
+        }
+    },
+
+    /**
      * Create new address
      * @param addressData Address data
      * @returns Promise with created address

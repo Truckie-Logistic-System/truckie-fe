@@ -74,7 +74,7 @@ const OrderDetailPage: React.FC = () => {
 
         try {
             setAssigningVehicle(true);
-            await orderService.updateVehicleAssignmentForDetails(id);
+            await orderService.updateVehicleAssignmentForOrderDetail(id);
             messageApi.success('Đã phân công xe cho đơn hàng thành công');
             // Refresh order details
             fetchOrderDetails(id);
@@ -275,17 +275,6 @@ const OrderDetailPage: React.FC = () => {
                             <p className="text-blue-100 mt-1">Mã đơn hàng: {order?.orderCode}</p>
                         </div>
                         <div className="flex gap-3">
-                            {order?.status === OrderStatusEnum.ON_PLANNING && (
-                                <Button
-                                    type="primary"
-                                    icon={<CarryOutOutlined />}
-                                    onClick={handleAssignVehicle}
-                                    loading={assigningVehicle}
-                                    className="bg-green-500 hover:bg-green-600"
-                                >
-                                    Phân công xe
-                                </Button>
-                            )}
                             <Button
                                 type="primary"
                                 icon={<CarOutlined />}
@@ -355,7 +344,13 @@ const OrderDetailPage: React.FC = () => {
 
                                     {/* Chi tiết vận chuyển */}
                                     {order.orderDetails && order.orderDetails.length > 0 && (
-                                        <OrderDetailsTable orderDetails={order.orderDetails} />
+                                        <OrderDetailsTable
+                                            order={order}
+                                            orderDetails={order.orderDetails}
+                                            showAssignButton={true}
+                                            onRefresh={() => fetchOrderDetails(id as string)}
+                                            assigningVehicle={assigningVehicle}
+                                        />
                                     )}
 
                                     {/* Order Size Information */}

@@ -1,7 +1,13 @@
 import React from 'react';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import OrderStatusDisplay from './OrderStatusDisplay';
 import type { Order } from '../../../models';
+
+// Configure dayjs to use timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface OrderStatusCardProps {
     order: Order;
@@ -26,7 +32,7 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({ order }) => {
                         {order.createdAt && (
                             <div className="text-center px-4 border-l border-gray-200">
                                 <p className="text-gray-500 text-sm">Ngày tạo</p>
-                                <p className="font-semibold">{dayjs(order.createdAt).format('DD/MM/YYYY')}</p>
+                                <p className="font-semibold">{dayjs(order.createdAt).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss')}</p>
                             </div>
                         )}
                         <div className="text-center px-4 border-l border-gray-200">
