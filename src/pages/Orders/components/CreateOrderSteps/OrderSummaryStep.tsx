@@ -1,5 +1,5 @@
 import React from 'react';
-import { Typography } from 'antd';
+import { Typography, Divider } from 'antd';
 import type { Address } from '../../../../models/Address';
 import type { Category } from '../../../../models/Category';
 import type { OrderSize } from '../../../../models/OrderSize';
@@ -39,17 +39,26 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                     </div>
 
                     <div className="mb-4">
-                        <Text strong>Thông tin kích thước:</Text>
+                        <Text strong>Thông tin đơn hàng:</Text>
                         <div className="bg-gray-50 p-3 rounded-md mt-1">
-                            <p><Text strong>Trọng lượng:</Text> {formValues.weight} kg</p>
-                            <p>
-                                <Text strong>Kích thước:</Text> {
-                                    orderSizes.find(s => s.id === formValues.orderSizeId)?.name ||
-                                    orderSizes.find(s => s.id === formValues.orderSizeId)?.description ||
-                                    'Không xác định'
-                                }
-                            </p>
-                            <p><Text strong>Mô tả:</Text> {formValues.description}</p>
+                            {formValues.orderDetailsList && formValues.orderDetailsList.map((detail: any, index: number) => (
+                                <div key={index} className="mb-2">
+                                    <Text strong>Lô hàng {index + 1}:</Text>
+                                    <div className="pl-4">
+                                        <p><Text strong>Trọng lượng:</Text> {detail.weight} {detail.unit}</p>
+                                        <p><Text strong>Số lượng:</Text> {detail.quantity || 1}</p>
+                                        <p>
+                                            <Text strong>Kích thước:</Text> {
+                                                orderSizes.find(s => s.id === detail.orderSizeId)?.name ||
+                                                orderSizes.find(s => s.id === detail.orderSizeId)?.description ||
+                                                'Không xác định'
+                                            }
+                                        </p>
+                                        <p><Text strong>Mô tả:</Text> {detail.description}</p>
+                                    </div>
+                                    {index < formValues.orderDetailsList.length - 1 && <Divider className="my-2" />}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -74,8 +83,9 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                     <div className="mb-4">
                         <Text strong>Thông tin bổ sung:</Text>
                         <div className="bg-gray-50 p-3 rounded-md mt-1">
-                            <p><Text strong>Mô tả gói hàng:</Text> {formValues.packageDescription}</p>
+                            <p><Text strong>Mô tả đơn hàng:</Text> {formValues.packageDescription}</p>
                             <p><Text strong>Ghi chú:</Text> {formValues.notes || 'Không có ghi chú'}</p>
+                            <p><Text strong>Thời gian nhận hàng dự kiến:</Text> {formValues.estimateStartTime ? formValues.estimateStartTime.format('DD/MM/YYYY HH:mm') : 'Không xác định'}</p>
                         </div>
                     </div>
                 </div>

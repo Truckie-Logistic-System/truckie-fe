@@ -27,7 +27,7 @@ const PackageInfoStep: React.FC<PackageInfoStepProps> = ({ orderSizes }) => {
         label="Kích thước"
         rules={[{ required: true, message: "Vui lòng chọn kích thước" }]}
       >
-        <Select placeholder="Chọn kích thước gói hàng">
+        <Select placeholder="Chọn kích thước lô hàng">
           {orderSizes.map((size) => (
             <Option key={size.id} value={size.id}>
               {size.minWidth} - {size.maxWidth} x {size.minLength} -{" "}
@@ -45,7 +45,7 @@ const PackageInfoStep: React.FC<PackageInfoStepProps> = ({ orderSizes }) => {
       >
         <Input.TextArea
           rows={3}
-          placeholder="Mô tả chi tiết về kích thước gói hàng"
+          placeholder="Mô tả chi tiết về kích thước lô hàng"
         />
       </Form.Item>
     </>

@@ -52,10 +52,10 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({ categories }) => {
 
       <Form.Item
         name="packageDescription"
-        label="Mô tả gói hàng"
-        rules={[{ required: true, message: "Vui lòng nhập mô tả gói hàng" }]}
+        label="Mô tả đơn hàng"
+        rules={[{ required: true, message: "Vui lòng nhập mô tả đơn hàng" }]}
       >
-        <Input.TextArea rows={4} placeholder="Mô tả chi tiết về gói hàng" />
+        <Input.TextArea rows={4} placeholder="Mô tả chi tiết về đơn hàng" />
       </Form.Item>
 
       <Form.Item

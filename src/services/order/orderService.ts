@@ -13,6 +13,9 @@ import type {
   OrderTrackingApiResponse,
   OrderDetailsResponse,
   VehicleAssignmentResponse,
+  UnitsListResponse,
+  CustomerOrdersResponse,
+  CustomerOrder,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -138,6 +141,11 @@ const orderService = {
               `orderDetails[${index}].description`
             );
           }
+          if (!detail.unit) {
+            missingOrderRequestFields.push(
+              `orderDetails[${index}].unit`
+            );
+          }
         });
       }
 
@@ -173,21 +181,21 @@ const orderService = {
         const inputDate = new Date(orderData.orderRequest.estimateStartTime);
         finalEstimateStartTime = formatToVietnamTime(inputDate);
       }
-      const totalWeight = orderData.orderDetails.reduce(
-        (sum, detail) => sum + (detail.weight || 0),
-        0
-      );
 
       // Chuyển đổi dữ liệu sang định dạng API mong đợi
       const apiOrderData = {
         orderRequest: {
           ...orderData.orderRequest,
-          totalWeight: totalWeight,
           senderId: customerData.id, // Sử dụng customerId thay vì userId
           estimateStartTime: finalEstimateStartTime,
           notes: orderData.orderRequest.notes || "Không có ghi chú",
         },
-        orderDetails: orderData.orderDetails,
+        orderDetails: orderData.orderDetails.map(detail => ({
+          weight: detail.weight,
+          unit: detail.unit || "kg",
+          description: detail.description || "",
+          orderSizeId: detail.orderSizeId
+        }))
       };
 
       // Debug log
@@ -372,6 +380,65 @@ const orderService = {
       return response.data.data;
     } catch (error) {
       console.error(`Error fetching filtered orders for user ${userId}:`, error);
+      throw handleApiError(error, "Không thể tải danh sách đơn hàng đã lọc");
+    }
+  },
+
+  /**
+ * Get list of available units
+ * @returns Promise with array of unit strings
+ */
+  getUnitsList: async (): Promise<string[]> => {
+    try {
+      const response = await httpClient.get<UnitsListResponse>("/orders/list-unit");
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching units list:", error);
+      throw handleApiError(error, "Không thể tải danh sách đơn vị");
+    }
+  },
+
+  /**
+ * Get all orders for the current customer
+ * @returns Promise with array of customer orders
+ */
+  getMyOrders: async (): Promise<CustomerOrder[]> => {
+    try {
+      const response = await httpClient.get<CustomerOrdersResponse>("/orders/get-my-orders");
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching customer orders:", error);
+      throw handleApiError(error, "Không thể tải danh sách đơn hàng");
+    }
+  },
+
+  /**
+ * Get filtered orders for the current customer
+ * @param filters Filter parameters (year, quarter, status, deliveryAddressId)
+ * @returns Promise with filtered customer orders
+ */
+  getFilteredOrders: async (filters: {
+    year?: number;
+    quarter?: number;
+    status?: string;
+    deliveryAddressId?: string;
+  }): Promise<CustomerOrder[]> => {
+    try {
+      // Build query parameters
+      const params: Record<string, string> = {};
+
+      if (filters.year) params.year = filters.year.toString();
+      if (filters.quarter) params.quarter = filters.quarter.toString();
+      if (filters.status) params.status = filters.status;
+      if (filters.deliveryAddressId) params.deliveryAddressId = filters.deliveryAddressId;
+
+      const response = await httpClient.get<CustomerOrdersResponse>(
+        "/orders/get-my-orders",
+        { params }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching filtered orders:", error);
       throw handleApiError(error, "Không thể tải danh sách đơn hàng đã lọc");
     }
   },

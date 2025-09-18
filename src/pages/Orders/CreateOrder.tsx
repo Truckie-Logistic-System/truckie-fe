@@ -35,15 +35,18 @@ export default function CreateOrder() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orderSizes, setOrderSizes] = useState<OrderSize[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [units, setUnits] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<any>({
     notes: "Không có ghi chú",
-    packageDescription: "Gói hàng thông thường",
+    packageDescription: "Đơn hàng thông thường",
     orderDetailsList: [
       {
         weight: 1,
+        unit: "kg",
+        quantity: 1,
         orderSizeId: null,
         description: "",
       },
@@ -63,11 +66,12 @@ export default function CreateOrder() {
       try {
         setLoading(true);
 
-        const [addressesData, orderSizesData, categoriesData] =
+        const [addressesData, orderSizesData, categoriesData, unitsData] =
           await Promise.all([
             addressService.getAllAddresses(),
             orderSizeService.getAllOrderSizes(),
             categoryService.getAllCategories(),
+            orderService.getUnitsList(),
           ]);
 
         // Thêm trường fullAddress nếu chưa có
@@ -81,6 +85,19 @@ export default function CreateOrder() {
         setAddresses(addressesWithFullAddress);
         setOrderSizes(orderSizesData);
         setCategories(categoriesData);
+        setUnits(unitsData);
+
+        // Update default unit if units are available
+        if (unitsData && unitsData.length > 0) {
+          setFormValues((prev: any) => ({
+            ...prev,
+            orderDetailsList: prev.orderDetailsList.map((detail: any) => ({
+              ...detail,
+              unit: unitsData[0]
+            }))
+          }));
+        }
+
         setError(null);
       } catch (err: any) {
         setError(err.message || "Không thể tải dữ liệu");
@@ -110,15 +127,22 @@ export default function CreateOrder() {
       // (Tùy theo API có hỗ trợ multiple OrderDetails hay không)
       const orderDetails = finalValues.orderDetailsList || [];
       if (orderDetails.length === 0) {
-        throw new Error("Vui lòng thêm ít nhất một gói hàng!");
+        throw new Error("Vui lòng thêm ít nhất một lô hàng!");
       }
 
-      // Chuẩn bị orderDetails cho API
-      const orderDetailsForAPI = orderDetails.map((detail: any) => ({
-        weight: detail.weight,
-        description: detail.description,
-        orderSizeId: detail.orderSizeId,
-      }));
+      // Chuẩn bị orderDetails cho API, nhân bản theo số lượng (quantity)
+      const orderDetailsForAPI = orderDetails.flatMap((detail: any) => {
+        // Lấy số lượng từ trường quantity, mặc định là 1 nếu không có
+        const quantity = detail.quantity || 1;
+
+        // Tạo mảng các order detail dựa trên quantity
+        return Array.from({ length: quantity }, () => ({
+          weight: detail.weight,
+          unit: detail.unit || "kg",
+          description: detail.description,
+          orderSizeId: detail.orderSizeId,
+        }));
+      });
 
       // Xử lý estimateStartTime - format theo UTC+7 định dạng YYYY-MM-DDTHH:mm:ss
       const estimateStartTime = finalValues.estimateStartTime
@@ -176,10 +200,21 @@ export default function CreateOrder() {
             "receiverPhone",
             "categoryId",
             "packageDescription",
+            "estimateStartTime",
           ];
           break;
         case 1:
-          fieldsToValidate = ["weight", "orderSizeId", "description"];
+          // For dynamic fields in Form.List, we need to validate each item
+          const orderDetails = form.getFieldValue('orderDetailsList') || [];
+          orderDetails.forEach((_: any, index: number) => {
+            fieldsToValidate.push(
+              `orderDetailsList[${index}].weight`,
+              `orderDetailsList[${index}].unit`,
+              `orderDetailsList[${index}].quantity`,
+              `orderDetailsList[${index}].orderSizeId`,
+              `orderDetailsList[${index}].description`
+            );
+          });
           break;
         case 2:
           fieldsToValidate = ["pickupAddressId", "deliveryAddressId", "notes"];
@@ -262,8 +297,9 @@ export default function CreateOrder() {
         return (
           <OrderDetailFormList
             name="orderDetailsList"
-            label="Danh sách gói hàng"
+            label="Danh sách lô hàng"
             orderSizes={orderSizes}
+            units={units}
           />
         );
       case 2:
@@ -298,8 +334,8 @@ export default function CreateOrder() {
             description="Nhập thông tin người nhận"
           />
           <Step
-            title="Kích thước & Trọng lượng & trọng lượng"
-            description="Nhập thông tin gói hàng"
+            title="Kích thước & Trọng lượng"
+            description="Nhập thông tin lô hàng"
           />
           <Step title="Địa chỉ" description="Chọn địa chỉ giao và nhận" />
           <Step title="Xác nhận" description="Xác nhận thông tin đơn hàng" />

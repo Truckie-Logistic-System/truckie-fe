@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -10,6 +10,8 @@ import {
   Input,
   Select,
   Pagination,
+  Divider,
+  Space,
 } from "antd";
 import {
   EnvironmentOutlined,
@@ -20,12 +22,14 @@ import {
   BoxPlotOutlined,
   EyeOutlined,
   CarOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { PackageIcon } from "lucide-react";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import type { Order, OrderStatus } from "../../../models/Order";
+import type { CustomerOrder } from "../../../services/order/types";
 
 import { formatDate } from "../../../utils/formatters";
 
@@ -38,7 +42,15 @@ const { Option } = Select;
 
 
 interface OrdersContentProps {
-  orders: Order[];
+  orders: CustomerOrder[];
+  allOrders?: CustomerOrder[];
+  onFilterChange?: (filters: {
+    year?: number;
+    quarter?: number;
+    status?: string;
+    deliveryAddressId?: string;
+  }) => void;
+  onResetFilters?: () => void;
 }
 
 /**
@@ -46,7 +58,7 @@ interface OrdersContentProps {
  * @param status The order status string.
  * @returns The Ant Design color string for the tag.
  */
-const getStatusColor = (status: OrderStatus): string => {
+const getStatusColor = (status: string): string => {
   switch (status) {
     case "PENDING":
       return "orange";
@@ -77,39 +89,120 @@ const getStatusColor = (status: OrderStatus): string => {
  * @param status The order status string.
  * @returns The Vietnamese display text.
  */
-const getStatusText = (status: OrderStatus): string => {
+const getStatusText = (status: string): string => {
   switch (status) {
     case "PENDING":
-      return "Pending";
+      return "Chờ xử lý";
     case "PROCESSING":
       return "Đang xử lý";
     case "PICKED_UP":
       return "Đã lấy hàng";
     case "ON_DELIVERED":
     case "ONGOING_DELIVERED":
-      return "Out for Delivery";
+      return "Đang vận chuyển";
     case "DELIVERED":
     case "SUCCESSFUL":
-      return "Delivered";
+      return "Đã giao hàng";
     case "CANCELLED":
     case "REJECT_ORDER":
-      return "Cancelled";
+      return "Đã hủy";
     case "IN_TROUBLES":
-      return "Delayed";
+      return "Gặp sự cố";
     case "RETURNED":
     case "RETURNING":
-      return "In Transit";
+      return "Đang hoàn trả";
     default:
       return status.replace(/_/g, " ");
   }
 };
 
-const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
+// Status group definitions
+const statusGroups = [
+  {
+    name: "Đang chờ",
+    color: "orange",
+    statuses: ["PENDING", "PROCESSING"],
+  },
+  {
+    name: "Đang vận chuyển",
+    color: "blue",
+    statuses: ["PICKED_UP", "ON_DELIVERED", "ONGOING_DELIVERED", "IN_DELIVERED"],
+  },
+  {
+    name: "Hoàn thành",
+    color: "green",
+    statuses: ["DELIVERED", "SUCCESSFUL"],
+  },
+  {
+    name: "Đã hủy",
+    color: "red",
+    statuses: ["CANCELLED", "REJECT_ORDER"],
+  },
+  {
+    name: "Sự cố",
+    color: "red",
+    statuses: ["IN_TROUBLES"],
+  },
+  {
+    name: "Hoàn trả",
+    color: "purple",
+    statuses: ["RETURNING", "RETURNED"],
+  },
+];
+
+const OrdersContent: React.FC<OrdersContentProps> = ({
+  orders,
+  onFilterChange,
+  onResetFilters,
+  allOrders = []
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusGroupFilter, setStatusGroupFilter] = useState<string>("ALL");
+  const [yearFilter, setYearFilter] = useState<number | undefined>(undefined);
+  const [quarterFilter, setQuarterFilter] = useState<number | undefined>(undefined);
+  const [addressFilter, setAddressFilter] = useState<string | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [filters, setFilters] = useState<{
+    year?: number;
+    quarter?: number;
+    status?: string;
+    deliveryAddressId?: string;
+  }>({});
 
+  // Generate year options (current year and 2 years back)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 3 }, (_, i) => currentYear - i);
+
+  // Quarter options
+  const quarterOptions = [
+    { value: 1, label: "Quý 1 (Tháng 1-3)" },
+    { value: 2, label: "Quý 2 (Tháng 4-6)" },
+    { value: 3, label: "Quý 3 (Tháng 7-9)" },
+    { value: 4, label: "Quý 4 (Tháng 10-12)" },
+  ];
+
+  // Extract unique addresses from orders
+  const uniqueAddresses = useMemo(() => {
+    // Sử dụng allOrders nếu có để có danh sách địa chỉ đầy đủ
+    const sourceOrders = allOrders && allOrders.length > 0 ? allOrders : orders;
+
+    if (!sourceOrders || sourceOrders.length === 0) {
+      return [];
+    }
+
+    const addresses = sourceOrders.map((order) => ({
+      id: order.deliveryAddressId,
+      address: order.deliveryAddress
+    })).filter((item) => item.id && item.address) // Filter out any undefined values
+      .filter((item, index, self) =>
+        index === self.findIndex((t) => t.id === item.id)
+      );
+    return addresses;
+  }, [orders, allOrders]);
+
+  // Status options
   const statuses = [
     { value: "ALL", label: "Tất cả" },
     { value: "PENDING", label: "Chờ xử lý" },
@@ -123,32 +216,57 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
     { value: "RETURNED", label: "Đã hoàn trả" },
   ];
 
+
+
+  // Reset filters
+  const resetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("ALL");
+    setStatusGroupFilter("ALL");
+    setYearFilter(undefined);
+    setQuarterFilter(undefined);
+    setAddressFilter(undefined);
+    setCurrentPage(1);
+    setFilters({});
+
+    // Reset server-side filters
+    if (onResetFilters) {
+      onResetFilters();
+    }
+  };
+
   const filteredOrders = useMemo(() => {
     const filtered = orders.filter((order) => {
-      const pickupAddressStr = order.pickupAddress
-        ? `${order.pickupAddress.street}, ${order.pickupAddress.ward}, ${order.pickupAddress.province}`
-        : "";
-      const deliveryAddressStr = order.deliveryAddress
-        ? `${order.deliveryAddress.street}, ${order.deliveryAddress.ward}, ${order.deliveryAddress.province}`
-        : "";
-
+      // Text search
       const matchesSearch =
+        !searchTerm ||
         order.orderCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pickupAddressStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        deliveryAddressStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.pickupAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.deliveryAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.receiverName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "ALL" || order.status === statusFilter;
+      // Status group filter (chỉ áp dụng khi không có onFilterChange, vì nếu có thì đã được xử lý ở component cha)
+      const matchesStatusGroup = !onFilterChange ||
+        statusGroupFilter === "ALL" ||
+        statusGroups
+          .find((group) => group.name === statusGroupFilter)
+          ?.statuses.includes(order.status);
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatusGroup;
     });
 
-    // Reset to first page when filter changes
-    setCurrentPage(1);
-
     return filtered;
-  }, [orders, searchTerm, statusFilter]);
+  }, [
+    orders,
+    searchTerm,
+    statusGroupFilter,
+    onFilterChange
+  ]);
+
+  // Update current page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, statusGroupFilter, yearFilter, quarterFilter, addressFilter]);
 
   // Pagination logic
   const paginatedOrders = useMemo(() => {
@@ -176,55 +294,167 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
       <div className="max-w-4xl mx-auto">
         {/* Search and Filter Section */}
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+          <div className="mb-4">
+            <Text className="text-sm text-gray-600 mb-1 block">
+              Tìm Kiếm
+            </Text>
+            <Input
+              placeholder="Mã đơn hàng, địa điểm, người nhận..."
+              prefix={<SearchOutlined />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              allowClear
+              size="large"
+              className="mb-4"
+            />
+          </div>
+
+          <Divider orientation="left">Bộ lọc</Divider>
+
           <Row gutter={[16, 16]} align="middle">
-            <Col span={6}>
+            <Col xs={24} sm={12} md={6}>
               <div>
                 <Text className="text-sm text-gray-600 mb-1 block">
-                  Tìm Kiếm
-                </Text>
-                <Input
-                  placeholder="Tracking #, địa điểm, người nhận..."
-                  prefix={<SearchOutlined />}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  allowClear
-                  size="large"
-                />
-              </div>
-            </Col>
-            <Col span={6}>
-              <div>
-                <Text className="text-sm text-gray-600 mb-1 block">
-                  Trạng Thái
+                  Năm
                 </Text>
                 <Select
-                  placeholder="Tất cả"
-                  value={statusFilter}
-                  onChange={(value) => setStatusFilter(value)}
+                  placeholder="Chọn năm"
+                  value={yearFilter}
+                  onChange={(value) => {
+                    setYearFilter(value);
+                    if (onFilterChange) {
+                      const newFilters = { ...filters, year: value };
+                      setFilters(newFilters);
+                      onFilterChange(newFilters);
+                    }
+                  }}
                   className="w-full"
-                  suffixIcon={<FilterOutlined />}
-                  size="large"
+                  allowClear
+                  size="middle"
                 >
-                  {statuses.map((status) => (
-                    <Option key={status.value} value={status.value}>
-                      {status.label}
+                  {yearOptions.map((year) => (
+                    <Option key={year} value={year}>
+                      {year}
                     </Option>
                   ))}
                 </Select>
               </div>
             </Col>
-            <Col span={6}>
+
+            <Col xs={24} sm={12} md={6}>
               <div>
                 <Text className="text-sm text-gray-600 mb-1 block">
-                  Sắp Xếp Theo
+                  Quý
                 </Text>
-                <Select defaultValue="newest" className="w-full" size="large">
-                  <Option value="newest">Ngày Đặt Hàng (Mới Nhất)</Option>
-                  <Option value="oldest">Ngày Đặt Hàng (Cũ Nhất)</Option>
+                <Select
+                  placeholder="Chọn quý"
+                  value={quarterFilter}
+                  onChange={(value) => {
+                    setQuarterFilter(value);
+                    if (onFilterChange) {
+                      const newFilters = { ...filters, quarter: value };
+                      setFilters(newFilters);
+                      onFilterChange(newFilters);
+                    }
+                  }}
+                  className="w-full"
+                  allowClear
+                  size="middle"
+                >
+                  {quarterOptions.map((quarter) => (
+                    <Option key={quarter.value} value={quarter.value}>
+                      {quarter.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </Col>
+
+            <Col xs={24} sm={12} md={6}>
+              <div>
+                <Text className="text-sm text-gray-600 mb-1 block">
+                  Địa chỉ nhận hàng
+                </Text>
+                <Select
+                  placeholder="Chọn địa chỉ"
+                  value={addressFilter}
+                  onChange={(value) => {
+                    setAddressFilter(value);
+                    if (onFilterChange) {
+                      const newFilters = { ...filters, deliveryAddressId: value };
+                      setFilters(newFilters);
+                      onFilterChange(newFilters);
+                    }
+                  }}
+                  className="w-full"
+                  allowClear
+                  showSearch
+                  optionFilterProp="children"
+                  size="middle"
+                >
+                  {uniqueAddresses.map((item) => (
+                    <Option key={item.id} value={item.id}>
+                      {item.address}
+                    </Option>
+                  ))}
                 </Select>
               </div>
             </Col>
           </Row>
+
+          <div className="mt-4 flex justify-end">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={resetFilters}
+              className="mr-2"
+            >
+              Đặt lại bộ lọc
+            </Button>
+          </div>
+        </div>
+
+        {/* Status Group Tags */}
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+          <Text className="text-sm text-gray-600 mb-2 block">
+            Lọc nhanh theo nhóm trạng thái
+          </Text>
+          <Space size="middle" wrap>
+            <Tag
+              className="px-3 py-1 cursor-pointer text-base"
+              color={statusGroupFilter === "ALL" ? "blue" : undefined}
+              onClick={() => {
+                setStatusGroupFilter("ALL");
+                setStatusFilter("ALL");
+                if (onFilterChange) {
+                  const newFilters = { ...filters, status: undefined };
+                  setFilters(newFilters);
+                  onFilterChange(newFilters);
+                }
+              }}
+            >
+              Tất cả
+            </Tag>
+            {statusGroups.map((group) => (
+              <Tag
+                key={group.name}
+                className="px-3 py-1 cursor-pointer text-base"
+                color={statusGroupFilter === group.name ? group.color : undefined}
+                onClick={() => {
+                  setStatusGroupFilter(group.name);
+                  // Khi chọn nhóm, chọn trạng thái đầu tiên trong nhóm
+                  const firstStatus = group.statuses[0];
+                  setStatusFilter(firstStatus);
+                  if (onFilterChange) {
+                    const newFilters = { ...filters, status: firstStatus };
+                    setFilters(newFilters);
+                    onFilterChange(newFilters);
+                  }
+                }}
+              >
+                {group.name}
+              </Tag>
+            ))}
+          </Space>
         </div>
 
         {/* Orders List */}
@@ -268,9 +498,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                             TỪ
                           </Text>
                           <Text className="text-sm">
-                            {order.pickupAddress
-                              ? `${order.pickupAddress.street}, ${order.pickupAddress.ward}`
-                              : "N/A"}
+                            {order.pickupAddress || "N/A"}
                           </Text>
                         </div>
                       </div>
@@ -283,9 +511,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                             ĐẾN
                           </Text>
                           <Text className="text-sm">
-                            {order.deliveryAddress
-                              ? `${order.deliveryAddress.street}, ${order.deliveryAddress.ward}`
-                              : "N/A"}
+                            {order.deliveryAddress || "N/A"}
                           </Text>
                         </div>
                       </div>
@@ -374,7 +600,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                   Không tìm thấy đơn hàng
                 </Title>
                 <Text type="secondary">
-                  {searchTerm || statusFilter !== "ALL"
+                  {searchTerm || statusFilter !== "ALL" || yearFilter || quarterFilter || addressFilter
                     ? "Thử thay đổi điều kiện tìm kiếm hoặc bộ lọc"
                     : "Chưa có đơn hàng nào được tạo"}
                 </Text>

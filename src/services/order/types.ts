@@ -15,6 +15,36 @@ export interface OrderTrackingResponse {
     heading?: number;
 }
 
+export interface UnitsListResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: string[];
+}
+
+export interface CustomerOrder {
+    id: string;
+    orderCode: string;
+    totalPrice: number | null;
+    totalQuantity: number;
+    status: string;
+    notes: string;
+    packageDescription: string;
+    receiverName: string;
+    receiverPhone: string;
+    pickupAddress: string;
+    deliveryAddress: string;
+    deliveryAddressId: string;
+    createdAt: string;
+}
+
+export interface CustomerOrdersResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: CustomerOrder[];
+}
+
 export type OrderResponse = ApiResponse<Order>;
 export type OrdersResponse = ApiResponse<Order[]>;
 export type OrderDetailsResponse = ApiResponse<OrderDetail[]>;

@@ -1,50 +1,120 @@
-import React, { useState, useEffect } from "react";
-import { OrdersHeader, OrdersContent, OrdersFilter } from "./components";
+import React, { useState, useEffect, useCallback } from "react";
+import { OrdersHeader, OrdersContent } from "./components";
 import orderService from "../../services/order";
-import type { Order } from "../../models/Order";
 import { Skeleton, Alert, App } from "antd";
 import { useAuth } from "../../context";
-import { addressService } from "@/services";
+import type { CustomerOrder } from "@/services/order/types";
 
 const OrdersPage: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<CustomerOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    year: undefined as number | undefined,
+    quarter: undefined as number | undefined,
+    status: undefined as string | undefined,
+    deliveryAddressId: undefined as string | undefined,
+  });
   const { message } = App.useApp();
-  const { user } = useAuth();
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Lấy tất cả đơn hàng từ API mà không có tham số lọc
+      const data = await orderService.getMyOrders();
+
+      setOrders(data);
+      setFilteredOrders(data); // Ban đầu, hiển thị tất cả đơn hàng
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || "Không thể tải danh sách đơn hàng");
+      message.error(err.message || "Không thể tải danh sách đơn hàng");
+      console.error("Error fetching orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [message]);
+
+  // Áp dụng bộ lọc ở phía client
+  const applyFilters = useCallback((filterParams: {
+    year?: number;
+    quarter?: number;
+    status?: string;
+    deliveryAddressId?: string;
+  }) => {
+    // Lưu các bộ lọc hiện tại
+    setFilters(prev => ({
+      ...prev,
+      ...filterParams
+    }));
+
+    // Lọc đơn hàng dựa trên các bộ lọc
+    let filtered = [...orders];
+
+    // Lọc theo năm
+    if (filterParams.year) {
+      filtered = filtered.filter(order => {
+        const orderYear = order.createdAt
+          ? new Date(order.createdAt).getFullYear()
+          : null;
+        return orderYear === filterParams.year;
+      });
+    }
+
+    // Lọc theo quý
+    if (filterParams.quarter) {
+      filtered = filtered.filter(order => {
+        if (!order.createdAt) return false;
+        const orderMonth = new Date(order.createdAt).getMonth() + 1; // JavaScript months are 0-indexed
+        const orderQuarter = Math.ceil(orderMonth / 3);
+        return orderQuarter === filterParams.quarter;
+      });
+    }
+
+    // Lọc theo trạng thái
+    if (filterParams.status && filterParams.status !== "ALL") {
+      filtered = filtered.filter(order => order.status === filterParams.status);
+    }
+
+    // Lọc theo địa chỉ
+    if (filterParams.deliveryAddressId) {
+      filtered = filtered.filter(order => order.deliveryAddressId === filterParams.deliveryAddressId);
+    }
+
+    setFilteredOrders(filtered);
+  }, [orders]);
+
+  // Xử lý thay đổi bộ lọc
+  const handleFilterChange = useCallback((newFilters: {
+    year?: number;
+    quarter?: number;
+    status?: string;
+    deliveryAddressId?: string;
+  }) => {
+    applyFilters(newFilters);
+  }, [applyFilters]);
+
+  // Reset bộ lọc
+  const resetFilters = useCallback(() => {
+    setFilters({
+      year: undefined,
+      quarter: undefined,
+      status: undefined,
+      deliveryAddressId: undefined,
+    });
+    setFilteredOrders(orders);
+  }, [orders]);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-
-        // Kiểm tra xem có userId không
-        const userId = user?.id || localStorage.getItem("userId");
-        if (!userId) {
-          throw new Error("Không tìm thấy thông tin người dùng");
-        }
-
-        // Sử dụng API endpoint mới để lấy đơn hàng theo userId
-        const data = await orderService.getOrdersByUserId(userId);
-
-        setOrders(data);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || "Không thể tải danh sách đơn hàng");
-        message.error(err.message || "Không thể tải danh sách đơn hàng");
-        console.error("Error fetching orders:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchOrders();
 
     // Cleanup function to prevent memory leaks
     return () => {
       // Cancel any pending requests if needed
     };
-  }, [user, message]);
+  }, [fetchOrders]);
 
   return (
     <>
@@ -99,7 +169,12 @@ const OrdersPage: React.FC = () => {
           className="my-4"
         />
       ) : (
-        <OrdersContent orders={orders} />
+        <OrdersContent
+          orders={filteredOrders}
+          onFilterChange={handleFilterChange}
+          onResetFilters={resetFilters}
+          allOrders={orders}
+        />
       )}
     </>
   );
