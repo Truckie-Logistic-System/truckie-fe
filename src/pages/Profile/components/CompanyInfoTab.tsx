@@ -9,9 +9,10 @@ const { Title, Text } = Typography;
 interface CompanyInfoTabProps {
     customerData: Customer | undefined;
     isOwnProfile: boolean;
+    onRefresh?: () => void;
 }
 
-const CompanyInfoTab: React.FC<CompanyInfoTabProps> = ({ customerData, isOwnProfile }) => {
+const CompanyInfoTab: React.FC<CompanyInfoTabProps> = ({ customerData, isOwnProfile, onRefresh }) => {
     if (!customerData) return null;
 
     return (
@@ -19,7 +20,7 @@ const CompanyInfoTab: React.FC<CompanyInfoTabProps> = ({ customerData, isOwnProf
             <div className="flex justify-between items-start mb-6">
                 <Title level={4} className="text-blue-700 m-0">Thông tin doanh nghiệp</Title>
                 {isOwnProfile && customerData && (
-                    <EditProfileModal customerData={customerData} />
+                    <EditProfileModal customerData={customerData} onRefresh={onRefresh} />
                 )}
             </div>
 

@@ -1,6 +1,6 @@
 import httpClient from '../api/httpClient';
 import { handleApiError } from '../api/errorHandler';
-import type { UserModel, UsersResponse, UserResponse, RegisterEmployeeRequest } from './types';
+import type { UserModel, UsersResponse, UserResponse, RegisterEmployeeRequest, UserUpdateRequest } from './types';
 
 /**
  * Service for handling user-related API calls
@@ -88,6 +88,22 @@ const userService = {
         } catch (error) {
             console.error('Error registering employee:', error);
             throw handleApiError(error, 'Không thể đăng ký nhân viên mới');
+        }
+    },
+
+    /**
+     * Update user profile
+     * @param id User ID
+     * @param userData User data to update
+     * @returns Promise with updated user
+     */
+    updateUserProfile: async (id: string, userData: UserUpdateRequest): Promise<UserModel> => {
+        try {
+            const response = await httpClient.put<UserResponse>(`/users/${id}`, userData);
+            return response.data.data;
+        } catch (error) {
+            console.error(`Error updating user profile ${id}:`, error);
+            throw handleApiError(error, 'Không thể cập nhật thông tin cá nhân');
         }
     }
 };
