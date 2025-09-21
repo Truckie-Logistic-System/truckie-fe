@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ReactNode } from 'react';
-import { Badge } from 'antd';
+import { Badge, Tag } from 'antd';
 import classNames from 'classnames';
 
 export interface StatusBadgeProps {
@@ -37,18 +37,35 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
         large: 'py-1.5 px-3 text-base',
     };
 
+    // Xác định màu dựa vào colorClass
+    const getColorFromClass = () => {
+        if (colorClass?.includes('green')) return 'success';
+        if (colorClass?.includes('red')) return 'error';
+        if (colorClass?.includes('yellow')) return 'warning';
+        if (colorClass?.includes('blue')) return 'processing';
+        if (colorClass?.includes('gray')) return 'default';
+        return undefined;
+    };
+
+    // Sử dụng Ant Design Tag cho hiển thị nhất quán
     return (
-        <span
+        <Tag
+            color={getColorFromClass()}
             className={classNames(
-                'inline-flex items-center rounded font-medium',
-                sizeClasses[size],
-                colorClass,
+                'text-center',
                 className
             )}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                minWidth: '80px'
+            }}
+            icon={icon}
         >
-            {icon && <span className="mr-1">{icon}</span>}
             {label || status}
-        </span>
+        </Tag>
     );
 };
 
