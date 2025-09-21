@@ -11,6 +11,20 @@ import type {
  */
 const customerService = {
     /**
+     * Get current customer profile (me)
+     * @returns Promise with customer data
+     */
+    getMyProfile: async (): Promise<Customer> => {
+        try {
+            const response = await httpClient.get<CustomerResponse>('/customers/me');
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching my profile:', error);
+            throw handleApiError(error, 'Không thể tải thông tin khách hàng');
+        }
+    },
+
+    /**
      * Get customer profile by user ID
      * @param userId User ID
      * @returns Promise with customer data

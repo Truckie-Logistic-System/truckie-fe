@@ -25,11 +25,18 @@ export interface UsersResponse {
     data: UserModel[];
 }
 
+// Sửa lại UserResponse để phù hợp với API thực tế
 export interface UserResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: UserModel;
+    id: string;
+    username: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    gender: boolean;
+    dateOfBirth: string;
+    imageUrl: string;
+    status: string;
+    role: Role;
 }
 
 export interface UserStatusUpdateRequest {
@@ -63,10 +70,10 @@ export interface UserCredentials {
 // Chuyển đổi từ API response sang model
 export const mapUserResponseToModel = (apiUser: UserResponse): User => {
     return {
-        id: apiUser.data.id,
-        username: apiUser.data.username,
-        email: apiUser.data.email,
-        role: apiUser.data.role.roleName.toLowerCase() as 'admin' | 'customer' | 'staff' | 'driver'
+        id: apiUser.id,
+        username: apiUser.username,
+        email: apiUser.email,
+        role: apiUser.role.roleName.toLowerCase() as 'admin' | 'customer' | 'staff' | 'driver'
     };
 };
 
