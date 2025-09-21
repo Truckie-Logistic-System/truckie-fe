@@ -4,9 +4,10 @@ import type {
   OrderDetail,
   OrderCreateRequest,
   OrderRequest,
+  OrderUpdateDto,
+  CustomerOrder,
 } from "@/models/Order";
 import type {
-  OrderUpdateDto,
   OrderResponse,
   OrdersResponse,
   PaginatedOrdersResponse,
@@ -15,7 +16,6 @@ import type {
   VehicleAssignmentResponse,
   UnitsListResponse,
   CustomerOrdersResponse,
-  CustomerOrder,
   RecentReceiversResponse,
   ReceiverDetailsResponse,
   CustomerOrderDetailResponse,
@@ -28,7 +28,6 @@ import {
   getTomorrowVietnamTime,
 } from "../../utils/dateUtils";
 import customerService from "../customer/customerService";
-import { AUTH_ACCESS_TOKEN_KEY } from "@/config";
 
 /**
  * Service for handling order-related API calls
@@ -305,17 +304,9 @@ const orderService = {
    */
   updateVehicleAssignmentForDetails: async (orderId: string): Promise<OrderDetail[]> => {
     try {
-      // Get token from localStorage to ensure it's included
-      const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
-
       const response = await httpClient.put<VehicleAssignmentResponse>(
         `/order-details/update-vehicle-assignment-for-details?orderId=${orderId}`,
-        {}, // Empty body
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        {} // Empty body
       );
       return response.data.data;
     } catch (error) {
@@ -331,17 +322,9 @@ const orderService = {
  */
   updateVehicleAssignmentForOrderDetail: async (orderId: string): Promise<OrderDetail> => {
     try {
-      // Get token from localStorage to ensure it's included
-      const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
-
       const response = await httpClient.put<{ data: OrderDetail }>(
         `/order-details/update-vehicle-assignment-for-details?orderId=${orderId}`,
-        {}, // Empty body
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        {} // Empty body
       );
       return response.data.data;
     } catch (error) {

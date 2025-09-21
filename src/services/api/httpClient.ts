@@ -1,6 +1,5 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { AUTH_ACCESS_TOKEN_KEY } from '../../config';
 import { handleApiError } from './errorHandler';
 
 // Create an axios instance with default config
@@ -20,19 +19,19 @@ let isRefreshing = false;
 let failedQueue: any[] = [];
 
 // Xử lý hàng đợi các request
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: any) => {
     failedQueue.forEach(prom => {
         if (error) {
             prom.reject(error);
         } else {
-            prom.resolve(token);
+            prom.resolve();
         }
     });
 
     failedQueue = [];
 };
 
-// Request interceptor for adding auth token
+// Request interceptor for logging
 httpClient.interceptors.request.use(
     (config) => {
         console.log("Making API request:", config.method?.toUpperCase(), config.url);
@@ -48,10 +47,6 @@ httpClient.interceptors.request.use(
             console.log("Request data:", config.data);
         }
 
-        const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
         return config;
     },
     (error) => {
@@ -127,10 +122,7 @@ httpClient.interceptors.response.use(
                 // Nếu đang refresh, thêm request vào hàng đợi
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
-                }).then(token => {
-                    if (originalRequest.headers) {
-                        originalRequest.headers.Authorization = `Bearer ${token}`;
-                    }
+                }).then(() => {
                     return httpClient(originalRequest);
                 }).catch(err => {
                     return Promise.reject(err);
@@ -146,37 +138,16 @@ httpClient.interceptors.response.use(
                 const authService = await import('../auth/authService').then(module => module.default);
 
                 // Thử refresh token
-                const response = await authService.refreshToken();
-
-                // Kiểm tra cấu trúc response và lấy token mới
-                let newToken = '';
-                const responseData = response.data as any;
-
-                if (responseData) {
-                    if (responseData.accessToken) {
-                        newToken = responseData.accessToken;
-                    } else if (responseData.data && responseData.data.accessToken) {
-                        newToken = responseData.data.accessToken;
-                    }
-                }
-
-                if (!newToken) {
-                    throw new Error('Invalid refresh token response format');
-                }
-
-                // Đảm bảo token mới được áp dụng cho request hiện tại
-                if (originalRequest.headers) {
-                    originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                }
+                await authService.refreshToken();
 
                 // Xử lý hàng đợi các request
-                processQueue(null, newToken);
+                processQueue(null);
 
                 // Thực hiện lại request ban đầu với token mới
                 return httpClient(originalRequest);
             } catch (refreshError) {
                 // Nếu refresh thất bại, xử lý lỗi và đăng xuất
-                processQueue(refreshError, null);
+                processQueue(refreshError);
 
                 // Import authService ở đây để tránh circular dependency
                 const authService = await import('../auth/authService').then(module => module.default);
