@@ -22,6 +22,7 @@ import {
 } from "../pages/Admin/Order";
 import OrdersPage from "../pages/Orders";
 import OrderDetailPage from "../pages/Orders/OrderDetail";
+import CustomerOrderDetailPage from "../pages/Orders/CustomerOrderDetailPage";
 import CreateOrder from "../pages/Orders/CreateOrder";
 import { PermissionRoute } from "../components/auth";
 import { MainLayout, AdminLayout } from "../components/layout";
@@ -150,7 +151,7 @@ const router = createBrowserRouter([
             authRedirectPath="/auth/login"
             roleRedirectPath="/"
           >
-            <OrderDetailPage />
+            <CustomerOrderDetailPage />
           </PermissionRoute>
         ),
       },

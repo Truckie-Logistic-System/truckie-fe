@@ -18,6 +18,7 @@ import type {
   CustomerOrder,
   RecentReceiversResponse,
   ReceiverDetailsResponse,
+  CustomerOrderDetailResponse,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -79,6 +80,21 @@ const orderService = {
       return response.data.data;
     } catch (error) {
       console.error(`Error fetching order ${id}:`, error);
+      throw handleApiError(error, "Không thể tải thông tin đơn hàng");
+    }
+  },
+
+  /**
+   * Get order details for customer by order ID
+   * @param orderId Order ID
+   * @returns Promise with customer order details
+   */
+  getOrderForCustomerByOrderId: async (orderId: string): Promise<any> => {
+    try {
+      const response = await httpClient.get<CustomerOrderDetailResponse>(`/orders/get-order-for-customer-by-order-id/${orderId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching customer order details for order ${orderId}:`, error);
       throw handleApiError(error, "Không thể tải thông tin đơn hàng");
     }
   },
@@ -330,21 +346,6 @@ const orderService = {
     } catch (error) {
       console.error(`Error fetching orders for user ${userId}:`, error);
       throw handleApiError(error, "Không thể tải danh sách đơn hàng");
-    }
-  },
-
-  /**
-   * Get order details for a customer by order ID
-   * @param orderId Order ID
-   * @returns Promise with detailed order response
-   */
-  getOrderForCustomerByOrderId: async (orderId: string): Promise<any> => {
-    try {
-      const response = await httpClient.get<any>(`/orders/get-order-for-customer-by-order-id/${orderId}`);
-      return response.data.data;
-    } catch (error) {
-      console.error(`Error fetching customer order details for order ${orderId}:`, error);
-      throw handleApiError(error, "Không thể tải thông tin chi tiết đơn hàng");
     }
   },
 
