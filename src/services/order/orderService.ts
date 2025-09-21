@@ -19,6 +19,7 @@ import type {
   RecentReceiversResponse,
   ReceiverDetailsResponse,
   CustomerOrderDetailResponse,
+  StaffOrderDetailResponse,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -95,6 +96,21 @@ const orderService = {
       return response.data.data;
     } catch (error) {
       console.error(`Error fetching customer order details for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể tải thông tin đơn hàng");
+    }
+  },
+
+  /**
+   * Get order details for staff by order ID
+   * @param orderId Order ID
+   * @returns Promise with staff order details
+   */
+  getOrderForStaffByOrderId: async (orderId: string): Promise<any> => {
+    try {
+      const response = await httpClient.get<StaffOrderDetailResponse>(`/orders/get-order-for-staff-by-order-id/${orderId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching staff order details for order ${orderId}:`, error);
       throw handleApiError(error, "Không thể tải thông tin đơn hàng");
     }
   },
