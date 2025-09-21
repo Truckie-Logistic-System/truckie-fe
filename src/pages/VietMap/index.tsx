@@ -4,8 +4,98 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { Card, Typography, message, Tabs } from 'antd';
 import { CarOutlined, EnvironmentOutlined, CompassOutlined } from '@ant-design/icons';
 import { VIET_MAPS_API_KEY } from '../../config/env';
-import { searchPlaces, getPlaceDetail, findRoute, decodePolyline } from '../../services/vietmap.service';
-import type { AutocompleteResult, RouteResponse, RouteInstruction } from '../../services/vietmap.service';
+import vietmapService from '../../services/map/vietmapService';
+import type { AutocompleteResult, RouteInstruction } from '../../services/map/vietmapService';
+
+// Định nghĩa kiểu dữ liệu cho RouteResponse để tương thích với code cũ
+interface RouteResponse {
+    paths: Array<{
+        distance: number;
+        time: number;
+        points: string;
+        bbox: [number, number, number, number];
+        instructions: RouteInstruction[];
+    }>;
+}
+
+// Wrapper functions for API calls
+const searchPlaces = async (query: string, focusParam?: string) => {
+    // Không cần chuyển đổi focusParam vì vietmapService.searchPlaces đã nhận string
+    return await vietmapService.searchPlaces(query, focusParam);
+};
+
+const getPlaceDetail = async (placeId: string) => {
+    return await vietmapService.getPlaceDetail(placeId);
+};
+
+const findRoute = async (points: [number, number][], vehicle: string) => {
+    if (points.length < 2) {
+        throw new Error('Need at least origin and destination points');
+    }
+
+    const origin = points[0];
+    const destination = points[points.length - 1];
+
+    // Chuyển đổi từ [lat, lng] sang [lng, lat] nếu cần
+    const originPoint = [origin[1], origin[0]]; // Đổi thứ tự nếu cần
+    const destinationPoint = [destination[1], destination[0]]; // Đổi thứ tự nếu cần
+
+    const result = await vietmapService.getRoute(originPoint as [number, number], destinationPoint as [number, number]);
+
+    // Chuyển đổi kết quả từ API mới sang định dạng cũ
+    if (result) {
+        return {
+            paths: [{
+                distance: result.distance,
+                time: result.duration,
+                points: '', // Cần lấy points từ result nếu có
+                bbox: [0, 0, 0, 0], // Cần lấy bbox từ result nếu có
+                instructions: result.legs && result.legs[0] ? result.legs[0].steps.map(step => ({
+                    distance: step.distance,
+                    time: step.duration,
+                    interval: [0, 0], // Cần tính toán interval nếu cần
+                    text: step.maneuver.instruction,
+                    street_name: step.name
+                })) : []
+            }]
+        } as RouteResponse;
+    }
+
+    return null;
+};
+
+// Decode polyline function (if not available in vietmapService)
+const decodePolyline = (encoded: string): [number, number][] => {
+    // Implement polyline decoding or use from vietmapService
+    // This is a simple implementation, might need to be adjusted
+    const points: [number, number][] = [];
+    let index = 0, lat = 0, lng = 0;
+
+    while (index < encoded.length) {
+        let b, shift = 0, result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        points.push([lng * 1e-5, lat * 1e-5]);
+    }
+
+    return points;
+};
 
 // Import components
 import SearchPanel from './components/SearchPanel';

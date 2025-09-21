@@ -2,18 +2,32 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button, Space, Typography, message, List, AutoComplete, Select, Tooltip, Skeleton } from 'antd';
 import { CarOutlined, CompassOutlined, EnvironmentOutlined, AimOutlined, SwapOutlined, PlayCircleOutlined, CloseCircleOutlined, RocketOutlined, PauseCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import trackasiagl from 'trackasia-gl';
-import {
-    searchPlacesAutocomplete,
-    getPlaceDetails,
-    getDirectionsV2,
-    decodePolyline,
-    reverseGeocodeV2,
-    calculateDistance,
-    formatDistance
-} from '../../../services/trackasia.service';
-import type { AutocompleteResult } from '../../../services/trackasia.service';
+import trackasiaService from '../../../services/map/trackasiaService';
+import { calculateDistance } from '../../../models/Map';
+import type { AutocompleteResult } from '../../../services/map/trackasiaService';
 
 const { Text } = Typography;
+
+// Định nghĩa lại hàm formatDistance
+const formatDistance = (meters: number): string => {
+    if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(1)} km`;
+    }
+    return `${Math.round(meters)} m`;
+};
+
+// Định nghĩa hàm formatTime
+const formatTime = (seconds: number): string => {
+    if (seconds < 60) {
+        return `${Math.round(seconds)} giây`;
+    } else if (seconds < 3600) {
+        return `${Math.round(seconds / 60)} phút`;
+    } else {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.round((seconds % 3600) / 60);
+        return `${hours} giờ ${minutes > 0 ? `${minutes} phút` : ''}`;
+    }
+};
 
 interface DirectionsDemoProps {
     map: trackasiagl.Map | null;
@@ -34,6 +48,103 @@ interface RouteGeometry {
     type: string;
     coordinates: [number, number][];
 }
+
+// Wrapper functions for API calls
+const searchPlacesAutocomplete = async (query: string, bounds?: any, location?: any) => {
+    // Convert location to format expected by trackasiaService.autocomplete if needed
+    const locationParam = location ? [location.lat, location.lng] as [number, number] : undefined;
+    const results = await trackasiaService.autocomplete(query, locationParam);
+
+    // Chuyển đổi kết quả sang định dạng cũ
+    return {
+        status: 'OK',
+        predictions: results
+    };
+};
+
+const getPlaceDetails = async (placeId: string) => {
+    const result = await trackasiaService.getPlaceDetail(placeId);
+
+    // Chuyển đổi kết quả sang định dạng cũ
+    if (result) {
+        return {
+            status: 'OK',
+            result: result
+        };
+    }
+    return null;
+};
+
+const reverseGeocodeV2 = async (lat: number, lng: number) => {
+    const result = await trackasiaService.reverseGeocode(lat, lng);
+    // Chuyển đổi từ MapLocation sang định dạng cũ
+    if (result) {
+        return {
+            status: 'OK',
+            results: [{
+                formatted_address: result.address || `${lat}, ${lng}`,
+                address_components: [],
+                name: result.name || '',
+                place_id: result.placeId || ''
+            }]
+        };
+    }
+    return { status: 'ERROR', results: [] };
+};
+
+// Wrapper cho hàm calculateDistance để tương thích với code cũ
+const calculateDistanceWrapper = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    // Tạo các đối tượng MapLocation
+    const point1 = { lat: lat1, lng: lng1 };
+    const point2 = { lat: lat2, lng: lng2 };
+
+    // Gọi hàm calculateDistance từ model
+    return calculateDistance(point1, point2);
+};
+
+const getDirectionsV2 = async (originLat: number, originLng: number, destLat: number, destLng: number, profile: string = 'driving') => {
+    // Sử dụng phương thức getDirectionsV2 từ trackasiaService
+    return await trackasiaService.getDirectionsV2(originLat, originLng, destLat, destLng, profile);
+};
+
+const decodePolyline = (encoded: string): [number, number][] => {
+    // Implement Google/TrackAsia polyline algorithm
+    const points: [number, number][] = [];
+    let index = 0, lat = 0, lng = 0;
+
+    try {
+        while (index < encoded.length) {
+            // Decode latitude
+            let b, shift = 0, result = 0;
+            do {
+                b = encoded.charCodeAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            // Decode longitude
+            shift = 0;
+            result = 0;
+            do {
+                b = encoded.charCodeAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            // Convert to decimal degrees and push to points array
+            // Note: lat comes first in the array (standard GeoJSON format)
+            points.push([lat * 1e-5, lng * 1e-5]);
+        }
+    } catch (error) {
+        console.error("Error decoding polyline:", error, encoded);
+    }
+
+    return points;
+};
 
 const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
     map,
@@ -99,8 +210,16 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
 
     // Lắng nghe sự kiện setCurrentLocation
     useEffect(() => {
+        // Tránh tạo lại event listener mỗi khi map thay đổi
+        if (!directionsDemoRef.current) return;
+
         const handleSetCurrentLocation = (event: any) => {
             const { lat, lng, address } = event.detail;
+
+            // Kiểm tra xem vị trí có thay đổi không để tránh re-render không cần thiết
+            if (startCoords && startCoords[0] === lng && startCoords[1] === lat && startPoint === address) {
+                return;
+            }
 
             // Đặt vị trí hiện tại làm điểm xuất phát
             setStartPoint(address);
@@ -119,16 +238,14 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                 // Fly to location
                 map.flyTo({
                     center: [lng, lat],
-                    zoom: 14
+                    zoom: 12
                 });
             }
         };
 
         // Thêm ID cho component
-        if (directionsDemoRef.current) {
-            directionsDemoRef.current.id = 'trackasia-directions-demo';
-            directionsDemoRef.current.addEventListener('setCurrentLocation', handleSetCurrentLocation);
-        }
+        directionsDemoRef.current.id = 'trackasia-directions-demo';
+        directionsDemoRef.current.addEventListener('setCurrentLocation', handleSetCurrentLocation);
 
         return () => {
             // Cleanup
@@ -136,7 +253,7 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                 directionsDemoRef.current.removeEventListener('setCurrentLocation', handleSetCurrentLocation);
             }
         };
-    }, [map]);
+    }, [map, startCoords, startPoint]);
 
     // Tạo nội dung loading với Skeleton
     const loadingContent = (
@@ -212,7 +329,7 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                 profile
             );
 
-            if (directions.status !== 'OK' || directions.routes.length === 0) {
+            if (!directions || directions.status !== 'OK' || !directions.routes || directions.routes.length === 0) {
                 message.warning('Không tìm thấy đường đi giữa hai điểm này');
                 setIsLoading(false);
                 return;
@@ -225,18 +342,80 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
 
             // Decode the polyline to get coordinates
             let coordinates: [number, number][] = [];
-            if (route.overview_polyline && route.overview_polyline.points) {
+
+            // Tạo coordinates từ tất cả các steps và polyline của từng step
+            if (route.legs && route.legs[0] && route.legs[0].steps) {
+                const steps = route.legs[0].steps;
+
+                // Tạo mảng tọa độ từ polyline của từng step
+                steps.forEach((step: any) => {
+                    if (step.polyline && step.polyline.points) {
+                        // Giải mã polyline của từng step
+                        const stepPoints = decodePolyline(step.polyline.points);
+
+                        // Chuyển đổi từ [lat, lng] sang [lng, lat] cho TrackAsia GL
+                        const stepCoords = stepPoints.map(point => {
+                            // Đảm bảo lat và lng hợp lệ
+                            const lat = point[0];
+                            const lng = point[1];
+                            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                                return [lng, lat] as [number, number];
+                            }
+                            return null;
+                        }).filter(point => point !== null) as [number, number][];
+
+                        // Thêm vào mảng tọa độ chính
+                        coordinates = [...coordinates, ...stepCoords];
+                    }
+                });
+            }
+
+            // Nếu không có đủ tọa độ từ các step, sử dụng overview_polyline
+            if (coordinates.length < 2 && route.overview_polyline && route.overview_polyline.points) {
                 // Decode the polyline
                 const decodedPoints = decodePolyline(route.overview_polyline.points);
                 // Convert from [lat, lng] to [lng, lat] for TrackAsia GL
-                coordinates = decodedPoints.map(point => [point[1], point[0]]);
+                const polylineCoords = decodedPoints.map(point => {
+                    // Đảm bảo lat và lng hợp lệ
+                    const lat = point[0];
+                    const lng = point[1];
+                    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                        return [lng, lat] as [number, number];
+                    }
+                    return null;
+                }).filter(point => point !== null) as [number, number][];
 
-                // Lưu tọa độ tuyến đường để sử dụng cho mô phỏng
-                routeCoordinatesRef.current = coordinates;
-            } else {
-                // Fallback to simple straight line
+                if (polylineCoords.length > 0) {
+                    coordinates = polylineCoords;
+                }
+            }
+
+            // Fallback to simple straight line nếu không có coordinates
+            if (coordinates.length < 2) {
                 coordinates = [[startCoords[0], startCoords[1]], [endCoords[0], endCoords[1]]];
-                routeCoordinatesRef.current = coordinates;
+            }
+
+            // Lưu tọa độ tuyến đường để sử dụng cho mô phỏng
+            routeCoordinatesRef.current = coordinates;
+
+            // Kiểm tra và đảm bảo tọa độ hợp lệ trước khi thêm vào map
+            let validCoordinates = coordinates.filter(coord => {
+                // Kiểm tra lat (-90 đến 90) và lng (-180 đến 180)
+                const lng = coord[0];
+                const lat = coord[1];
+                return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+            });
+
+            // Đảm bảo có ít nhất 2 điểm để vẽ đường
+            if (validCoordinates.length < 2) {
+                // Thêm điểm đầu và điểm cuối nếu có
+                if (startCoords && endCoords) {
+                    validCoordinates = [[startCoords[0], startCoords[1]], [endCoords[0], endCoords[1]]];
+                } else {
+                    message.warning('Không đủ dữ liệu để vẽ tuyến đường');
+                    setIsLoading(false);
+                    return;
+                }
             }
 
             // Add route to map
@@ -247,7 +426,7 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                     properties: {},
                     geometry: {
                         type: 'LineString',
-                        coordinates: coordinates
+                        coordinates: validCoordinates
                     }
                 }
             });
@@ -271,23 +450,44 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
             const bounds = new trackasiagl.LngLatBounds();
 
             // Extend bounds with all coordinates in the route
-            coordinates.forEach(coord => {
-                bounds.extend(coord as trackasiagl.LngLatLike);
+            validCoordinates.forEach(coord => {
+                if (coord && coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1])) {
+                    bounds.extend(coord as trackasiagl.LngLatLike);
+                }
             });
 
-            map.fitBounds(bounds, {
-                padding: 50
-            });
+            // Kiểm tra nếu bounds không rỗng trước khi gọi fitBounds
+            if (!bounds.isEmpty()) {
+                map.fitBounds(bounds, {
+                    padding: {
+                        top: 100,
+                        bottom: 100,
+                        left: 350,
+                        right: 100
+                    },
+                    maxZoom: 10
+                });
+            } else if (validCoordinates.length > 0) {
+                // Fallback: nếu không có bounds hợp lệ nhưng có ít nhất một tọa độ
+                map.flyTo({
+                    center: validCoordinates[0] as trackasiagl.LngLatLike,
+                    zoom: 12
+                });
+            }
 
             // Extract route steps from the first leg
             const steps = route.legs[0].steps.map((step: any) => {
                 // Remove HTML tags from instructions
-                const instruction = step.html_instructions.replace(/<[^>]*>?/gm, '');
+                const instruction = step.html_instructions ? step.html_instructions.replace(/<[^>]*>?/gm, '') : 'Đi thẳng';
+
+                // Đảm bảo các trường distance và duration có giá trị hợp lệ
+                const distanceText = step.distance && step.distance.text ? step.distance.text : '0m';
+                const durationText = step.duration && step.duration.text ? step.duration.text : '0 giây';
 
                 return {
                     instruction,
-                    distance: step.distance.text,
-                    duration: step.duration.text,
+                    distance: distanceText,
+                    duration: durationText,
                     maneuver: step.maneuver || '',
                     interval: [0, 0] // Thêm interval để tương thích với code mô phỏng
                 };
@@ -305,20 +505,50 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                 }
             }
 
+            // Đảm bảo có giá trị hợp lệ cho distance và duration
+            const routeDistance = route.legs[0].distance && route.legs[0].distance.text
+                ? route.legs[0].distance.text
+                : '0 km';
+
+            const routeDuration = route.legs[0].duration && route.legs[0].duration.text
+                ? route.legs[0].duration.text
+                : '0 phút';
+
             // Set route info
             setRouteInfo({
-                distance: route.legs[0].distance.text,
-                duration: route.legs[0].duration.text,
-                steps
+                distance: routeDistance,
+                duration: routeDuration,
+                steps: steps.map((step: { instruction: string; distance: string; duration: string; maneuver: string; interval: number[] }) => ({
+                    ...step,
+                    // Đảm bảo khoảng cách hiển thị đúng
+                    distance: step.distance
+                }))
             });
 
             // Gửi thông tin tuyến đường lên parent component
             if (parentStartNavigation || parentStartSimulation) {
+                // Chuẩn bị dữ liệu tuyến đường với các giá trị hợp lệ
+                const routeForParent = {
+                    ...route,
+                    legs: [{
+                        ...route.legs[0],
+                        distance: {
+                            text: routeDistance,
+                            value: route.legs[0].distance?.value || 0
+                        },
+                        duration: {
+                            text: routeDuration,
+                            value: route.legs[0].duration?.value || 0
+                        },
+                        steps: steps
+                    }]
+                };
+
                 // Tạo và kích hoạt sự kiện tùy chỉnh để thông báo cho parent
                 const event = new CustomEvent('routeFound', {
                     bubbles: true,
                     detail: {
-                        route: route,
+                        route: routeForParent,
                         coordinates: coordinates
                     }
                 });
@@ -387,9 +617,9 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                                 response.predictions.map(async (prediction) => {
                                     try {
                                         const details = await getPlaceDetails(prediction.place_id);
-                                        if (details.status === 'OK') {
+                                        if (details && details.status === 'OK') {
                                             const place = details.result;
-                                            const distance = calculateDistance(
+                                            const distance = calculateDistanceWrapper(
                                                 currentLocation.lat,
                                                 currentLocation.lng,
                                                 place.geometry.location.lat,
@@ -516,9 +746,9 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                                 response.predictions.map(async (prediction) => {
                                     try {
                                         const details = await getPlaceDetails(prediction.place_id);
-                                        if (details.status === 'OK') {
+                                        if (details && details.status === 'OK') {
                                             const place = details.result;
-                                            const distance = calculateDistance(
+                                            const distance = calculateDistanceWrapper(
                                                 currentLocation.lat,
                                                 currentLocation.lng,
                                                 place.geometry.location.lat,
@@ -600,7 +830,7 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
         // Get place details
         getPlaceDetails(feature.place_id)
             .then(response => {
-                if (response.status === 'OK') {
+                if (response && response.status === 'OK') {
                     const place = response.result;
 
                     // Get coordinates
@@ -627,12 +857,20 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                                 .extend(startMarkerRef.current.getLngLat())
                                 .extend(endMarkerRef.current.getLngLat());
 
-                            map.fitBounds(bounds, { padding: 100 });
+                            map.fitBounds(bounds, {
+                                padding: {
+                                    top: 100,
+                                    bottom: 100,
+                                    left: 350,
+                                    right: 100
+                                },
+                                maxZoom: 12
+                            });
                         } else {
                             // Otherwise just fly to this point
                             map.flyTo({
                                 center: [lng, lat],
-                                zoom: 14
+                                zoom: 12
                             });
                         }
                     }
@@ -651,7 +889,7 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
         // Get place details
         getPlaceDetails(feature.place_id)
             .then(response => {
-                if (response.status === 'OK') {
+                if (response && response.status === 'OK') {
                     const place = response.result;
 
                     // Get coordinates
@@ -678,12 +916,20 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                                 .extend(startMarkerRef.current.getLngLat())
                                 .extend(endMarkerRef.current.getLngLat());
 
-                            map.fitBounds(bounds, { padding: 100 });
+                            map.fitBounds(bounds, {
+                                padding: {
+                                    top: 100,
+                                    bottom: 100,
+                                    left: 350,
+                                    right: 100
+                                },
+                                maxZoom: 12
+                            });
                         } else {
                             // Otherwise just fly to this point
                             map.flyTo({
                                 center: [lng, lat],
-                                zoom: 14
+                                zoom: 12
                             });
                         }
                     }
@@ -726,13 +972,13 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
                             // Fly to location
                             map.flyTo({
                                 center: [longitude, latitude],
-                                zoom: 14
+                                zoom: 12
                             });
 
                             // Get address
                             reverseGeocodeV2(latitude, longitude)
                                 .then(response => {
-                                    if (response.status === 'OK' && response.results.length > 0) {
+                                    if (response && response.status === 'OK' && response.results && response.results.length > 0) {
                                         setStartPoint(response.results[0].formatted_address);
                                     } else {
                                         setStartPoint(`Vị trí hiện tại (${longitude.toFixed(6)}, ${latitude.toFixed(6)})`);
@@ -859,10 +1105,11 @@ const DirectionsDemo: React.FC<DirectionsDemoProps> = ({
     const formatDistance = (distance: string | number): string => {
         if (typeof distance === 'string') return distance;
 
-        if (distance < 1) {
-            return `${Math.round(distance * 1000)} m`;
+        // Giả sử distance đã ở đơn vị mét
+        if (distance >= 1000) {
+            return `${(distance / 1000).toFixed(1)} km`;
         } else {
-            return `${distance.toFixed(1)} km`;
+            return `${Math.round(distance)} m`;
         }
     };
 

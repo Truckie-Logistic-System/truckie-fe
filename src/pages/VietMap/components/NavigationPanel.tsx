@@ -1,7 +1,26 @@
 import React from 'react';
 import { Button, Select } from 'antd';
 import { ArrowUpOutlined, PauseCircleOutlined, PlayCircleOutlined, StopOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
-import type { RouteResponse } from '../../../services/vietmap.service';
+
+// Define RouteResponse locally since it's not exported from vietmapService
+interface RouteResponse {
+    paths: Array<{
+        distance: number;
+        time: number;
+        points: string;
+        bbox: number[];
+        instructions: Array<{
+            distance: number;
+            heading: number;
+            sign: number;
+            interval: number[];
+            text: string;
+            time: number;
+            street_name: string;
+            last_heading?: number | null;
+        }>;
+    }>;
+}
 
 interface NavigationPanelProps {
     isNavigationPanelCollapsed: boolean;

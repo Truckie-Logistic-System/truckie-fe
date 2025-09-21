@@ -2,6 +2,23 @@ import React from 'react';
 import { Button, Select } from 'antd';
 import { CloseCircleOutlined, CompassOutlined, PlayCircleOutlined, PauseCircleOutlined, CarOutlined } from '@ant-design/icons';
 
+// Hàm định dạng khoảng cách
+const formatDistanceDisplay = (distanceStr: string): string => {
+    // Nếu đã là chuỗi có đơn vị, trả về nguyên bản
+    if (distanceStr.includes('km') || distanceStr.includes('m')) {
+        return distanceStr;
+    }
+
+    // Nếu là số (mét), định dạng lại
+    const distance = parseFloat(distanceStr);
+    if (isNaN(distance)) return distanceStr;
+
+    if (distance >= 1000) {
+        return `${(distance / 1000).toFixed(1)} km`;
+    }
+    return `${Math.round(distance)} m`;
+};
+
 interface NavigationPanelProps {
     isNavigating: boolean;
     isSimulating: boolean;
@@ -15,36 +32,46 @@ interface NavigationPanelProps {
     onChangeSpeed: (speed: number) => void;
     isPaused: boolean;
     onTogglePause: () => void;
+    currentSpeed?: number; // Tốc độ hiện tại (km/h)
 }
 
 // Hàm tính thời gian đến nơi
 const getArrivalTime = (remainingTimeStr: string): string => {
     // Phân tích thời gian còn lại
     const now = new Date();
-    let minutes = 0;
+    let seconds = 0;
 
     if (remainingTimeStr.includes('phút')) {
         const match = remainingTimeStr.match(/(\d+)\s*phút/);
         if (match) {
-            minutes += parseInt(match[1]);
+            seconds += parseInt(match[1]) * 60;
         }
     }
 
     if (remainingTimeStr.includes('giờ')) {
         const match = remainingTimeStr.match(/(\d+)\s*giờ/);
         if (match) {
-            minutes += parseInt(match[1]) * 60;
+            seconds += parseInt(match[1]) * 3600;
+        }
+    }
+
+    if (remainingTimeStr.includes('giây')) {
+        const match = remainingTimeStr.match(/(\d+)\s*giây/);
+        if (match) {
+            seconds += parseInt(match[1]);
         }
     }
 
     // Tính thời gian đến
-    const arrivalTime = new Date(now.getTime() + minutes * 60000);
+    // Làm tròn số giây lên phút gần nhất để tránh thay đổi liên tục
+    const roundedSeconds = Math.round(seconds / 60) * 60;
+    const arrivalTime = new Date(now.getTime() + roundedSeconds * 1000);
 
     // Format thời gian đến
     const hours = arrivalTime.getHours();
     const mins = arrivalTime.getMinutes();
 
-    return `${hours}:${mins < 10 ? '0' + mins : mins}`;
+    return `${hours < 10 ? '0' + hours : hours}:${mins < 10 ? '0' + mins : mins}`;
 };
 
 const NavigationPanel: React.FC<NavigationPanelProps> = ({
@@ -59,11 +86,18 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     simulationSpeed,
     onChangeSpeed,
     isPaused,
-    onTogglePause
+    onTogglePause,
+    currentSpeed = 0 // Giá trị mặc định là 0
 }) => {
-    if (!routeInfo || !routeInfo.steps || routeInfo.steps.length === 0) return null;
+    if (!routeInfo) return null;
 
-    const currentInstruction = routeInfo.steps[currentInstructionIndex];
+    // Đảm bảo routeInfo.steps tồn tại và có phần tử
+    const steps = routeInfo.steps || [];
+    if (steps.length === 0) return null;
+
+    // Đảm bảo currentInstructionIndex hợp lệ
+    const safeIndex = Math.min(Math.max(0, currentInstructionIndex), steps.length - 1);
+    const currentInstruction = steps[safeIndex];
     const mode = isSimulating ? "Mô phỏng dẫn đường" : "Đang dẫn đường";
 
     return (
@@ -103,8 +137,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                         <CompassOutlined style={{ fontSize: '24px' }} />
                     </div>
                     <div className="flex-1">
-                        <div className="text-lg font-medium">{currentInstruction?.instruction}</div>
-                        <div className="text-sm text-gray-500">{currentInstruction?.distance}</div>
+                        <div className="text-lg font-medium">{currentInstruction?.instruction || 'Đi thẳng'}</div>
+                        <div className="text-sm text-gray-500">{formatDistanceDisplay(currentInstruction?.distance || '0m')}</div>
                     </div>
                 </div>
 
@@ -112,7 +146,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 <div className="flex justify-between mb-4 bg-gray-50 p-3 rounded-lg">
                     <div className="text-center">
                         <div className="text-gray-500 text-sm">Còn lại</div>
-                        <div className="text-xl font-bold">{remainingDistance}</div>
+                        <div className="text-xl font-bold">{formatDistanceDisplay(remainingDistance)}</div>
                     </div>
                     <div className="text-center">
                         <div className="text-gray-500 text-sm">Thời gian</div>
@@ -121,6 +155,16 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                     <div className="text-center">
                         <div className="text-gray-500 text-sm">Đến nơi</div>
                         <div className="text-xl font-bold">{getArrivalTime(remainingTime)}</div>
+                    </div>
+                </div>
+
+                {/* Thông tin tốc độ */}
+                <div className="flex justify-center mb-4 bg-blue-50 p-2 rounded-lg">
+                    <div className="text-center">
+                        <div className="text-gray-500 text-sm">Tốc độ hiện tại</div>
+                        <div className="text-xl font-bold text-blue-600">
+                            {currentSpeed !== undefined ? `${currentSpeed.toFixed(1)} km/h` : '-'}
+                        </div>
                     </div>
                 </div>
 

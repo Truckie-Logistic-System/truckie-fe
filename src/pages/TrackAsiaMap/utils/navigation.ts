@@ -1,4 +1,4 @@
-import { calculateDistance } from '../../../services/trackasia.service';
+import { calculateDistance } from '../../../models/Map';
 
 // Format time from seconds to string
 export const formatTime = (totalSeconds: number): string => {
@@ -11,6 +11,16 @@ export const formatTime = (totalSeconds: number): string => {
         const minutes = Math.round((totalSeconds % 3600) / 60);
         return `${hours} giờ ${minutes > 0 ? `${minutes} phút` : ''}`;
     }
+};
+
+// Wrapper cho hàm calculateDistance để tương thích với code hiện tại
+const calculateDistanceWrapper = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    // Tạo các đối tượng MapLocation
+    const point1 = { lat: lat1, lng: lng1 };
+    const point2 = { lat: lat2, lng: lng2 };
+
+    // Gọi hàm calculateDistance từ model
+    return calculateDistance(point1, point2);
 };
 
 // Calculate bearing between two points
@@ -40,7 +50,7 @@ export const findClosestPointOnRoute = (
     let closestIndex = 0;
 
     routeCoordinates.forEach((coord, index) => {
-        const distance = calculateDistance(
+        const distance = calculateDistanceWrapper(
             currentPosition.lat,
             currentPosition.lng,
             coord[1],
@@ -75,7 +85,7 @@ export const calculateRemainingDistance = (
     }
 
     // Add distance from current position to next point
-    remainingDistance += calculateDistance(
+    remainingDistance += calculateDistanceWrapper(
         currentPosition.lat,
         currentPosition.lng,
         routeCoordinates[currentIndex + 1][1],
@@ -84,7 +94,7 @@ export const calculateRemainingDistance = (
 
     // Add distances between remaining points
     for (let i = currentIndex + 1; i < routeCoordinates.length - 1; i++) {
-        remainingDistance += calculateDistance(
+        remainingDistance += calculateDistanceWrapper(
             routeCoordinates[i][1],
             routeCoordinates[i][0],
             routeCoordinates[i + 1][1],
@@ -120,7 +130,7 @@ export const calculateDistanceToNextTurn = (
         return 0;
     }
 
-    let distToNextTurn = calculateDistance(
+    let distToNextTurn = calculateDistanceWrapper(
         currentPosition.lat,
         currentPosition.lng,
         routeCoordinates[currentIndex + 1][1],
@@ -128,7 +138,7 @@ export const calculateDistanceToNextTurn = (
     );
 
     for (let i = currentIndex + 1; i < nextTurnIndex; i++) {
-        distToNextTurn += calculateDistance(
+        distToNextTurn += calculateDistanceWrapper(
             routeCoordinates[i][1],
             routeCoordinates[i][0],
             routeCoordinates[i + 1][1],

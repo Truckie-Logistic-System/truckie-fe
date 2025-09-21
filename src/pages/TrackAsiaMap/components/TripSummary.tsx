@@ -1,9 +1,28 @@
 import React from 'react';
 import { Card, Typography, Button } from 'antd';
 import { CloseCircleOutlined } from '@ant-design/icons';
-import { formatTime, formatDistance } from '../../../services/trackasia.service';
 
 const { Title } = Typography;
+
+// Định nghĩa các hàm tiện ích
+const formatDistance = (meters: number): string => {
+    if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(1)} km`;
+    }
+    return `${Math.round(meters)} m`;
+};
+
+const formatTime = (totalSeconds: number): string => {
+    if (totalSeconds < 60) {
+        return `${Math.round(totalSeconds)} giây`;
+    } else if (totalSeconds < 3600) {
+        return `${Math.round(totalSeconds / 60)} phút`;
+    } else {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.round((totalSeconds % 3600) / 60);
+        return `${hours} giờ ${minutes > 0 ? `${minutes} phút` : ''}`;
+    }
+};
 
 interface TripSummaryProps {
     tripSummary: {
@@ -18,13 +37,18 @@ interface TripSummaryProps {
 }
 
 const TripSummary: React.FC<TripSummaryProps> = ({ tripSummary, onClose, routeInfo }) => {
-    if (!tripSummary.startTime || !tripSummary.endTime || !routeInfo) return null;
+    if (!tripSummary.startTime || !tripSummary.endTime) return null;
 
-    const actualDuration = (tripSummary.endTime - tripSummary.startTime) / 1000; // Thời gian thực tế (giây)
-    const estimatedDuration = tripSummary.totalTime; // Thời gian ước tính (giây)
+    // Đảm bảo có dữ liệu hợp lệ
+    const actualDuration = Math.max(1, (tripSummary.endTime - tripSummary.startTime) / 1000); // Thời gian thực tế (giây), tối thiểu 1s
+    const estimatedDuration = Math.max(1, tripSummary.totalTime || 60); // Thời gian ước tính (giây), mặc định 60s nếu không có
+
+    // Tính % chênh lệch, tránh chia cho 0
     const durationDiff = Math.abs(actualDuration - estimatedDuration);
-    const durationDiffPercent = Math.round((durationDiff / estimatedDuration) * 100);
+    const durationDiffPercent = estimatedDuration > 0 ?
+        Math.round((durationDiff / estimatedDuration) * 100) : 0;
 
+    // Format thời gian
     const startTimeFormatted = new Date(tripSummary.startTime).toLocaleTimeString();
     const endTimeFormatted = new Date(tripSummary.endTime).toLocaleTimeString();
 
@@ -60,18 +84,24 @@ const TripSummary: React.FC<TripSummaryProps> = ({ tripSummary, onClose, routeIn
                         </div>
                         <div>
                             <div className="text-gray-500">Tốc độ trung bình</div>
-                            <div className="font-medium">{Math.round(tripSummary.averageSpeed * 10) / 10} km/h</div>
+                            <div className="font-medium">
+                                {(isNaN(tripSummary.averageSpeed) || tripSummary.averageSpeed === Infinity)
+                                    ? "0.0 km/h"
+                                    : `${Math.min(tripSummary.averageSpeed, 120).toFixed(1)} km/h`}
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="text-center">
-                    <div className="text-sm text-gray-500 mb-2">
-                        {actualDuration > estimatedDuration
-                            ? `Chậm hơn ${durationDiffPercent}% so với dự kiến`
-                            : `Nhanh hơn ${durationDiffPercent}% so với dự kiến`
-                        }
-                    </div>
+                    {durationDiffPercent > 0 && (
+                        <div className="text-sm text-gray-500 mb-2">
+                            {actualDuration > estimatedDuration
+                                ? `Chậm hơn ${durationDiffPercent}% so với dự kiến`
+                                : `Nhanh hơn ${durationDiffPercent}% so với dự kiến`
+                            }
+                        </div>
+                    )}
                     <Button type="primary" onClick={onClose}>Đóng</Button>
                 </div>
             </div>

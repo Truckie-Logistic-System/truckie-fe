@@ -7,19 +7,47 @@ import { TRACKASIA_MAP_API_KEY } from '../../config/env';
 import MarkerDemo from './components/MarkerDemo';
 import DirectionsDemo from './components/DirectionsDemo';
 import SearchPanel from './components/SearchPanel';
-import {
-    searchPlacesAutocomplete,
-    reverseGeocodeV2,
-    getPlaceDetails,
-    searchNearbyPlaces,
-    calculateDistance,
-    formatDistance
-} from '../../services/trackasia.service';
+import trackasiaService from '../../services/map/trackasiaService';
+// Import các hàm từ models
+import { calculateDistance } from '../../models/Map';
+
+// Định nghĩa lại hàm formatDistance để tương thích với code hiện tại
+const formatDistance = (meters: number): string => {
+    if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(1)} km`;
+    }
+    return `${Math.round(meters)} m`;
+};
+
+// Hàm để chuyển đổi khoảng cách từ m sang km khi cần
+const formatDistanceForDisplay = (distanceStr: string): string => {
+    // Nếu đã là chuỗi có đơn vị, kiểm tra và định dạng lại nếu cần
+    if (distanceStr.includes('km') || distanceStr.includes('m')) {
+        return distanceStr;
+    }
+
+    // Nếu là số (mét), định dạng lại
+    const distance = parseFloat(distanceStr);
+    if (isNaN(distance)) return distanceStr;
+
+    if (distance >= 1000) {
+        return `${(distance / 1000).toFixed(1)} km`;
+    }
+    return `${Math.round(distance)} m`;
+};
+
+// Wrapper cho hàm calculateDistance để tương thích với code cũ
+const calculateDistanceWrapper = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const point1 = { lat: lat1, lng: lon1 };
+    const point2 = { lat: lat2, lng: lon2 };
+    // Hàm calculateDistance trả về kết quả tính bằng mét
+    return calculateDistance(point1, point2);
+};
 import type {
     AutocompleteResult,
-    PlaceDetailsResult,
-    ReverseGeocodingResult
-} from '../../services/trackasia.service';
+    PlaceDetailResult as PlaceDetailsResult,
+    ReverseGeocodingResponse
+} from '../../services/map/trackasiaService';
 import NavigationPanel from './components/NavigationPanel';
 import TripSummary from './components/TripSummary';
 import MapControls from './components/MapControls';
@@ -77,7 +105,7 @@ const findClosestPointOnRoute = (position: [number, number], routePoints: [numbe
     let closestPointIndex = 0;
 
     for (let i = 0; i < routePoints.length; i++) {
-        const distance = calculateDistance(
+        const distance = calculateDistanceWrapper(
             position[1], position[0],
             routePoints[i][1], routePoints[i][0]
         );
@@ -100,19 +128,20 @@ const calculateRemainingDistance = (
     let remainingDist = 0;
 
     // Add distance from current position to closest point on route
-    remainingDist += calculateDistance(
+    remainingDist += calculateDistanceWrapper(
         position[1], position[0],
         routePoints[closestPointIndex][1], routePoints[closestPointIndex][0]
     );
 
     // Add distances between remaining points on route
     for (let i = closestPointIndex; i < routePoints.length - 1; i++) {
-        remainingDist += calculateDistance(
+        remainingDist += calculateDistanceWrapper(
             routePoints[i][1], routePoints[i][0],
             routePoints[i + 1][1], routePoints[i + 1][0]
         );
     }
 
+    // Trả về khoảng cách tính bằng mét
     return remainingDist;
 };
 
@@ -147,14 +176,14 @@ const calculateDistanceToNextTurn = (
     let distToNextTurn = 0;
 
     // Add distance from current position to closest point on route
-    distToNextTurn += calculateDistance(
+    distToNextTurn += calculateDistanceWrapper(
         position[1], position[0],
         routePoints[closestPointIndex][1], routePoints[closestPointIndex][0]
     );
 
     // Add distances between points until next turn
     for (let i = closestPointIndex; i < nextTurnPointIndex; i++) {
-        distToNextTurn += calculateDistance(
+        distToNextTurn += calculateDistanceWrapper(
             routePoints[i][1], routePoints[i][0],
             routePoints[i + 1][1], routePoints[i + 1][0]
         );
@@ -199,6 +228,7 @@ const TrackAsiaMapPage: React.FC = () => {
     const [isNavigationPanelCollapsed, setIsNavigationPanelCollapsed] = useState<boolean>(false);
     const [showNavigationModal, setShowNavigationModal] = useState<boolean>(false);
     const [showTripSummary, setShowTripSummary] = useState<boolean>(false);
+    const [currentSpeed, setCurrentSpeed] = useState<number>(0); // Tốc độ hiện tại (km/h)
     const [tripSummary, setTripSummary] = useState<{
         startTime: number | null;
         endTime: number | null;
@@ -284,6 +314,19 @@ const TrackAsiaMapPage: React.FC = () => {
                     // Update user location on map
                     updateUserLocationOnMap(currentPosition, accuracy);
 
+                    // Tính tốc độ từ Geolocation API nếu có
+                    if (position.coords.speed !== null) {
+                        // Tốc độ từ API (m/s)
+                        const speedMps = position.coords.speed;
+                        // Chuyển đổi sang km/h
+                        const speedKmh = speedMps * 3.6;
+                        // Cập nhật tốc độ hiện tại (làm mịn)
+                        setCurrentSpeed(prevSpeed => {
+                            const smoothedSpeed = prevSpeed * 0.7 + speedKmh * 0.3;
+                            return Math.min(Math.max(smoothedSpeed, 0), 120); // Giới hạn 0-120 km/h
+                        });
+                    }
+
                     const routePoints = routeCoordinatesRef.current;
                     if (!routePoints || routePoints.length === 0) {
                         console.error("No route points available");
@@ -304,7 +347,8 @@ const TrackAsiaMapPage: React.FC = () => {
 
                     // Update remaining time based on progress
                     const totalTimeSeconds = parseTimeStringToSeconds(routeInfo!.duration);
-                    const remainingTimeEstimate = totalTimeSeconds * (1 - progress);
+                    // Làm tròn thời gian còn lại để tránh thay đổi liên tục
+                    const remainingTimeEstimate = Math.round(totalTimeSeconds * (1 - progress));
                     setRemainingTime(formatTime(remainingTimeEstimate));
 
                     // Find current instruction based on progress
@@ -376,7 +420,13 @@ const TrackAsiaMapPage: React.FC = () => {
                     [VIETNAM_BOUNDS.east, VIETNAM_BOUNDS.north]  // Northeast coordinates
                 ],
                 fitBoundsOptions: {
-                    padding: 50
+                    padding: {
+                        top: 100,
+                        bottom: 100,
+                        left: 350,
+                        right: 100
+                    },
+                    maxZoom: 12
                 }
             });
 
@@ -389,12 +439,29 @@ const TrackAsiaMapPage: React.FC = () => {
                 // messageApi.success('TrackAsia Map đã tải thành công!');
             });
 
+            // Sử dụng debounce để giảm số lần cập nhật state
+            let moveTimeout: NodeJS.Timeout | null = null;
             map.current.on('move', () => {
                 if (!map.current) return;
-                const center = map.current.getCenter();
-                setLng(Number(center.lng.toFixed(4)));
-                setLat(Number(center.lat.toFixed(4)));
-                setZoom(Number(map.current.getZoom().toFixed(2)));
+
+                // Hủy timeout trước đó nếu có
+                if (moveTimeout) clearTimeout(moveTimeout);
+
+                // Đặt timeout mới để cập nhật state
+                moveTimeout = setTimeout(() => {
+                    const center = map.current?.getCenter();
+                    if (!center) return;
+
+                    // Lấy giá trị hiện tại để so sánh
+                    const newLng = Number(center.lng.toFixed(4));
+                    const newLat = Number(center.lat.toFixed(4));
+                    const newZoom = Number(map.current?.getZoom().toFixed(2) || 0);
+
+                    // Chỉ cập nhật nếu giá trị thực sự thay đổi
+                    if (newLng !== lng) setLng(newLng);
+                    if (newLat !== lat) setLat(newLat);
+                    if (newZoom !== zoom) setZoom(newZoom);
+                }, 100); // Đợi 100ms sau khi map dừng di chuyển
             });
 
             map.current.on('click', (e) => {
@@ -417,6 +484,9 @@ const TrackAsiaMapPage: React.FC = () => {
 
     // Auto-start và lấy vị trí hiện tại khi component mounts
     useEffect(() => {
+        // Chỉ chạy một lần khi component mount
+        if (!isMapLoaded) return;
+
         // Đợi một chút để đảm bảo map đã được tải
         const timer = setTimeout(() => {
             // Tự động lấy vị trí hiện tại khi trang tải
@@ -427,7 +497,7 @@ const TrackAsiaMapPage: React.FC = () => {
         }, 1000);
 
         return () => clearTimeout(timer);
-    }, []); // Empty dependency array means this runs once on mount
+    }, [isMapLoaded]); // Chỉ chạy lại khi isMapLoaded thay đổi
 
     // Lắng nghe sự kiện requestCurrentLocation từ DirectionsDemo
     useEffect(() => {
@@ -435,18 +505,21 @@ const TrackAsiaMapPage: React.FC = () => {
             getCurrentLocation();
 
             // Nếu đã có vị trí hiện tại, gửi ngay cho DirectionsDemo
+            // Sử dụng setTimeout để tránh vòng lặp vô hạn
             if (currentLocation) {
-                const directionsDemo = document.getElementById('trackasia-directions-demo');
-                if (directionsDemo) {
-                    const event = new CustomEvent('setCurrentLocation', {
-                        detail: {
-                            lat: currentLocation.lat,
-                            lng: currentLocation.lng,
-                            address: currentAddress || 'Vị trí hiện tại'
-                        }
-                    });
-                    directionsDemo.dispatchEvent(event);
-                }
+                setTimeout(() => {
+                    const directionsDemo = document.getElementById('trackasia-directions-demo');
+                    if (directionsDemo) {
+                        const event = new CustomEvent('setCurrentLocation', {
+                            detail: {
+                                lat: currentLocation.lat,
+                                lng: currentLocation.lng,
+                                address: currentAddress || 'Vị trí hiện tại'
+                            }
+                        });
+                        directionsDemo.dispatchEvent(event);
+                    }
+                }, 0);
             }
         };
 
@@ -458,20 +531,38 @@ const TrackAsiaMapPage: React.FC = () => {
     }, [currentLocation, currentAddress]);
 
     // Gửi vị trí hiện tại cho DirectionsDemo khi vị trí hiện tại thay đổi
+    // Sử dụng useRef để theo dõi lần render cuối cùng và tránh vòng lặp vô hạn
+    const lastLocationSentRef = useRef<{ lat?: number, lng?: number, address?: string }>({});
+
     useEffect(() => {
         if (currentLocation && activeTab === 'directions') {
-            // Thông báo cho component DirectionsDemo về vị trí hiện tại
-            const directionsDemo = document.getElementById('trackasia-directions-demo');
-            if (directionsDemo) {
-                // Tạo và kích hoạt sự kiện tùy chỉnh
-                const event = new CustomEvent('setCurrentLocation', {
-                    detail: {
-                        lat: currentLocation.lat,
-                        lng: currentLocation.lng,
-                        address: currentAddress || 'Vị trí hiện tại'
-                    }
-                });
-                directionsDemo.dispatchEvent(event);
+            // Kiểm tra xem vị trí đã thay đổi so với lần trước chưa
+            const locationChanged =
+                lastLocationSentRef.current.lat !== currentLocation.lat ||
+                lastLocationSentRef.current.lng !== currentLocation.lng ||
+                lastLocationSentRef.current.address !== currentAddress;
+
+            if (locationChanged) {
+                // Lưu lại vị trí hiện tại để so sánh lần sau
+                lastLocationSentRef.current = {
+                    lat: currentLocation.lat,
+                    lng: currentLocation.lng,
+                    address: currentAddress
+                };
+
+                // Thông báo cho component DirectionsDemo về vị trí hiện tại
+                const directionsDemo = document.getElementById('trackasia-directions-demo');
+                if (directionsDemo) {
+                    // Tạo và kích hoạt sự kiện tùy chỉnh
+                    const event = new CustomEvent('setCurrentLocation', {
+                        detail: {
+                            lat: currentLocation.lat,
+                            lng: currentLocation.lng,
+                            address: currentAddress || 'Vị trí hiện tại'
+                        }
+                    });
+                    directionsDemo.dispatchEvent(event);
+                }
             }
         }
     }, [currentLocation, currentAddress, activeTab]);
@@ -484,18 +575,46 @@ const TrackAsiaMapPage: React.FC = () => {
             // Lưu trữ dữ liệu tuyến đường
             routeCoordinatesRef.current = coordinates;
 
-            // Cập nhật routeInfo nếu cần
-            if (!routeInfo) {
-                setRouteInfo({
-                    distance: route.legs[0].distance.text,
-                    duration: route.legs[0].duration.text,
-                    steps: route.legs[0].steps.map((step: any) => ({
-                        instruction: step.html_instructions.replace(/<[^>]*>?/gm, ''),
-                        distance: step.distance.text,
-                        duration: step.duration.text,
-                        maneuver: step.maneuver || ''
-                    }))
-                });
+            // Cập nhật routeInfo một cách an toàn
+            // Sử dụng một biến tạm để tránh cập nhật state trong useEffect
+            // Đảm bảo có giá trị hợp lệ cho distance và duration
+            const routeDistance = route.legs[0]?.distance?.text || '0 km';
+            const routeDuration = route.legs[0]?.duration?.text || '0 phút';
+
+            // Xử lý các bước với kiểm tra giá trị undefined
+            const processedSteps = route.legs[0]?.steps?.map((step: any) => {
+                // Đảm bảo các trường có giá trị hợp lệ
+                const instruction = step.html_instructions
+                    ? step.html_instructions.replace(/<[^>]*>?/gm, '')
+                    : 'Đi thẳng';
+
+                const distanceText = step.distance?.text || '0m';
+                const durationText = step.duration?.text || '0 giây';
+
+                return {
+                    instruction,
+                    distance: distanceText,
+                    duration: durationText,
+                    maneuver: step.maneuver || ''
+                };
+            }) || [];
+
+            const newRouteInfo = {
+                distance: routeDistance,
+                duration: routeDuration,
+                steps: processedSteps
+            };
+
+            // Chỉ cập nhật nếu routeInfo chưa có hoặc khác với giá trị mới
+            if (!routeInfo ||
+                routeInfo.distance !== newRouteInfo.distance ||
+                routeInfo.duration !== newRouteInfo.duration ||
+                routeInfo.steps.length !== newRouteInfo.steps.length) {
+
+                // Sử dụng setTimeout để tránh cập nhật state trực tiếp trong useEffect
+                setTimeout(() => {
+                    setRouteInfo(newRouteInfo);
+                }, 0);
             }
         };
 
@@ -525,7 +644,7 @@ const TrackAsiaMapPage: React.FC = () => {
         // Update selected location
         setSelectedLocation({ lng, lat });
 
-        // Use the new reverse geocoding API
+        // Use the reverse geocoding API
         reverseGeocodeV2(lat, lng)
             .then(response => {
                 if (response.status === 'OK' && response.results.length > 0) {
@@ -535,7 +654,7 @@ const TrackAsiaMapPage: React.FC = () => {
                     // Thêm khoảng cách nếu có vị trí hiện tại
                     let details = formatAddressDetails(place);
                     if (currentLocation) {
-                        const distance = calculateDistance(
+                        const distance = calculateDistanceWrapper(
                             currentLocation.lat,
                             currentLocation.lng,
                             lat,
@@ -548,61 +667,23 @@ const TrackAsiaMapPage: React.FC = () => {
                     }
                     setAddressDetails(details);
                 } else {
-                    // Fallback to nearby search
-                    searchNearbyPlaces(lat, lng, 100)
-                        .then(nearbyResponse => {
-                            if (nearbyResponse.status === 'OK' && nearbyResponse.results.length > 0) {
-                                const place = nearbyResponse.results[0];
-                                setCurrentAddress(place.formatted_address);
+                    // Nếu không tìm thấy địa chỉ, hiển thị tọa độ
+                    setCurrentAddress(`Vị trí: ${lng.toFixed(6)}, ${lat.toFixed(6)}`);
 
-                                // Get place details
-                                getPlaceDetails(place.place_id)
-                                    .then(detailsResponse => {
-                                        if (detailsResponse.status === 'OK') {
-                                            // Thêm khoảng cách nếu có vị trí hiện tại
-                                            let details = formatAddressDetailsFromPlace(detailsResponse.result);
-                                            if (currentLocation) {
-                                                const distance = calculateDistance(
-                                                    currentLocation.lat,
-                                                    currentLocation.lng,
-                                                    lat,
-                                                    lng
-                                                );
-                                                details = {
-                                                    ...details,
-                                                    distance: formatDistance(distance)
-                                                };
-                                            }
-                                            setAddressDetails(details);
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error('Error getting place details:', error);
-                                    });
-                            } else {
-                                setCurrentAddress(`Vị trí: ${lng.toFixed(6)}, ${lat.toFixed(6)}`);
-
-                                // Thêm khoảng cách nếu có vị trí hiện tại
-                                if (currentLocation) {
-                                    const distance = calculateDistance(
-                                        currentLocation.lat,
-                                        currentLocation.lng,
-                                        lat,
-                                        lng
-                                    );
-                                    setAddressDetails({
-                                        distance: formatDistance(distance)
-                                    });
-                                } else {
-                                    setAddressDetails(null);
-                                }
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error getting nearby places:', error);
-                            setCurrentAddress(`Vị trí: ${lng.toFixed(6)}, ${lat.toFixed(6)}`);
-                            setAddressDetails(null);
+                    // Thêm khoảng cách nếu có vị trí hiện tại
+                    if (currentLocation) {
+                        const distance = calculateDistanceWrapper(
+                            currentLocation.lat,
+                            currentLocation.lng,
+                            lat,
+                            lng
+                        );
+                        setAddressDetails({
+                            distance: formatDistance(distance)
                         });
+                    } else {
+                        setAddressDetails(null);
+                    }
                 }
             })
             .catch(error => {
@@ -611,7 +692,7 @@ const TrackAsiaMapPage: React.FC = () => {
 
                 // Thêm khoảng cách nếu có vị trí hiện tại
                 if (currentLocation) {
-                    const distance = calculateDistance(
+                    const distance = calculateDistanceWrapper(
                         currentLocation.lat,
                         currentLocation.lng,
                         lat,
@@ -627,14 +708,14 @@ const TrackAsiaMapPage: React.FC = () => {
     };
 
     // Format address details from reverse geocoding result
-    const formatAddressDetails = (place: ReverseGeocodingResult) => {
+    const formatAddressDetails = (place: any) => {
         const details: any = {
             name: place.name,
             boundaries: []
         };
 
         if (place.address_components) {
-            place.address_components.forEach(component => {
+            place.address_components.forEach((component: any) => {
                 if (component.types.includes('administrative_area_level_1')) {
                     details.boundaries.push({
                         prefix: 'Tỉnh/Thành phố',
@@ -669,7 +750,7 @@ const TrackAsiaMapPage: React.FC = () => {
         };
 
         if (place.address_components) {
-            place.address_components.forEach(component => {
+            place.address_components.forEach((component: any) => {
                 if (component.types.includes('administrative_area_level_1')) {
                     details.boundaries.push({
                         prefix: 'Tỉnh/Thành phố',
@@ -822,9 +903,9 @@ const TrackAsiaMapPage: React.FC = () => {
                                     response.predictions.map(async (prediction) => {
                                         try {
                                             const details = await getPlaceDetails(prediction.place_id);
-                                            if (details.status === 'OK') {
+                                            if (details) {
                                                 const place = details.result;
-                                                const distance = calculateDistance(
+                                                const distance = calculateDistanceWrapper(
                                                     currentLocation.lat,
                                                     currentLocation.lng,
                                                     place.geometry.location.lat,
@@ -943,7 +1024,7 @@ const TrackAsiaMapPage: React.FC = () => {
             // Get place details
             getPlaceDetails(placeId)
                 .then(response => {
-                    if (response.status === 'OK') {
+                    if (response) {
                         const place = response.result;
 
                         // Clear existing markers
@@ -969,7 +1050,7 @@ const TrackAsiaMapPage: React.FC = () => {
                         // Thêm khoảng cách nếu có vị trí hiện tại
                         let details = formatAddressDetailsFromPlace(place);
                         if (currentLocation) {
-                            const distance = calculateDistance(
+                            const distance = calculateDistanceWrapper(
                                 currentLocation.lat,
                                 currentLocation.lng,
                                 lat,
@@ -1013,7 +1094,7 @@ const TrackAsiaMapPage: React.FC = () => {
         // Get place details
         getPlaceDetails(placeId)
             .then(response => {
-                if (response.status === 'OK') {
+                if (response) {
                     const place = response.result;
 
                     // Clear existing markers
@@ -1039,7 +1120,7 @@ const TrackAsiaMapPage: React.FC = () => {
                     // Thêm khoảng cách nếu có vị trí hiện tại
                     let details = formatAddressDetailsFromPlace(place);
                     if (currentLocation) {
-                        const distance = calculateDistance(
+                        const distance = calculateDistanceWrapper(
                             currentLocation.lat,
                             currentLocation.lng,
                             lat,
@@ -1074,20 +1155,24 @@ const TrackAsiaMapPage: React.FC = () => {
         setActiveTab(key);
 
         // Nếu chuyển sang tab tìm đường và có vị trí hiện tại, đặt làm điểm xuất phát
+        // Sử dụng setTimeout để đảm bảo DOM đã được cập nhật và tránh vòng lặp vô hạn
         if (key === 'directions' && currentLocation && map.current) {
-            // Thông báo cho component DirectionsDemo về vị trí hiện tại
-            const directionsDemo = document.getElementById('trackasia-directions-demo');
-            if (directionsDemo) {
-                // Tạo và kích hoạt sự kiện tùy chỉnh
-                const event = new CustomEvent('setCurrentLocation', {
-                    detail: {
-                        lat: currentLocation.lat,
-                        lng: currentLocation.lng,
-                        address: currentAddress || 'Vị trí hiện tại'
-                    }
-                });
-                directionsDemo.dispatchEvent(event);
-            }
+            // Đợi cho DOM được cập nhật sau khi tab thay đổi
+            setTimeout(() => {
+                // Thông báo cho component DirectionsDemo về vị trí hiện tại
+                const directionsDemo = document.getElementById('trackasia-directions-demo');
+                if (directionsDemo) {
+                    // Tạo và kích hoạt sự kiện tùy chỉnh
+                    const event = new CustomEvent('setCurrentLocation', {
+                        detail: {
+                            lat: currentLocation.lat,
+                            lng: currentLocation.lng,
+                            address: currentAddress || 'Vị trí hiện tại'
+                        }
+                    });
+                    directionsDemo.dispatchEvent(event);
+                }
+            }, 100);
         }
     };
 
@@ -1109,10 +1194,21 @@ const TrackAsiaMapPage: React.FC = () => {
         setShowTripSummary(false);
 
         // Record start time for trip summary
+        const distanceText = routeInfo.distance;
+        let totalDistanceMeters = 0;
+
+        if (distanceText.includes('km')) {
+            // Nếu là km, chuyển về mét
+            totalDistanceMeters = parseFloat(distanceText.replace(/[^\d.]/g, '')) * 1000;
+        } else {
+            // Nếu là mét
+            totalDistanceMeters = parseFloat(distanceText.replace(/[^\d.]/g, ''));
+        }
+
         setTripSummary(prev => ({
             ...prev,
             startTime: Date.now(),
-            totalDistance: parseFloat(routeInfo.distance.replace(/[^\d.]/g, '')),
+            totalDistance: totalDistanceMeters,
             totalTime: parseTimeStringToSeconds(routeInfo.duration)
         }));
 
@@ -1342,7 +1438,15 @@ const TrackAsiaMapPage: React.FC = () => {
                 routeCoordinatesRef.current.forEach(coord => {
                     bounds.extend(coord as trackasiagl.LngLatLike);
                 });
-                map.current.fitBounds(bounds, { padding: 50 });
+                map.current.fitBounds(bounds, {
+                    padding: {
+                        top: 100,
+                        bottom: 100,
+                        left: 350, // Tăng padding bên trái để tránh panel
+                        right: 100
+                    },
+                    maxZoom: 12 // Giảm maxZoom để zoom out nhiều hơn
+                });
             }
         }
 
@@ -1352,7 +1456,19 @@ const TrackAsiaMapPage: React.FC = () => {
             const endTime = Date.now();
             const durationMs = endTime - tripSummary.startTime!;
             const durationHours = durationMs / (1000 * 60 * 60);
-            const averageSpeed = durationHours > 0 ? tripSummary.totalDistance / durationHours : 0;
+
+            // Tính tốc độ trung bình (km/h)
+            // Đảm bảo totalDistance là đơn vị mét, và chuyển sang km
+            const distanceInKm = tripSummary.totalDistance / 1000;
+
+            // Đảm bảo thời gian tối thiểu là 1 giây để tránh chia cho 0
+            const minDurationHours = Math.max(durationHours, 1 / 3600);
+
+            // Tính tốc độ trung bình và giới hạn trong khoảng hợp lý (0-120 km/h)
+            const averageSpeed = Math.min(
+                distanceInKm / minDurationHours,
+                120 // Giới hạn tốc độ tối đa 120 km/h
+            );
 
             // Cập nhật trip summary trước khi hiển thị
             setTripSummary(prev => ({
@@ -1377,6 +1493,7 @@ const TrackAsiaMapPage: React.FC = () => {
         setCurrentInstructionIndex(0);
         setNextTurnDistance(0);
         setCompassHeading(null);
+        setCurrentSpeed(0); // Reset tốc độ
 
         // Reset tiến trình dẫn đường
         navigationProgressRef.current = 0;
@@ -1420,7 +1537,19 @@ const TrackAsiaMapPage: React.FC = () => {
             const endTime = Date.now();
             const durationMs = endTime - tripSummary.startTime!;
             const durationHours = durationMs / (1000 * 60 * 60);
-            const averageSpeed = durationHours > 0 ? tripSummary.totalDistance / durationHours : 0;
+
+            // Tính tốc độ trung bình (km/h)
+            // Đảm bảo totalDistance là đơn vị mét, và chuyển sang km
+            const distanceInKm = tripSummary.totalDistance / 1000;
+
+            // Đảm bảo thời gian tối thiểu là 1 giây để tránh chia cho 0
+            const minDurationHours = Math.max(durationHours, 1 / 3600);
+
+            // Tính tốc độ trung bình và giới hạn trong khoảng hợp lý (0-120 km/h)
+            const averageSpeed = Math.min(
+                distanceInKm / minDurationHours,
+                120 // Giới hạn tốc độ tối đa 120 km/h
+            );
 
             // Cập nhật trip summary trước khi hiển thị
             setTripSummary(prev => ({
@@ -1445,6 +1574,7 @@ const TrackAsiaMapPage: React.FC = () => {
         setCurrentInstructionIndex(0);
         setNextTurnDistance(0);
         setCompassHeading(null);
+        setCurrentSpeed(0); // Reset tốc độ
 
         // Reset tiến trình dẫn đường
         navigationProgressRef.current = 0;
@@ -1479,10 +1609,21 @@ const TrackAsiaMapPage: React.FC = () => {
         setShowTripSummary(false);
 
         // Record start time for trip summary
+        const distanceText = routeInfo.distance;
+        let totalDistanceMeters = 0;
+
+        if (distanceText.includes('km')) {
+            // Nếu là km, chuyển về mét
+            totalDistanceMeters = parseFloat(distanceText.replace(/[^\d.]/g, '')) * 1000;
+        } else {
+            // Nếu là mét
+            totalDistanceMeters = parseFloat(distanceText.replace(/[^\d.]/g, ''));
+        }
+
         setTripSummary(prev => ({
             ...prev,
             startTime: Date.now(),
-            totalDistance: parseFloat(routeInfo.distance.replace(/[^\d.]/g, '')),
+            totalDistance: totalDistanceMeters,
             totalTime: parseTimeStringToSeconds(routeInfo.duration)
         }));
 
@@ -1491,8 +1632,12 @@ const TrackAsiaMapPage: React.FC = () => {
         simulationRoutePointsRef.current = routePoints;
         simulationCurrentPointIndexRef.current = 0;
 
-        setRemainingDistance(routeInfo.distance);
-        setRemainingTime(routeInfo.duration);
+        // Đặt giá trị ban đầu cho khoảng cách và thời gian còn lại
+        const initialDistance = routeInfo.distance;
+        const initialDuration = routeInfo.duration;
+
+        setRemainingDistance(initialDistance);
+        setRemainingTime(initialDuration);
         setCurrentInstructionIndex(0);
 
         // Create simulation vehicle marker
@@ -1587,6 +1732,28 @@ const TrackAsiaMapPage: React.FC = () => {
         const currentPoint = routePoints[currentIndex];
         const nextPoint = routePoints[nextIndex];
 
+        // Tính tốc độ hiện tại
+        // Khoảng cách giữa 2 điểm (mét)
+        const segmentDistance = calculateDistanceWrapper(
+            currentPoint[1], currentPoint[0],
+            nextPoint[1], nextPoint[0]
+        );
+
+        // Thời gian di chuyển (giây) - phụ thuộc vào simulationSpeed
+        const segmentTime = 1 / simulationSpeed;
+
+        // Tốc độ (m/s) = khoảng cách / thời gian
+        const speedMps = segmentDistance / segmentTime;
+
+        // Chuyển đổi từ m/s sang km/h
+        const speedKmh = (speedMps * 3.6);
+
+        // Cập nhật tốc độ hiện tại (làm mịn để tránh thay đổi đột ngột)
+        setCurrentSpeed(prevSpeed => {
+            const smoothedSpeed = prevSpeed * 0.7 + speedKmh * 0.3;
+            return Math.min(Math.max(smoothedSpeed, 0), 120); // Giới hạn tốc độ từ 0-120 km/h
+        });
+
         if (!currentPoint || !nextPoint) {
             console.error("Invalid route points", { currentPoint, nextPoint });
             stopSimulation();
@@ -1622,7 +1789,7 @@ const TrackAsiaMapPage: React.FC = () => {
         // Calculate remaining distance
         let remainingDist = 0;
         for (let i = nextIndex; i < routePoints.length - 1; i++) {
-            remainingDist += calculateDistance(
+            remainingDist += calculateDistanceWrapper(
                 routePoints[i][1], routePoints[i][0],
                 routePoints[i + 1][1], routePoints[i + 1][0]
             );
@@ -1632,7 +1799,17 @@ const TrackAsiaMapPage: React.FC = () => {
         setRemainingDistance(formatDistance(remainingDist));
 
         // Calculate progress percentage
-        const totalDistance = parseFloat(routeInfo!.distance.replace(/[^\d.]/g, ''));
+        // Lấy tổng khoảng cách từ routeInfo, đảm bảo đơn vị là mét
+        const totalDistanceText = routeInfo!.distance;
+        let totalDistance = 0;
+
+        if (totalDistanceText.includes('km')) {
+            // Nếu là km, chuyển về mét
+            totalDistance = parseFloat(totalDistanceText.replace(/[^\d.]/g, '')) * 1000;
+        } else {
+            // Nếu là mét
+            totalDistance = parseFloat(totalDistanceText.replace(/[^\d.]/g, ''));
+        }
         const progress = 1 - (remainingDist / totalDistance);
         navigationProgressRef.current = progress;
 
@@ -1640,7 +1817,8 @@ const TrackAsiaMapPage: React.FC = () => {
         if (routeInfo && routeInfo.duration) {
             // Tính thời gian còn lại dựa trên tiến trình
             const totalTimeSeconds = parseTimeStringToSeconds(routeInfo.duration);
-            const remainingTimeEstimate = totalTimeSeconds * (1 - progress);
+            // Làm tròn thời gian còn lại để tránh thay đổi liên tục
+            const remainingTimeEstimate = Math.round(totalTimeSeconds * (1 - progress));
 
             // Định dạng và hiển thị thời gian còn lại
             setRemainingTime(formatTime(remainingTimeEstimate));
@@ -1705,6 +1883,7 @@ const TrackAsiaMapPage: React.FC = () => {
         setCurrentInstructionIndex(0);
         setNextTurnDistance(0);
         setCompassHeading(null);
+        setCurrentSpeed(0); // Reset tốc độ
 
         // Reset tiến trình dẫn đường
         navigationProgressRef.current = 0;
@@ -1728,6 +1907,51 @@ const TrackAsiaMapPage: React.FC = () => {
         // Reset speed về mặc định
         setSimulationSpeed(1);
     };
+
+    // Wrapper functions for API calls
+    const reverseGeocodeV2 = async (lat: number, lng: number) => {
+        const result = await trackasiaService.reverseGeocode(lat, lng);
+        // Chuyển đổi từ MapLocation sang định dạng cũ
+        if (result) {
+            return {
+                status: 'OK',
+                results: [{
+                    formatted_address: result.address || `${lat}, ${lng}`,
+                    address_components: [],
+                    name: result.name || '',
+                    place_id: result.placeId || ''
+                }]
+            };
+        }
+        return { status: 'ERROR', results: [] };
+    };
+
+    const searchPlacesAutocomplete = async (query: string, bounds?: any, location?: any) => {
+        // Convert location to format expected by trackasiaService.autocomplete if needed
+        const locationParam = location ? [location.lat, location.lng] as [number, number] : undefined;
+        const results = await trackasiaService.autocomplete(query, locationParam);
+
+        // Chuyển đổi kết quả sang định dạng cũ
+        return {
+            status: 'OK',
+            predictions: results
+        };
+    };
+
+    const getPlaceDetails = async (placeId: string) => {
+        const result = await trackasiaService.getPlaceDetail(placeId);
+
+        // Chuyển đổi kết quả sang định dạng cũ
+        if (result) {
+            return {
+                status: 'OK',
+                result: result
+            };
+        }
+        return null;
+    };
+
+
 
     return (
         <div className="h-screen w-full relative">
@@ -1778,10 +2002,16 @@ const TrackAsiaMapPage: React.FC = () => {
                 <NavigationPanel
                     isNavigating={isNavigating}
                     isSimulating={isSimulating}
-                    remainingDistance={remainingDistance}
+                    remainingDistance={formatDistanceForDisplay(remainingDistance)}
                     remainingTime={remainingTime}
                     currentInstructionIndex={currentInstructionIndex}
-                    routeInfo={routeInfo}
+                    routeInfo={routeInfo ? {
+                        ...routeInfo,
+                        steps: routeInfo.steps.map(step => ({
+                            ...step,
+                            distance: formatDistanceForDisplay(step.distance)
+                        }))
+                    } : null}
                     onClose={() => {
                         stopNavigation();
                         stopSimulation();
@@ -1791,6 +2021,7 @@ const TrackAsiaMapPage: React.FC = () => {
                     onChangeSpeed={changeSimulationSpeed}
                     isPaused={isPaused}
                     onTogglePause={togglePauseNavigation}
+                    currentSpeed={currentSpeed}
                 />
             )}
 

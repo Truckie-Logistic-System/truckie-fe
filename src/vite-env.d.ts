@@ -3,7 +3,7 @@
 interface ImportMetaEnv {
     readonly VITE_API_URL: string;
     readonly VITE_API_TIMEOUT: string;
-    readonly VITE_AUTH_TOKEN_KEY: string;
+    readonly AUTH_ACCESS_TOKEN_KEY: string;
     readonly VITE_AUTH_REFRESH_TOKEN_KEY: string;
     readonly VITE_VIET_MAPS_API_KEY: string;
     readonly VITE_APP_NAME: string;

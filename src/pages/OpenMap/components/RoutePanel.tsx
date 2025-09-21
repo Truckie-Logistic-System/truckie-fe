@@ -1,7 +1,62 @@
 import React from 'react';
 import { Space, Button, AutoComplete, Spin, Select, List, Tooltip, Skeleton } from 'antd';
 import { AimOutlined, SwapOutlined, CarOutlined, PlayCircleOutlined, CloseCircleOutlined, RocketOutlined } from '@ant-design/icons';
-import type { DirectionResponse, DirectionStep } from '../../../services/openmap.service';
+
+// Define DirectionResponse type
+interface DirectionResponse {
+    routes: Array<{
+        bounds: {
+            northeast: {
+                lat: number;
+                lng: number;
+            };
+            southwest: {
+                lat: number;
+                lng: number;
+            };
+        };
+        legs: Array<{
+            distance: {
+                text: string;
+                value: number;
+            };
+            duration: {
+                text: string;
+                value: number;
+            };
+            steps: Array<DirectionStep>;
+        }>;
+        overview_polyline: {
+            points: string;
+        };
+    }>;
+    status: string;
+}
+
+// Define DirectionStep type
+interface DirectionStep {
+    distance: {
+        text: string;
+        value: number;
+    };
+    duration: {
+        text: string;
+        value: number;
+    };
+    start_location: {
+        lat: number;
+        lng: number;
+    };
+    end_location: {
+        lat: number;
+        lng: number;
+    };
+    html_instructions: string;
+    maneuver: string;
+    polyline: {
+        points: string;
+    };
+}
 
 interface RoutePanelProps {
     selectedVehicle: 'car' | 'bike' | 'motor' | 'taxi' | 'truck' | 'walking';

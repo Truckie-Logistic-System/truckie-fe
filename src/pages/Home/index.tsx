@@ -1,5 +1,4 @@
 import React from 'react';
-import { MainLayout } from '../../components/layout';
 import { FeatureWrapper } from '../../components/features';
 import HeroSection from './components/HeroSection';
 import AboutSection from './components/AboutSection';
@@ -12,14 +11,14 @@ interface HomePageProps { }
 
 const HomePage: React.FC<HomePageProps> = () => {
     return (
-        <MainLayout>
+        <>
             <HeroSection />
             <AboutSection />
             <ServicesSection />
             <TrialSection />
             <FAQSection />
             <TeamSection />
-        </MainLayout>
+        </>
     );
 };
 

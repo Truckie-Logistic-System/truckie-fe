@@ -4,8 +4,200 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { Button, Card, Space, Typography, Spin, AutoComplete, Divider, Tag, Tabs, message } from 'antd';
 import { SearchOutlined, AimOutlined, EnvironmentOutlined, CarOutlined, CompassOutlined } from '@ant-design/icons';
 import { OPEN_MAP_API_KEY } from '../../config/env';
-import { searchPlaces, getPlaceDetail, getReverseGeocode, findDirection, decodePolyline } from '../../services/openmap.service';
-import type { AutocompleteResult, DirectionResponse } from '../../services/openmap.service';
+import openmapService from '../../services/map/openmapService';
+import type { AutocompleteResult, PlaceDetail } from '../../services/map/openmapService';
+
+// Define DirectionResponse type
+interface DirectionResponse {
+    routes: Array<{
+        bounds: {
+            northeast: {
+                lat: number;
+                lng: number;
+            };
+            southwest: {
+                lat: number;
+                lng: number;
+            };
+        };
+        legs: Array<{
+            distance: {
+                text: string;
+                value: number;
+            };
+            duration: {
+                text: string;
+                value: number;
+            };
+            steps: Array<{
+                distance: {
+                    text: string;
+                    value: number;
+                };
+                duration: {
+                    text: string;
+                    value: number;
+                };
+                start_location: {
+                    lat: number;
+                    lng: number;
+                };
+                end_location: {
+                    lat: number;
+                    lng: number;
+                };
+                html_instructions: string;
+                maneuver: string;
+                polyline: {
+                    points: string;
+                };
+            }>;
+        }>;
+        overview_polyline: {
+            points: string;
+        };
+    }>;
+    status: string;
+}
+
+// Wrapper functions for API calls
+const searchPlaces = async (query: string, focusParam?: string) => {
+    // Chuyển đổi focusParam từ "lat,lng" sang {lat, lng} nếu cần
+    let location: { lat: number; lng: number } | undefined;
+    if (focusParam) {
+        const [lat, lng] = focusParam.split(',').map(Number);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            location = { lat, lng };
+        }
+    }
+    return await openmapService.searchPlaces(query, location);
+};
+
+const getPlaceDetail = async (placeId: string) => {
+    return await openmapService.getPlaceDetail(placeId);
+};
+
+const getReverseGeocode = async (lng: number, lat: number) => {
+    const result = await openmapService.reverseGeocode(lat, lng);
+
+    // Chuyển đổi MapLocation sang định dạng cũ nếu cần
+    if (result) {
+        return {
+            display: result.address || `${lat}, ${lng}`,
+            components: [],
+            exactPosition: `${lat}, ${lng}`
+        };
+    }
+    return null;
+};
+
+const findDirection = async (origin: string, destination: string, vehicle: string) => {
+    // Chuyển đổi origin và destination từ "lat,lng" sang [number, number]
+    const [originLat, originLng] = origin.split(',').map(Number);
+    const [destLat, destLng] = destination.split(',').map(Number);
+
+    if (isNaN(originLat) || isNaN(originLng) || isNaN(destLat) || isNaN(destLng)) {
+        throw new Error('Invalid coordinates');
+    }
+
+    const originPoint: [number, number] = [originLng, originLat];
+    const destPoint: [number, number] = [destLng, destLat];
+
+    // Gọi API mới
+    const result = await openmapService.getRoute(originPoint, destPoint);
+
+    // Chuyển đổi kết quả sang định dạng DirectionResponse
+    if (result) {
+        // Tạo một đối tượng DirectionResponse giả lập từ RouteResponse
+        const fakeRoute: DirectionResponse = {
+            routes: [{
+                bounds: {
+                    northeast: { lat: 0, lng: 0 },
+                    southwest: { lat: 0, lng: 0 }
+                },
+                legs: [{
+                    distance: { text: formatDistance(result.distance), value: result.distance },
+                    duration: { text: formatTime(result.duration), value: result.duration },
+                    steps: result.legs && result.legs[0] ? result.legs[0].steps.map(step => ({
+                        distance: { text: formatDistance(step.distance), value: step.distance },
+                        duration: { text: formatTime(step.duration), value: step.duration },
+                        start_location: {
+                            lat: step.maneuver.location[1],
+                            lng: step.maneuver.location[0]
+                        },
+                        end_location: {
+                            lat: 0, // Không có trong API mới
+                            lng: 0  // Không có trong API mới
+                        },
+                        html_instructions: step.maneuver.instruction,
+                        maneuver: step.maneuver.type,
+                        polyline: { points: '' } // Không có trong API mới
+                    })) : []
+                }],
+                overview_polyline: { points: '' } // Cần lấy từ result nếu có
+            }],
+            status: 'OK'
+        };
+
+        return fakeRoute;
+    }
+
+    return null;
+};
+
+// Helper function to format distance
+const formatDistance = (meters: number): string => {
+    if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(1)} km`;
+    }
+    return `${Math.round(meters)} m`;
+};
+
+// Helper function to format time
+const formatTime = (seconds: number): string => {
+    if (seconds >= 3600) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return `${hours} giờ ${minutes > 0 ? `${minutes} phút` : ''}`;
+    } else if (seconds >= 60) {
+        const minutes = Math.floor(seconds / 60);
+        return `${minutes} phút`;
+    }
+    return `${Math.round(seconds)} giây`;
+};
+
+// Decode polyline function (if not available in openmapService)
+const decodePolyline = (encoded: string): [number, number][] => {
+    // Implement polyline decoding or use from openmapService
+    // This is a simple implementation, might need to be adjusted
+    const points: [number, number][] = [];
+    let index = 0, lat = 0, lng = 0;
+
+    while (index < encoded.length) {
+        let b, shift = 0, result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        points.push([lng * 1e-5, lat * 1e-5]);
+    }
+
+    return points;
+};
 
 // Import components
 import RoutePanel from './components/RoutePanel';

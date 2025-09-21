@@ -1,6 +1,8 @@
 import React from 'react';
 import AuthRoute from './AuthRoute';
 import RoleBasedRoute from './RoleBasedRoute';
+import { useAuth } from '@/context/AuthContext';
+import { Navigate, useLocation } from 'react-router-dom';
 
 type RedirectPathFunction = (auth: { user: any; isAuthenticated: boolean }) => string;
 
@@ -15,7 +17,7 @@ interface PermissionRouteProps {
 
     /**
      * Các vai trò được phép truy cập route này
-     * Chỉ áp dụng khi authenticationRequired là 'authenticated'
+     * Áp dụng cho cả 'authenticated' và 'any'
      */
     allowedRoles?: ('admin' | 'customer' | 'staff' | 'driver')[];
 
@@ -42,6 +44,26 @@ const PermissionRoute: React.FC<PermissionRouteProps> = ({
     roleRedirectPath = '/',
     children
 }) => {
+    const auth = useAuth();
+    const location = useLocation();
+    const { user, isAuthenticated } = auth;
+
+    // Kiểm tra nếu authenticationRequired là 'any' và có allowedRoles
+    // Trong trường hợp này, chúng ta cần kiểm tra vai trò nếu người dùng đã đăng nhập
+    if (authenticationRequired === 'any' && allowedRoles.length > 0 && isAuthenticated) {
+        const hasRequiredRole = user && allowedRoles.includes(user.role);
+
+        if (!hasRequiredRole) {
+            // Xác định đường dẫn chuyển hướng
+            const redirectTo = typeof roleRedirectPath === 'function'
+                ? roleRedirectPath(auth)
+                : roleRedirectPath;
+
+            // Chuyển hướng đến trang được chỉ định
+            return <Navigate to={redirectTo} state={{ from: location }} replace />;
+        }
+    }
+
     // Nếu yêu cầu người dùng đã đăng nhập và có chỉ định vai trò
     if (authenticationRequired === 'authenticated' && allowedRoles.length > 0) {
         return (

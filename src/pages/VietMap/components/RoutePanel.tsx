@@ -1,7 +1,29 @@
 import React from 'react';
 import { Space, Button, AutoComplete, Spin, Select, List, Tooltip, Skeleton } from 'antd';
 import { AimOutlined, SwapOutlined, CarOutlined, PlayCircleOutlined, CloseCircleOutlined, RocketOutlined } from '@ant-design/icons';
-import type { RouteResponse, RouteInstruction } from '../../../services/vietmap.service';
+
+// Định nghĩa kiểu dữ liệu cho RouteResponse để tương thích với code cũ
+interface RouteResponse {
+    paths: Array<{
+        distance: number;
+        time: number;
+        points: string;
+        bbox: number[];
+        instructions: RouteInstruction[];
+    }>;
+}
+
+// Định nghĩa kiểu dữ liệu cho RouteInstruction
+interface RouteInstruction {
+    distance: number;
+    heading: number;
+    sign: number;
+    interval: number[];
+    text: string;
+    time: number;
+    street_name: string;
+    last_heading: number | null;
+}
 
 interface RoutePanelProps {
     selectedVehicle: 'car' | 'bike' | 'foot' | 'motorcycle';

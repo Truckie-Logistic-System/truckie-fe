@@ -1,8 +1,23 @@
-import AppRoutes from './routes';
+import React, { useEffect } from 'react';
+import router from './routes';
 import { ConfigProvider } from 'antd';
-import { AuthProvider } from './context';
-import { useEffect } from 'react';
+import { AuthProvider, useAuth } from './context';
 import { APP_NAME } from './config';
+import ChatWidget from './components/chat/ChatWidget';
+import StaffChatWidget from './components/chat/StaffChatWidget';
+import { RouterProvider } from 'react-router-dom';
+import MessageProvider from './components/common/MessageProvider';
+
+// Component để chọn đúng ChatWidget dựa trên vai trò
+const ChatWidgetSelector: React.FC = () => {
+  const { user } = useAuth();
+
+  if (user?.role === 'staff') {
+    return <StaffChatWidget />;
+  }
+
+  return <ChatWidget />;
+};
 
 function App() {
   // Set document title
@@ -14,14 +29,18 @@ function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#1677ff', // Blue color for primary elements
-          fontFamily: "'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          colorPrimary: "#1677ff", // Blue color for primary elements
+          fontFamily:
+            "'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         },
       }}
     >
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <MessageProvider>
+        <AuthProvider>
+          <RouterProvider router={router} />
+          <ChatWidgetSelector />
+        </AuthProvider>
+      </MessageProvider>
     </ConfigProvider>
   );
 }
