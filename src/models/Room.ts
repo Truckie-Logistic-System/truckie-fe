@@ -1,7 +1,7 @@
 // Request DTO
 export interface CreateRoomRequest {
   orderId?: string;
-  userIds: string[];
+  userId: string;
 }
 
 // ParticipantResponse có thể cần định nghĩa thêm, ví dụ:

@@ -15,7 +15,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    define: envDefine,
+    define: {
+      ...envDefine,
+      global: 'window', // 👈 Fix sockjs-client require 'global'
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

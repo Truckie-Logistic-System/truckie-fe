@@ -10,6 +10,7 @@ interface ChatMessageProps {
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
+    // message.timestamp là ISO string
     const messageTime = dayjs(message.timestamp).format('HH:mm');
     const isSystemMessage = message.senderType === 'anonymous' && message.content.startsWith('SYSTEM:');
 
@@ -56,4 +57,4 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
     );
 };
 
-export default ChatMessage; 
+export default ChatMessage;
