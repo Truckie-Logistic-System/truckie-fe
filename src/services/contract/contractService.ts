@@ -6,6 +6,7 @@ import type {
   CreateContractResponse,
   GeneratePdfResponse,
 } from "./types";
+import type { ContractPdfResponse } from "./contractTypes";
 import { at } from "lodash";
 
 /**
@@ -18,16 +19,26 @@ const contractService = {
    * @returns Promise with suggested vehicle assignments
    */
   getSuggestAssignVehicles: async (
-    orderId: string
+    contractId: string
   ): Promise<SuggestAssignVehiclesResponse> => {
     try {
       const response = await httpClient.get<SuggestAssignVehiclesResponse>(
-        `/contracts/${orderId}/suggest-assign-vehicles`
+        `/contracts/${contractId}/suggest-assign-vehicles`
       );
       return response.data;
     } catch (error) {
       console.error("Error fetching suggest assign vehicles:", error);
       throw handleApiError(error, "Không thể tải gợi ý phân phối xe");
+    }
+  },
+
+  getAllContracts: async () => {
+    try {
+      const response = await httpClient.get("/contracts");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all contracts:", error);
+      throw handleApiError(error, "Không thể tải danh sách hợp đồng");
     }
   },
 
@@ -73,6 +84,25 @@ const contractService = {
     } catch (error) {
       console.error("Error generating contract PDF:", error);
       throw handleApiError(error, "Không thể tạo file PDF hợp đồng");
+    }
+  },
+
+  /**
+   * Get contract PDF data for preview
+   * @param contractId - The contract ID to get PDF data for
+   * @returns Promise with contract data for PDF generation
+   */
+  getContractPdfData: async (
+    contractId: string
+  ): Promise<ContractPdfResponse> => {
+    try {
+      const response = await httpClient.get<ContractPdfResponse>(
+        `/orders/${contractId}/get-pdf-v2`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching contract PDF data:", error);
+      throw handleApiError(error, "Không thể tải dữ liệu hợp đồng");
     }
   },
 };

@@ -28,6 +28,7 @@ import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
 import type { Order } from "@/models/Order";
 import type { CreateContractRequest } from "@/services/contract/types";
+import type { ContractData } from "@/services/contract/contractTypes";
 import { OrderStatusEnum } from "@/constants/enums";
 import dayjs from "dayjs";
 import {
@@ -39,7 +40,9 @@ import {
   OrderDetailsTable,
   OrderSizeCard,
   VehicleAssignmentCard,
+  StaffContractPreview,
 } from "@/components/features/order";
+import type { Contract } from "@/models";
 
 const { TabPane } = Tabs;
 
@@ -53,9 +56,13 @@ const OrderDetailPage: React.FC = () => {
   const [assigningVehicle, setAssigningVehicle] = useState<boolean>(false);
   const [contractModalVisible, setContractModalVisible] =
     useState<boolean>(false);
+  const [contractPreviewVisible, setContractPreviewVisible] =
+    useState<boolean>(false);
   const [contractForm] = Form.useForm();
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
-
+  const [contractData, setContractData] = useState<ContractData | null>(null);
+  const [loadingContractData, setLoadingContractData] =
+    useState<boolean>(false);
   // Lấy thông tin đơn hàng khi component mount
   useEffect(() => {
     if (id) {
@@ -102,6 +109,32 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
+  // Xử lý khi click nút xem trước hợp đồng
+  const handlePreviewContract = async () => {
+    if (!id) return;
+
+    setLoadingContractData(true);
+    try {
+      // Giả sử contractId sẽ được lấy từ order hoặc từ một API khác
+      // Hiện tại dùng order id làm contract id để demo
+      //const response = await contractService.getContractPdfData(id);
+      const response = await contractService.getContractPdfData(
+        "70c19e40-bb9a-4808-8753-283a60613732"
+      );
+      if (response.success) {
+        setContractData(response.data);
+        setContractPreviewVisible(true);
+      } else {
+        messageApi.error(response.message);
+      }
+    } catch (error) {
+      messageApi.error("Không thể tải dữ liệu hợp đồng");
+      console.error("Error fetching contract data:", error);
+    } finally {
+      setLoadingContractData(false);
+    }
+  };
+
   // Xử lý khi click nút tạo hợp đồng
   const handleCreateContract = () => {
     if (!id || !order) return;
@@ -118,6 +151,13 @@ const OrderDetailPage: React.FC = () => {
     });
 
     setContractModalVisible(true);
+  };
+
+  // Xử lý khi user save contract changes
+  const handleContractSave = (editedData: any) => {
+    console.log("Contract data saved:", editedData);
+    messageApi.success("Đã lưu thay đổi hợp đồng");
+    // Có thể gửi data này lên server để lưu custom contract template
   };
 
   // Xử lý submit form tạo hợp đồng
@@ -359,6 +399,15 @@ const OrderDetailPage: React.FC = () => {
               <Button
                 type="primary"
                 icon={<FileTextOutlined />}
+                onClick={handlePreviewContract}
+                loading={loadingContractData}
+                className="bg-blue-500 hover:bg-blue-600"
+              >
+                Xem trước hợp đồng
+              </Button>
+              <Button
+                type="primary"
+                icon={<FileTextOutlined />}
                 onClick={handleCreateContract}
                 className="bg-orange-500 hover:bg-orange-600"
               >
@@ -568,6 +617,31 @@ const OrderDetailPage: React.FC = () => {
             <Input.TextArea rows={4} placeholder="Nhập mô tả hợp đồng" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Contract Preview Modal */}
+      <Modal
+        title="Xem trước hợp đồng"
+        open={contractPreviewVisible}
+        onCancel={() => setContractPreviewVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setContractPreviewVisible(false)}>
+            Đóng
+          </Button>,
+          <Button key="print" type="primary" onClick={() => window.print()}>
+            In hợp đồng
+          </Button>,
+        ]}
+        width="90%"
+        style={{ maxWidth: "1200px" }}
+        className="contract-preview-modal"
+      >
+        {contractData && (
+          <StaffContractPreview
+            contractData={contractData}
+            onSave={handleContractSave}
+          />
+        )}
       </Modal>
     </div>
   );
