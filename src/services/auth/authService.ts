@@ -4,7 +4,6 @@ import type {
     LoginResponse,
     RegisterRequest,
     RegisterResponse,
-    RefreshTokenResponse,
     ChangePasswordRequest,
     ChangePasswordResponse
 } from './types';
@@ -76,17 +75,21 @@ const authService = {
      * Refresh the authentication token
      * @returns Promise with refresh token response
      */
-    refreshToken: async (): Promise<RefreshTokenResponse> => {
+    refreshToken: async (): Promise<void> => {
         try {
+            console.log("Starting token refresh process...");
+
             // Không cần gửi refresh token, server sẽ đọc từ cookie
-            const response = await httpClient.post<RefreshTokenResponse>('/auths/token/refresh', {});
+            const response = await httpClient.post('/auths/token/refresh', {});
 
-            // Kiểm tra response có thành công không
-            if (!response.data.success) {
-                throw new Error(response.data.message || 'Làm mới token thất bại');
-            }
+            console.log("Token refresh API call successful", {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+            });
 
-            return response.data;
+            // API không trả về response, chỉ cần gọi thành công là được
+            return;
         } catch (error: any) {
             console.error('Token refresh error:', error);
             // Xử lý trường hợp refresh token hết hạn hoặc không hợp lệ
