@@ -36,6 +36,9 @@ httpClient.interceptors.request.use(
     (config) => {
         console.log("Making API request:", config.method?.toUpperCase(), config.url);
 
+        // Ensure withCredentials is set for all requests
+        config.withCredentials = true;
+
         // Add more detailed logging for password change requests
         if (config.url?.includes('change-password')) {
             console.log("Password change request details:", {
@@ -137,11 +140,30 @@ httpClient.interceptors.response.use(
                 // Import authService ở đây để tránh circular dependency
                 const authService = await import('../auth/authService').then(module => module.default);
 
+                console.log("Attempting to refresh token...");
+
                 // Thử refresh token
                 await authService.refreshToken();
 
+                console.log("Token refreshed successfully, cookies should be set by the server");
+
+                // Tăng thời gian chờ để đảm bảo cookie được set đúng
+                console.log("Waiting for cookies to be properly set...");
+                await new Promise(resolve => setTimeout(resolve, 500));
+                console.log("Wait complete, proceeding with original request");
+
                 // Xử lý hàng đợi các request
                 processQueue(null);
+
+                console.log("Retrying original request with new token:", originalRequest.url);
+
+                // Thêm thông tin debug cho request gốc
+                console.log("Original request config:", {
+                    url: originalRequest.url,
+                    method: originalRequest.method,
+                    headers: originalRequest.headers,
+                    withCredentials: originalRequest.withCredentials
+                });
 
                 // Thực hiện lại request ban đầu với token mới
                 return httpClient(originalRequest);

@@ -3,7 +3,7 @@ import { OrdersHeader, OrdersContent } from "./components";
 import orderService from "../../services/order";
 import { Skeleton, Alert, App } from "antd";
 import { useAuth } from "../../context";
-import type { CustomerOrder } from "@/services/order/types";
+import type { CustomerOrder } from "@/models/Order";
 
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@/models/User";
 import authService from "@/services/auth";
-import type { LoginResponse, RefreshTokenResponse } from "@/services/auth/types";
+import type { LoginResponse } from "@/services/auth/types";
 
 interface AuthContextType {
     user: User | null;
@@ -10,7 +10,7 @@ interface AuthContextType {
     isLoading: boolean;
     login: (username: string, password: string) => Promise<LoginResponse>;
     logout: () => void;
-    refreshToken: () => Promise<RefreshTokenResponse>;
+    refreshToken: () => Promise<void>;
     getRedirectPath: () => string;
 }
 
@@ -107,8 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const refreshToken = async () => {
         try {
-            const response = await authService.refreshToken();
-            return response;
+            await authService.refreshToken();
         } catch (error) {
             console.error("Token refresh failed:", error);
             logout();

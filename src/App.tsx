@@ -7,17 +7,7 @@ import ChatWidget from './components/chat/ChatWidget';
 import StaffChatWidget from './components/chat/StaffChatWidget';
 import { RouterProvider } from 'react-router-dom';
 import MessageProvider from './components/common/MessageProvider';
-
-// Component để chọn đúng ChatWidget dựa trên vai trò
-const ChatWidgetSelector: React.FC = () => {
-  const { user } = useAuth();
-
-  if (user?.role === 'staff') {
-    return <StaffChatWidget />;
-  }
-
-  return <ChatWidget />;
-};
+import { ChatProvider } from './context/ChatContext';
 
 function App() {
   // Set document title
@@ -37,12 +27,26 @@ function App() {
     >
       <MessageProvider>
         <AuthProvider>
-          <RouterProvider router={router} />
-          <ChatWidgetSelector />
+          <AppContent />
         </AuthProvider>
       </MessageProvider>
     </ConfigProvider>
   );
 }
+
+// Component để chọn đúng ChatWidget dựa trên vai trò và wrap với ChatProvider
+const AppContent: React.FC = () => {
+  const { user } = useAuth();
+
+  // Determine if this is a staff user for the ChatProvider
+  const isStaff = user?.role === 'staff';
+
+  return (
+    <ChatProvider isStaff={isStaff}>
+      <RouterProvider router={router} />
+      {isStaff ? <StaffChatWidget /> : <ChatWidget />}
+    </ChatProvider>
+  );
+};
 
 export default App;
