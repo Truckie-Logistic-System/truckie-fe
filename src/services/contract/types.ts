@@ -28,10 +28,12 @@ export interface Contract {
   effectiveDate: string;
   expirationDate: string;
   totalValue: string;
+  supportedValue: string | null;
   description: string;
   attachFileUrl: string;
   status: string;
   orderId: string;
+  staffId: string;
 }
 
 export interface CreateContractResponse {

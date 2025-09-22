@@ -32,6 +32,7 @@ import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
 import type { Order } from "@/models/Order";
 import type { CreateContractRequest } from "@/services/contract/types";
+import type { ContractData } from "@/services/contract/contractTypes";
 import { OrderStatusEnum } from "@/constants/enums";
 
 import dayjs from "dayjs";
@@ -44,7 +45,9 @@ import {
   OrderDetailsTable,
   OrderSizeCard,
   VehicleAssignmentCard,
+  StaffContractPreview,
 } from "@/components/features/order";
+import type { Contract } from "@/models";
 
 const { TabPane } = Tabs;
 
@@ -58,9 +61,13 @@ const OrderDetailPage: React.FC = () => {
   const [assigningVehicle, setAssigningVehicle] = useState<boolean>(false);
   const [contractModalVisible, setContractModalVisible] =
     useState<boolean>(false);
+  const [contractPreviewVisible, setContractPreviewVisible] =
+    useState<boolean>(false);
   const [contractForm] = Form.useForm();
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
-
+  const [contractData, setContractData] = useState<ContractData | null>(null);
+  const [loadingContractData, setLoadingContractData] =
+    useState<boolean>(false);
   // Lấy thông tin đơn hàng khi component mount
   useEffect(() => {
     if (id) {
@@ -108,12 +115,30 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
+  const handlePreviewContract = async () => {
+    if (!id) return;
 
-  // Xử lý khi click nút tạo hợp đồng
+    setLoadingContractData(true);
+    try {
+      const response = await contractService.getContractPdfData(
+        "70c19e40-bb9a-4808-8753-283a60613732"
+      );
+      if (response.success) {
+        setContractData(response.data);
+        setContractPreviewVisible(true);
+      } else {
+        messageApi.error(response.message);
+      }
+    } catch (error) {
+      messageApi.error("Không thể tải dữ liệu hợp đồng");
+      console.error("Error fetching contract data:", error);
+    } finally {
+      setLoadingContractData(false);
+    }
+  };
+
   const handleCreateContract = () => {
     if (!id || !order) return;
-
-    // Set initial values for the form
     contractForm.setFieldsValue({
       contractName: `Hợp đồng đơn hàng ${order.orderCode}`,
       effectiveDate: dayjs(),
@@ -121,14 +146,19 @@ const OrderDetailPage: React.FC = () => {
       supportedValue: order.totalPrice || 0,
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
       orderId: id,
-      staffId: "current-staff-id", // TODO: Get from auth context
+      staffId: "current-staff-id", 
 
     });
 
     setContractModalVisible(true);
   };
 
-  // Xử lý submit form tạo hợp đồng
+
+  const handleContractSave = (editedData: any) => {
+    console.log("Contract data saved:", editedData);
+    messageApi.success("Đã lưu thay đổi hợp đồng");
+  };
+
   const handleContractSubmit = async (values: any) => {
     setCreatingContract(true);
     try {
@@ -137,7 +167,7 @@ const OrderDetailPage: React.FC = () => {
         effectiveDate: values.effectiveDate.format("YYYY-MM-DDTHH:mm:ss"),
         expirationDate: values.expirationDate.format("YYYY-MM-DDTHH:mm:ss"),
         orderId: id!,
-        staffId: "current-staff-id", // TODO: Get from auth context
+        staffId: "current-staff-id", 
       };
 
       const result = await contractService.createContract(contractData);
@@ -366,6 +396,15 @@ const OrderDetailPage: React.FC = () => {
               <Button
                 type="primary"
                 icon={<FileTextOutlined />}
+                onClick={handlePreviewContract}
+                loading={loadingContractData}
+                className="bg-blue-500 hover:bg-blue-600"
+              >
+                Xem trước hợp đồng
+              </Button>
+              <Button
+                type="primary"
+                icon={<FileTextOutlined />}
                 onClick={handleCreateContract}
                 className="bg-orange-500 hover:bg-orange-600"
               >
@@ -575,6 +614,31 @@ const OrderDetailPage: React.FC = () => {
             <Input.TextArea rows={4} placeholder="Nhập mô tả hợp đồng" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Contract Preview Modal */}
+      <Modal
+        title="Xem trước hợp đồng"
+        open={contractPreviewVisible}
+        onCancel={() => setContractPreviewVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setContractPreviewVisible(false)}>
+            Đóng
+          </Button>,
+          <Button key="print" type="primary" onClick={() => window.print()}>
+            In hợp đồng
+          </Button>,
+        ]}
+        width="90%"
+        style={{ maxWidth: "1200px" }}
+        className="contract-preview-modal"
+      >
+        {contractData && (
+          <StaffContractPreview
+            contractData={contractData}
+            onSave={handleContractSave}
+          />
+        )}
       </Modal>
     </div>
   );
