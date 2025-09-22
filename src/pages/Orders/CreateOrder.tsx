@@ -1,14 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Button,
-  Form,
-  Steps,
-  Card,
-  Typography,
-  App,
-  Skeleton,
-} from "antd";
+import { Button, Form, Steps, Card, Typography, App, Skeleton } from "antd";
 import orderService from "../../services/order";
 import categoryService from "../../services/category";
 import addressService from "../../services/address";
@@ -17,7 +9,6 @@ import type { OrderCreateRequest } from "../../models/Order";
 import type { Category } from "../../models/Category";
 import type { Address } from "../../models/Address";
 import type { OrderSize } from "../../models/OrderSize";
-import type { OrderResponse } from "../../services/order/types";
 import { OrderDetailFormList } from "./components";
 import OrderCreationSuccess from "./components/OrderCreationSuccess";
 import { formatToVietnamTime } from "../../utils/dateUtils";
@@ -41,7 +32,13 @@ export default function CreateOrder() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [formValues, setFormValues] = useState<any>();
+  const [formValues, setFormValues] = useState<any>({
+    orderDetailsList: [],
+  });
+  const [createdOrder, setCreatedOrder] = useState<{
+    id: string;
+    orderCode: string;
+  } | null>(null);
 
   const [form] = Form.useForm();
 
@@ -50,6 +47,12 @@ export default function CreateOrder() {
     console.log("Setting form values from state:", formValues);
     form.setFieldsValue(formValues);
   }, [form, formValues]);
+
+  // Tự động lưu dữ liệu form khi có thay đổi
+  const handleFormChange = () => {
+    const currentValues = form.getFieldsValue(true);
+    setFormValues((prev: any) => ({ ...prev, ...currentValues }));
+  };
 
   // Fetch data on component mount
   useEffect(() => {
@@ -73,10 +76,12 @@ export default function CreateOrder() {
         if (unitsResponse && unitsResponse.length > 0) {
           setFormValues((prev: any) => ({
             ...prev,
-            orderDetailsList: prev.orderDetailsList.map((detail: any) => ({
-              ...detail,
-              unit: unitsResponse[0]
-            }))
+            orderDetailsList: (prev?.orderDetailsList || []).map(
+              (detail: any) => ({
+                ...detail,
+                unit: unitsResponse[0],
+              })
+            ),
           }));
         }
 
@@ -95,6 +100,13 @@ export default function CreateOrder() {
     fetchData();
   }, []);
 
+  // Cập nhật form với giá trị đã lưu khi chuyển step
+  useEffect(() => {
+    if (formValues && Object.keys(formValues).length > 0) {
+      form.setFieldsValue(formValues);
+    }
+  }, [currentStep, formValues, form]);
+
   // Refresh addresses after creating/updating
   const refreshAddresses = async () => {
     try {
@@ -111,39 +123,27 @@ export default function CreateOrder() {
       pickupAddressId: data.pickupAddressId,
       deliveryAddressId: data.deliveryAddressId,
     });
-
-      const orderDetailsForAPI: any[] = [];
-      orderDetails.forEach((detail: any) => {
-        const quantity = detail.quantity || 1;
-        for (let i = 0; i < quantity; i++) {
-          orderDetailsForAPI.push({
-            weight: detail.weight,
-            unit: detail.unit,
-            description: detail.description,
-            orderSizeId: detail.orderSizeId,
-          });
-        }
-      });
-
+  };
 
   const next = async () => {
     try {
       // Validate current step fields before proceeding
       await form.validateFields();
-      const orderData: OrderCreateRequest = {
-        orderRequest: {
-          notes: finalValues.notes,
-          receiverName: finalValues.receiverName,
-          receiverPhone: finalValues.receiverPhone,
-          receiverIdentity: finalValues.receiverIdentity,
-          packageDescription: finalValues.packageDescription,
-          estimateStartTime: estimateStartTime,
-          deliveryAddressId: finalValues.deliveryAddressId,
-          pickupAddressId: finalValues.pickupAddressId,
-          categoryId: finalValues.categoryId,
-        },
-        orderDetails: orderDetailsForAPI,
-      };
+
+      // Lưu giá trị form hiện tại trước khi chuyển step
+      const currentValues = form.getFieldsValue(true);
+      setFormValues((prev: any) => ({ ...prev, ...currentValues }));
+
+      // Kiểm tra orderDetailsList không được rỗng khi ở step 0 (step đầu tiên)
+      if (currentStep === 0) {
+        const orderDetailsList = currentValues.orderDetailsList || [];
+        if (orderDetailsList.length === 0) {
+          message.error(
+            "Vui lòng thêm ít nhất một lô hàng trước khi tiếp tục!"
+          );
+          return;
+        }
+      }
 
       setCurrentStep(currentStep + 1);
     } catch (error) {
@@ -158,26 +158,21 @@ export default function CreateOrder() {
     setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // Lấy giá trị trực tiếp từ form để đảm bảo có dữ liệu mới nhất
       const currentFormValues = form.getFieldsValue(true);
       console.log("Current form values:", currentFormValues);
-
-      // Format date - Xử lý đúng đối tượng Moment từ DatePicker
       let formattedEstimateStartTime;
       if (currentFormValues.estimateStartTime) {
-        // Kiểm tra xem estimateStartTime có phải là đối tượng Moment không
         if (currentFormValues.estimateStartTime._isAMomentObject) {
-          // Chuyển đổi từ Moment sang Date
           const dateObj = currentFormValues.estimateStartTime.toDate();
           formattedEstimateStartTime = formatToVietnamTime(dateObj);
         } else if (currentFormValues.estimateStartTime instanceof Date) {
-          // Nếu đã là Date thì sử dụng trực tiếp
-          formattedEstimateStartTime = formatToVietnamTime(currentFormValues.estimateStartTime);
+          formattedEstimateStartTime = formatToVietnamTime(
+            currentFormValues.estimateStartTime
+          );
         } else {
-          // Trường hợp là string hoặc định dạng khác
           formattedEstimateStartTime = currentFormValues.estimateStartTime;
         }
       }
@@ -198,12 +193,33 @@ export default function CreateOrder() {
 
       // Kiểm tra các trường bắt buộc trong orderDetailsList
       const invalidDetails = orderDetailsList.filter(
-        (detail: any) => !detail.weight || !detail.orderSizeId || !detail.description
+        (detail: any) =>
+          !detail.weight ||
+          !detail.orderSizeId ||
+          !detail.description ||
+          !detail.quantity
       );
 
       if (invalidDetails.length > 0) {
-        throw new Error("Một số lô hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước và mô tả.");
+        throw new Error(
+          "Một số lô hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước, mô tả và số lượng."
+        );
       }
+
+      // Mở rộng orderDetailsList dựa trên quantity của từng item
+      const expandedOrderDetailsList: any[] = [];
+      orderDetailsList.forEach((detail: any) => {
+        const quantity = detail.quantity || 1;
+        // Tạo nhiều bản copy của item dựa trên quantity
+        for (let i = 0; i < quantity; i++) {
+          expandedOrderDetailsList.push({
+            weight: detail.weight,
+            unit: detail.unit || "kg",
+            description: detail.description || "",
+            orderSizeId: detail.orderSizeId,
+          });
+        }
+      });
 
       // Extract orderDetailsList from formValues
       const { orderDetailsList: _, ...orderRequestData } = formattedValues;
@@ -215,31 +231,35 @@ export default function CreateOrder() {
           receiverName: orderRequestData.receiverName,
           receiverPhone: orderRequestData.receiverPhone,
           receiverIdentity: orderRequestData.receiverIdentity || "",
-          packageDescription: orderRequestData.packageDescription || "Đơn hàng thông thường",
+          packageDescription:
+            orderRequestData.packageDescription || "Đơn hàng thông thường",
           estimateStartTime: formattedEstimateStartTime,
-          deliveryAddressId: orderRequestData.deliveryAddressId?.value || orderRequestData.deliveryAddressId,
-          pickupAddressId: orderRequestData.pickupAddressId?.value || orderRequestData.pickupAddressId,
-          categoryId: orderRequestData.categoryId
+          deliveryAddressId:
+            orderRequestData.deliveryAddressId?.value ||
+            orderRequestData.deliveryAddressId,
+          pickupAddressId:
+            orderRequestData.pickupAddressId?.value ||
+            orderRequestData.pickupAddressId,
+          categoryId: orderRequestData.categoryId,
         },
-        orderDetails: orderDetailsList.map((detail: any) => ({
-          weight: detail.weight,
-          unit: detail.unit || "kg",
-          description: detail.description || "",
-          orderSizeId: detail.orderSizeId
-        }))
+        orderDetails: expandedOrderDetailsList,
       };
 
       // Log để debug
       console.log("Order request:", orderRequest);
 
       // Kiểm tra dữ liệu trước khi gửi
-      if (!orderRequest.orderRequest.receiverName ||
+      if (
+        !orderRequest.orderRequest.receiverName ||
         !orderRequest.orderRequest.receiverPhone ||
         !orderRequest.orderRequest.receiverIdentity ||
         !orderRequest.orderRequest.pickupAddressId ||
         !orderRequest.orderRequest.deliveryAddressId ||
-        !orderRequest.orderRequest.categoryId) {
-        throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc (tên người nhận, số điện thoại, CMND/CCCD, địa chỉ gửi/nhận, loại hàng hóa)");
+        !orderRequest.orderRequest.categoryId
+      ) {
+        throw new Error(
+          "Vui lòng điền đầy đủ thông tin bắt buộc (tên người nhận, số điện thoại, CMND/CCCD, địa chỉ gửi/nhận, loại hàng hóa)"
+        );
       }
 
       // Submit order
@@ -250,11 +270,11 @@ export default function CreateOrder() {
         if (response.data && response.data.id) {
           setCreatedOrder({
             id: response.data.id,
-            orderCode: response.data.orderCode
+            orderCode: response.data.orderCode,
           });
           // Don't navigate, show success component instead
         } else {
-          navigate('/orders');
+          navigate("/orders");
         }
       } else {
         message.error(response?.message || "Có lỗi xảy ra khi tạo đơn hàng");
@@ -339,14 +359,10 @@ export default function CreateOrder() {
                 Thử lại
               </Button>
             </div>
-
           </div>
         </div>
       );
     }
-
-    // Đảm bảo form đã được cập nhật với giá trị mới nhất từ formValues
-    form.setFieldsValue(formValues);
 
     switch (currentStep) {
       case 0:
@@ -412,20 +428,20 @@ export default function CreateOrder() {
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6">
             <Steps current={currentStep} className="mb-0">
               <Step
-                title="Thông tin cơ bản"
-                //description="Nhập thông tin người nhận"
-              />
-              <Step
                 title="Thông tin lô hàng"
-                //description="Nhập thông tin gói hàng"
+                description="Nhập thông tin lô hàng"
               />
               <Step
-                title="Địa chỉ vận chuyển"
-                //description="Chọn địa chỉ giao và nhận"
+                title="Thông tin vận chuyển"
+                description="Nhập thông tin vận chuyển"
+              />
+              <Step
+                title="Tổng hợp"
+                description="Tổng hợp và xác nhận thông tin"
               />
               <Step
                 title="Xác nhận"
-                //description="Xác nhận thông tin đơn hàng"
+                description="Xác nhận thông tin đơn hàng"
               />
             </Steps>
           </div>
@@ -436,6 +452,7 @@ export default function CreateOrder() {
               form={form}
               layout="vertical"
               onFinish={handleSubmit}
+              onFieldsChange={handleFormChange}
               initialValues={formValues}
             >
               {renderForm()}
@@ -452,9 +469,6 @@ export default function CreateOrder() {
           </div>
         </Card>
       </div>
-
     </div>
   );
 }
-
-

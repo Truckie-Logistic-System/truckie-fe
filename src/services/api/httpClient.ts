@@ -1,7 +1,6 @@
-
-import axios, { AxiosError } from 'axios';
-import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { handleApiError } from './errorHandler';
+import axios, { AxiosError } from "axios";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import { handleApiError } from "./errorHandler";
 
 // Create an axios instance with default config
 const httpClient = axios.create({
@@ -20,51 +19,38 @@ let isRefreshing = false;
 // Hàng đợi các request đang chờ token mới
 let failedQueue: any[] = [];
 
-
 const processQueue = (error: any) => {
-    failedQueue.forEach(prom => {
-        if (error) {
-            prom.reject(error);
-        } else {
-            prom.resolve();
-        }
-    });
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
+    }
+  });
 
   failedQueue = [];
 };
 
 // Request interceptor for logging
-httpClient.interceptors.request.use(
-    (config) => {
-        console.log("Making API request:", config.method?.toUpperCase(), config.url);
+httpClient.interceptors.request.use((config) => {
+  console.log("Making API request:", config.method?.toUpperCase(), config.url);
 
-        // Ensure withCredentials is set for all requests
-        config.withCredentials = true;
+  // Ensure withCredentials is set for all requests
+  config.withCredentials = true;
 
-        // Add more detailed logging for password change requests
-        if (config.url?.includes('change-password')) {
-            console.log("Password change request details:", {
-                url: config.url,
-                method: config.method,
-                headers: config.headers
-            });
-        } else {
-            console.log("Request data:", config.data);
-        }
-
-        return config;
-    },
-    (error) => {
-        console.error("Request interceptor error:", error);
-        return Promise.reject(error);
-    }
-    return config;
-  },
-  (error) => {
-    console.error("Request interceptor error:", error);
-    return Promise.reject(error);
+  // Add more detailed logging for password change requests
+  if (config.url?.includes("change-password")) {
+    console.log("Password change request details:", {
+      url: config.url,
+      method: config.method,
+      headers: config.headers,
+    });
+  } else {
+    console.log("Request data:", config.data);
   }
-);
+
+  return config;
+});
 
 // Response interceptor for handling errors
 httpClient.interceptors.response.use(
@@ -195,71 +181,84 @@ httpClient.interceptors.response.use(
         }
         // Nếu lỗi 401 (Unauthorized) và chưa thử refresh token và không phải là endpoint auth
         if (error.response?.status === 401 && !originalRequest._retry) {
-            if (isRefreshing) {
-                // Nếu đang refresh, thêm request vào hàng đợi
-                return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject });
-                }).then(() => {
-                    return httpClient(originalRequest);
-                }).catch(err => {
-                    return Promise.reject(err);
-                });
-            }
-
-            // Đánh dấu đang refresh token
-            originalRequest._retry = true;
-            isRefreshing = true;
-
-            try {
-                // Import authService ở đây để tránh circular dependency
-                const authService = await import('../auth/authService').then(module => module.default);
-
-                console.log("Attempting to refresh token...");
-
-                // Thử refresh token
-                await authService.refreshToken();
-
-                console.log("Token refreshed successfully, cookies should be set by the server");
-
-                // Tăng thời gian chờ để đảm bảo cookie được set đúng
-                console.log("Waiting for cookies to be properly set...");
-                await new Promise(resolve => setTimeout(resolve, 500));
-                console.log("Wait complete, proceeding with original request");
-
-                // Xử lý hàng đợi các request
-                processQueue(null);
-
-                console.log("Retrying original request with new token:", originalRequest.url);
-
-                // Thêm thông tin debug cho request gốc
-                console.log("Original request config:", {
-                    url: originalRequest.url,
-                    method: originalRequest.method,
-                    headers: originalRequest.headers,
-                    withCredentials: originalRequest.withCredentials
-                });
-
-                // Thực hiện lại request ban đầu với token mới
+          if (isRefreshing) {
+            // Nếu đang refresh, thêm request vào hàng đợi
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            })
+              .then(() => {
                 return httpClient(originalRequest);
-            } catch (refreshError) {
-                // Nếu refresh thất bại, xử lý lỗi và đăng xuất
-                processQueue(refreshError);
+              })
+              .catch((err) => {
+                return Promise.reject(err);
+              });
+          }
 
-                // Import authService ở đây để tránh circular dependency
-                const authService = await import('../auth/authService').then(module => module.default);
+          // Đánh dấu đang refresh token
+          originalRequest._retry = true;
+          isRefreshing = true;
 
-                // Đăng xuất người dùng
-                authService.logout();
+          try {
+            // Import authService ở đây để tránh circular dependency
+            const authService = await import("../auth/authService").then(
+              (module) => module.default
+            );
 
-                // Chuyển hướng đến trang đăng nhập chỉ khi không phải đang ở trang đăng nhập
-                if (!window.location.pathname.includes('/auth/login')) {
-                    window.location.href = '/auth/login';
-                }
+            console.log("Attempting to refresh token...");
 
-                return Promise.reject(handleApiError(refreshError, 'Phiên đăng nhập hết hạn'));
-            } finally {
-                isRefreshing = false;
+            // Thử refresh token
+            await authService.refreshToken();
+
+            console.log(
+              "Token refreshed successfully, cookies should be set by the server"
+            );
+
+            // Tăng thời gian chờ để đảm bảo cookie được set đúng
+            console.log("Waiting for cookies to be properly set...");
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            console.log("Wait complete, proceeding with original request");
+
+            // Xử lý hàng đợi các request
+            processQueue(null);
+
+            console.log(
+              "Retrying original request with new token:",
+              originalRequest.url
+            );
+
+            // Thêm thông tin debug cho request gốc
+            console.log("Original request config:", {
+              url: originalRequest.url,
+              method: originalRequest.method,
+              headers: originalRequest.headers,
+              withCredentials: originalRequest.withCredentials,
+            });
+
+            // Thực hiện lại request ban đầu với token mới
+            return httpClient(originalRequest);
+          } catch (refreshError) {
+            // Nếu refresh thất bại, xử lý lỗi và đăng xuất
+            processQueue(refreshError);
+
+            // Import authService ở đây để tránh circular dependency
+            const authService = await import("../auth/authService").then(
+              (module) => module.default
+            );
+
+            // Đăng xuất người dùng
+            authService.logout();
+
+            // Chuyển hướng đến trang đăng nhập chỉ khi không phải đang ở trang đăng nhập
+            if (!window.location.pathname.includes("/auth/login")) {
+              window.location.href = "/auth/login";
             }
+
+            return Promise.reject(
+              handleApiError(refreshError, "Phiên đăng nhập hết hạn")
+            );
+          } finally {
+            isRefreshing = false;
+          }
         }
 
         return Promise.reject(

@@ -1,5 +1,16 @@
 import React, { useState } from "react";
-import { Form, Input, Select, Typography, DatePicker, Divider, Skeleton, App, Row, Col, DatePicker } from "antd";
+import {
+  Form,
+  Input,
+  Select,
+  Typography,
+  Divider,
+  Skeleton,
+  App,
+  Row,
+  Col,
+  DatePicker,
+} from "antd";
 import type { Category } from "../../../../models/Category";
 import dayjs from "dayjs";
 import ReceiverSuggestions from "./ReceiverSuggestions";
@@ -15,7 +26,7 @@ interface ReceiverInfoStepProps {
 
 const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
   categories,
-  onReceiverDetailsLoaded
+  onReceiverDetailsLoaded,
 }) => {
   const [loadingReceiverDetails, setLoadingReceiverDetails] = useState(false);
   const { message } = App.useApp();
@@ -99,7 +110,6 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
 
       <Row gutter={16}>
         <Col span={8}>
-
           <Form.Item
             name="categoryId"
             label="Loại hàng hóa"
@@ -125,7 +135,6 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
             <DatePicker
               showTime
               placeholder="Chọn ngày và giờ lấy hàng"
-
               style={{ width: "100%" }}
               disabledDate={(current) =>
                 current && current < dayjs().startOf("day")

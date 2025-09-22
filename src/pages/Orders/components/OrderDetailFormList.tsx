@@ -1,5 +1,6 @@
 import React from "react";
 import { Form, Input, Button, InputNumber, Select, Card, Row, Col } from "antd";
+import type { FormInstance } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { OrderSize } from "../../../models/OrderSize";
 
@@ -180,7 +181,6 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                     </Form.Item>
                   </Col>
                 </Row>
-
               </Card>
             ))}
 
