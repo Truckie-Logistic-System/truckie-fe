@@ -1,6 +1,21 @@
 import React from "react";
 import { Card, Descriptions, Tag, Tabs, Timeline, Image, Empty } from "antd";
-import { CarOutlined, ToolOutlined, HistoryOutlined, FileTextOutlined, CameraOutlined } from "@ant-design/icons";
+import {
+    CarOutlined,
+    ToolOutlined,
+    HistoryOutlined,
+    FileTextOutlined,
+    CameraOutlined,
+    UserOutlined,
+    PhoneOutlined,
+    NumberOutlined,
+    TagOutlined,
+    DashboardOutlined,
+    FireOutlined,
+    EnvironmentOutlined,
+    DollarOutlined,
+    CalendarOutlined
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
@@ -8,7 +23,7 @@ const { TabPane } = Tabs;
 interface VehicleInfoSectionProps {
     vehicleAssignment?: {
         id: string;
-        vehicle: {
+        vehicle?: {
             id: string;
             manufacturer: string;
             model: string;
@@ -136,11 +151,15 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                     </div>
                 }
                 className="shadow-md mb-6 rounded-xl"
+                size="small"
             >
                 <Empty description="Chưa có thông tin phương tiện vận chuyển" />
             </Card>
         );
     }
+
+    // Check if vehicle information is available
+    const hasVehicleInfo = vehicleAssignment.vehicle !== null && vehicleAssignment.vehicle !== undefined;
 
     const tabItems = [
         {
@@ -151,29 +170,86 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                 </span>
             ),
             children: (
-                <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-                    <Descriptions.Item label="Nhà sản xuất">{vehicleAssignment.vehicle.manufacturer || "Chưa có thông tin"}</Descriptions.Item>
-                    <Descriptions.Item label="Mẫu xe">{vehicleAssignment.vehicle.model || "Chưa có thông tin"}</Descriptions.Item>
-                    <Descriptions.Item label="Biển số xe">{vehicleAssignment.vehicle.licensePlateNumber || "Chưa có thông tin"}</Descriptions.Item>
-                    <Descriptions.Item label="Loại xe">{vehicleAssignment.vehicle.vehicleType || "Chưa có thông tin"}</Descriptions.Item>
-                    <Descriptions.Item label="Trạng thái">
-                        {vehicleAssignment.status ? (
-                            <Tag color={getStatusColor(vehicleAssignment.status)}>{vehicleAssignment.status}</Tag>
+                <div className="p-2">
+                    <div className="mb-4 bg-blue-50 p-4 rounded-lg">
+                        {hasVehicleInfo ? (
+                            <>
+                                <div className="flex items-center mb-3">
+                                    <CarOutlined className="text-xl text-blue-500 mr-3" />
+                                    <span className="text-lg font-medium">{vehicleAssignment.vehicle?.licensePlateNumber || "Chưa có thông tin"}</span>
+                                    <Tag className="ml-3" color={getStatusColor(vehicleAssignment.status)}>
+                                        {vehicleAssignment.status}
+                                    </Tag>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="flex items-center">
+                                        <TagOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Nhà sản xuất:</span>
+                                        <span>{vehicleAssignment.vehicle?.manufacturer || "Chưa có thông tin"}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <CarOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Mẫu xe:</span>
+                                        <span>{vehicleAssignment.vehicle?.model || "Chưa có thông tin"}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <TagOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Loại xe:</span>
+                                        <span>{vehicleAssignment.vehicle?.vehicleType || "Chưa có thông tin"}</span>
+                                    </div>
+                                </div>
+                            </>
                         ) : (
-                            "Chưa có thông tin"
+                            <div className="text-center py-2">
+                                <p className="text-gray-500">Chưa có thông tin phương tiện</p>
+                            </div>
                         )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Tài xế chính">
-                        {vehicleAssignment.primaryDriver
-                            ? `${vehicleAssignment.primaryDriver.fullName} (${vehicleAssignment.primaryDriver.phoneNumber})`
-                            : "Chưa có thông tin"}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Tài xế phụ">
-                        {vehicleAssignment.secondaryDriver
-                            ? `${vehicleAssignment.secondaryDriver.fullName} (${vehicleAssignment.secondaryDriver.phoneNumber})`
-                            : "Chưa có thông tin"}
-                    </Descriptions.Item>
-                </Descriptions>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-green-50 p-4 rounded-lg">
+                            <div className="flex items-center mb-2">
+                                <UserOutlined className="text-green-500 mr-2" />
+                                <span className="font-medium">Tài xế chính</span>
+                            </div>
+                            {vehicleAssignment.primaryDriver ? (
+                                <div className="ml-6">
+                                    <div className="flex items-center mb-1">
+                                        <UserOutlined className="mr-2 text-gray-500" />
+                                        <span>{vehicleAssignment.primaryDriver.fullName}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <PhoneOutlined className="mr-2 text-gray-500" />
+                                        <span>{vehicleAssignment.primaryDriver.phoneNumber}</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="ml-6 text-gray-500">Chưa có thông tin</div>
+                            )}
+                        </div>
+
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                            <div className="flex items-center mb-2">
+                                <UserOutlined className="text-blue-500 mr-2" />
+                                <span className="font-medium">Tài xế phụ</span>
+                            </div>
+                            {vehicleAssignment.secondaryDriver ? (
+                                <div className="ml-6">
+                                    <div className="flex items-center mb-1">
+                                        <UserOutlined className="mr-2 text-gray-500" />
+                                        <span>{vehicleAssignment.secondaryDriver.fullName}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <PhoneOutlined className="mr-2 text-gray-500" />
+                                        <span>{vehicleAssignment.secondaryDriver.phoneNumber}</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="ml-6 text-gray-500">Chưa có thông tin</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             ),
         },
         ...(vehicleAssignment.issues && vehicleAssignment.issues.length > 0
@@ -186,26 +262,48 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                         </span>
                     ),
                     children: (
-                        <div>
+                        <div className="p-2">
                             {vehicleAssignment.issues.map((issueItem, index) => (
                                 <div key={issueItem.issue.id} className={index > 0 ? "mt-6 pt-6 border-t" : ""}>
-                                    <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-                                        <Descriptions.Item label="Mô tả">{issueItem.issue.description}</Descriptions.Item>
-                                        <Descriptions.Item label="Trạng thái">
-                                            <Tag color={getStatusColor(issueItem.issue.status)}>{issueItem.issue.status}</Tag>
-                                        </Descriptions.Item>
-                                        <Descriptions.Item label="Loại sự cố">{issueItem.issue.issueTypeName}</Descriptions.Item>
-                                        <Descriptions.Item label="Nhân viên xử lý">
-                                            {issueItem.issue.staff.name} ({issueItem.issue.staff.phone})
-                                        </Descriptions.Item>
-                                        <Descriptions.Item label="Vị trí">
-                                            {issueItem.issue.locationLatitude}, {issueItem.issue.locationLongitude}
-                                        </Descriptions.Item>
-                                    </Descriptions>
+                                    <div className="bg-red-50 p-4 rounded-lg mb-3">
+                                        <div className="flex items-center mb-3">
+                                            <ToolOutlined className="text-red-500 mr-2" />
+                                            <span className="font-medium">Mô tả sự cố:</span>
+                                            <span className="ml-2">{issueItem.issue.description}</span>
+                                            <Tag className="ml-2" color={getStatusColor(issueItem.issue.status)}>
+                                                {issueItem.issue.status}
+                                            </Tag>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="flex items-center">
+                                                <TagOutlined className="mr-2 text-gray-500" />
+                                                <span className="font-medium mr-1">Loại sự cố:</span>
+                                                <span>{issueItem.issue.issueTypeName}</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <UserOutlined className="mr-2 text-gray-500" />
+                                                <span className="font-medium mr-1">Nhân viên xử lý:</span>
+                                                <span>{issueItem.issue.staff.name}</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <PhoneOutlined className="mr-2 text-gray-500" />
+                                                <span className="font-medium mr-1">Liên hệ:</span>
+                                                <span>{issueItem.issue.staff.phone}</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <EnvironmentOutlined className="mr-2 text-gray-500" />
+                                                <span className="font-medium mr-1">Vị trí:</span>
+                                                <span>{issueItem.issue.locationLatitude}, {issueItem.issue.locationLongitude}</span>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     {issueItem.imageUrls && issueItem.imageUrls.length > 0 ? (
                                         <div className="mt-4">
-                                            <p className="font-medium mb-2">Hình ảnh:</p>
+                                            <div className="flex items-center mb-2">
+                                                <CameraOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Hình ảnh:</span>
+                                            </div>
                                             <div className="flex flex-wrap gap-2">
                                                 {issueItem.imageUrls.map((url, idx) => (
                                                     <Image
@@ -220,9 +318,10 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                                             </div>
                                         </div>
                                     ) : (
-                                        <p className="mt-4 mb-0">
-                                            <span className="font-medium">Hình ảnh:</span> Chưa có hình ảnh
-                                        </p>
+                                        <div className="mt-4 text-gray-500">
+                                            <CameraOutlined className="mr-2" />
+                                            <span>Chưa có hình ảnh</span>
+                                        </div>
                                     )}
                                 </div>
                             ))}
@@ -241,22 +340,38 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                         </span>
                     ),
                     children: (
-                        <Timeline
-                            mode="left"
-                            items={vehicleAssignment.journeyHistories.map((journey) => ({
-                                label: formatDate(journey.startTime),
-                                children: (
-                                    <div>
-                                        <p><span className="font-medium">Trạng thái:</span> {journey.status}</p>
-                                        <p><span className="font-medium">Thời gian kết thúc:</span> {formatDate(journey.endTime)}</p>
-                                        <p><span className="font-medium">Tổng quãng đường:</span> {journey.totalDistance} km</p>
-                                        {journey.isReportedIncident && (
-                                            <Tag color="red">Có báo cáo sự cố</Tag>
-                                        )}
-                                    </div>
-                                ),
-                            }))}
-                        />
+                        <div className="p-2">
+                            <Timeline
+                                mode="left"
+                                items={vehicleAssignment.journeyHistories.map((journey) => ({
+                                    label: formatDate(journey.startTime),
+                                    children: (
+                                        <div className="bg-blue-50 p-3 rounded-lg">
+                                            <div className="flex items-center mb-2">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium mr-1">Trạng thái:</span>
+                                                <Tag color={getStatusColor(journey.status)}>{journey.status}</Tag>
+                                            </div>
+                                            <div className="flex items-center mb-2">
+                                                <CalendarOutlined className="mr-2 text-gray-500" />
+                                                <span className="font-medium mr-1">Thời gian kết thúc:</span>
+                                                <span>{formatDate(journey.endTime)}</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <DashboardOutlined className="mr-2 text-gray-500" />
+                                                <span className="font-medium mr-1">Tổng quãng đường:</span>
+                                                <span>{journey.totalDistance} km</span>
+                                            </div>
+                                            {journey.isReportedIncident && (
+                                                <div className="mt-2">
+                                                    <Tag color="red" icon={<ToolOutlined />}>Có báo cáo sự cố</Tag>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ),
+                                }))}
+                            />
+                        </div>
                     ),
                 },
             ]
@@ -271,25 +386,53 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                         </span>
                     ),
                     children: (
-                        <div>
+                        <div className="p-2">
                             {vehicleAssignment.penalties.map((penalty, index) => (
-                                <div key={penalty.id} className={index > 0 ? "mt-6 pt-6 border-t" : ""}>
-                                    <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-                                        <Descriptions.Item label="Loại vi phạm">{penalty.violationType}</Descriptions.Item>
-                                        <Descriptions.Item label="Mô tả">{penalty.violationDescription}</Descriptions.Item>
-                                        <Descriptions.Item label="Số tiền phạt">{formatCurrency(penalty.penaltyAmount)}</Descriptions.Item>
-                                        <Descriptions.Item label="Ngày vi phạm">{formatDate(penalty.penaltyDate)}</Descriptions.Item>
-                                        <Descriptions.Item label="Địa điểm">{penalty.location}</Descriptions.Item>
-                                        <Descriptions.Item label="Trạng thái">
-                                            <Tag color={getStatusColor(penalty.status)}>{penalty.status}</Tag>
-                                        </Descriptions.Item>
+                                <div key={penalty.id} className={`${index > 0 ? "mt-4 pt-4 border-t" : ""} bg-orange-50 p-4 rounded-lg`}>
+                                    <div className="flex items-center mb-3">
+                                        <ToolOutlined className="text-orange-500 mr-2" />
+                                        <span className="font-medium">Loại vi phạm:</span>
+                                        <span className="ml-2">{penalty.violationType}</span>
+                                        <Tag className="ml-2" color={getStatusColor(penalty.status)}>
+                                            {penalty.status}
+                                        </Tag>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div className="flex items-center">
+                                            <FileTextOutlined className="mr-2 text-gray-500" />
+                                            <span className="font-medium mr-1">Mô tả:</span>
+                                            <span>{penalty.violationDescription}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <DollarOutlined className="mr-2 text-gray-500" />
+                                            <span className="font-medium mr-1">Số tiền phạt:</span>
+                                            <span>{formatCurrency(penalty.penaltyAmount)}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <CalendarOutlined className="mr-2 text-gray-500" />
+                                            <span className="font-medium mr-1">Ngày vi phạm:</span>
+                                            <span>{formatDate(penalty.penaltyDate)}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <EnvironmentOutlined className="mr-2 text-gray-500" />
+                                            <span className="font-medium mr-1">Địa điểm:</span>
+                                            <span>{penalty.location}</span>
+                                        </div>
                                         {penalty.paymentDate && (
-                                            <Descriptions.Item label="Ngày thanh toán">{formatDate(penalty.paymentDate)}</Descriptions.Item>
+                                            <div className="flex items-center">
+                                                <CalendarOutlined className="mr-2 text-gray-500" />
+                                                <span className="font-medium mr-1">Ngày thanh toán:</span>
+                                                <span>{formatDate(penalty.paymentDate)}</span>
+                                            </div>
                                         )}
                                         {penalty.disputeReason && (
-                                            <Descriptions.Item label="Lý do khiếu nại">{penalty.disputeReason}</Descriptions.Item>
+                                            <div className="flex items-center">
+                                                <FileTextOutlined className="mr-2 text-gray-500" />
+                                                <span className="font-medium mr-1">Lý do khiếu nại:</span>
+                                                <span>{penalty.disputeReason}</span>
+                                            </div>
                                         )}
-                                    </Descriptions>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -307,19 +450,24 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                         </span>
                     ),
                     children: (
-                        <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="p-2">
                             {vehicleAssignment.orderSeals.map((seal, idx) => (
-                                <div key={seal.id} className={idx > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}>
-                                    <p className="mb-1">
-                                        <span className="font-medium">Mô tả:</span> {seal.description}
-                                    </p>
-                                    <p className="mb-1">
-                                        <span className="font-medium">Ngày niêm phong:</span> {formatDate(seal.sealDate)}
-                                    </p>
-                                    <p className="mb-0">
-                                        <span className="font-medium">Trạng thái:</span>{" "}
+                                <div key={seal.id} className={`${idx > 0 ? "mt-3" : ""} bg-gray-50 p-4 rounded-lg`}>
+                                    <div className="flex items-center mb-2">
+                                        <FileTextOutlined className="mr-2 text-blue-500" />
+                                        <span className="font-medium mr-1">Mô tả:</span>
+                                        <span>{seal.description}</span>
+                                    </div>
+                                    <div className="flex items-center mb-2">
+                                        <CalendarOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Ngày niêm phong:</span>
+                                        <span>{formatDate(seal.sealDate)}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <TagOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Trạng thái:</span>
                                         <Tag color={getStatusColor(seal.status)}>{seal.status}</Tag>
-                                    </p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -337,23 +485,28 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                         </span>
                     ),
                     children: (
-                        <div>
+                        <div className="p-2">
                             {vehicleAssignment.cameraTrackings.map((tracking, index) => (
-                                <div key={tracking.id} className={index > 0 ? "mt-4 pt-4 border-t" : ""}>
-                                    <p>
-                                        <span className="font-medium">Thiết bị:</span> {tracking.deviceName}
-                                    </p>
-                                    <p>
-                                        <span className="font-medium">Thời gian:</span> {formatDate(tracking.trackingAt)}
-                                    </p>
-                                    <p>
-                                        <span className="font-medium">Trạng thái:</span>{" "}
+                                <div key={tracking.id} className={`${index > 0 ? "mt-4" : ""} bg-gray-50 p-4 rounded-lg`}>
+                                    <div className="flex items-center mb-2">
+                                        <CameraOutlined className="mr-2 text-blue-500" />
+                                        <span className="font-medium mr-1">Thiết bị:</span>
+                                        <span>{tracking.deviceName}</span>
+                                    </div>
+                                    <div className="flex items-center mb-2">
+                                        <CalendarOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Thời gian:</span>
+                                        <span>{formatDate(tracking.trackingAt)}</span>
+                                    </div>
+                                    <div className="flex items-center mb-2">
+                                        <TagOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Trạng thái:</span>
                                         <Tag color={getStatusColor(tracking.status)}>{tracking.status}</Tag>
-                                    </p>
+                                    </div>
                                     {tracking.videoUrl && (
                                         <div className="mt-2">
-                                            <p className="font-medium mb-1">Video:</p>
-                                            <a href={tracking.videoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                            <a href={tracking.videoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline flex items-center">
+                                                <CameraOutlined className="mr-2" />
                                                 Xem video
                                             </a>
                                         </div>
@@ -375,17 +528,23 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                         </span>
                     ),
                     children: (
-                        <div className="flex flex-wrap gap-2">
-                            {vehicleAssignment.photoCompletions.map((url, idx) => (
-                                <Image
-                                    key={idx}
-                                    src={url}
-                                    alt={`Completion photo ${idx + 1}`}
-                                    width={100}
-                                    height={100}
-                                    className="object-cover rounded"
-                                />
-                            ))}
+                        <div className="p-2">
+                            <div className="flex items-center mb-3">
+                                <CameraOutlined className="mr-2 text-blue-500" />
+                                <span className="font-medium">Hình ảnh hoàn thành:</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {vehicleAssignment.photoCompletions.map((url, idx) => (
+                                    <Image
+                                        key={idx}
+                                        src={url}
+                                        alt={`Completion photo ${idx + 1}`}
+                                        width={100}
+                                        height={100}
+                                        className="object-cover rounded"
+                                    />
+                                ))}
+                            </div>
                         </div>
                     ),
                 },
@@ -397,52 +556,85 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                     key: "fuel",
                     label: (
                         <span>
-                            <CarOutlined /> Tiêu thụ nhiên liệu
+                            <FireOutlined /> Tiêu thụ nhiên liệu
                         </span>
                     ),
                     children: (
-                        <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-                            <Descriptions.Item label="Chỉ số đồng hồ khi nạp">
-                                {vehicleAssignment.fuelConsumption.odometerReadingAtRefuel} km
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Loại nhiên liệu">{vehicleAssignment.fuelConsumption.fuelTypeName}</Descriptions.Item>
-                            <Descriptions.Item label="Mô tả nhiên liệu">{vehicleAssignment.fuelConsumption.fuelTypeDescription}</Descriptions.Item>
-                            <Descriptions.Item label="Ngày ghi nhận">{formatDate(vehicleAssignment.fuelConsumption.dateRecorded)}</Descriptions.Item>
-                            <Descriptions.Item label="Ghi chú" span={2}>{vehicleAssignment.fuelConsumption.notes || "Không có ghi chú"}</Descriptions.Item>
-                            {vehicleAssignment.fuelConsumption.odometerAtStartUrl && (
-                                <Descriptions.Item label="Ảnh đồng hồ khi bắt đầu">
-                                    <Image
-                                        src={vehicleAssignment.fuelConsumption.odometerAtStartUrl}
-                                        alt="Odometer at start"
-                                        width={100}
-                                        height={100}
-                                        className="object-cover rounded"
-                                    />
-                                </Descriptions.Item>
-                            )}
-                            {vehicleAssignment.fuelConsumption.odometerAtFinishUrl && (
-                                <Descriptions.Item label="Ảnh đồng hồ khi hoàn thành">
-                                    <Image
-                                        src={vehicleAssignment.fuelConsumption.odometerAtFinishUrl}
-                                        alt="Odometer at finish"
-                                        width={100}
-                                        height={100}
-                                        className="object-cover rounded"
-                                    />
-                                </Descriptions.Item>
-                            )}
-                            {vehicleAssignment.fuelConsumption.odometerAtEndUrl && (
-                                <Descriptions.Item label="Ảnh đồng hồ khi kết thúc">
-                                    <Image
-                                        src={vehicleAssignment.fuelConsumption.odometerAtEndUrl}
-                                        alt="Odometer at end"
-                                        width={100}
-                                        height={100}
-                                        className="object-cover rounded"
-                                    />
-                                </Descriptions.Item>
-                            )}
-                        </Descriptions>
+                        <div className="p-2">
+                            <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="flex items-center">
+                                        <DashboardOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Chỉ số đồng hồ khi nạp:</span>
+                                        <span>{vehicleAssignment.fuelConsumption.odometerReadingAtRefuel} km</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <FireOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Loại nhiên liệu:</span>
+                                        <span>{vehicleAssignment.fuelConsumption.fuelTypeName}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <FileTextOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Mô tả nhiên liệu:</span>
+                                        <span>{vehicleAssignment.fuelConsumption.fuelTypeDescription}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <CalendarOutlined className="mr-2 text-gray-500" />
+                                        <span className="font-medium mr-1">Ngày ghi nhận:</span>
+                                        <span>{formatDate(vehicleAssignment.fuelConsumption.dateRecorded)}</span>
+                                    </div>
+                                </div>
+                                <div className="mt-3">
+                                    <div className="flex items-start">
+                                        <FileTextOutlined className="mr-2 text-gray-500 mt-1" />
+                                        <span className="font-medium mr-1">Ghi chú:</span>
+                                        <span>{vehicleAssignment.fuelConsumption.notes || "Không có ghi chú"}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {vehicleAssignment.fuelConsumption.odometerAtStartUrl && (
+                                    <div>
+                                        <div className="flex items-center mb-2">
+                                            <DashboardOutlined className="mr-2 text-blue-500" />
+                                            <span className="font-medium">Đồng hồ khi bắt đầu</span>
+                                        </div>
+                                        <Image
+                                            src={vehicleAssignment.fuelConsumption.odometerAtStartUrl}
+                                            alt="Odometer at start"
+                                            className="object-cover rounded"
+                                        />
+                                    </div>
+                                )}
+                                {vehicleAssignment.fuelConsumption.odometerAtFinishUrl && (
+                                    <div>
+                                        <div className="flex items-center mb-2">
+                                            <DashboardOutlined className="mr-2 text-blue-500" />
+                                            <span className="font-medium">Đồng hồ khi hoàn thành</span>
+                                        </div>
+                                        <Image
+                                            src={vehicleAssignment.fuelConsumption.odometerAtFinishUrl}
+                                            alt="Odometer at finish"
+                                            className="object-cover rounded"
+                                        />
+                                    </div>
+                                )}
+                                {vehicleAssignment.fuelConsumption.odometerAtEndUrl && (
+                                    <div>
+                                        <div className="flex items-center mb-2">
+                                            <DashboardOutlined className="mr-2 text-blue-500" />
+                                            <span className="font-medium">Đồng hồ khi kết thúc</span>
+                                        </div>
+                                        <Image
+                                            src={vehicleAssignment.fuelConsumption.odometerAtEndUrl}
+                                            alt="Odometer at end"
+                                            className="object-cover rounded"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     ),
                 },
             ]
@@ -458,6 +650,7 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                 </div>
             }
             className="shadow-md mb-6 rounded-xl"
+            size="small"
         >
             <Tabs defaultActiveKey="vehicle" items={tabItems} />
         </Card>

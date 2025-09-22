@@ -654,7 +654,7 @@ const VehiclePage: React.FC = () => {
         <EntityManagementLayout
             title="Quản lý phương tiện"
             icon={<CarFilled />}
-            description="Quản lý thông tin phương tiện vận chuyển trong hệ thống"
+            description="Quản lý Thông tin chuyến xe trong hệ thống"
             addButtonText={activeTab === 'vehicles' ? "Thêm phương tiện" : "Thêm loại phương tiện"}
             addButtonIcon={<PlusOutlined />}
             onAddClick={activeTab === 'vehicles' ? handleOpenCreateModal : handleOpenVehicleTypeCreateModal}

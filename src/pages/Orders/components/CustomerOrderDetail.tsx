@@ -313,9 +313,9 @@ const CustomerOrderDetail: React.FC = () => {
                             </Card>
                         )}
 
-                        {/* Thông tin phương tiện vận chuyển */}
+                        {/* Thông tin chuyến xe */}
                         <Card className="mb-6 shadow-md rounded-xl">
-                            <Title level={5} className="mb-4">Thông tin phương tiện vận chuyển</Title>
+                            <Title level={5} className="mb-4">Thông tin chuyến xe</Title>
 
                             {detail.vehicleAssignment ? (
                                 <Tabs defaultActiveKey="vehicle" type="card">
@@ -547,7 +547,7 @@ const CustomerOrderDetail: React.FC = () => {
                                     <Empty
                                         description={
                                             <div>
-                                                <p className="text-gray-500 mb-2">Chưa có thông tin phương tiện vận chuyển</p>
+                                                <p className="text-gray-500 mb-2">Chưa có Thông tin chuyến xe</p>
                                                 <p className="text-gray-400 text-sm">Đơn hàng sẽ được gán phương tiện vận chuyển trong thời gian tới</p>
                                             </div>
                                         }

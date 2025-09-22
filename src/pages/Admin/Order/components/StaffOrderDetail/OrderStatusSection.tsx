@@ -1,19 +1,13 @@
 import React from "react";
-import { Card, Tag, Row, Col } from "antd";
-import { ClockCircleOutlined, NumberOutlined, DollarOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Tag, Tooltip } from "antd";
+import { FileTextOutlined, CalendarOutlined, TagOutlined, DollarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-
-// Configure dayjs to use timezone
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 interface OrderStatusSectionProps {
     orderCode: string;
     status: string;
     createdAt: string;
-    totalPrice: number;
+    totalPrice: number | null;
 }
 
 const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
@@ -22,14 +16,13 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
     createdAt,
     totalPrice,
 }) => {
-    const formatDate = (dateString: string) => {
-        return dayjs(dateString).tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY HH:mm:ss");
-    };
-
     const getStatusColor = (status: string) => {
         const statusMap: Record<string, string> = {
             PENDING: "orange",
             PROCESSING: "blue",
+            ON_PLANNING: "geekblue",
+            ASSIGNED_TO_DRIVER: "cyan",
+            IN_TRANSIT: "purple",
             CANCELLED: "red",
             DELIVERED: "green",
             SUCCESSFUL: "green",
@@ -39,38 +32,71 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
         return statusMap[status] || "default";
     };
 
+    const formatDate = (dateString: string) => {
+        return dayjs(dateString).format("DD/MM/YYYY HH:mm:ss");
+    };
+
+    const formatCurrency = (amount: number | null) => {
+        if (amount === null || amount === undefined) {
+            return "0 VND";
+        }
+        return amount.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+    };
+
     return (
         <Card className="mb-6 shadow-md rounded-xl">
-            <Row gutter={[24, 16]} align="middle">
-                <Col xs={24} sm={12} md={6} className="text-center sm:text-left">
-                    <div className="mb-2 sm:mb-0">
-                        <span className="text-gray-500 mr-2">
-                            <NumberOutlined /> Mã đơn hàng:
-                        </span>
-                        <span className="font-medium text-lg">{orderCode}</span>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 -mt-4 -mx-4 px-4 py-3 mb-4 rounded-t-xl">
+                <div className="flex items-center">
+                    <FileTextOutlined className="text-xl text-blue-500 mr-2" />
+                    <h2 className="text-lg font-medium m-0">Trạng thái đơn hàng</h2>
+                </div>
+            </div>
+
+            <Row gutter={[16, 16]} className="mb-2">
+                <Col xs={24} sm={24} md={8} lg={6}>
+                    <div className="flex flex-col">
+                        <div className="text-gray-500 mb-1 flex items-center">
+                            <FileTextOutlined className="mr-1" /> Mã đơn
+                        </div>
+                        <Tooltip title={orderCode}>
+                            <span className="font-medium whitespace-nowrap truncate max-w-[180px] block">
+                                {orderCode}
+                            </span>
+                        </Tooltip>
                     </div>
                 </Col>
-                <Col xs={24} sm={12} md={6} className="text-center sm:text-left">
-                    <div className="mb-2 sm:mb-0">
-                        <span className="text-gray-500 mr-2">
-                            <ClockCircleOutlined /> Ngày tạo:
-                        </span>
-                        <span>{formatDate(createdAt)}</span>
+
+                <Col xs={24} sm={24} md={8} lg={6}>
+                    <div className="flex flex-col">
+                        <div className="text-gray-500 mb-1 flex items-center">
+                            <CalendarOutlined className="mr-1" /> Ngày
+                        </div>
+                        <Tooltip title={formatDate(createdAt)}>
+                            <span className="font-medium whitespace-nowrap truncate max-w-[180px] block">
+                                {formatDate(createdAt)}
+                            </span>
+                        </Tooltip>
                     </div>
                 </Col>
-                <Col xs={24} sm={12} md={6} className="text-center sm:text-left">
-                    <div className="mb-2 sm:mb-0">
-                        <span className="text-gray-500 mr-2">Trạng thái:</span>
-                        <Tag color={getStatusColor(status)}>{status}</Tag>
+
+                <Col xs={24} sm={24} md={8} lg={6}>
+                    <div className="flex flex-col">
+                        <div className="text-gray-500 mb-1 flex items-center">
+                            <TagOutlined className="mr-1" /> Trạng thái
+                        </div>
+                        <Tag color={getStatusColor(status)} className="mr-0 inline-block">
+                            {status}
+                        </Tag>
                     </div>
                 </Col>
-                <Col xs={24} sm={12} md={6} className="text-center sm:text-left">
-                    <div>
-                        <span className="text-gray-500 mr-2">
-                            <DollarOutlined /> Tổng tiền:
-                        </span>
-                        <span className="font-medium text-lg text-red-500">
-                            {totalPrice ? totalPrice.toLocaleString("vi-VN", { style: "currency", currency: "VND" }) : "0 VND"}
+
+                <Col xs={24} sm={24} md={8} lg={6}>
+                    <div className="flex flex-col">
+                        <div className="text-gray-500 mb-1 flex items-center">
+                            <DollarOutlined className="mr-1" /> Tổng tiền
+                        </div>
+                        <span className="font-medium text-green-600">
+                            {formatCurrency(totalPrice)}
                         </span>
                     </div>
                 </Col>

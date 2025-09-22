@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { App, Button, Typography, Skeleton, Empty, Tabs, Card, Row, Col } from "antd";
-import { ArrowLeftOutlined, InfoCircleOutlined, CarOutlined, ProfileOutlined } from "@ant-design/icons";
+import { App, Button, Typography, Skeleton, Empty, Tabs, Card, Row, Col, Tag, Divider } from "antd";
+import {
+    ArrowLeftOutlined,
+    InfoCircleOutlined,
+    CarOutlined,
+    ProfileOutlined,
+    ClockCircleOutlined,
+    NumberOutlined,
+    DollarOutlined,
+    EnvironmentOutlined,
+    UserOutlined,
+    PhoneOutlined,
+    ShopOutlined,
+    IdcardOutlined,
+    FileTextOutlined,
+    BoxPlotOutlined,
+    ColumnWidthOutlined
+} from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import type { StaffOrderDetailResponse } from "../../../../services/order/types";
 import OrderStatusSection from "./StaffOrderDetail/OrderStatusSection";
@@ -9,8 +25,14 @@ import AddressSection from "./StaffOrderDetail/AddressSection";
 import VehicleInfoSection from "./StaffOrderDetail/VehicleInfoSection";
 import ContractSection from "../../../Orders/components/CustomerOrderDetail/ContractSection";
 import TransactionSection from "../../../Orders/components/CustomerOrderDetail/TransactionSection";
+import VehicleAssignmentModal from "./VehicleAssignmentModal";
+import { OrderStatusEnum } from "../../../../constants/enums";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
 
-const { Title } = Typography;
+dayjs.extend(timezone);
+
+const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
 const StaffOrderDetail: React.FC = () => {
@@ -21,6 +43,7 @@ const StaffOrderDetail: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [activeMainTab, setActiveMainTab] = useState<string>("basic");
     const [activeDetailTab, setActiveDetailTab] = useState<string>("0");
+    const [vehicleAssignmentModalVisible, setVehicleAssignmentModalVisible] = useState<boolean>(false);
 
     useEffect(() => {
         if (id) {
@@ -38,6 +61,17 @@ const StaffOrderDetail: React.FC = () => {
             console.error("Error fetching order details:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return "Chưa có thông tin";
+        return dayjs(dateString).tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY HH:mm:ss");
+    };
+
+    const handleVehicleAssignmentSuccess = () => {
+        if (id) {
+            fetchOrderDetails(id);
         }
     };
 
@@ -64,20 +98,15 @@ const StaffOrderDetail: React.FC = () => {
     if (!orderData || !orderData.order) {
         return (
             <div className="max-w-6xl mx-auto px-4 py-6">
-                <div className="mb-6 flex items-center">
+                <div className="mb-6">
                     <Button
                         icon={<ArrowLeftOutlined />}
                         onClick={() => navigate(-1)}
-                        className="mr-4"
                     >
                         Quay lại
                     </Button>
-                    <Title level={3}>Chi tiết đơn hàng</Title>
                 </div>
-                <Empty
-                    description="Không tìm thấy thông tin đơn hàng"
-                    className="bg-white p-8 rounded-xl shadow-md"
-                />
+                <Empty description="Không tìm thấy thông tin đơn hàng" />
             </div>
         );
     }
@@ -96,6 +125,66 @@ const StaffOrderDetail: React.FC = () => {
                     totalPrice={order.totalPrice}
                 />
 
+                {/* Vehicle Assignment Button for ON_PLANNING status */}
+                {order.status === OrderStatusEnum.ON_PLANNING && (
+                    <div className="mb-6">
+                        <Button
+                            type="primary"
+                            icon={<CarOutlined />}
+                            onClick={() => setVehicleAssignmentModalVisible(true)}
+                            className="bg-blue-500 hover:bg-blue-600"
+                        >
+                            Phân công xe và tài xế
+                        </Button>
+                    </div>
+                )}
+
+                {/* Order Information */}
+                <Card
+                    className="mb-6 shadow-md rounded-xl"
+                    title={
+                        <div className="flex items-center">
+                            <InfoCircleOutlined className="mr-2 text-blue-500" />
+                            <span className="font-medium">Thông tin đơn hàng</span>
+                        </div>
+                    }
+                >
+                    <Row gutter={[24, 16]}>
+                        <Col xs={24} md={12}>
+                            <div className="mb-4">
+                                <div className="flex items-center mb-1">
+                                    <NumberOutlined className="mr-2 text-blue-500" />
+                                    <Text strong>Mã theo dõi:</Text>
+                                </div>
+                                <div className="ml-6">{order.orderCode || "Chưa có"}</div>
+                            </div>
+                            <div className="mb-4">
+                                <div className="flex items-center mb-1">
+                                    <FileTextOutlined className="mr-2 text-blue-500" />
+                                    <Text strong>Ghi chú:</Text>
+                                </div>
+                                <div className="ml-6">{order.notes || "Không có ghi chú"}</div>
+                            </div>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <div className="mb-4">
+                                <div className="flex items-center mb-1">
+                                    <BoxPlotOutlined className="mr-2 text-blue-500" />
+                                    <Text strong>Loại đơn hàng:</Text>
+                                </div>
+                                <div className="ml-6">{order.packageDescription || "Không xác định"}</div>
+                            </div>
+                            <div className="mb-4">
+                                <div className="flex items-center mb-1">
+                                    <ColumnWidthOutlined className="mr-2 text-blue-500" />
+                                    <Text strong>Số lượng:</Text>
+                                </div>
+                                <div className="ml-6">{order.totalQuantity || "Không xác định"}</div>
+                            </div>
+                        </Col>
+                    </Row>
+                </Card>
+
                 {/* Address and Contact Information */}
                 <AddressSection
                     pickupAddress={order.pickupAddress}
@@ -108,32 +197,13 @@ const StaffOrderDetail: React.FC = () => {
                     receiverIdentity={order.receiverIdentity}
                 />
 
-                {/* Order Information */}
-                <Card className="mb-6 shadow-md rounded-xl">
-                    <Title level={4} className="mb-4">Thông tin đơn hàng</Title>
-                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                        <p className="mb-2">
-                            <span className="font-medium">Mô tả:</span> {order.packageDescription || "Không có mô tả"}
-                        </p>
-                        <p className="mb-2">
-                            <span className="font-medium">Số lượng:</span> {order.totalQuantity}
-                        </p>
-                        <p className="mb-0">
-                            <span className="font-medium">Loại hàng:</span> {order.categoryName || "Chưa phân loại"}
-                        </p>
-                    </div>
+                {/* Contract Information */}
+                {contract && <ContractSection contract={contract} />}
 
-                    {order.notes && (
-                        <div className="mt-4">
-                            <h3 className="text-md font-medium mb-2 text-gray-700 flex items-center">
-                                <InfoCircleOutlined className="mr-2 text-blue-500" /> Ghi chú
-                            </h3>
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <p className="mb-0">{order.notes}</p>
-                            </div>
-                        </div>
-                    )}
-                </Card>
+                {/* Transaction Information */}
+                {transactions && transactions.length > 0 && (
+                    <TransactionSection transactions={transactions} />
+                )}
             </div>
         );
     };
@@ -141,7 +211,7 @@ const StaffOrderDetail: React.FC = () => {
     // Tab 2: Chi tiết vận chuyển
     const renderOrderDetailTab = () => {
         if (!order.orderDetails || order.orderDetails.length === 0) {
-            return <Empty description="Chưa có thông tin chi tiết vận chuyển" />;
+            return <Empty description="Không có thông tin chi tiết vận chuyển" />;
         }
 
         return (
@@ -153,203 +223,264 @@ const StaffOrderDetail: React.FC = () => {
             >
                 {order.orderDetails.map((detail, index) => (
                     <TabPane
-                        tab={
-                            <span>
-                                <CarOutlined /> Chi tiết {index + 1} {detail.trackingCode ? `(${detail.trackingCode})` : ''}
-                            </span>
-                        }
+                        tab={`Chi tiết #${index + 1}`}
                         key={index.toString()}
                     >
-                        {/* Thông tin chi tiết vận chuyển */}
-                        <Card className="mb-6 shadow-md rounded-xl">
-                            <Title level={5} className="mb-4">Thông tin chi tiết vận chuyển</Title>
-
-                            <Row gutter={[24, 24]}>
+                        <Card
+                            className="mb-6 shadow-md rounded-xl"
+                            title={
+                                <div className="flex items-center">
+                                    <InfoCircleOutlined className="mr-2 text-blue-500" />
+                                    <span className="font-medium">Thông tin chi tiết vận chuyển</span>
+                                </div>
+                            }
+                        >
+                            <Row gutter={[24, 16]}>
                                 <Col xs={24} md={12}>
-                                    <div className="mb-4">
-                                        <h3 className="text-md font-medium mb-3 text-gray-700 flex items-center">
-                                            <InfoCircleOutlined className="mr-2 text-blue-500" /> Thông tin cơ bản
-                                        </h3>
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">Thông tin</th>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">Chi tiết</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">Mã theo dõi</td>
-                                                    <td className="border border-gray-300 p-2">{detail.trackingCode || "Chưa có"}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">Trạng thái</td>
-                                                    <td className="border border-gray-300 p-2">
-                                                        <span className={`px-2 py-1 rounded text-white bg-${detail.status === "PENDING" ? "orange-500" :
-                                                                detail.status === "PROCESSING" ? "blue-500" :
-                                                                    detail.status === "DELIVERED" || detail.status === "SUCCESSFUL" ? "green-500" :
-                                                                        detail.status === "CANCELLED" || detail.status === "IN_TROUBLES" ? "red-500" :
-                                                                            "gray-500"
-                                                            }`}>
-                                                            {detail.status}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">Trọng lượng</td>
-                                                    <td className="border border-gray-300 p-2">{detail.weightBaseUnit} {detail.unit}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">Mô tả</td>
-                                                    <td className="border border-gray-300 p-2">{detail.description || "Không có mô tả"}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                    <Card
+                                        className="mb-4 h-full"
+                                        size="small"
+                                        title={
+                                            <div className="flex items-center">
+                                                <FileTextOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thông tin cơ bản</span>
+                                            </div>
+                                        }
+                                    >
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <NumberOutlined className="mr-2 text-blue-500" />
+                                                <Text strong>Mã theo dõi:</Text>
+                                            </div>
+                                            <div className="ml-6">{detail.trackingCode || "Chưa có"}</div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <InfoCircleOutlined className="mr-2 text-blue-500" />
+                                                <Text strong>Trạng thái:</Text>
+                                            </div>
+                                            <div className="ml-6">
+                                                <Tag color={
+                                                    detail.status === "PENDING" ? "orange" :
+                                                        detail.status === "PROCESSING" ? "blue" :
+                                                            detail.status === "DELIVERED" || detail.status === "SUCCESSFUL" ? "green" :
+                                                                detail.status === "CANCELLED" || detail.status === "IN_TROUBLES" ? "red" :
+                                                                    "default"
+                                                }>
+                                                    {detail.status}
+                                                </Tag>
+                                            </div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <ColumnWidthOutlined className="mr-2 text-blue-500" />
+                                                <Text strong>Trọng lượng:</Text>
+                                            </div>
+                                            <div className="ml-6">{detail.weightBaseUnit} {detail.unit}</div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <FileTextOutlined className="mr-2 text-blue-500" />
+                                                <Text strong>Mô tả:</Text>
+                                            </div>
+                                            <div className="ml-6">{detail.description || "Không có mô tả"}</div>
+                                        </div>
+                                    </Card>
                                 </Col>
 
                                 <Col xs={24} md={12}>
-                                    <div className="mb-4">
-                                        <h3 className="text-md font-medium mb-3 text-gray-700 flex items-center">
-                                            <InfoCircleOutlined className="mr-2 text-blue-500" /> Thông tin thời gian
-                                        </h3>
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">Thời gian</th>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">Ngày giờ</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">Thời gian bắt đầu</td>
-                                                    <td className="border border-gray-300 p-2">
-                                                        {detail.startTime ? new Date(detail.startTime).toLocaleString("vi-VN") : "Chưa có thông tin"}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">Thời gian kết thúc</td>
-                                                    <td className="border border-gray-300 p-2">
-                                                        {detail.endTime ? new Date(detail.endTime).toLocaleString("vi-VN") : "Chưa có thông tin"}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">Thời gian dự kiến bắt đầu</td>
-                                                    <td className="border border-gray-300 p-2">
-                                                        {detail.estimatedStartTime ? new Date(detail.estimatedStartTime).toLocaleString("vi-VN") : "Chưa có thông tin"}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">Thời gian dự kiến kết thúc</td>
-                                                    <td className="border border-gray-300 p-2">
-                                                        {detail.estimatedEndTime ? new Date(detail.estimatedEndTime).toLocaleString("vi-VN") : "Chưa có thông tin"}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                    <Card
+                                        className="mb-4 h-full"
+                                        size="small"
+                                        title={
+                                            <div className="flex items-center">
+                                                <ClockCircleOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thông tin thời gian</span>
+                                            </div>
+                                        }
+                                    >
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <ClockCircleOutlined className="mr-2 text-blue-500" />
+                                                <Text strong>Thời gian bắt đầu:</Text>
+                                            </div>
+                                            <div className="ml-6">{formatDate(detail.startTime)}</div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <ClockCircleOutlined className="mr-2 text-blue-500" />
+                                                <Text strong>Thời gian kết thúc:</Text>
+                                            </div>
+                                            <div className="ml-6">{formatDate(detail.endTime)}</div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <ClockCircleOutlined className="mr-2 text-blue-500" />
+                                                <Text strong>Thời gian dự kiến bắt đầu:</Text>
+                                            </div>
+                                            <div className="ml-6">{formatDate(detail.estimatedStartTime)}</div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <ClockCircleOutlined className="mr-2 text-blue-500" />
+                                                <Text strong>Thời gian dự kiến kết thúc:</Text>
+                                            </div>
+                                            <div className="ml-6">{formatDate(detail.estimatedEndTime)}</div>
+                                        </div>
+                                    </Card>
+                                </Col>
+                            </Row>
+
+                            <Divider />
+
+                            <Row gutter={[24, 16]}>
+                                <Col xs={24} md={12}>
+                                    {/* Order Size Information */}
+                                    {detail.orderSize && (
+                                        <Card
+                                            className="mb-4"
+                                            size="small"
+                                            title={
+                                                <div className="flex items-center">
+                                                    <BoxPlotOutlined className="mr-2 text-blue-500" />
+                                                    <span className="font-medium">Thông tin kích thước</span>
+                                                </div>
+                                            }
+                                        >
+                                            <table className="w-full border-collapse">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Mô tả</th>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Kích thước (Dài x Rộng x Cao)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="border border-gray-300 p-2">{detail.orderSize.description}</td>
+                                                        <td className="border border-gray-300 p-2">
+                                                            {`${detail.orderSize.minLength} x ${detail.orderSize.minWidth} x ${detail.orderSize.minHeight} m - 
+                                                            ${detail.orderSize.maxLength} x ${detail.orderSize.maxWidth} x ${detail.orderSize.maxHeight} m`}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </Card>
+                                    )}
+                                </Col>
+
+                                <Col xs={24} md={12}>
+                                    {/* Placeholder for any additional information */}
+                                    {/* You can add more information here if needed */}
+                                </Col>
+                            </Row>
+
+                            {/* Vehicle Assignment Information in a separate row */}
+                            <Row>
+                                <Col xs={24}>
+                                    {detail.vehicleAssignment ? (
+                                        <VehicleInfoSection vehicleAssignment={detail.vehicleAssignment} />
+                                    ) : (
+                                        <Card
+                                            className="mb-4"
+                                            size="small"
+                                            title={
+                                                <div className="flex items-center">
+                                                    <CarOutlined className="mr-2 text-blue-500" />
+                                                    <span className="font-medium">Thông tin phương tiện vận chuyển</span>
+                                                </div>
+                                            }
+                                        >
+                                            <div className="text-center py-4">
+                                                <p className="text-gray-500 mb-4">Chưa có thông tin phân công xe</p>
+                                                {order.status === OrderStatusEnum.ON_PLANNING && (
+                                                    <Button
+                                                        type="primary"
+                                                        icon={<CarOutlined />}
+                                                        onClick={() => setVehicleAssignmentModalVisible(true)}
+                                                        className="bg-blue-500 hover:bg-blue-600"
+                                                    >
+                                                        Phân công xe
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </Card>
+                                    )}
                                 </Col>
                             </Row>
                         </Card>
-
-                        {/* Thông tin kích thước */}
-                        {detail.orderSize && (
-                            <Card className="mb-6 shadow-md rounded-xl">
-                                <Title level={5} className="mb-4">Thông tin kích thước</Title>
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th className="border border-gray-300 bg-gray-50 p-2 text-left">Mô tả</th>
-                                            <th className="border border-gray-300 bg-gray-50 p-2 text-left">Kích thước (Dài x Rộng x Cao)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td className="border border-gray-300 p-2">{detail.orderSize.description}</td>
-                                            <td className="border border-gray-300 p-2">
-                                                {`${detail.orderSize.minLength} x ${detail.orderSize.minWidth} x ${detail.orderSize.minHeight} m - 
-                        ${detail.orderSize.maxLength} x ${detail.orderSize.maxWidth} x ${detail.orderSize.maxHeight} m`}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </Card>
-                        )}
-
-                        {/* Thông tin phương tiện vận chuyển */}
-                        <VehicleInfoSection vehicleAssignment={detail.vehicleAssignment} />
                     </TabPane>
                 ))}
             </Tabs>
         );
     };
 
-    // Tab 3: Hợp đồng và thanh toán
-    const renderContractAndPaymentTab = () => {
-        return (
-            <div>
-                {/* Contract Information */}
-                <ContractSection contract={contract} />
-
-                {/* Transaction Information */}
-                <TransactionSection transactions={transactions} />
-            </div>
-        );
-    };
-
     return (
         <div className="max-w-6xl mx-auto px-4 py-6">
-            <div className="mb-6 flex items-center">
-                <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate(-1)}
-                    className="mr-4"
-                >
-                    Quay lại
-                </Button>
-                <Title level={3}>Chi tiết đơn hàng {order.orderCode}</Title>
+            <div className="mb-6 flex flex-wrap items-center justify-between">
+                <div className="flex items-center mb-2 md:mb-0">
+                    <Button
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => navigate(-1)}
+                        className="mr-4"
+                    >
+                        Quay lại
+                    </Button>
+                    <Title level={2} className="m-0">
+                        Chi tiết đơn hàng {order.orderCode}
+                    </Title>
+                </div>
             </div>
 
-            <Card className="mb-6 shadow-md rounded-xl">
-                <Tabs
-                    activeKey={activeMainTab}
-                    onChange={setActiveMainTab}
-                    type="card"
-                    size="large"
-                    className="order-main-tabs"
+            <Tabs
+                activeKey={activeMainTab}
+                onChange={setActiveMainTab}
+                type="card"
+                className="order-main-tabs"
+            >
+                <TabPane
+                    tab={
+                        <span>
+                            <InfoCircleOutlined /> Thông tin cơ bản
+                        </span>
+                    }
+                    key="basic"
                 >
-                    <TabPane
-                        tab={
-                            <span className="px-2 py-1">
-                                <InfoCircleOutlined className="mr-2" /> Thông tin cơ bản
-                            </span>
-                        }
-                        key="basic"
-                    >
-                        {renderBasicInfoTab()}
-                    </TabPane>
-                    <TabPane
-                        tab={
-                            <span className="px-2 py-1">
-                                <CarOutlined className="mr-2" /> Chi tiết vận chuyển
-                            </span>
-                        }
-                        key="details"
-                    >
-                        {renderOrderDetailTab()}
-                    </TabPane>
-                    <TabPane
-                        tab={
-                            <span className="px-2 py-1">
-                                <ProfileOutlined className="mr-2" /> Hợp đồng & Thanh toán
-                            </span>
-                        }
-                        key="contract"
-                    >
-                        {renderContractAndPaymentTab()}
-                    </TabPane>
-                </Tabs>
-            </Card>
+                    {renderBasicInfoTab()}
+                </TabPane>
+                <TabPane
+                    tab={
+                        <span>
+                            <CarOutlined /> Chi tiết vận chuyển
+                        </span>
+                    }
+                    key="detail"
+                >
+                    {renderOrderDetailTab()}
+                </TabPane>
+                <TabPane
+                    tab={
+                        <span>
+                            <ProfileOutlined /> Lịch sử đơn hàng
+                        </span>
+                    }
+                    key="history"
+                >
+                    <Card className="shadow-md rounded-xl">
+                        <Empty description="Tính năng đang phát triển" />
+                    </Card>
+                </TabPane>
+            </Tabs>
+
+            {/* Vehicle Assignment Modal */}
+            {id && orderData && orderData.order && orderData.order.orderDetails && (
+                <VehicleAssignmentModal
+                    visible={vehicleAssignmentModalVisible}
+                    orderId={id}
+                    orderDetails={orderData.order.orderDetails}
+                    onClose={() => setVehicleAssignmentModalVisible(false)}
+                    onSuccess={handleVehicleAssignmentSuccess}
+                />
+            )}
         </div>
     );
 };

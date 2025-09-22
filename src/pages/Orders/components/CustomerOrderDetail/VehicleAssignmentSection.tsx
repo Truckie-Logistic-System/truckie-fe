@@ -119,12 +119,12 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentProps> = ({ vehicleAss
                 title={
                     <div className="flex items-center">
                         <CarOutlined className="mr-2 text-blue-500" />
-                        <span>Thông tin phương tiện vận chuyển</span>
+                        <span>Thông tin chuyến xe</span>
                     </div>
                 }
                 className="shadow-md mb-6 rounded-xl"
             >
-                <Empty description="Chưa có thông tin phương tiện vận chuyển" />
+                <Empty description="Chưa có Thông tin chuyến xe" />
             </Card>
         );
     }
@@ -357,7 +357,7 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentProps> = ({ vehicleAss
             title={
                 <div className="flex items-center">
                     <CarOutlined className="mr-2 text-blue-500" />
-                    <span>Thông tin phương tiện vận chuyển</span>
+                    <span>Thông tin chuyến xe</span>
                 </div>
             }
             className="shadow-md mb-6 rounded-xl"
