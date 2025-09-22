@@ -1,16 +1,5 @@
 import React, { useState } from "react";
-import {
-  Form,
-  Input,
-  Select,
-  Typography,
-  Divider,
-  Skeleton,
-  App,
-  Row,
-  Col,
-  DatePicker,
-} from "antd";
+import { Form, Input, Select, Typography, App, Row, Col, DatePicker } from "antd";
 import type { Category } from "../../../../models/Category";
 import dayjs from "dayjs";
 import ReceiverSuggestions from "./ReceiverSuggestions";

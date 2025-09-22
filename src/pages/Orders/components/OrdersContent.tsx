@@ -28,10 +28,9 @@ import { PackageIcon } from "lucide-react";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import type { Order, OrderStatus } from "../../../models/Order";
-import type { CustomerOrder } from "../../../services/order/types";
+import type { Order, OrderStatus, CustomerOrder } from "../../../models/Order";
 
-import { formatDate } from "../../../utils/formatters";
+import { formatDate, formatDateTimeWithSeconds } from "../../../utils/formatters";
 
 // Initialize dayjs plugins
 dayjs.extend(utc);
@@ -484,7 +483,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                   <Text className="text-gray-500 text-sm mb-3 block">
                     Ngày tạo đơn:{" "}
                     <strong>
-                      {order.createdAt ? formatDate(order.createdAt) : "N/A"}
+                      {order.createdAt ? formatDateTimeWithSeconds(order.createdAt) : "N/A"}
                     </strong>
                   </Text>
 
@@ -512,21 +511,6 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                           </Text>
                           <Text className="text-sm">
                             {order.deliveryAddress || "N/A"}
-                          </Text>
-                        </div>
-                      </div>
-                    </Col>
-                    <Col span={8}>
-                      <div className="flex items-start gap-2">
-                        <ClockCircleOutlined className="text-gray-400 mt-1" />
-                        <div>
-                          <Text className="text-xs text-gray-500 block">
-                            NGÀY GIAO HÀNG
-                          </Text>
-                          <Text className="text-sm">
-                            {order.createdAt
-                              ? formatDate(order.createdAt)
-                              : "N/A"}{" "}
                           </Text>
                         </div>
                       </div>

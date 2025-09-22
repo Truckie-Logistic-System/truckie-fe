@@ -48,6 +48,7 @@ import {
   StaffContractPreview,
 } from "@/components/features/order";
 import type { Contract } from "@/models";
+import { CarryOutOutlined } from "@ant-design/icons";
 
 const { TabPane } = Tabs;
 
@@ -146,7 +147,7 @@ const OrderDetailPage: React.FC = () => {
       supportedValue: order.totalPrice || 0,
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
       orderId: id,
-      staffId: "current-staff-id", 
+      staffId: "current-staff-id",
 
     });
 
@@ -167,7 +168,7 @@ const OrderDetailPage: React.FC = () => {
         effectiveDate: values.effectiveDate.format("YYYY-MM-DDTHH:mm:ss"),
         expirationDate: values.expirationDate.format("YYYY-MM-DDTHH:mm:ss"),
         orderId: id!,
-        staffId: "current-staff-id", 
+        staffId: "current-staff-id",
       };
 
       const result = await contractService.createContract(contractData);

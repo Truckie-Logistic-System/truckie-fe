@@ -21,7 +21,8 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
 
   return (
     <div className="contract-preview bg-white p-8 max-w-4xl mx-auto">
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .contract-preview {
           font-family: "Times New Roman", serif;
           line-height: 1.6;
@@ -84,7 +85,7 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
           background-color: #f5f5f5;
           font-weight: bold;
         }
-      `}</style>
+      `}} />
 
       {/* Header */}
       <div className="header">
@@ -95,7 +96,8 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
             margin: "20px 0",
             borderBottom: "2px solid #000",
             width: "200px",
-            margin: "20px auto",
+            marginLeft: "auto",
+            marginRight: "auto",
           }}
         ></div>
         <div className="title" style={{ marginTop: "30px" }}>
@@ -163,7 +165,7 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
             </p>
             <p>
               <strong>Email:</strong>{" "}
-              {order.sender.representativeEmail || "N/A"}
+              {(order.sender as any).representativeEmail || "N/A"}
             </p>
           </>
         ) : (
@@ -199,9 +201,9 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
           <tbody>
             <tr>
               <td>{order.orderCode}</td>
-              <td>{formatDate(order.createdAt)}</td>
-              <td>{order.pickupAddress?.address || "N/A"}</td>
-              <td>{order.deliveryAddress?.address || "N/A"}</td>
+              <td>{order.createdAt ? formatDate(order.createdAt) : "N/A"}</td>
+              <td>{`${order.pickupAddress?.street || ""}, ${order.pickupAddress?.ward || ""}, ${order.pickupAddress?.province || ""}`}</td>
+              <td>{`${order.deliveryAddress?.street || ""}, ${order.deliveryAddress?.ward || ""}, ${order.deliveryAddress?.province || ""}`}</td>
               <td>{formatCurrency(order.totalPrice || 0)}</td>
             </tr>
           </tbody>
@@ -227,7 +229,7 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
                     <td>{detail.trackingCode}</td>
                     {/* <td>{detail.quantity}</td> */}
                     <td>{detail.weight}</td>
-                    <td>{formatCurrency(detail.value || 0)}</td>
+                    <td>{formatCurrency((detail as any).value || 0)}</td>
                   </tr>
                 ))}
               </tbody>

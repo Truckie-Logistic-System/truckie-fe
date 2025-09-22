@@ -7,7 +7,6 @@ import type {
     ChangePasswordRequest,
     ChangePasswordResponse
 } from './types';
-import { mapUserResponseToModel } from '@/models/User';
 import { handleApiError } from '../api/errorHandler';
 
 /**

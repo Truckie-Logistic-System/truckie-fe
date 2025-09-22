@@ -33,7 +33,7 @@ export default function CreateOrder() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<any>({
-    orderDetailsList: [],
+    orderDetailsList: [{ quantity: 1, unit: "Kí" }], // Initialize with one default item
   });
   const [createdOrder, setCreatedOrder] = useState<{
     id: string;
@@ -76,12 +76,7 @@ export default function CreateOrder() {
         if (unitsResponse && unitsResponse.length > 0) {
           setFormValues((prev: any) => ({
             ...prev,
-            orderDetailsList: (prev?.orderDetailsList || []).map(
-              (detail: any) => ({
-                ...detail,
-                unit: unitsResponse[0],
-              })
-            ),
+            orderDetailsList: [{ quantity: 1, unit: unitsResponse[0] }], // Always initialize with one item
           }));
         }
 
@@ -305,35 +300,21 @@ export default function CreateOrder() {
   const renderForm = () => {
     if (loading) {
       return (
-        <div className="py-12">
-          <div className="text-center mb-6">
-            <Skeleton.Input active size="large" style={{ width: "300px" }} />
-            <div className="mt-3">
-              <Skeleton.Input active size="small" style={{ width: "400px" }} />
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <Skeleton.Button
+        <div className="space-y-8">
+          <div>
+            <Skeleton.Input
               active
               size="large"
-              shape="round"
-              style={{ width: "100%", height: "48px" }}
+              className="mb-4 w-1/3"
+              style={{ height: "2rem" }}
             />
-            <Skeleton active paragraph={{ rows: 6 }} />
-            <div className="flex justify-between items-center pt-6">
-              <Skeleton.Button
-                active
-                size="large"
-                shape="round"
-                style={{ width: "100px" }}
-              />
-              <Skeleton.Button
-                active
-                size="large"
-                shape="round"
-                style={{ width: "100px" }}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Skeleton active paragraph={{ rows: 4 }} />
+              </div>
+              <div>
+                <Skeleton active paragraph={{ rows: 4 }} />
+              </div>
             </div>
           </div>
         </div>
@@ -404,7 +385,7 @@ export default function CreateOrder() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-6">
-      <div className="max-w-5xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
@@ -436,11 +417,7 @@ export default function CreateOrder() {
                 description="Nhập thông tin vận chuyển"
               />
               <Step
-                title="Tổng hợp"
-                description="Tổng hợp và xác nhận thông tin"
-              />
-              <Step
-                title="Xác nhận"
+                title="Tổng hợp và xác nhận"
                 description="Xác nhận thông tin đơn hàng"
               />
             </Steps>
@@ -451,20 +428,24 @@ export default function CreateOrder() {
             <Form
               form={form}
               layout="vertical"
+              requiredMark={false}
               onFinish={handleSubmit}
-              onFieldsChange={handleFormChange}
-              initialValues={formValues}
+              onValuesChange={handleFormChange}
+              className="space-y-6"
             >
               {renderForm()}
 
-              <StepActions
-                currentStep={currentStep}
-                totalSteps={4}
-                onPrev={prev}
-                onNext={next}
-                onSubmit={() => form.submit()}
-                isSubmitting={isSubmitting}
-              />
+              {/* Step Actions */}
+              {!createdOrder && (
+                <StepActions
+                  currentStep={currentStep}
+                  totalSteps={3}
+                  onPrev={prev}
+                  onNext={next}
+                  onSubmit={handleSubmit}
+                  isSubmitting={isSubmitting}
+                />
+              )}
             </Form>
           </div>
         </Card>

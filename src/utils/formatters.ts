@@ -25,6 +25,24 @@ export const formatDateTime = (date: Date | string): string => {
 };
 
 /**
+ * Format a date with time including seconds
+ */
+export const formatDateTimeWithSeconds = (date: Date | string): string => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    const dateStr = d.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+    const timeStr = d.toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    });
+    return `${dateStr} ${timeStr}`;
+};
+
+/**
  * Format currency to VND
  */
 export const formatCurrency = (amount: number): string => {

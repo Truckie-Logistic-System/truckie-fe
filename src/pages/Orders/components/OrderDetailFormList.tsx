@@ -16,19 +16,20 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   name = "orderDetailsList",
   label = "Danh sách lô hàng",
   orderSizes,
-  units = ["Kí", "Yến", "Tạ", "Tấn"], // Default units if API fails
+  units = [], // Empty default array, will be populated from API
   form,
 }) => {
-  const weightUnits = [
-    { value: "Kí", label: "Kilogram" },
-    { value: "Yến", label: "Yến" },
-    { value: "Tạ", label: "Tạ" },
-    { value: "Tấn", label: "Tấn" },
-  ];
+  // Convert units array to the format needed for Select component
+  const weightUnits = units.map(unit => ({
+    value: unit,
+    label: unit === "Kí" ? "Kilogram" : unit
+  }));
 
   return (
     <Form.Item label={label}>
-      <Form.List name={name}>
+      <Form.List name={name}
+        initialValue={[{ quantity: 1, unit: units.length > 0 ? units[0] : "Kí" }]} // Use first unit from API if available
+      >
         {(fields, { add, remove }) => (
           <>
             {fields.map(({ key, name: fieldName, ...restField }, index) => (
@@ -147,7 +148,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                               message: "Vui lòng chọn đơn vị!",
                             },
                           ]}
-                          initialValue="Kí"
+                          initialValue={units.length > 0 ? units[0] : "Kí"}
                           style={{ marginBottom: 16 }}
                         >
                           <Select placeholder="Chọn đơn vị">
@@ -187,7 +188,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
             <Form.Item style={{ marginBottom: 0 }}>
               <Button
                 type="dashed"
-                onClick={() => add()}
+                onClick={() => add({ quantity: 1, unit: units.length > 0 ? units[0] : "Kí" })}
                 block
                 icon={<PlusOutlined />}
                 size="large"
