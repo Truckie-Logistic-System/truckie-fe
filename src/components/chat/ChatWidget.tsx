@@ -1,12 +1,11 @@
 import React from 'react';
-import { ChatProvider, useChatContext } from '@/context/ChatContext';
+import { useChatContext } from '@/context/ChatContext';
 import ChatButton from './ChatButton';
 import ChatWindow from './ChatWindow';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// Component nội bộ để tránh lỗi context
-const ChatWidgetContent: React.FC = () => {
+const ChatWidget: React.FC = () => {
     const { isOpen } = useChatContext();
 
     return (
@@ -24,14 +23,6 @@ const ChatWidgetContent: React.FC = () => {
                 pauseOnHover
             />
         </>
-    );
-};
-
-const ChatWidget: React.FC = () => {
-    return (
-        <ChatProvider>
-            <ChatWidgetContent />
-        </ChatProvider>
     );
 };
 

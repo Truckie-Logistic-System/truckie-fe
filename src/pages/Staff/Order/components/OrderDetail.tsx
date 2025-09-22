@@ -21,8 +21,12 @@ import {
   HistoryOutlined,
   ToolOutlined,
   InfoCircleOutlined,
-  CarryOutOutlined,
   FileTextOutlined,
+  DollarOutlined,
+  CameraOutlined,
+  TruckOutlined,
+  UserOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
@@ -30,6 +34,7 @@ import type { Order } from "@/models/Order";
 import type { CreateContractRequest } from "@/services/contract/types";
 import type { ContractData } from "@/services/contract/contractTypes";
 import { OrderStatusEnum } from "@/constants/enums";
+
 import dayjs from "dayjs";
 import {
   OrderDetailSkeleton,
@@ -91,6 +96,7 @@ const OrderDetailPage: React.FC = () => {
     // Implement status update functionality
   };
 
+
   // Hàm xử lý phân công xe cho đơn hàng
   const handleAssignVehicle = async () => {
     if (!id) return;
@@ -109,15 +115,11 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
-  // Xử lý khi click nút xem trước hợp đồng
   const handlePreviewContract = async () => {
     if (!id) return;
 
     setLoadingContractData(true);
     try {
-      // Giả sử contractId sẽ được lấy từ order hoặc từ một API khác
-      // Hiện tại dùng order id làm contract id để demo
-      //const response = await contractService.getContractPdfData(id);
       const response = await contractService.getContractPdfData(
         "70c19e40-bb9a-4808-8753-283a60613732"
       );
@@ -135,11 +137,8 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
-  // Xử lý khi click nút tạo hợp đồng
   const handleCreateContract = () => {
     if (!id || !order) return;
-
-    // Set initial values for the form
     contractForm.setFieldsValue({
       contractName: `Hợp đồng đơn hàng ${order.orderCode}`,
       effectiveDate: dayjs(),
@@ -147,20 +146,19 @@ const OrderDetailPage: React.FC = () => {
       supportedValue: order.totalPrice || 0,
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
       orderId: id,
-      staffId: "current-staff-id", // TODO: Get from auth context
+      staffId: "current-staff-id", 
+
     });
 
     setContractModalVisible(true);
   };
 
-  // Xử lý khi user save contract changes
+
   const handleContractSave = (editedData: any) => {
     console.log("Contract data saved:", editedData);
     messageApi.success("Đã lưu thay đổi hợp đồng");
-    // Có thể gửi data này lên server để lưu custom contract template
   };
 
-  // Xử lý submit form tạo hợp đồng
   const handleContractSubmit = async (values: any) => {
     setCreatingContract(true);
     try {
@@ -169,7 +167,7 @@ const OrderDetailPage: React.FC = () => {
         effectiveDate: values.effectiveDate.format("YYYY-MM-DDTHH:mm:ss"),
         expirationDate: values.expirationDate.format("YYYY-MM-DDTHH:mm:ss"),
         orderId: id!,
-        staffId: "current-staff-id", // TODO: Get from auth context
+        staffId: "current-staff-id", 
       };
 
       const result = await contractService.createContract(contractData);
@@ -187,7 +185,6 @@ const OrderDetailPage: React.FC = () => {
       setCreatingContract(false);
     }
   };
-
   // Render lịch sử đơn hàng
   const renderOrderHistory = () => {
     return (

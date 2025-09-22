@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Descriptions, Button, Tag, Row, Col, Typography, Avatar, Divider, Timeline, Tooltip } from 'antd';
+import { Card, Descriptions, Button, Tag, Row, Col, Typography, Avatar, Divider, Timeline, Tooltip, Table, Empty, Badge } from 'antd';
 import {
     IdcardOutlined,
     CalendarOutlined,
@@ -10,11 +10,17 @@ import {
     MailOutlined,
     PhoneOutlined,
     ManOutlined,
-    WomanOutlined
+    WomanOutlined,
+    WarningOutlined,
+    DollarOutlined,
+    SafetyCertificateOutlined,
+    CarOutlined
 } from '@ant-design/icons';
 import type { DriverModel } from '../../../../services/driver';
 import { LicenseClassEnum, CommonStatusEnum } from '@/constants/enums';
 import { LicenseClassTag, CommonStatusTag } from '@/components/common/tags';
+import { PenaltyStatus, penaltyStatusColors } from '@/models/Penalty';
+import { formatCurrency } from '@/utils/formatters';
 
 const { Title, Text } = Typography;
 
@@ -43,6 +49,71 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                 return status;
         }
     };
+
+    const getPenaltyStatusText = (status: string) => {
+        switch (status.toUpperCase()) {
+            case PenaltyStatus.PENDING:
+                return 'Chờ xử lý';
+            case PenaltyStatus.PAID:
+                return 'Đã thanh toán';
+            case PenaltyStatus.DISPUTED:
+                return 'Đang khiếu nại';
+            case PenaltyStatus.RESOLVED:
+                return 'Đã giải quyết';
+            case PenaltyStatus.CANCELLED:
+                return 'Đã hủy';
+            default:
+                return status;
+        }
+    };
+
+    const penaltyColumns = [
+        {
+            title: 'Loại vi phạm',
+            dataIndex: 'violationType',
+            key: 'violationType',
+            render: (text: string) => <Text strong>{text}</Text>
+        },
+        {
+            title: 'Mô tả',
+            dataIndex: 'violationDescription',
+            key: 'violationDescription',
+            ellipsis: true,
+        },
+        {
+            title: 'Số tiền phạt',
+            dataIndex: 'penaltyAmount',
+            key: 'penaltyAmount',
+            render: (amount: number) => (
+                <Text type="danger" strong>
+                    <DollarOutlined className="mr-1" />
+                    {formatCurrency(amount)}
+                </Text>
+            )
+        },
+        {
+            title: 'Ngày vi phạm',
+            dataIndex: 'penaltyDate',
+            key: 'penaltyDate',
+            render: (date: string) => formatDate(date)
+        },
+        {
+            title: 'Địa điểm',
+            dataIndex: 'location',
+            key: 'location',
+            ellipsis: true,
+        },
+        {
+            title: 'Trạng thái',
+            dataIndex: 'status',
+            key: 'status',
+            render: (status: string) => (
+                <Tag color={penaltyStatusColors[status.toUpperCase() as keyof typeof penaltyStatusColors]}>
+                    {getPenaltyStatusText(status)}
+                </Tag>
+            )
+        },
+    ];
 
     return (
         <Row gutter={[24, 24]}>
@@ -141,6 +212,64 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                 <Card
                     title={
                         <div className="flex items-center">
+                            <SafetyCertificateOutlined className="text-blue-600 mr-2" />
+                            <span>Hạng giấy phép lái xe</span>
+                        </div>
+                    }
+                    className="shadow-sm hover:shadow-md transition-shadow mb-6"
+                    extra={
+                        <Badge
+                            count={driver.licenseClass}
+                            style={{
+                                backgroundColor: driver.licenseClass === LicenseClassEnum.C ? '#8B5CF6' : '#3B82F6',
+                                fontSize: '16px',
+                                padding: '0 10px'
+                            }}
+                        />
+                    }
+                >
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                        <div className="flex items-center">
+                            <div className="flex-1">
+                                <Text strong className="text-lg block mb-1">
+                                    {driver.licenseClass === LicenseClassEnum.B2 ? 'Hạng B2' : 'Hạng C'}
+                                </Text>
+                                <Text className="text-gray-500 block">
+                                    {driver.licenseClass === LicenseClassEnum.B2
+                                        ? 'Xe ô tô tải dưới 3.5 tấn hoặc chở dưới 9 người'
+                                        : 'Xe ô tô tải trên 3.5 tấn hoặc xe khách lớn'}
+                                </Text>
+                            </div>
+                            <div className="ml-4">
+                                <div className={`flex items-center justify-center w-16 h-16 rounded-full ${driver.licenseClass === LicenseClassEnum.C ? 'bg-purple-500' : 'bg-blue-500'
+                                    } text-white text-2xl font-bold shadow-md`}>
+                                    <CarOutlined className="text-2xl" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <Divider className="my-3" />
+
+                        <div className="flex justify-between">
+                            <div>
+                                <Text type="secondary">Loại phương tiện:</Text>
+                                <Text strong className="ml-2">
+                                    {driver.licenseClass === LicenseClassEnum.B2 ? 'Xe tải nhẹ, xe khách nhỏ' : 'Xe tải nặng, xe khách lớn'}
+                                </Text>
+                            </div>
+                            <Tag
+                                color={driver.licenseClass === LicenseClassEnum.C ? 'purple' : 'blue'}
+                                className="text-sm px-3 py-1"
+                            >
+                                {driver.licenseClass === LicenseClassEnum.B2 ? 'Dưới 3.5 tấn' : 'Trên 3.5 tấn'}
+                            </Tag>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card
+                    title={
+                        <div className="flex items-center">
                             <IdcardOutlined className="text-blue-500 mr-2" />
                             <span>Thông tin giấy tờ</span>
                         </div>
@@ -194,7 +323,7 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                             <span>Thông tin thời gian</span>
                         </div>
                     }
-                    className="shadow-sm hover:shadow-md transition-shadow"
+                    className="shadow-sm hover:shadow-md transition-shadow mb-6"
                 >
                     <Timeline
                         mode="left"
@@ -237,16 +366,38 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                             },
                         ]}
                     />
+                </Card>
 
-                    <div className="mt-4 p-3 bg-blue-50 rounded-md">
-                        <div className="flex items-center mb-2">
-                            <IdcardOutlined className="text-blue-500 mr-2" />
-                            <Text strong>Hạng giấy phép</Text>
+                <Card
+                    title={
+                        <div className="flex items-center">
+                            <WarningOutlined className="text-red-500 mr-2" />
+                            <span>Lịch sử vi phạm</span>
                         </div>
-                        <Tooltip title="Hạng giấy phép lái xe">
-                            <LicenseClassTag licenseClass={driver.licenseClass as LicenseClassEnum} className="px-3 py-1 text-lg" />
-                        </Tooltip>
-                    </div>
+                    }
+                    className="shadow-sm hover:shadow-md transition-shadow"
+                    extra={
+                        <Tag color="red" className="px-3 py-1">
+                            {driver.penaltyHistories?.length || 0} vi phạm
+                        </Tag>
+                    }
+                >
+                    {driver.penaltyHistories && driver.penaltyHistories.length > 0 ? (
+                        <Table
+                            dataSource={driver.penaltyHistories}
+                            columns={penaltyColumns}
+                            rowKey="id"
+                            pagination={{ pageSize: 5 }}
+                            size="middle"
+                            scroll={{ x: 'max-content' }}
+                        />
+                    ) : (
+                        <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description="Không có lịch sử vi phạm"
+                            className="py-8"
+                        />
+                    )}
                 </Card>
             </Col>
         </Row>

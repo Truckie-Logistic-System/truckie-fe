@@ -125,6 +125,22 @@ const vehicleService = {
     getVehicleTypes: async () => {
         try {
             const response = await httpClient.get('/vehicle-types');
+            console.log('Vehicle types API response:', response.data);
+
+            // Đảm bảo dữ liệu trả về có cấu trúc đúng
+            if (response.data.success && Array.isArray(response.data.data)) {
+                // Xử lý dữ liệu để đảm bảo vehicleCount là số
+                const processedData = response.data.data.map((type: any) => ({
+                    ...type,
+                    vehicleCount: typeof type.vehicleCount === 'number' ? type.vehicleCount : 0
+                }));
+
+                return {
+                    ...response.data,
+                    data: processedData
+                };
+            }
+
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {

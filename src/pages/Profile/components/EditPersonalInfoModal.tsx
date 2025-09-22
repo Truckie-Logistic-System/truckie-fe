@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { Modal, Button, Typography, App } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
-import type { Customer } from '@/models/Customer';
-import EditProfileForm from './EditProfileForm';
+import type { UserModel } from '@/models/User';
+import EditPersonalInfoForm from './EditPersonalInfoForm';
 
 const { Text } = Typography;
 
-interface EditProfileModalProps {
-    customerData: Customer;
+interface EditPersonalInfoModalProps {
+    userData: UserModel;
     onRefresh?: () => void;
 }
 
-const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData, onRefresh }) => {
+const EditPersonalInfoModal: React.FC<EditPersonalInfoModalProps> = ({ userData, onRefresh }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { message } = App.useApp();
 
@@ -26,10 +26,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData, onRef
     const handleSuccess = () => {
         setIsModalOpen(false);
 
-        // Đảm bảo thông báo thành công vẫn hiển thị sau khi modal đóng
+        // Ensure success message appears after modal closes
         setTimeout(() => {
             message.success({
-                content: 'Thông tin công ty đã được cập nhật thành công',
+                content: 'Thông tin cá nhân đã được cập nhật thành công',
                 duration: 5,
                 className: 'custom-message-success'
             });
@@ -55,20 +55,20 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData, onRef
             <Modal
                 title={
                     <div className="flex flex-col">
-                        <Text className="text-xl font-medium">Chỉnh sửa thông tin công ty</Text>
-                        <Text className="text-gray-500 text-sm">Cập nhật thông tin doanh nghiệp của bạn</Text>
+                        <Text className="text-xl font-medium">Chỉnh sửa thông tin cá nhân</Text>
+                        <Text className="text-gray-500 text-sm">Cập nhật thông tin cá nhân của bạn</Text>
                     </div>
                 }
                 open={isModalOpen}
                 onCancel={handleCancel}
                 footer={null}
-                width={700}
-                className="edit-profile-modal"
+                width={600}
+                className="edit-personal-info-modal"
                 maskClosable={false}
                 destroyOnClose
             >
-                <EditProfileForm
-                    customerData={customerData}
+                <EditPersonalInfoForm
+                    userData={userData}
                     onSuccess={handleSuccess}
                 />
             </Modal>
@@ -76,4 +76,4 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData, onRef
     );
 };
 
-export default EditProfileModal; 
+export default EditPersonalInfoModal; 

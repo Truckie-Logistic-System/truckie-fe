@@ -207,16 +207,41 @@ const CustomerOrderDetail: React.FC = () => {
                                         <h3 className="text-md font-medium mb-3 text-gray-700 flex items-center">
                                             <FileTextOutlined className="mr-2 text-blue-500" /> Thông tin cơ bản
                                         </h3>
-                                        <Descriptions bordered column={{ xs: 1, sm: 1 }} size="small" layout="vertical">
-                                            <Descriptions.Item label="Mã theo dõi">{detail.trackingCode || "Chưa có"}</Descriptions.Item>
-                                            <Descriptions.Item label="Trạng thái">
-                                                <Tag color={getStatusColor(detail.status)}>{detail.status}</Tag>
-                                            </Descriptions.Item>
-                                            <Descriptions.Item label="Trọng lượng">
-                                                {detail.weightBaseUnit} {detail.unit}
-                                            </Descriptions.Item>
-                                            <Descriptions.Item label="Mô tả">{detail.description || "Không có mô tả"}</Descriptions.Item>
-                                        </Descriptions>
+                                        <table className="w-full border-collapse">
+                                            <thead>
+                                                <tr>
+                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">Thông tin</th>
+                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">Chi tiết</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Mã theo dõi</td>
+                                                    <td className="border border-gray-300 p-2">{detail.trackingCode || "Chưa có"}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Trạng thái</td>
+                                                    <td className="border border-gray-300 p-2">
+                                                        <span className={`px-2 py-1 rounded text-white bg-${detail.status === "PENDING" ? "orange-500" :
+                                                            detail.status === "PROCESSING" ? "blue-500" :
+                                                                detail.status === "DELIVERED" || detail.status === "SUCCESSFUL" ? "green-500" :
+                                                                    detail.status === "CANCELLED" || detail.status === "IN_TROUBLES" ? "red-500" :
+                                                                        "gray-500"
+                                                            }`}>
+                                                            {detail.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Trọng lượng</td>
+                                                    <td className="border border-gray-300 p-2">{detail.weightBaseUnit} {detail.unit}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Mô tả</td>
+                                                    <td className="border border-gray-300 p-2">{detail.description || "Không có mô tả"}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </Col>
 
@@ -225,12 +250,40 @@ const CustomerOrderDetail: React.FC = () => {
                                         <h3 className="text-md font-medium mb-3 text-gray-700 flex items-center">
                                             <HistoryOutlined className="mr-2 text-blue-500" /> Thông tin thời gian
                                         </h3>
-                                        <Descriptions bordered column={1} size="small" layout="horizontal">
-                                            <Descriptions.Item label="Thời gian bắt đầu">{formatDate(detail.startTime)}</Descriptions.Item>
-                                            <Descriptions.Item label="Thời gian kết thúc">{formatDate(detail.endTime)}</Descriptions.Item>
-                                            <Descriptions.Item label="Thời gian dự kiến bắt đầu">{formatDate(detail.estimatedStartTime)}</Descriptions.Item>
-                                            <Descriptions.Item label="Thời gian dự kiến kết thúc">{formatDate(detail.estimatedEndTime)}</Descriptions.Item>
-                                        </Descriptions>
+                                        <table className="w-full border-collapse">
+                                            <thead>
+                                                <tr>
+                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">Thời gian</th>
+                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">Ngày giờ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Thời gian bắt đầu</td>
+                                                    <td className="border border-gray-300 p-2">
+                                                        {detail.startTime ? new Date(detail.startTime).toLocaleString("vi-VN") : "Chưa có thông tin"}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Thời gian kết thúc</td>
+                                                    <td className="border border-gray-300 p-2">
+                                                        {detail.endTime ? new Date(detail.endTime).toLocaleString("vi-VN") : "Chưa có thông tin"}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Thời gian dự kiến bắt đầu</td>
+                                                    <td className="border border-gray-300 p-2">
+                                                        {detail.estimatedStartTime ? new Date(detail.estimatedStartTime).toLocaleString("vi-VN") : "Chưa có thông tin"}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Thời gian dự kiến kết thúc</td>
+                                                    <td className="border border-gray-300 p-2">
+                                                        {detail.estimatedEndTime ? new Date(detail.estimatedEndTime).toLocaleString("vi-VN") : "Chưa có thông tin"}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </Col>
                             </Row>
@@ -251,8 +304,8 @@ const CustomerOrderDetail: React.FC = () => {
                                         <tr>
                                             <td className="border border-gray-300 p-2">{detail.orderSize.description}</td>
                                             <td className="border border-gray-300 p-2">
-                                                {`${detail.orderSize.minLength} x ${detail.orderSize.minWidth} x ${detail.orderSize.minHeight} cm - 
-                                                ${detail.orderSize.maxLength} x ${detail.orderSize.maxWidth} x ${detail.orderSize.maxHeight} cm`}
+                                                {`${detail.orderSize.minLength} x ${detail.orderSize.minWidth} x ${detail.orderSize.minHeight} m - 
+                                                ${detail.orderSize.maxLength} x ${detail.orderSize.maxWidth} x ${detail.orderSize.maxHeight} m`}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -260,9 +313,9 @@ const CustomerOrderDetail: React.FC = () => {
                             </Card>
                         )}
 
-                        {/* Thông tin phương tiện vận chuyển */}
+                        {/* Thông tin chuyến xe */}
                         <Card className="mb-6 shadow-md rounded-xl">
-                            <Title level={5} className="mb-4">Thông tin phương tiện vận chuyển</Title>
+                            <Title level={5} className="mb-4">Thông tin chuyến xe</Title>
 
                             {detail.vehicleAssignment ? (
                                 <Tabs defaultActiveKey="vehicle" type="card">
@@ -270,80 +323,121 @@ const CustomerOrderDetail: React.FC = () => {
                                         tab={<span><CarOutlined /> Thông tin phương tiện</span>}
                                         key="vehicle"
                                     >
-                                        <Row gutter={[24, 24]}>
-                                            <Col xs={24} md={12}>
-                                                <Descriptions bordered column={1} size="small" layout="vertical">
-                                                    <Descriptions.Item label="Tên phương tiện">
-                                                        {detail.vehicleAssignment.vehicleName || "Chưa có thông tin"}
-                                                    </Descriptions.Item>
-                                                    <Descriptions.Item label="Biển số xe">
-                                                        {detail.vehicleAssignment.licensePlateNumber || "Chưa có thông tin"}
-                                                    </Descriptions.Item>
-                                                    <Descriptions.Item label="Trạng thái">
+                                        <table className="w-full border-collapse mb-4">
+                                            <thead>
+                                                <tr>
+                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left" colSpan={2}>Thông tin xe</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2 w-1/3">Tên phương tiện</td>
+                                                    <td className="border border-gray-300 p-2">{detail.vehicleAssignment.vehicleName || "Chưa có thông tin"}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Biển số xe</td>
+                                                    <td className="border border-gray-300 p-2">{detail.vehicleAssignment.licensePlateNumber || "Chưa có thông tin"}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Trạng thái</td>
+                                                    <td className="border border-gray-300 p-2">
                                                         {detail.vehicleAssignment.status ? (
-                                                            <Tag color={getStatusColor(detail.vehicleAssignment.status)}>
-                                                                {detail.vehicleAssignment.status}
-                                                            </Tag>
+                                                            <Tag color={getStatusColor(detail.vehicleAssignment.status)}>{detail.vehicleAssignment.status}</Tag>
                                                         ) : (
                                                             "Chưa có thông tin"
                                                         )}
-                                                    </Descriptions.Item>
-                                                </Descriptions>
-                                            </Col>
-                                            <Col xs={24} md={12}>
-                                                <Descriptions bordered column={1} size="small" layout="vertical">
-                                                    <Descriptions.Item label="Tài xế chính">
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <table className="w-full border-collapse">
+                                            <thead>
+                                                <tr>
+                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left" colSpan={2}>Thông tin tài xế</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2 w-1/3">Tài xế chính</td>
+                                                    <td className="border border-gray-300 p-2">
                                                         {detail.vehicleAssignment.primaryDriver
                                                             ? detail.vehicleAssignment.primaryDriver.fullName
                                                             : "Chưa có thông tin"}
-                                                    </Descriptions.Item>
-                                                    <Descriptions.Item label="SĐT tài xế chính">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">SĐT tài xế chính</td>
+                                                    <td className="border border-gray-300 p-2">
                                                         {detail.vehicleAssignment.primaryDriver
                                                             ? detail.vehicleAssignment.primaryDriver.phoneNumber
                                                             : "Chưa có thông tin"}
-                                                    </Descriptions.Item>
-                                                    <Descriptions.Item label="Tài xế phụ">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">Tài xế phụ</td>
+                                                    <td className="border border-gray-300 p-2">
                                                         {detail.vehicleAssignment.secondaryDriver
-                                                            ? `${detail.vehicleAssignment.secondaryDriver.fullName} (${detail.vehicleAssignment.secondaryDriver.phoneNumber})`
+                                                            ? detail.vehicleAssignment.secondaryDriver.fullName
                                                             : "Chưa có thông tin"}
-                                                    </Descriptions.Item>
-                                                </Descriptions>
-                                            </Col>
-                                        </Row>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">SĐT tài xế phụ</td>
+                                                    <td className="border border-gray-300 p-2">
+                                                        {detail.vehicleAssignment.secondaryDriver
+                                                            ? detail.vehicleAssignment.secondaryDriver.phoneNumber
+                                                            : "Chưa có thông tin"}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </TabPane>
 
-                                    {detail.vehicleAssignment.issue && (
+                                    {(detail.vehicleAssignment.issue) && (
                                         <TabPane
                                             tab={<span><ToolOutlined /> Sự cố</span>}
                                             key="issues"
                                         >
                                             <div>
-                                                <Row gutter={[24, 24]}>
-                                                    <Col xs={24} md={12}>
-                                                        <Descriptions bordered column={1} size="small" layout="vertical">
-                                                            <Descriptions.Item label="Mô tả">{detail.vehicleAssignment.issue.issue.description}</Descriptions.Item>
-                                                            <Descriptions.Item label="Trạng thái">
+                                                <table className="w-full border-collapse mb-4">
+                                                    <thead>
+                                                        <tr>
+                                                            <th className="border border-gray-300 bg-gray-50 p-2 text-left">Thông tin</th>
+                                                            <th className="border border-gray-300 bg-gray-50 p-2 text-left">Chi tiết</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td className="border border-gray-300 p-2">Mô tả</td>
+                                                            <td className="border border-gray-300 p-2">{detail.vehicleAssignment.issue.issue.description}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td className="border border-gray-300 p-2">Trạng thái</td>
+                                                            <td className="border border-gray-300 p-2">
                                                                 <Tag color={getStatusColor(detail.vehicleAssignment.issue.issue.status)}>
                                                                     {detail.vehicleAssignment.issue.issue.status}
                                                                 </Tag>
-                                                            </Descriptions.Item>
-                                                        </Descriptions>
-                                                    </Col>
-                                                    <Col xs={24} md={12}>
-                                                        <Descriptions bordered column={1} size="small" layout="vertical">
-                                                            <Descriptions.Item label="Loại sự cố">{detail.vehicleAssignment.issue.issue.issueTypeName}</Descriptions.Item>
-                                                            <Descriptions.Item label="Nhân viên xử lý">
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td className="border border-gray-300 p-2">Loại sự cố</td>
+                                                            <td className="border border-gray-300 p-2">{detail.vehicleAssignment.issue.issue.issueTypeName}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td className="border border-gray-300 p-2">Nhân viên xử lý</td>
+                                                            <td className="border border-gray-300 p-2">
                                                                 {detail.vehicleAssignment.issue.issue.staff.name} ({detail.vehicleAssignment.issue.issue.staff.phone})
-                                                            </Descriptions.Item>
-                                                        </Descriptions>
-                                                    </Col>
-                                                </Row>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
 
                                                 {detail.vehicleAssignment.issue.imageUrls && detail.vehicleAssignment.issue.imageUrls.length > 0 ? (
                                                     <div className="mt-4">
                                                         <p className="font-medium mb-2">Hình ảnh:</p>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {detail.vehicleAssignment.issue.imageUrls.map((url, idx) => (
+                                                            {detail.vehicleAssignment.issue.imageUrls.map((url: string, idx: number) => (
                                                                 <Image
                                                                     key={idx}
                                                                     src={url}
@@ -364,83 +458,96 @@ const CustomerOrderDetail: React.FC = () => {
                                         </TabPane>
                                     )}
 
-                                    {detail.vehicleAssignment.journeyHistory &&
-                                        detail.vehicleAssignment.journeyHistory.length > 0 && (
-                                            <TabPane
-                                                tab={<span><HistoryOutlined /> Lịch sử hành trình</span>}
-                                                key="journey"
-                                            >
-                                                <Timeline
-                                                    mode="left"
-                                                    items={detail.vehicleAssignment.journeyHistory.map((journey) => ({
-                                                        label: formatDate(journey.startTime),
-                                                        children: (
-                                                            <div>
-                                                                <p><span className="font-medium">Trạng thái:</span> {journey.status}</p>
-                                                                <p><span className="font-medium">Thời gian kết thúc:</span> {formatDate(journey.endTime)}</p>
-                                                                <p><span className="font-medium">Tổng quãng đường:</span> {journey.totalDistance} km</p>
-                                                                {journey.isReportedIncident && (
-                                                                    <Tag color="red">Có báo cáo sự cố</Tag>
+                                    {detail.vehicleAssignment.journeyHistory && detail.vehicleAssignment.journeyHistory.length > 0 && (
+                                        <TabPane
+                                            tab={<span><HistoryOutlined /> Lịch sử hành trình</span>}
+                                            key="journey"
+                                        >
+                                            <table className="w-full border-collapse">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Thời gian bắt đầu</th>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Thời gian kết thúc</th>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Trạng thái</th>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Quãng đường</th>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Báo cáo sự cố</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {detail.vehicleAssignment.journeyHistory.map((journey, idx) => (
+                                                        <tr key={journey.id}>
+                                                            <td className="border border-gray-300 p-2">{formatDate(journey.startTime)}</td>
+                                                            <td className="border border-gray-300 p-2">{formatDate(journey.endTime)}</td>
+                                                            <td className="border border-gray-300 p-2">{journey.status}</td>
+                                                            <td className="border border-gray-300 p-2">{journey.totalDistance} km</td>
+                                                            <td className="border border-gray-300 p-2">
+                                                                {journey.isReportedIncident ? (
+                                                                    <Tag color="red">Có</Tag>
+                                                                ) : (
+                                                                    <Tag color="green">Không</Tag>
                                                                 )}
-                                                            </div>
-                                                        ),
-                                                    }))}
-                                                />
-                                            </TabPane>
-                                        )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </TabPane>
+                                    )}
 
-                                    {detail.vehicleAssignment.orderSeals &&
-                                        detail.vehicleAssignment.orderSeals.length > 0 && (
-                                            <TabPane
-                                                tab={<span><FileTextOutlined /> Niêm phong</span>}
-                                                key="seals"
-                                            >
-                                                <div className="bg-gray-50 p-4 rounded-lg">
-                                                    {detail.vehicleAssignment.orderSeals.map((seal, idx) => (
-                                                        <div key={seal.id} className={idx > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}>
-                                                            <p className="mb-1">
-                                                                <span className="font-medium">Mô tả:</span> {seal.description}
-                                                            </p>
-                                                            <p className="mb-1">
-                                                                <span className="font-medium">Ngày niêm phong:</span> {formatDate(seal.sealDate)}
-                                                            </p>
-                                                            <p className="mb-0">
-                                                                <span className="font-medium">Trạng thái:</span>{" "}
+                                    {detail.vehicleAssignment.orderSeals && detail.vehicleAssignment.orderSeals.length > 0 && (
+                                        <TabPane
+                                            tab={<span><FileTextOutlined /> Niêm phong</span>}
+                                            key="seals"
+                                        >
+                                            <table className="w-full border-collapse">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Mô tả</th>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Ngày niêm phong</th>
+                                                        <th className="border border-gray-300 bg-gray-50 p-2 text-left">Trạng thái</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {detail.vehicleAssignment.orderSeals.map((seal) => (
+                                                        <tr key={seal.id}>
+                                                            <td className="border border-gray-300 p-2">{seal.description}</td>
+                                                            <td className="border border-gray-300 p-2">{formatDate(seal.sealDate)}</td>
+                                                            <td className="border border-gray-300 p-2">
                                                                 <Tag color={getStatusColor(seal.status)}>{seal.status}</Tag>
-                                                            </p>
-                                                        </div>
+                                                            </td>
+                                                        </tr>
                                                     ))}
-                                                </div>
-                                            </TabPane>
-                                        )}
+                                                </tbody>
+                                            </table>
+                                        </TabPane>
+                                    )}
 
-                                    {detail.vehicleAssignment.photoCompletions &&
-                                        detail.vehicleAssignment.photoCompletions.length > 0 && (
-                                            <TabPane
-                                                tab={<span><CameraOutlined /> Hình ảnh hoàn thành</span>}
-                                                key="photos"
-                                            >
-                                                <div className="flex flex-wrap gap-2">
-                                                    {detail.vehicleAssignment.photoCompletions.map((url, idx) => (
-                                                        <Image
-                                                            key={idx}
-                                                            src={url}
-                                                            alt={`Completion photo ${idx + 1}`}
-                                                            width={100}
-                                                            height={100}
-                                                            className="object-cover rounded"
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </TabPane>
-                                        )}
+                                    {detail.vehicleAssignment.photoCompletions && detail.vehicleAssignment.photoCompletions.length > 0 && (
+                                        <TabPane
+                                            tab={<span><CameraOutlined /> Hình ảnh hoàn thành</span>}
+                                            key="photos"
+                                        >
+                                            <div className="flex flex-wrap gap-2">
+                                                {detail.vehicleAssignment.photoCompletions.map((url, idx) => (
+                                                    <Image
+                                                        key={idx}
+                                                        src={url}
+                                                        alt={`Completion photo ${idx + 1}`}
+                                                        width={100}
+                                                        height={100}
+                                                        className="object-cover rounded"
+                                                    />
+                                                ))}
+                                            </div>
+                                        </TabPane>
+                                    )}
                                 </Tabs>
                             ) : (
                                 <div className="text-center py-8">
                                     <Empty
                                         description={
                                             <div>
-                                                <p className="text-gray-500 mb-2">Chưa có thông tin phương tiện vận chuyển</p>
+                                                <p className="text-gray-500 mb-2">Chưa có Thông tin chuyến xe</p>
                                                 <p className="text-gray-400 text-sm">Đơn hàng sẽ được gán phương tiện vận chuyển trong thời gian tới</p>
                                             </div>
                                         }

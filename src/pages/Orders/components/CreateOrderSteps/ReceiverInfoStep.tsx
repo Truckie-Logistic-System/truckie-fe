@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Form, Input, Select, Typography, DatePicker, Divider, Skeleton, App } from "antd";
+import { Form, Input, Select, Typography, DatePicker, Divider, Skeleton, App, Row, Col, DatePicker } from "antd";
 import type { Category } from "../../../../models/Category";
 import dayjs from "dayjs";
 import ReceiverSuggestions from "./ReceiverSuggestions";
@@ -49,37 +49,28 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
 
   return (
     <>
-      <Title level={4}>Thông tin người nhận</Title>
-
-      <Text className="text-gray-500 mb-2 block">
-        Bạn có thể tìm kiếm người nhận gần đây để tự động điền thông tin
-      </Text>
-
-      <ReceiverSuggestions onSelect={handleSuggestionSelect} />
-
-      <Divider className="my-4" />
-
-      {loadingReceiverDetails ? (
-        <div className="space-y-4">
-          <Skeleton.Input active block style={{ height: 40 }} />
-          <Skeleton.Input active block style={{ height: 40 }} />
-          <Skeleton.Input active block style={{ height: 40 }} />
-        </div>
-      ) : (
-        <>
+      <Title level={4}>Thông tin cơ bản</Title>
+      <Row gutter={16}>
+        <Col span={8}>
           <Form.Item
             name="receiverName"
             label="Tên người nhận"
-            rules={[{ required: true, message: "Vui lòng nhập tên người nhận" }]}
+            rules={[
+              { required: true, message: "Vui lòng nhập tên người nhận" },
+            ]}
           >
             <Input placeholder="Nhập tên người nhận" />
           </Form.Item>
-
+        </Col>
+        <Col span={6}>
           <Form.Item
             name="receiverPhone"
             label="Số điện thoại người nhận"
             rules={[
-              { required: true, message: "Vui lòng nhập số điện thoại người nhận" },
+              {
+                required: true,
+                message: "Vui lòng nhập số điện thoại người nhận",
+              },
               {
                 pattern: /^[0-9]{10}$/,
                 message: "Số điện thoại phải có 10 chữ số",
@@ -88,6 +79,26 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
           >
             <Input placeholder="Nhập số điện thoại người nhận" />
           </Form.Item>
+        </Col>
+        <Col span={8}>
+          <Form.Item
+            name="receiverIdentity"
+            label="CCCD người nhận"
+            rules={[
+              { required: true, message: "Vui lòng nhập CCCD người nhận" },
+              {
+                pattern: /^[0-9]{12}$/,
+                message: "CCCD phải có 12 chữ số",
+              },
+            ]}
+          >
+            <Input placeholder="Nhập số CCCD người nhận" maxLength={12} />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col span={8}>
 
           <Form.Item
             name="categoryId"
@@ -102,25 +113,19 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
               ))}
             </Select>
           </Form.Item>
-
-          <Form.Item
-            name="packageDescription"
-            label="Mô tả đơn hàng"
-            rules={[{ required: true, message: "Vui lòng nhập mô tả đơn hàng" }]}
-          >
-            <Input.TextArea rows={4} placeholder="Mô tả chi tiết về đơn hàng" />
-          </Form.Item>
-
+        </Col>
+        <Col span={8}>
           <Form.Item
             name="estimateStartTime"
-            label="Thời gian nhận hàng dự kiến"
+            label="Thời gian lấy hàng dự kiến"
             rules={[
-              { required: true, message: "Vui lòng chọn thời gian nhận hàng" },
+              { required: true, message: "Vui lòng chọn thời gian lấy hàng" },
             ]}
           >
             <DatePicker
               showTime
-              placeholder="Chọn ngày và giờ nhận hàng"
+              placeholder="Chọn ngày và giờ lấy hàng"
+
               style={{ width: "100%" }}
               disabledDate={(current) =>
                 current && current < dayjs().startOf("day")
@@ -128,8 +133,16 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
               format="DD/MM/YYYY HH:mm"
             />
           </Form.Item>
-        </>
-      )}
+        </Col>
+      </Row>
+
+      <Form.Item
+        name="packageDescription"
+        label="Mô tả gói hàng"
+        rules={[{ required: true, message: "Vui lòng nhập mô tả gói hàng" }]}
+      >
+        <Input.TextArea rows={4} placeholder="Mô tả chi tiết về gói hàng" />
+      </Form.Item>
     </>
   );
 };

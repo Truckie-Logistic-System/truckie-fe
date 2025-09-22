@@ -14,14 +14,24 @@ interface VehicleStatusTagProps {
     status: VehicleStatusEnum;
     className?: string;
     size?: 'small' | 'default' | 'large';
+    showIcon?: boolean;
+    showText?: boolean;
 }
 
 /**
  * Component hiển thị trạng thái phương tiện với kiểu dáng phù hợp
  */
-const VehicleStatusTag: React.FC<VehicleStatusTagProps> = ({ status, className, size }) => {
+const VehicleStatusTag: React.FC<VehicleStatusTagProps> = ({
+    status,
+    className,
+    size = 'small',
+    showIcon = true,
+    showText = true
+}) => {
     // Xác định icon dựa vào trạng thái
     const getStatusIcon = (status: VehicleStatusEnum) => {
+        if (!showIcon) return null;
+
         switch (status) {
             case VehicleStatusEnum.ACTIVE:
                 return <CheckCircleOutlined />;
@@ -40,12 +50,18 @@ const VehicleStatusTag: React.FC<VehicleStatusTagProps> = ({ status, className, 
         }
     };
 
+    // Lấy nhãn trạng thái
+    const getStatusLabel = (status: VehicleStatusEnum) => {
+        if (!showText) return '';
+        return VehicleStatusLabels[status] || status;
+    };
+
     return (
         <StatusTag
             status={status}
             colorClass={VehicleStatusColors[status]}
-            label={VehicleStatusLabels[status]}
-            className={className}
+            label={getStatusLabel(status)}
+            className={`whitespace-nowrap flex-shrink-0 ${className || ''}`}
             icon={getStatusIcon(status)}
             size={size}
         />

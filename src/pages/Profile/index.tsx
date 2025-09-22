@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Tabs, Skeleton, Alert, Row, Col, Typography } from 'antd';
-import { UserOutlined, TeamOutlined, LockOutlined } from '@ant-design/icons';
+import { UserOutlined, TeamOutlined, LockOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useAuth } from '../../context';
+import { useQuery } from '@tanstack/react-query';
 import ProfileSummaryCard from './components/ProfileSummaryCard';
 import PersonalInfoTab from './components/PersonalInfoTab';
 import CompanyInfoTab from './components/CompanyInfoTab';
 import PasswordChangeTab from './components/PasswordChangeTab';
+import AddressTab from './components/AddressTab';
 import customerService from '../../services/customer/customerService';
 import type { Customer } from '../../models/Customer';
+import type { UserModel } from '../../models/User';
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
@@ -16,29 +19,34 @@ const { Title, Text } = Typography;
 const ProfilePage = () => {
     const { userId } = useParams<{ userId: string }>();
     const { user: authUser } = useAuth();
+    const isOwnProfile = !userId || userId === authUser?.id;
     const currentUserId = userId || localStorage.getItem('userId') || authUser?.id || '';
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<any>(null);
-    const [customerData, setCustomerData] = useState<Customer | null>(null);
+    // Use React Query for data fetching - use getMyProfile for current user, getCustomerProfile for others
+    const {
+        data: customerData,
+        isLoading,
+        isError,
+        error,
+        refetch
+    } = useQuery({
+        queryKey: ['customerProfile', isOwnProfile ? 'me' : currentUserId],
+        queryFn: async () => {
+            const result = isOwnProfile
+                ? await customerService.getMyProfile()
+                : await customerService.getCustomerProfile(currentUserId);
+            console.log('API Response:', result);
+            return result;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const data = await customerService.getCustomerProfile(currentUserId);
-                setCustomerData(data);
-            } catch (err) {
-                setError(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    // Function to refresh data after updates
+    const refreshData = useCallback(() => {
+        refetch();
+    }, [refetch]);
 
-        fetchData();
-    }, [currentUserId]);
-
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -66,7 +74,7 @@ const ProfilePage = () => {
         );
     }
 
-    if (error) {
+    if (isError) {
         return (
             <div className="p-4">
                 <Alert
@@ -80,7 +88,8 @@ const ProfilePage = () => {
     }
 
     const userResponse = customerData?.userResponse;
-    const isOwnProfile = !userId || userId === authUser?.id;
+    // Trích xuất dữ liệu người dùng từ userResponse
+    const userData: UserModel | undefined = userResponse;
 
     return (
         <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
@@ -108,6 +117,7 @@ const ProfilePage = () => {
                                     <CompanyInfoTab
                                         customerData={customerData}
                                         isOwnProfile={isOwnProfile}
+                                        onRefresh={refreshData}
                                     />
                                 </TabPane>
 
@@ -115,7 +125,18 @@ const ProfilePage = () => {
                                     tab={<span className="flex items-center gap-2"><UserOutlined />Thông tin cá nhân</span>}
                                     key="personal"
                                 >
-                                    <PersonalInfoTab user={userResponse} />
+                                    <PersonalInfoTab
+                                        user={userData}
+                                        isOwnProfile={isOwnProfile}
+                                        onRefresh={refreshData}
+                                    />
+                                </TabPane>
+
+                                <TabPane
+                                    tab={<span className="flex items-center gap-2"><EnvironmentOutlined />Địa chỉ của tôi</span>}
+                                    key="addresses"
+                                >
+                                    <AddressTab customerId={customerData?.id || ''} />
                                 </TabPane>
 
                                 <TabPane

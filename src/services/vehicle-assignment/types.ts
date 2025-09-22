@@ -1,4 +1,5 @@
-import type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest } from "../../models";
+import type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest, VehicleAssignmentSuggestion, CreateVehicleAssignmentForDetailsRequest } from "../../models/VehicleAssignment";
+import type { ApiResponse } from "../api/types";
 
 export interface VehicleAssignmentResponse {
     success: boolean;
@@ -14,4 +15,13 @@ export interface VehicleAssignmentDetailResponse {
     data: VehicleAssignment;
 }
 
-export type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest }; 
+export type VehicleAssignmentSuggestionResponse = VehicleAssignmentSuggestion;
+
+export interface CreateVehicleAssignmentForDetailsResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: any; // The response structure depends on the API
+}
+
+export type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest, VehicleAssignmentSuggestion, CreateVehicleAssignmentForDetailsRequest }; 

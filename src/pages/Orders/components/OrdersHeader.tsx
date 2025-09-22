@@ -3,7 +3,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Button, Typography } from "antd";
 
-const { Text, Title } = Typography;
+const { Title } = Typography;
+
 const OrdersHeader: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto mt-5">

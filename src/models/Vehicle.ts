@@ -15,6 +15,7 @@ export interface VehicleType {
     id: string;
     vehicleTypeName: string;
     description: string;
+    vehicleCount?: number;
 }
 
 export interface VehicleAssignment {

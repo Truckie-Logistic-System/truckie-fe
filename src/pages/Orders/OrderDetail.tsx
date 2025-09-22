@@ -7,6 +7,12 @@ import {
   DeleteOutlined,
   ExclamationCircleOutlined,
   FileTextOutlined,
+  DollarOutlined,
+  CameraOutlined,
+  TruckOutlined,
+  UserOutlined,
+  WarningOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import orderService from "../../services/order/orderService";
 import { contractService } from "../../services/contract";
@@ -328,7 +334,6 @@ const OrderDetailPage: React.FC = () => {
               addonAfter="VNĐ"
             />
           </Form.Item>
-
           <Form.Item
             label="Mô tả"
             name="description"

@@ -1,0 +1,122 @@
+/* Styles for Vehicle Page */
+
+/* Đảm bảo các card có chiều cao đồng đều */
+.ant-card.h-full {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ant-card.h-full .ant-card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Đảm bảo các thẻ có chiều cao đồng đều */
+.vehicle-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+/* Đảm bảo các thông tin trong card không bị tràn */
+.vehicle-info-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+}
+
+.vehicle-info-label {
+    color: rgba(0, 0, 0, 0.45);
+    font-size: 12px;
+}
+
+.vehicle-info-value {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Đảm bảo nút thao tác luôn nằm ở dưới cùng */
+.vehicle-card-actions {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Đảm bảo các panel collapse có padding đồng đều */
+.ant-collapse-content-box {
+    padding: 16px !important;
+}
+
+/* Đảm bảo các thẻ trong grid có kích thước đồng đều */
+.equal-height-cards .ant-col {
+    display: flex;
+}
+
+.equal-height-cards .ant-card {
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+/* Đảm bảo tiêu đề card không bị tràn */
+.ant-card-head-title {
+    white-space: normal !important;
+    overflow: hidden !important;
+}
+
+/* Đảm bảo biển số xe không bị tràn */
+.ant-card-head-title .truncate {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Đảm bảo status tag hiển thị đúng */
+.ant-card-head-title .flex-shrink-0 {
+    min-width: 90px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+}
+
+/* Đảm bảo text trong status tag được căn giữa */
+.ant-card-head-title .flex-shrink-0 span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+}
+
+/* Đảm bảo icon và text trong status tag được căn giữa */
+.inline-flex.items-center.justify-center {
+    width: 100%;
+    text-align: center;
+}
+
+/* Style cho header của group vehicle type */
+.vehicle-type-panel>.ant-collapse-header {
+    background-color: #f0f7ff !important;
+    border-radius: 4px !important;
+    padding: 12px 16px !important;
+}
+
+.vehicle-type-panel>.ant-collapse-header:hover {
+    background-color: #e6f4ff !important;
+}
+
+/* Style cho title trong header */
+.vehicle-type-panel .ant-typography {
+    margin: 0 !important;
+}
+
+/* Style cho card header */
+.ant-card-head {
+    min-height: 48px !important;
+}

@@ -1,6 +1,5 @@
 import React from "react";
-import { Form, Input, Button, InputNumber, Select, Card } from "antd";
-import type { FormInstance } from "antd";
+import { Form, Input, Button, InputNumber, Select, Card, Row, Col } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { OrderSize } from "../../../models/OrderSize";
 
@@ -19,6 +18,13 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   units = ["Kí", "Yến", "Tạ", "Tấn"], // Default units if API fails
   form,
 }) => {
+  const weightUnits = [
+    { value: "Kí", label: "Kilogram" },
+    { value: "Yến", label: "Yến" },
+    { value: "Tạ", label: "Tạ" },
+    { value: "Tấn", label: "Tấn" },
+  ];
+
   return (
     <Form.Item label={label}>
       <Form.List name={name}>
@@ -44,100 +50,137 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                 }
                 style={{ marginBottom: 16 }}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Form.Item
-                    {...restField}
-                    name={[fieldName, "weight"]}
-                    label="Trọng lượng"
-                    rules={[
-                      { required: true, message: "Vui lòng nhập trọng lượng!" },
-                    ]}
-                    style={{ marginBottom: 16 }}
-                  >
-                    <InputNumber
-                      min={0.1}
-                      max={10000}
-                      step={0.1}
-                      placeholder="Nhập trọng lượng"
-                      style={{ width: "100%" }}
-                    />
-                  </Form.Item>
+                <Row gutter={12}>
+                  <Col span={14}>
+                    <Row gutter={12}>
+                      <Col span={5}>
+                        <Form.Item
+                          {...restField}
+                          name={[fieldName, "quantity"]}
+                          label="Số lượng"
+                          rules={[
+                            {
+                              required: true,
+                              message: "Vui lòng nhập số lượng!",
+                            },
+                            {
+                              type: "number",
+                              min: 1,
+                              message: "Số lượng phải lớn hơn 0",
+                            },
+                          ]}
+                          initialValue={1}
+                          style={{ marginBottom: 16 }}
+                        >
+                          <InputNumber
+                            min={1}
+                            //max={100}
+                            step={1}
+                            placeholder="Nhập số lượng"
+                            style={{ width: "90%" }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={19}>
+                        <Form.Item
+                          {...restField}
+                          name={[fieldName, "orderSizeId"]}
+                          label="Khoảng kích thước (Dài x Cao x Rộng)"
+                          rules={[
+                            {
+                              required: true,
+                              message: "Vui lòng chọn kích thước!",
+                            },
+                          ]}
+                          style={{ marginBottom: 16 }}
+                        >
+                          <Select placeholder="Chọn kích thước phù hợp">
+                            {orderSizes.map((size) => (
+                              <Select.Option key={size.id} value={size.id}>
+                                {size.minLength} x {size.minHeight} x{" "}
+                                {size.minWidth} - {size.maxLength} x{" "}
+                                {size.maxHeight} x {size.maxWidth} (m)
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Row gutter={12}>
+                      <Col span={14}>
+                        <Form.Item
+                          {...restField}
+                          name={[fieldName, "weight"]}
+                          label="Trọng lượng"
+                          rules={[
+                            {
+                              required: true,
+                              message: "Vui lòng nhập trọng lượng!",
+                            },
+                            {
+                              type: "number",
+                              min: 0.1,
+                              message: "Trọng lượng phải lớn hơn 0",
+                            },
+                          ]}
+                          style={{ marginBottom: 16 }}
+                        >
+                          <InputNumber
+                            min={0.1}
+                            max={10000}
+                            step={0.1}
+                            precision={2}
+                            placeholder="Nhập trọng lượng"
+                            style={{ width: "100%" }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={10}>
+                        <Form.Item
+                          {...restField}
+                          name={[fieldName, "unit"]}
+                          label="Đơn vị"
+                          rules={[
+                            {
+                              required: true,
+                              message: "Vui lòng chọn đơn vị!",
+                            },
+                          ]}
+                          initialValue="Kí"
+                          style={{ marginBottom: 16 }}
+                        >
+                          <Select placeholder="Chọn đơn vị">
+                            {weightUnits.map((unit) => (
+                              <Select.Option
+                                key={unit.value}
+                                value={unit.value}
+                              >
+                                {unit.label}
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Col>
+                  <Col span={10}>
+                    <Form.Item
+                      {...restField}
+                      name={[fieldName, "description"]}
+                      label="Mô tả chi tiết"
+                      rules={[
+                        { required: true, message: "Vui lòng nhập mô tả!" },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input.TextArea
+                        rows={5}
+                        placeholder="Mô tả chi tiết gói hàng này (ví dụ: 100x50x30 cm, đồ điện tử)"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
 
-                  <Form.Item
-                    {...restField}
-                    name={[fieldName, "unit"]}
-                    label="Đơn vị"
-                    initialValue={units.length > 0 ? units[0] : undefined}
-                    rules={[
-                      { required: true, message: "Vui lòng chọn đơn vị!" },
-                    ]}
-                    style={{ marginBottom: 16 }}
-                  >
-                    {/* Chỉ sử dụng đơn vị từ API, không hardcode giá trị mặc định */}
-                    <Select placeholder="Chọn đơn vị">
-                      {units.map((unit) => (
-                        <Select.Option key={unit} value={unit}>
-                          {unit}
-                        </Select.Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-
-                  <Form.Item
-                    {...restField}
-                    name={[fieldName, "quantity"]}
-                    label="Số lượng"
-                    initialValue={1}
-                    rules={[
-                      { required: true, message: "Vui lòng nhập số lượng!" },
-                    ]}
-                    style={{ marginBottom: 16 }}
-                    tooltip="Số lượng lô hàng giống hệt nhau"
-                  >
-                    <InputNumber
-                      min={1}
-                      max={100}
-                      step={1}
-                      placeholder="Nhập số lượng"
-                      style={{ width: "100%" }}
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    {...restField}
-                    name={[fieldName, "orderSizeId"]}
-                    label="Kích thước"
-                    rules={[
-                      { required: true, message: "Vui lòng chọn kích thước!" },
-                    ]}
-                    style={{ marginBottom: 16 }}
-                  >
-                    <Select placeholder="Chọn kích thước">
-                      {orderSizes.map((size) => (
-                        <Select.Option key={size.id} value={size.id}>
-                          {size.minWidth} - {size.maxWidth} x {size.minLength} -{" "}
-                          {size.maxLength} x {size.minHeight} - {size.maxHeight}{" "}
-                        </Select.Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-
-                  <Form.Item
-                    {...restField}
-                    name={[fieldName, "description"]}
-                    label="Mô tả chi tiết"
-                    rules={[
-                      { required: true, message: "Vui lòng nhập mô tả!" },
-                    ]}
-                    style={{ marginBottom: 0 }}
-                    className="md:col-span-2 lg:col-span-4"
-                  >
-                    <Input.TextArea
-                      rows={2}
-                      placeholder="Mô tả chi tiết lô hàng này (ví dụ: 100x50x30 cm, đồ điện tử)"
-                    />
-                  </Form.Item>
-                </div>
               </Card>
             ))}
 
