@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Form, Select, Input, Button, Tabs, Card, Row, Col, Tag, Tooltip, App, Spin, Empty, Divider, Skeleton } from "antd";
 import { CarOutlined, UserOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, FileTextOutlined, BoxPlotOutlined } from "@ant-design/icons";
-import type { VehicleSuggestion, SuggestedDriver, VehicleAssignmentSuggestionData, CreateVehicleAssignmentForDetailsRequest } from "../../../../models/VehicleAssignment";
+import type { VehicleSuggestion, SuggestedDriver, CreateGroupedVehicleAssignmentsRequest, OrderDetailGroup, GroupedVehicleAssignmentSuggestionData, GroupAssignment, OrderDetailInfo } from "../../../../models/VehicleAssignment";
 import { vehicleAssignmentService } from "../../../../services/vehicle-assignment/vehicleAssignmentService";
 
 const { TabPane } = Tabs;
@@ -17,7 +17,7 @@ interface VehicleAssignmentModalProps {
 }
 
 interface AssignmentFormData {
-    [detailId: string]: {
+    [groupIndex: string]: {
         vehicleId: string;
         driverId_1: string;
         driverId_2: string;
@@ -35,11 +35,12 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [suggestions, setSuggestions] = useState<VehicleAssignmentSuggestionData | null>(null);
+    const [suggestions, setSuggestions] = useState<GroupedVehicleAssignmentSuggestionData | null>(null);
     const [activeTab, setActiveTab] = useState<string>("0");
     const messageApi = App.useApp().message;
     const [selectedVehicles, setSelectedVehicles] = useState<Record<string, string>>({});
     const [selectedDrivers, setSelectedDrivers] = useState<Record<string, { driver1: string; driver2: string }>>({});
+    const [detailGroups, setDetailGroups] = useState<OrderDetailGroup[]>([]);
     const [suggestionsMap, setSuggestionsMap] = useState<Record<string, VehicleSuggestion[]>>({});
 
     // Fetch suggestions when modal opens
@@ -59,7 +60,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         setLoading(true);
         try {
             console.log("Fetching suggestions for order ID:", orderId);
-            const response = await vehicleAssignmentService.getSuggestionsForOrderDetails(orderId);
+            const response = await vehicleAssignmentService.getGroupedSuggestionsForOrderDetails(orderId);
             console.log("Received suggestions response:", response);
 
             if (!response || !response.data) {
@@ -75,86 +76,92 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             console.log("Extracted suggestions data:", suggestionsData);
             setSuggestions(suggestionsData);
 
-            // Create a map of suggestions by detail ID or tracking code
-            let suggestionsByKey: Record<string, VehicleSuggestion[]> = {};
+            // Store the detail groups
+            const groups = suggestionsData.groups || [];
+            setDetailGroups(groups);
 
-            if (suggestionsData.suggestionsByDetailId) {
-                suggestionsByKey = suggestionsData.suggestionsByDetailId;
-                console.log("Using suggestionsByDetailId");
-            } else if (suggestionsData.suggestionsByTrackingCode) {
-                suggestionsByKey = suggestionsData.suggestionsByTrackingCode;
-                console.log("Using suggestionsByTrackingCode");
-            } else {
-                console.error("No suggestions found in response");
-                messageApi.error("Không tìm thấy gợi ý phân công xe");
-                setLoading(false);
-                return;
-            }
+            // Create a map of vehicles by group index
+            let newSuggestionsMap: Record<string, VehicleSuggestion[]> = {};
 
-            setSuggestionsMap(suggestionsByKey);
+            groups.forEach((group: OrderDetailGroup, index: number) => {
+                newSuggestionsMap[index.toString()] = group.suggestedVehicles || [];
+            });
+
+            setSuggestionsMap(newSuggestionsMap);
 
             // Pre-fill form with recommended options
             const initialValues: AssignmentFormData = {};
             const initialSelectedVehicles: Record<string, string> = {};
             const initialSelectedDrivers: Record<string, { driver1: string; driver2: string }> = {};
 
-            // Match order details with suggestions
-            orderDetails.forEach(detail => {
-                const detailId = detail.id;
-                const trackingCode = detail.trackingCode;
+            // Process each group
+            groups.forEach((group: OrderDetailGroup, groupIndex: number) => {
+                const groupKey = groupIndex.toString();
+                const vehicles = group.suggestedVehicles || [];
 
-                // Try to find suggestions by detail ID or tracking code
-                const vehicleSuggestions = suggestionsByKey[detailId] || suggestionsByKey[trackingCode];
+                // Find recommended vehicle
+                const recommendedVehicle = vehicles.find((v: VehicleSuggestion) => v.isRecommended);
 
-                if (vehicleSuggestions && vehicleSuggestions.length > 0) {
-                    console.log(`Found suggestions for detail ${detailId} / tracking code ${trackingCode}`);
+                if (recommendedVehicle) {
+                    console.log(`Found recommended vehicle for group ${groupIndex}:`, recommendedVehicle);
+                    const recommendedDrivers = recommendedVehicle.suggestedDrivers
+                        .filter((d: SuggestedDriver) => d.isRecommended)
+                        .slice(0, 2);
 
-                    const recommendedVehicle = vehicleSuggestions.find(v => v.isRecommended);
+                    // Ensure we have at least two drivers
+                    if (recommendedDrivers.length >= 2) {
+                        initialValues[groupKey] = {
+                            vehicleId: recommendedVehicle.id,
+                            driverId_1: recommendedDrivers[0].id,
+                            driverId_2: recommendedDrivers[1].id,
+                            description: ''
+                        };
 
-                    if (recommendedVehicle) {
-                        console.log("Found recommended vehicle:", recommendedVehicle);
-                        const recommendedDrivers = recommendedVehicle.suggestedDrivers
-                            .filter(d => d.isRecommended)
-                            .slice(0, 2);
+                        // Store selected vehicles and drivers for rendering
+                        initialSelectedVehicles[groupKey] = recommendedVehicle.id;
+                        initialSelectedDrivers[groupKey] = {
+                            driver1: recommendedDrivers[0].id,
+                            driver2: recommendedDrivers[1].id
+                        };
+                    } else if (recommendedDrivers.length === 1 && recommendedVehicle.suggestedDrivers.length >= 2) {
+                        // If we only have one recommended driver but there are others available
+                        const secondDriver = recommendedVehicle.suggestedDrivers.find(d => d.id !== recommendedDrivers[0].id);
 
-                        // Ensure we have at least two drivers
-                        if (recommendedDrivers.length >= 2) {
-                            initialValues[detailId] = {
+                        if (secondDriver) {
+                            initialValues[groupKey] = {
                                 vehicleId: recommendedVehicle.id,
                                 driverId_1: recommendedDrivers[0].id,
-                                driverId_2: recommendedDrivers[1].id,
+                                driverId_2: secondDriver.id,
                                 description: ''
                             };
 
                             // Store selected vehicles and drivers for rendering
-                            initialSelectedVehicles[detailId] = recommendedVehicle.id;
-                            initialSelectedDrivers[detailId] = {
+                            initialSelectedVehicles[groupKey] = recommendedVehicle.id;
+                            initialSelectedDrivers[groupKey] = {
                                 driver1: recommendedDrivers[0].id,
-                                driver2: recommendedDrivers[1].id
+                                driver2: secondDriver.id
                             };
-                        } else if (recommendedDrivers.length === 1 && recommendedVehicle.suggestedDrivers.length >= 2) {
-                            // If we only have one recommended driver but there are others available
-                            const secondDriver = recommendedVehicle.suggestedDrivers.find(d => d.id !== recommendedDrivers[0].id);
-
-                            if (secondDriver) {
-                                initialValues[detailId] = {
-                                    vehicleId: recommendedVehicle.id,
-                                    driverId_1: recommendedDrivers[0].id,
-                                    driverId_2: secondDriver.id,
-                                    description: ''
-                                };
-
-                                // Store selected vehicles and drivers for rendering
-                                initialSelectedVehicles[detailId] = recommendedVehicle.id;
-                                initialSelectedDrivers[detailId] = {
-                                    driver1: recommendedDrivers[0].id,
-                                    driver2: secondDriver.id
-                                };
-                            }
                         }
                     }
-                } else {
-                    console.log(`No suggestions found for detail ${detailId} / tracking code ${trackingCode}`);
+                } else if (vehicles.length > 0) {
+                    // If no recommended vehicle, use the first one
+                    const firstVehicle = vehicles[0];
+                    const availableDrivers = firstVehicle.suggestedDrivers || [];
+
+                    if (availableDrivers.length >= 2) {
+                        initialValues[groupKey] = {
+                            vehicleId: firstVehicle.id,
+                            driverId_1: availableDrivers[0].id,
+                            driverId_2: availableDrivers[1].id,
+                            description: ''
+                        };
+
+                        initialSelectedVehicles[groupKey] = firstVehicle.id;
+                        initialSelectedDrivers[groupKey] = {
+                            driver1: availableDrivers[0].id,
+                            driver2: availableDrivers[1].id
+                        };
+                    }
                 }
             });
 
@@ -176,26 +183,32 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             setSubmitting(true);
 
             // Format the request according to the required structure
-            const assignments: Record<string, any> = {};
+            const groupAssignments: GroupAssignment[] = [];
 
             // Convert the form values to the expected API format
-            Object.entries(values).forEach(([detailId, detailData]: [string, any]) => {
-                assignments[detailId] = {
-                    vehicleId: detailData.vehicleId,
-                    driverId_1: detailData.driverId_1,
-                    driverId_2: detailData.driverId_2,
-                    description: detailData.description || ""
-                };
+            Object.entries(values).forEach(([groupKey, groupData]: [string, any]) => {
+                const groupIndex = parseInt(groupKey);
+                const group = detailGroups[groupIndex];
+
+                if (group && group.orderDetails) {
+                    groupAssignments.push({
+                        orderDetailIds: group.orderDetails.map((detail: OrderDetailInfo) => detail.id),
+                        vehicleId: groupData.vehicleId,
+                        driverId_1: groupData.driverId_1,
+                        driverId_2: groupData.driverId_2,
+                        description: groupData.description || ""
+                    });
+                }
             });
 
-            const request: CreateVehicleAssignmentForDetailsRequest = {
-                assignments: assignments
+            const request: CreateGroupedVehicleAssignmentsRequest = {
+                groupAssignments: groupAssignments
             };
 
             // Debug log to show the final request structure
             console.log("Final assignment request structure:", JSON.stringify(request, null, 2));
 
-            await vehicleAssignmentService.createAndAssignForDetails(request);
+            await vehicleAssignmentService.createGroupedAssignments(request);
             messageApi.success("Phân công xe thành công");
             onSuccess();
             onClose();
@@ -207,19 +220,19 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         }
     };
 
-    const handleVehicleChange = (detailId: string, vehicleId: string) => {
-        console.log(`Vehicle changed for detail ${detailId}: ${vehicleId}`);
-        setSelectedVehicles(prev => ({ ...prev, [detailId]: vehicleId }));
+    const handleVehicleChange = (groupKey: string, vehicleId: string) => {
+        console.log(`Vehicle changed for group ${groupKey}: ${vehicleId}`);
+        setSelectedVehicles(prev => ({ ...prev, [groupKey]: vehicleId }));
 
-        // Get vehicle suggestions for this detail
-        const vehicleSuggestions = getSuggestionsForDetail({ id: detailId });
-        if (!vehicleSuggestions || vehicleSuggestions.length === 0) {
+        // Get vehicle suggestions for this group
+        const groupSuggestions = getSuggestionsForGroup(groupKey);
+        if (!groupSuggestions || groupSuggestions.length === 0) {
             console.log("No vehicle suggestions found for auto-fill drivers");
             return;
         }
 
         // Find the selected vehicle
-        const selectedVehicle = vehicleSuggestions.find(v => v.id === vehicleId);
+        const selectedVehicle = groupSuggestions.find(v => v.id === vehicleId);
         if (!selectedVehicle) {
             console.log("Selected vehicle not found in suggestions");
             return;
@@ -232,8 +245,8 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
 
             // Reset driver selections when vehicle changes
             form.setFieldsValue({
-                [detailId]: {
-                    ...form.getFieldValue(detailId),
+                [groupKey]: {
+                    ...form.getFieldValue(groupKey),
                     driverId_1: undefined,
                     driverId_2: undefined
                 }
@@ -241,7 +254,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
 
             setSelectedDrivers(prev => ({
                 ...prev,
-                [detailId]: { driver1: '', driver2: '' }
+                [groupKey]: { driver1: '', driver2: '' }
             }));
 
             return;
@@ -320,8 +333,8 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
 
         // Update form with selected drivers
         form.setFieldsValue({
-            [detailId]: {
-                ...form.getFieldValue(detailId),
+            [groupKey]: {
+                ...form.getFieldValue(groupKey),
                 driverId_1: driver1.id,
                 driverId_2: driver2.id
             }
@@ -330,62 +343,62 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         // Update selected drivers state
         setSelectedDrivers(prev => ({
             ...prev,
-            [detailId]: { driver1: driver1.id, driver2: driver2.id }
+            [groupKey]: { driver1: driver1.id, driver2: driver2.id }
         }));
 
-        console.log(`Auto-filled drivers for detail ${detailId}: Driver1=${driver1.fullName}, Driver2=${driver2.fullName}`);
+        console.log(`Auto-filled drivers for group ${groupKey}: Driver1=${driver1.fullName}, Driver2=${driver2.fullName}`);
     };
 
-    const handleDriver1Change = (detailId: string, driverId: string) => {
-        console.log(`Driver 1 changed for detail ${detailId}: ${driverId}`);
+    const handleDriver1Change = (groupKey: string, driverId: string) => {
+        console.log(`Driver 1 changed for group ${groupKey}: ${driverId}`);
         setSelectedDrivers(prev => ({
             ...prev,
-            [detailId]: { ...prev[detailId], driver1: driverId }
+            [groupKey]: { ...prev[groupKey], driver1: driverId }
         }));
 
         // If driver 1 is the same as driver 2, reset driver 2
-        const currentDriver2 = form.getFieldValue([detailId, "driverId_2"]);
+        const currentDriver2 = form.getFieldValue([groupKey, "driverId_2"]);
         if (currentDriver2 === driverId) {
             form.setFieldsValue({
-                [detailId]: {
-                    ...form.getFieldValue(detailId),
+                [groupKey]: {
+                    ...form.getFieldValue(groupKey),
                     driverId_2: undefined
                 }
             });
 
             setSelectedDrivers(prev => ({
                 ...prev,
-                [detailId]: { ...prev[detailId], driver2: '' }
+                [groupKey]: { ...prev[groupKey], driver2: '' }
             }));
         }
     };
 
-    const handleDriver2Change = (detailId: string, driverId: string) => {
-        console.log(`Driver 2 changed for detail ${detailId}: ${driverId}`);
+    const handleDriver2Change = (groupKey: string, driverId: string) => {
+        console.log(`Driver 2 changed for group ${groupKey}: ${driverId}`);
         setSelectedDrivers(prev => ({
             ...prev,
-            [detailId]: { ...prev[detailId], driver2: driverId }
+            [groupKey]: { ...prev[groupKey], driver2: driverId }
         }));
     };
 
-    // Get suggestions for a detail by ID or tracking code
-    const getSuggestionsForDetail = (detail: any): VehicleSuggestion[] => {
+    // Get suggestions for a group by index
+    const getSuggestionsForGroup = (groupKey: string): VehicleSuggestion[] => {
         if (!suggestionsMap) return [];
 
-        // Try to find suggestions by detail ID or tracking code
-        return suggestionsMap[detail.id] || suggestionsMap[detail.trackingCode] || [];
+        // Try to find suggestions by group index
+        return suggestionsMap[groupKey] || [];
     };
 
-    const renderVehicleOptions = (detail: any) => {
-        const vehicleSuggestions = getSuggestionsForDetail(detail);
+    const renderVehicleOptions = (groupKey: string) => {
+        const groupSuggestions = getSuggestionsForGroup(groupKey);
 
-        if (!vehicleSuggestions || vehicleSuggestions.length === 0) {
-            console.log(`No vehicle suggestions found for detail ID ${detail.id} / tracking code ${detail.trackingCode}`);
+        if (!groupSuggestions || groupSuggestions.length === 0) {
+            console.log(`No vehicle suggestions found for group ${groupKey}`);
             return [];
         }
 
-        console.log(`Rendering ${vehicleSuggestions.length} vehicle options for detail`);
-        return vehicleSuggestions.map(vehicle => (
+        console.log(`Rendering ${groupSuggestions.length} vehicle options for group ${groupKey}`);
+        return groupSuggestions.map(vehicle => (
             <Option key={vehicle.id} value={vehicle.id}>
                 <div className="flex items-center">
                     <CarOutlined className="mr-2" />
@@ -402,11 +415,11 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         ));
     };
 
-    const getVehicleInfo = (detail: any, vehicleId: string) => {
-        const vehicleSuggestions = getSuggestionsForDetail(detail);
-        if (!vehicleSuggestions || vehicleSuggestions.length === 0) return null;
+    const getVehicleInfo = (groupKey: string, vehicleId: string) => {
+        const groupSuggestions = getSuggestionsForGroup(groupKey);
+        if (!groupSuggestions || groupSuggestions.length === 0) return null;
 
-        const vehicle = vehicleSuggestions.find(v => v.id === vehicleId);
+        const vehicle = groupSuggestions.find(v => v.id === vehicleId);
         if (!vehicle) return null;
 
         return (
@@ -448,11 +461,11 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         );
     };
 
-    const renderDriverOptions = (detail: any, vehicleId: string) => {
-        const vehicleSuggestions = getSuggestionsForDetail(detail);
-        if (!vehicleSuggestions || vehicleSuggestions.length === 0) return [];
+    const renderDriverOptions = (groupKey: string, vehicleId: string) => {
+        const groupSuggestions = getSuggestionsForGroup(groupKey);
+        if (!groupSuggestions || groupSuggestions.length === 0) return [];
 
-        const selectedVehicle = vehicleSuggestions.find(v => v.id === vehicleId);
+        const selectedVehicle = groupSuggestions.find(v => v.id === vehicleId);
         if (!selectedVehicle) return [];
 
         return selectedVehicle.suggestedDrivers.map(driver => (
@@ -472,11 +485,11 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         ));
     };
 
-    const renderDriverDetails = (detail: any, vehicleId: string, driverId: string) => {
-        const vehicleSuggestions = getSuggestionsForDetail(detail);
-        if (!vehicleSuggestions || vehicleSuggestions.length === 0) return null;
+    const renderDriverDetails = (groupKey: string, vehicleId: string, driverId: string) => {
+        const groupSuggestions = getSuggestionsForGroup(groupKey);
+        if (!groupSuggestions || groupSuggestions.length === 0) return null;
 
-        const selectedVehicle = vehicleSuggestions.find(v => v.id === vehicleId);
+        const selectedVehicle = groupSuggestions.find(v => v.id === vehicleId);
         if (!selectedVehicle) return null;
 
         const selectedDriver = selectedVehicle.suggestedDrivers.find(d => d.id === driverId);
@@ -523,11 +536,11 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         );
     };
 
-    const getFilteredDriverOptions = (detail: any, vehicleId: string, currentDriverId: string) => {
-        const vehicleSuggestions = getSuggestionsForDetail(detail);
-        if (!vehicleSuggestions || vehicleSuggestions.length === 0) return [];
+    const getFilteredDriverOptions = (groupKey: string, vehicleId: string, currentDriverId: string) => {
+        const groupSuggestions = getSuggestionsForGroup(groupKey);
+        if (!groupSuggestions || groupSuggestions.length === 0) return [];
 
-        const selectedVehicle = vehicleSuggestions.find(v => v.id === vehicleId);
+        const selectedVehicle = groupSuggestions.find(v => v.id === vehicleId);
         if (!selectedVehicle) return [];
 
         return selectedVehicle.suggestedDrivers
@@ -549,36 +562,60 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             ));
     };
 
-    const renderDetailForm = (detail: any, index: number) => {
-        const detailId = detail.id;
-        console.log(`Rendering detail form for detail ${detailId}, index ${index}, tracking code ${detail.trackingCode}`);
-        const currentVehicleId = selectedVehicles[detailId];
-        const currentDrivers = selectedDrivers[detailId] || { driver1: '', driver2: '' };
+    const renderDetailForm = (group: OrderDetailGroup, groupIndex: number) => {
+        const groupKey = groupIndex.toString();
+        console.log(`Rendering detail form for group ${groupKey}`);
+        const currentVehicleId = selectedVehicles[groupKey];
+        const currentDrivers = selectedDrivers[groupKey] || { driver1: '', driver2: '' };
+
+        // Get the first detail in the group to display some info
+        const firstDetail = group.orderDetails && group.orderDetails.length > 0
+            ? group.orderDetails[0]
+            : null;
+
+        // Count how many details are in this group
+        const detailCount = group.orderDetails?.length || 0;
 
         return (
             <TabPane
                 tab={
                     <span className="px-1 text-xs">
-                        <FileTextOutlined className="mr-1" /> Chi tiết #{index + 1}
-                        {detail.trackingCode &&
-                            <Tag color="blue" className="ml-1 text-xs">{detail.trackingCode}</Tag>
-                        }
+                        <FileTextOutlined className="mr-1" /> Nhóm #{groupIndex + 1}
+                        <Tag color="blue" className="ml-1 text-xs">{detailCount} lô hàng</Tag>
                     </span>
                 }
-                key={index.toString()}
+                key={groupIndex.toString()}
             >
                 <div className="bg-gray-50 p-2 mb-3 rounded-lg border border-gray-200">
                     <div className="text-xs text-gray-600 mb-1">
                         <InfoCircleOutlined className="mr-1" />
-                        <span className="font-medium">Thông tin chi tiết:</span> {detail.description || "Không có mô tả"}
+                        <span className="font-medium">Lý do nhóm:</span> {group.groupingReason || "Không có thông tin"}
                     </div>
-                    {detail.orderSize && (
-                        <div className="text-xs text-gray-600">
-                            <BoxPlotOutlined className="mr-1" />
-                            <span className="font-medium">Kích thước:</span> {detail.orderSize.minLength} x {detail.orderSize.minWidth} x {detail.orderSize.minHeight} m
-                        </div>
-                    )}
+                    <div className="text-xs text-gray-600">
+                        <InfoCircleOutlined className="mr-1" />
+                        <span className="font-medium">Số lô hàng:</span> {detailCount}
+                    </div>
                 </div>
+
+                {/* List of order details in this group */}
+                {group.orderDetails && group.orderDetails.length > 0 && (
+                    <div className="bg-blue-50 p-2 mb-3 rounded-lg border border-blue-200">
+                        <div className="text-xs font-medium text-blue-700 mb-1">Các lô hàng trong nhóm này:</div>
+                        {group.orderDetails.map((detail, idx) => (
+                            <div key={detail.id} className="text-xs mb-2 pl-2 border-l-2 border-blue-300">
+                                <span className="font-medium">{idx + 1}. {detail.trackingCode}</span>
+                                <div className="text-gray-500 text-xs">
+                                    <div>Từ: {detail.originAddress}</div>
+                                    <div>Đến: {detail.destinationAddress}</div>
+                                    <div>
+                                        {detail.totalWeight > 0 && <span className="mr-2">KL: {detail.totalWeight}kg</span>}
+                                        {detail.totalVolume > 0 && <span>TT: {detail.totalVolume}m³</span>}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                     <h3 className="text-sm font-medium mb-3 flex items-center">
@@ -594,7 +631,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                     Chọn xe
                                 </h4>
                                 <Form.Item
-                                    name={[detailId, "vehicleId"]}
+                                    name={[groupKey, "vehicleId"]}
                                     rules={[{ required: true, message: "Vui lòng chọn xe" }]}
                                     className="mb-0"
                                 >
@@ -603,15 +640,15 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                         className="w-full"
                                         showSearch
                                         optionFilterProp="children"
-                                        onChange={(value) => handleVehicleChange(detailId, value as string)}
+                                        onChange={(value) => handleVehicleChange(groupKey, value as string)}
                                         size="small"
                                     >
-                                        {renderVehicleOptions(detail)}
+                                        {renderVehicleOptions(groupKey)}
                                     </Select>
                                 </Form.Item>
                             </div>
 
-                            {currentVehicleId && getVehicleInfo(detail, currentVehicleId)}
+                            {currentVehicleId && getVehicleInfo(groupKey, currentVehicleId)}
                         </Col>
 
                         <Col span={12}>
@@ -621,7 +658,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                     Ghi chú phân công
                                 </h4>
                                 <Form.Item
-                                    name={[detailId, "description"]}
+                                    name={[groupKey, "description"]}
                                     className="mb-0"
                                 >
                                     <TextArea
@@ -650,9 +687,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                     Tài xế 1 (chính)
                                 </h4>
                                 <Form.Item
-                                    name={[detailId, "driverId_1"]}
+                                    name={[groupKey, "driverId_1"]}
                                     rules={[{ required: true, message: "Vui lòng chọn tài xế chính" }]}
-                                    dependencies={[[detailId, "vehicleId"]]}
+                                    dependencies={[[groupKey, "vehicleId"]]}
                                     className="mb-0"
                                 >
                                     <Select
@@ -661,16 +698,16 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                         showSearch
                                         optionFilterProp="children"
                                         disabled={!currentVehicleId}
-                                        onChange={(value) => handleDriver1Change(detailId, value as string)}
+                                        onChange={(value) => handleDriver1Change(groupKey, value as string)}
                                         size="small"
                                     >
-                                        {currentVehicleId && renderDriverOptions(detail, currentVehicleId)}
+                                        {currentVehicleId && renderDriverOptions(groupKey, currentVehicleId)}
                                     </Select>
                                 </Form.Item>
                             </div>
 
                             {currentVehicleId && currentDrivers.driver1 &&
-                                renderDriverDetails(detail, currentVehicleId, currentDrivers.driver1)
+                                renderDriverDetails(groupKey, currentVehicleId, currentDrivers.driver1)
                             }
                         </Col>
 
@@ -681,9 +718,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                     Tài xế 2 (phụ)
                                 </h4>
                                 <Form.Item
-                                    name={[detailId, "driverId_2"]}
+                                    name={[groupKey, "driverId_2"]}
                                     rules={[{ required: true, message: "Vui lòng chọn tài xế phụ" }]}
-                                    dependencies={[[detailId, "vehicleId"], [detailId, "driverId_1"]]}
+                                    dependencies={[[groupKey, "vehicleId"], [groupKey, "driverId_1"]]}
                                     className="mb-0"
                                 >
                                     <Select
@@ -692,17 +729,17 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                         showSearch
                                         optionFilterProp="children"
                                         disabled={!currentVehicleId || !currentDrivers.driver1}
-                                        onChange={(value) => handleDriver2Change(detailId, value as string)}
+                                        onChange={(value) => handleDriver2Change(groupKey, value as string)}
                                         size="small"
                                     >
                                         {currentVehicleId && currentDrivers.driver1 &&
-                                            getFilteredDriverOptions(detail, currentVehicleId, currentDrivers.driver1)}
+                                            getFilteredDriverOptions(groupKey, currentVehicleId, currentDrivers.driver1)}
                                     </Select>
                                 </Form.Item>
                             </div>
 
                             {currentVehicleId && currentDrivers.driver1 && currentDrivers.driver2 &&
-                                renderDriverDetails(detail, currentVehicleId, currentDrivers.driver2)
+                                renderDriverDetails(groupKey, currentVehicleId, currentDrivers.driver2)
                             }
                         </Col>
                     </Row>
@@ -718,7 +755,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     console.log("Modal render - suggestionsMap:", suggestionsMap);
 
     // Check if we have any suggestions
-    const hasSuggestions = Object.keys(suggestionsMap).length > 0;
+    const hasSuggestions = detailGroups.length > 0;
 
     return (
         <Modal
@@ -835,8 +872,8 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                         className="custom-assignment-tabs"
                         size="small"
                     >
-                        {orderDetails.map((detail, index) => (
-                            renderDetailForm(detail, index)
+                        {detailGroups.map((group, index) => (
+                            renderDetailForm(group, index)
                         ))}
                     </Tabs>
                 </Form>

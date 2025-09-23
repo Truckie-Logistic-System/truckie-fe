@@ -1,27 +1,34 @@
-import type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest, VehicleAssignmentSuggestion, CreateVehicleAssignmentForDetailsRequest } from "../../models/VehicleAssignment";
+import type {
+    VehicleAssignment,
+    VehicleAssignmentSuggestionData,
+    CreateVehicleAssignmentRequest,
+    UpdateVehicleAssignmentRequest,
+    CreateVehicleAssignmentForDetailsRequest,
+    GroupedVehicleAssignmentSuggestionData,
+    CreateGroupedVehicleAssignmentsRequest
+} from "../../models/VehicleAssignment";
 import type { ApiResponse } from "../api/types";
 
-export interface VehicleAssignmentResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleAssignment[];
-}
+export interface VehicleAssignmentResponse extends ApiResponse<VehicleAssignment[]> { }
 
-export interface VehicleAssignmentDetailResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleAssignment;
-}
+export interface VehicleAssignmentDetailResponse extends ApiResponse<VehicleAssignment> { }
 
-export type VehicleAssignmentSuggestionResponse = VehicleAssignmentSuggestion;
+export interface CreateVehicleAssignmentResponse extends ApiResponse<VehicleAssignment> { }
 
-export interface CreateVehicleAssignmentForDetailsResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: any; // The response structure depends on the API
-}
+export interface UpdateVehicleAssignmentResponse extends ApiResponse<VehicleAssignment> { }
 
-export type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest, VehicleAssignmentSuggestion, CreateVehicleAssignmentForDetailsRequest }; 
+export interface DeleteVehicleAssignmentResponse extends ApiResponse<void> { }
+
+export interface VehicleAssignmentSuggestionResponse extends ApiResponse<VehicleAssignmentSuggestionData> { }
+
+export interface CreateVehicleAssignmentForDetailsResponse extends ApiResponse<any> { }
+
+export type {
+    VehicleAssignment,
+    CreateVehicleAssignmentRequest,
+    UpdateVehicleAssignmentRequest,
+    VehicleAssignmentSuggestionData,
+    CreateVehicleAssignmentForDetailsRequest,
+    GroupedVehicleAssignmentSuggestionData,
+    CreateGroupedVehicleAssignmentsRequest
+}; 

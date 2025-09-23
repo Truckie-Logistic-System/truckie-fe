@@ -77,4 +77,35 @@ export interface UpdateVehicleAssignmentRequest {
     driverId_2?: string;
     description?: string;
     status?: string;
+}
+
+export interface OrderDetailInfo {
+    id: string;
+    trackingCode: string;
+    originAddress: string;
+    destinationAddress: string;
+    totalWeight: number;
+    totalVolume: number;
+}
+
+export interface OrderDetailGroup {
+    orderDetails: OrderDetailInfo[];
+    suggestedVehicles: VehicleSuggestion[];
+    groupingReason: string;
+}
+
+export interface GroupedVehicleAssignmentSuggestionData {
+    groups: OrderDetailGroup[];
+}
+
+export interface GroupAssignment {
+    orderDetailIds: string[];
+    vehicleId: string;
+    driverId_1: string;
+    driverId_2: string;
+    description?: string;
+}
+
+export interface CreateGroupedVehicleAssignmentsRequest {
+    groupAssignments: GroupAssignment[];
 } 

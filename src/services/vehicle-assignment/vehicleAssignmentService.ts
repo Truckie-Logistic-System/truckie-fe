@@ -6,8 +6,11 @@ import type {
     UpdateVehicleAssignmentRequest,
     VehicleAssignmentSuggestionResponse,
     CreateVehicleAssignmentForDetailsRequest,
-    CreateVehicleAssignmentForDetailsResponse
+    CreateVehicleAssignmentForDetailsResponse,
+    GroupedVehicleAssignmentSuggestionData,
+    CreateGroupedVehicleAssignmentsRequest
 } from "./types";
+import type { ApiResponse } from "../api/types";
 
 const BASE_URL = "/vehicle-assignments";
 
@@ -120,6 +123,31 @@ export const vehicleAssignmentService = {
             return response.data;
         } catch (error) {
             console.error("Error in createAndAssignForDetails:", error);
+            throw error;
+        }
+    },
+
+    getGroupedSuggestionsForOrderDetails: async (orderId: string) => {
+        try {
+            const response = await httpClient.get<ApiResponse<GroupedVehicleAssignmentSuggestionData>>(
+                `/vehicle-assignments/${orderId}/grouped-suggestions`
+            );
+            return response.data;
+        } catch (error) {
+            console.error("Error getting grouped vehicle assignment suggestions:", error);
+            throw error;
+        }
+    },
+
+    createGroupedAssignments: async (data: CreateGroupedVehicleAssignmentsRequest) => {
+        try {
+            const response = await httpClient.post<ApiResponse<any>>(
+                `/vehicle-assignments/create-grouped-assignments`,
+                data
+            );
+            return response.data;
+        } catch (error) {
+            console.error("Error creating grouped vehicle assignments:", error);
             throw error;
         }
     }
