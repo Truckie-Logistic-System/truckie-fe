@@ -241,7 +241,7 @@ const StaffOrderDetail: React.FC = () => {
         className="order-detail-tabs"
       >
         {order.orderDetails.map((detail, index) => (
-          <TabPane tab={`Chi tiết #${index + 1}`} key={index.toString()}>
+          <TabPane tab={`Kiện hàng #${index + 1}`} key={index.toString()}>
             <Card
               className="mb-6 shadow-md rounded-xl"
               title={

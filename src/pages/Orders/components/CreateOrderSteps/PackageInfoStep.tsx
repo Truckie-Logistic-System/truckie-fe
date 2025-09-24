@@ -8,15 +8,19 @@ const { Option } = Select;
 
 interface PackageInfoStepProps {
   orderSizes: OrderSize[];
+  weightUnits: { value: string; label: string }[];
 }
 
-const PackageInfoStep: React.FC<PackageInfoStepProps> = ({ orderSizes }) => {
-  const weightUnits = [
-    { value: "Kí", label: "Kilogram (kg)" },
-    { value: "Yến", label: "Yến" },
-    { value: "Tạ", label: "Tạ" },
-    { value: "Tấn", label: "Tấn" },
-  ];
+const PackageInfoStep: React.FC<PackageInfoStepProps> = ({
+  orderSizes,
+  weightUnits,
+}) => {
+  // const weightUnits = [
+  //   { value: "Tấn", label: "Tấn" },
+  //   { value: "Tạ", label: "Tạ" },
+  //   { value: "Yến", label: "Yến" },
+  //   { value: "Kí", label: "Kilogram (kg)" },
+  // ];
 
   return (
     <>

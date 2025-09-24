@@ -6,6 +6,7 @@ import { StaffContractPreview } from "../../../../components/features/order";
 import type { ContractData } from "../../../../services/contract/contractTypes";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { Link } from "react-router-dom";
 
 interface ContractProps {
   contract?: {
@@ -510,6 +511,9 @@ const ContractSection: React.FC<ContractProps> = ({ contract, orderId }) => {
             <Descriptions.Item label="Mô tả" span={3}>
               {contract.description || "Không có mô tả"}
             </Descriptions.Item>
+            <Button>
+              <Link to={contract.attachFileUrl}>Xem chi tiết hợp đồng</Link>
+            </Button>
           </Descriptions>
 
           {/* Contract Preview for CONTRACT_DRAFT status */}

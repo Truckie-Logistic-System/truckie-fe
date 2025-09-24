@@ -37,7 +37,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
     representativeTitle: "Giám đốc",
     serviceDescription:
       "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B.",
-    paymentTerms: "Chuyển khoản hoặc tiền mặt",
+    paymentTerms: "Chuyển khoản",
     warrantyTerms: "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định",
     generalTerms: "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.",
   });
@@ -98,7 +98,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
       representativeTitle: "Giám đốc",
       serviceDescription:
         "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B.",
-      paymentTerms: "Chuyển khoản hoặc tiền mặt",
+      paymentTerms: "Chuyển khoản",
       warrantyTerms: "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định",
       generalTerms: "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.",
     });
@@ -478,7 +478,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
                     <th>Mô tả</th>
                     <th>Trọng lượng</th>
                     <th>Đơn vị</th>
-                    <th>Loại xe</th>
+                    <th>Kích thước (Dài x Cao x Rộng)</th>
                     <th>Thời gian dự kiến</th>
                   </tr>
                 </thead>
@@ -487,9 +487,16 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
                     <tr key={index}>
                       <td>{detail.trackingCode}</td>
                       <td>{detail.description}</td>
-                      <td>{detail.weight}</td>
+                      <td>{detail.weightBaseUnit}</td>
                       <td>{detail.unit}</td>
-                      <td>{detail.orderSizeId.description}</td>
+                      <td>
+                        {detail.orderSizeId.minLength} x{" "}
+                        {detail.orderSizeId.minHeight} x{" "}
+                        {detail.orderSizeId.minWidth} -{" "}
+                        {detail.orderSizeId.maxLength} x{" "}
+                        {detail.orderSizeId.maxHeight} x{" "}
+                        {detail.orderSizeId.maxWidth} (m)
+                      </td>
                       <td>
                         {detail.estimatedStartTime
                           ? formatDate(detail.estimatedStartTime)
@@ -540,7 +547,18 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
         <div style={{ marginTop: "20px" }}>
           <p>
             <strong>Tổng tiền trước điều chỉnh:</strong>{" "}
-            {formatCurrency(contractData.priceDetails.totalBeforeAdjustment)}
+            <strong>
+              {formatCurrency(contractData.priceDetails.totalBeforeAdjustment)}{" "}
+              =
+            </strong>
+            {contractData.priceDetails.steps.map((step, index) => (
+              <span key={index}>
+                {" "}
+                + {"("}
+                {step.unitPrice} * {step.appliedKm.toFixed(2)}
+                {")"}{" "}
+              </span>
+            ))}
           </p>
           <p>
             <strong>Phí danh mục thêm:</strong>{" "}

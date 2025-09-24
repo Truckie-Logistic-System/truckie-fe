@@ -17,18 +17,20 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   label = "Danh sách lô hàng",
   orderSizes,
   units = [], // Empty default array, will be populated from API
-  form,
 }) => {
   // Convert units array to the format needed for Select component
-  const weightUnits = units.map(unit => ({
+  const weightUnits = units.map((unit) => ({
     value: unit,
-    label: unit === "Kí" ? "Kilogram" : unit
+    label: unit === "Kí" ? "Kilogram" : unit,
   }));
 
   return (
     <Form.Item label={label}>
-      <Form.List name={name}
-        initialValue={[{ quantity: 1, unit: units.length > 0 ? units[0] : "Kí" }]} // Use first unit from API if available
+      <Form.List
+        name={name}
+        initialValue={[
+          { quantity: 1, unit: units.length > 0 ? units[0] : "Kí" },
+        ]} // Use first unit from API if available
       >
         {(fields, { add, remove }) => (
           <>
@@ -68,6 +70,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                             {
                               type: "number",
                               min: 1,
+                              max: 100,
                               message: "Số lượng phải lớn hơn 0",
                             },
                           ]}
@@ -188,7 +191,9 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
             <Form.Item style={{ marginBottom: 0 }}>
               <Button
                 type="dashed"
-                onClick={() => add({ quantity: 1, unit: units.length > 0 ? units[0] : "Kí" })}
+                onClick={() =>
+                  add({ quantity: 1, unit: units.length > 0 ? units[0] : "Kí" })
+                }
                 block
                 icon={<PlusOutlined />}
                 size="large"
