@@ -28,6 +28,14 @@ import {
   ProfileOutlined,
   CreditCardOutlined,
   HomeOutlined,
+  NumberOutlined,
+  ColumnWidthOutlined,
+  TagOutlined,
+  UserOutlined,
+  PhoneOutlined,
+  ClockCircleOutlined,
+  DashboardOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../services/order/orderService";
 import type { CustomerOrderDetailResponse } from "../../../services/order/types";
@@ -204,6 +212,403 @@ const CustomerOrderDetail: React.FC = () => {
       return <Empty description="Chưa có thông tin chi tiết vận chuyển" />;
     }
 
+    // Kiểm tra xem đơn hàng đã được phân công cho tài xế chưa
+    const isAssignedToDriver = order.status === "ASSIGNED_TO_DRIVER" ||
+      order.status === "DRIVER_CONFIRM" ||
+      order.status === "PICKED_UP" ||
+      order.status === "SEALED_COMPLETED" ||
+      order.status === "ON_DELIVERED" ||
+      order.status === "ONGOING_DELIVERED" ||
+      order.status === "IN_DELIVERED";
+
+    // Nếu đã phân công cho tài xế, hiển thị theo vehicle assignment
+    if (isAssignedToDriver) {
+      // Nhóm các order details theo vehicle assignment
+      interface VehicleAssignmentGroup {
+        vehicleAssignment: any;
+        orderDetails: any[];
+      }
+
+      const vehicleAssignmentMap = new Map<string, VehicleAssignmentGroup>();
+
+      order.orderDetails.forEach(detail => {
+        if (detail.vehicleAssignment) {
+          const vaId = detail.vehicleAssignment.id;
+          if (!vehicleAssignmentMap.has(vaId)) {
+            vehicleAssignmentMap.set(vaId, {
+              vehicleAssignment: detail.vehicleAssignment,
+              orderDetails: []
+            });
+          }
+          vehicleAssignmentMap.get(vaId)?.orderDetails.push(detail);
+        }
+      });
+
+      const vehicleAssignments = Array.from(vehicleAssignmentMap.values());
+
+      if (vehicleAssignments.length === 0) {
+        return <Empty description="Chưa có thông tin phân công xe" />;
+      }
+
+      return (
+        <Tabs
+          activeKey={activeDetailTab}
+          onChange={setActiveDetailTab}
+          type="card"
+          className="order-detail-tabs"
+        >
+          {vehicleAssignments.map((vaGroup, index) => (
+            <TabPane
+              tab={
+                <span>
+                  <CarOutlined /> Chuyến xe #{index + 1} - {vaGroup.vehicleAssignment.trackingCode || "Chưa có mã"}
+                </span>
+              }
+              key={index.toString()}
+            >
+              {/* Thông tin cơ bản của phương tiện */}
+              <Card className="mb-6 shadow-md rounded-xl">
+                <Title level={5} className="mb-4 flex items-center">
+                  <CarOutlined className="mr-2 text-blue-500" />
+                  <span>Thông tin phương tiện</span>
+                </Title>
+                <div className="p-2">
+                  <div className="mb-4 bg-blue-50 p-4 rounded-lg">
+                    <div className="flex items-center mb-3">
+                      <CarOutlined className="text-xl text-blue-500 mr-3" />
+                      <span className="text-lg font-medium">{vaGroup.vehicleAssignment.licensePlateNumber || "Chưa có thông tin"}</span>
+                      <Tag className="ml-3" color={getStatusColor(vaGroup.vehicleAssignment.status || "")}>
+                        {vaGroup.vehicleAssignment.status}
+                      </Tag>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex items-center">
+                        <InfoCircleOutlined className="mr-2 text-gray-500" />
+                        <span className="font-medium mr-1">Tên phương tiện:</span>
+                        <span>{vaGroup.vehicleAssignment.vehicleName || "Chưa có thông tin"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <div className="flex items-center mb-2">
+                        <UserOutlined className="text-green-500 mr-2" />
+                        <span className="font-medium">Tài xế chính</span>
+                      </div>
+                      {vaGroup.vehicleAssignment.primaryDriver ? (
+                        <div className="ml-6">
+                          <div className="flex items-center mb-1">
+                            <UserOutlined className="mr-2 text-gray-500" />
+                            <span>{vaGroup.vehicleAssignment.primaryDriver.fullName}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <PhoneOutlined className="mr-2 text-gray-500" />
+                            <span>{vaGroup.vehicleAssignment.primaryDriver.phoneNumber}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="ml-6 text-gray-500">Chưa có thông tin</div>
+                      )}
+                    </div>
+
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="flex items-center mb-2">
+                        <UserOutlined className="text-blue-500 mr-2" />
+                        <span className="font-medium">Tài xế phụ</span>
+                      </div>
+                      {vaGroup.vehicleAssignment.secondaryDriver ? (
+                        <div className="ml-6">
+                          <div className="flex items-center mb-1">
+                            <UserOutlined className="mr-2 text-gray-500" />
+                            <span>{vaGroup.vehicleAssignment.secondaryDriver.fullName}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <PhoneOutlined className="mr-2 text-gray-500" />
+                            <span>{vaGroup.vehicleAssignment.secondaryDriver.phoneNumber}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="ml-6 text-gray-500">Chưa có thông tin</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Tabs cho các thông tin chi tiết */}
+              <Card className="mb-6 shadow-md rounded-xl">
+                <Tabs defaultActiveKey="orderDetails" type="card">
+                  {/* Tab danh sách lô hàng */}
+                  <TabPane
+                    tab={
+                      <span>
+                        <BoxPlotOutlined /> Danh sách lô hàng
+                      </span>
+                    }
+                    key="orderDetails"
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr>
+                            <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                              Mã theo dõi
+                            </th>
+                            <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                              Trạng thái
+                            </th>
+                            <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                              Trọng lượng
+                            </th>
+                            <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                              Mô tả
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vaGroup.orderDetails.map((detail, detailIndex) => (
+                            <tr key={detail.id}>
+                              <td className="border border-gray-300 p-2">
+                                <div className="flex items-center">
+                                  <NumberOutlined className="mr-2 text-blue-500" />
+                                  {detail.trackingCode || "Chưa có"}
+                                </div>
+                              </td>
+                              <td className="border border-gray-300 p-2">
+                                <Tag color={
+                                  detail.status === "PENDING" ? "orange" :
+                                    detail.status === "PROCESSING" ? "blue" :
+                                      detail.status === "DELIVERED" || detail.status === "SUCCESSFUL" ? "green" :
+                                        detail.status === "CANCELLED" || detail.status === "IN_TROUBLES" ? "red" :
+                                          "default"
+                                }>
+                                  {detail.status}
+                                </Tag>
+                              </td>
+                              <td className="border border-gray-300 p-2">
+                                <div className="flex items-center">
+                                  <ColumnWidthOutlined className="mr-2 text-blue-500" />
+                                  {detail.weightBaseUnit} {detail.unit}
+                                </div>
+                              </td>
+                              <td className="border border-gray-300 p-2">
+                                <div className="flex items-center">
+                                  <FileTextOutlined className="mr-2 text-blue-500" />
+                                  {detail.description || "Không có mô tả"}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </TabPane>
+
+                  {/* Tab lịch sử hành trình */}
+                  <TabPane
+                    tab={
+                      <span>
+                        <HistoryOutlined /> Lịch sử hành trình
+                      </span>
+                    }
+                    key="journey"
+                  >
+                    {vaGroup.vehicleAssignment.journeyHistory && vaGroup.vehicleAssignment.journeyHistory.length > 0 ? (
+                      <Timeline
+                        mode="left"
+                        items={vaGroup.vehicleAssignment.journeyHistory.map((journey: any) => ({
+                          label: formatDate(journey.startTime),
+                          children: (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <div className="flex items-center mb-2">
+                                <TagOutlined className="mr-2 text-blue-500" />
+                                <span className="font-medium mr-1">Trạng thái:</span>
+                                <Tag color={
+                                  journey.status === "COMPLETED" ? "green" :
+                                    journey.status === "IN_PROGRESS" ? "blue" : "orange"
+                                }>
+                                  {journey.status}
+                                </Tag>
+                              </div>
+                              <div className="flex items-center mb-2">
+                                <ClockCircleOutlined className="mr-2 text-gray-500" />
+                                <span className="font-medium mr-1">Thời gian kết thúc:</span>
+                                <span>{formatDate(journey.endTime)}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <DashboardOutlined className="mr-2 text-gray-500" />
+                                <span className="font-medium mr-1">Tổng quãng đường:</span>
+                                <span>{journey.totalDistance} km</span>
+                              </div>
+                              {journey.isReportedIncident && (
+                                <div className="mt-2">
+                                  <Tag color="red" icon={<ToolOutlined />}>Có báo cáo sự cố</Tag>
+                                </div>
+                              )}
+                            </div>
+                          ),
+                        }))}
+                      />
+                    ) : (
+                      <Empty description="Không có lịch sử hành trình nào" />
+                    )}
+                  </TabPane>
+
+                  {/* Tab hình ảnh hoàn thành */}
+                  <TabPane
+                    tab={
+                      <span>
+                        <CameraOutlined /> Hình ảnh hoàn thành
+                      </span>
+                    }
+                    key="photos"
+                  >
+                    {vaGroup.vehicleAssignment.photoCompletions && vaGroup.vehicleAssignment.photoCompletions.length > 0 ? (
+                      <div className="p-2">
+                        <div className="flex items-center mb-3">
+                          <CameraOutlined className="mr-2 text-blue-500" />
+                          <span className="font-medium">Hình ảnh hoàn thành:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {vaGroup.vehicleAssignment.photoCompletions.map(
+                            (url: string, idx: number) => (
+                              <Image
+                                key={idx}
+                                src={url}
+                                alt={`Completion photo ${idx + 1}`}
+                                width={100}
+                                height={100}
+                                className="object-cover rounded"
+                              />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <Empty description="Không có hình ảnh hoàn thành" />
+                    )}
+                  </TabPane>
+
+                  {/* Tab sự cố */}
+                  <TabPane
+                    tab={
+                      <span>
+                        <ToolOutlined /> Sự cố
+                      </span>
+                    }
+                    key="issues"
+                  >
+                    {vaGroup.vehicleAssignment.issue ? (
+                      <div className="p-2">
+                        <div className="bg-red-50 p-4 rounded-lg mb-3">
+                          <div className="flex items-center mb-3">
+                            <ToolOutlined className="text-red-500 mr-2" />
+                            <span className="font-medium">Mô tả sự cố:</span>
+                            <span className="ml-2">{vaGroup.vehicleAssignment.issue.issue.description}</span>
+                            <Tag className="ml-2" color={getStatusColor(vaGroup.vehicleAssignment.issue.issue.status)}>
+                              {vaGroup.vehicleAssignment.issue.issue.status}
+                            </Tag>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="flex items-center">
+                              <TagOutlined className="mr-2 text-gray-500" />
+                              <span className="font-medium mr-1">Loại sự cố:</span>
+                              <span>{vaGroup.vehicleAssignment.issue.issue.issueTypeName}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <UserOutlined className="mr-2 text-gray-500" />
+                              <span className="font-medium mr-1">Nhân viên xử lý:</span>
+                              <span>{vaGroup.vehicleAssignment.issue.issue.staff.name}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <PhoneOutlined className="mr-2 text-gray-500" />
+                              <span className="font-medium mr-1">Liên hệ:</span>
+                              <span>{vaGroup.vehicleAssignment.issue.issue.staff.phone}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {vaGroup.vehicleAssignment.issue.imageUrls &&
+                          vaGroup.vehicleAssignment.issue.imageUrls.length > 0 ? (
+                          <div className="mt-4">
+                            <div className="flex items-center mb-2">
+                              <CameraOutlined className="mr-2 text-blue-500" />
+                              <span className="font-medium">Hình ảnh:</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {vaGroup.vehicleAssignment.issue.imageUrls.map(
+                                (url: string, idx: number) => (
+                                  <Image
+                                    key={idx}
+                                    src={url}
+                                    alt={`Issue image ${idx + 1}`}
+                                    width={100}
+                                    height={100}
+                                    className="object-cover rounded"
+                                  />
+                                )
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-4 text-gray-500">
+                            <CameraOutlined className="mr-2" />
+                            <span>Chưa có hình ảnh</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Empty description="Không có sự cố nào được ghi nhận" />
+                    )}
+                  </TabPane>
+
+                  {/* Tab niêm phong */}
+                  <TabPane
+                    tab={
+                      <span>
+                        <FileTextOutlined /> Niêm phong
+                      </span>
+                    }
+                    key="seals"
+                  >
+                    {vaGroup.vehicleAssignment.orderSeals && vaGroup.vehicleAssignment.orderSeals.length > 0 ? (
+                      <div className="p-2">
+                        {vaGroup.vehicleAssignment.orderSeals.map((seal: any, sealIdx: number) => (
+                          <div key={seal.id} className={`${sealIdx > 0 ? "mt-3" : ""} bg-gray-50 p-4 rounded-lg`}>
+                            <div className="flex items-center mb-2">
+                              <FileTextOutlined className="mr-2 text-blue-500" />
+                              <span className="font-medium mr-1">Mô tả:</span>
+                              <span>{seal.description}</span>
+                            </div>
+                            <div className="flex items-center mb-2">
+                              <CalendarOutlined className="mr-2 text-gray-500" />
+                              <span className="font-medium mr-1">Ngày niêm phong:</span>
+                              <span>{formatDate(seal.sealDate)}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <TagOutlined className="mr-2 text-gray-500" />
+                              <span className="font-medium mr-1">Trạng thái:</span>
+                              <Tag color={getStatusColor(seal.status)}>
+                                {seal.status}
+                              </Tag>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <Empty description="Không có thông tin niêm phong" />
+                    )}
+                  </TabPane>
+                </Tabs>
+              </Card>
+            </TabPane>
+          ))}
+        </Tabs>
+      );
+    }
+
+    // Nếu chưa phân công, hiển thị theo từng order detail như cũ
     return (
       <Tabs
         activeKey={activeDetailTab}
@@ -260,19 +665,18 @@ const CustomerOrderDetail: React.FC = () => {
                           </td>
                           <td className="border border-gray-300 p-2">
                             <span
-                              className={`px-2 py-1 rounded text-white bg-${
-                                detail.status === "PENDING"
-                                  ? "orange-500"
-                                  : detail.status === "PROCESSING"
+                              className={`px-2 py-1 rounded text-white bg-${detail.status === "PENDING"
+                                ? "orange-500"
+                                : detail.status === "PROCESSING"
                                   ? "blue-500"
                                   : detail.status === "DELIVERED" ||
                                     detail.status === "SUCCESSFUL"
-                                  ? "green-500"
-                                  : detail.status === "CANCELLED" ||
-                                    detail.status === "IN_TROUBLES"
-                                  ? "red-500"
-                                  : "gray-500"
-                              }`}
+                                    ? "green-500"
+                                    : detail.status === "CANCELLED" ||
+                                      detail.status === "IN_TROUBLES"
+                                      ? "red-500"
+                                      : "gray-500"
+                                }`}
                             >
                               {detail.status}
                             </span>
@@ -322,8 +726,8 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.startTime
                               ? new Date(detail.startTime).toLocaleString(
-                                  "vi-VN"
-                                )
+                                "vi-VN"
+                              )
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -344,8 +748,8 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.estimatedStartTime
                               ? new Date(
-                                  detail.estimatedStartTime
-                                ).toLocaleString("vi-VN")
+                                detail.estimatedStartTime
+                              ).toLocaleString("vi-VN")
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -356,8 +760,8 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.estimatedEndTime
                               ? new Date(
-                                  detail.estimatedEndTime
-                                ).toLocaleString("vi-VN")
+                                detail.estimatedEndTime
+                              ).toLocaleString("vi-VN")
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -496,7 +900,7 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.vehicleAssignment.primaryDriver
                               ? detail.vehicleAssignment.primaryDriver
-                                  .phoneNumber
+                                .phoneNumber
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -507,7 +911,7 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.vehicleAssignment.secondaryDriver
                               ? detail.vehicleAssignment.secondaryDriver
-                                  .fullName
+                                .fullName
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -518,7 +922,7 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.vehicleAssignment.secondaryDriver
                               ? detail.vehicleAssignment.secondaryDriver
-                                  .phoneNumber
+                                .phoneNumber
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -605,7 +1009,7 @@ const CustomerOrderDetail: React.FC = () => {
                         </table>
 
                         {detail.vehicleAssignment.issue.imageUrls &&
-                        detail.vehicleAssignment.issue.imageUrls.length > 0 ? (
+                          detail.vehicleAssignment.issue.imageUrls.length > 0 ? (
                           <div className="mt-4">
                             <p className="font-medium mb-2">Hình ảnh:</p>
                             <div className="flex flex-wrap gap-2">

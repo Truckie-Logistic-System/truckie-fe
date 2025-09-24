@@ -23,6 +23,7 @@ const { TabPane } = Tabs;
 interface VehicleInfoSectionProps {
     vehicleAssignment?: {
         id: string;
+        trackingCode?: string; // Add trackingCode property
         vehicle?: {
             id: string;
             manufacturer: string;
@@ -58,7 +59,7 @@ interface VehicleInfoSectionProps {
             };
             imageUrls: string[];
         }[];
-        photoCompletions?: string[];
+        photoCompletions?: string[]; // Thêm thuộc tính photoCompletions
         orderSeals?: {
             id: string;
             description: string;
@@ -646,7 +647,7 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
             title={
                 <div className="flex items-center">
                     <CarOutlined className="mr-2 text-blue-500" />
-                    <span>Thông tin phương tiện vận chuyển</span>
+                    <span>Chi tiết phương tiện</span>
                 </div>
             }
             className="shadow-md mb-6 rounded-xl"
