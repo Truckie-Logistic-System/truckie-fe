@@ -61,16 +61,6 @@ export interface RegisterResponseData {
 
 export type RegisterResponse = ApiResponse<RegisterResponseData>;
 
-export interface RefreshTokenResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: {
-        accessToken: string;
-        refreshToken: string;
-    };
-}
-
 export interface ChangePasswordRequest {
     username: string;
     oldPassword: string;

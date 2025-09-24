@@ -1,8 +1,9 @@
 import React from 'react';
-import type { ChatConversation } from '@/models/Chat';
+import type { ChatConversation } from '@/context/ChatContext'; // Đảm bảo import đúng type ChatConversation từ context
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Badge } from 'antd';
+import { ConversationStatusEnum, ConversationStatusColors } from '@/constants/enums';
 
 interface ChatConversationItemProps {
     conversation: ChatConversation;
@@ -15,22 +16,26 @@ const ChatConversationItem: React.FC<ChatConversationItemProps> = ({
     isActive,
     onClick,
 }) => {
-    const timeAgo = formatDistanceToNow(new Date(conversation.lastMessageTime), {
-        addSuffix: true,
-        locale: vi,
-    });
+    // Lấy tên hiển thị từ participant (ưu tiên customer)
+    const customerParticipant = conversation.participants?.find(p => p.roleName === 'CUSTOMER');
+    const displayName = customerParticipant
+        ? customerParticipant.userId
+        : conversation.roomId;
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'active':
-                return 'bg-green-500';
-            case 'pending':
-                return 'bg-yellow-500';
-            case 'closed':
-                return 'bg-gray-500';
-            default:
-                return 'bg-gray-500';
-        }
+    // Hiển thị thời gian gửi tin nhắn cuối cùng (nếu có)
+    const timeAgo = conversation.lastMessageTime
+        ? formatDistanceToNow(new Date(Number(conversation.lastMessageTime)), {
+            addSuffix: true,
+            locale: vi,
+        })
+        : '';
+
+    // Lấy màu từ ConversationStatusColors
+    const getStatusColorClass = (status: string): string => {
+        const statusEnum = status as ConversationStatusEnum;
+        // Chỉ lấy phần bg-color từ ConversationStatusColors
+        const colorClass = ConversationStatusColors[statusEnum]?.split(' ')[0] || 'bg-gray-500';
+        return colorClass;
     };
 
     return (
@@ -41,10 +46,10 @@ const ChatConversationItem: React.FC<ChatConversationItemProps> = ({
         >
             <div className="relative mr-3">
                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-                    {conversation.customerName.charAt(0).toUpperCase()}
+                    {displayName.charAt(0).toUpperCase()}
                 </div>
                 <div
-                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(
+                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColorClass(
                         conversation.status
                     )}`}
                 />
@@ -52,7 +57,7 @@ const ChatConversationItem: React.FC<ChatConversationItemProps> = ({
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center">
                     <h4 className="text-sm font-medium text-gray-900 truncate">
-                        {conversation.customerName}
+                        {displayName}
                     </h4>
                     <span className="text-xs text-gray-500">{timeAgo}</span>
                 </div>
@@ -69,4 +74,4 @@ const ChatConversationItem: React.FC<ChatConversationItemProps> = ({
     );
 };
 
-export default ChatConversationItem; 
+export default ChatConversationItem;

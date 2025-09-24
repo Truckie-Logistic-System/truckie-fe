@@ -12,22 +12,41 @@ import CustomerSupport from "../pages/Staff/CustomerSupport";
 import ProfilePage from "../pages/Profile";
 import {
   OrderList as StaffOrderList,
-  OrderDetailPage as StaffOrderDetailPage,
 } from "../pages/Staff/Order";
 import { IssueList, IssueDetail } from "../pages/Staff/Issue";
 import {
-  OrderList as AdminOrderList,
+  OrderPage as AdminOrderList,
   OrderDetailPage as AdminOrderDetailPage,
   OrderEdit as AdminOrderEdit,
 } from "../pages/Admin/Order";
+import StaffOrderDetailPage from "../pages/Admin/Order/StaffOrderDetailPage";
 import OrdersPage from "../pages/Orders";
 import OrderDetailPage from "../pages/Orders/OrderDetail";
+import CustomerOrderDetailPage from "../pages/Orders/CustomerOrderDetailPage";
 import CreateOrder from "../pages/Orders/CreateOrder";
 import { PermissionRoute } from "../components/auth";
 import { MainLayout, AdminLayout } from "../components/layout";
 import DriverPage from "../pages/Admin/Driver";
 import DriverDetail from "../pages/Admin/Driver/DriverDetail";
 import RegisterDriver from "../pages/Admin/Driver/RegisterDriver";
+import CustomerPage from "../pages/Admin/Customer";
+import CustomerDetail from "../pages/Admin/Customer/CustomerDetail";
+import StaffPage from "../pages/Admin/Staff";
+import StaffDetail from "../pages/Admin/Staff/StaffDetail";
+import StaffRegister from "../pages/Admin/Staff/StaffRegister";
+import DeviceManagement from "../pages/Admin/Device";
+import CategoryManagement from "../pages/Admin/Category";
+import VehiclePage from "../pages/Admin/Vehicle";
+import VehicleDetailPage from "../pages/Admin/Vehicle/VehicleDetail";
+import VehicleMaintenancePage from "../pages/Admin/VehicleMaintenance";
+import VehicleMaintenanceDetail from "../pages/Admin/VehicleMaintenance/VehicleMaintenanceDetail";
+import CreateMaintenance from "../pages/Admin/VehicleMaintenance/CreateMaintenance";
+import EditMaintenance from "../pages/Admin/VehicleMaintenance/EditMaintenance";
+import AdminVehicleAssignmentPage from "../pages/Admin/VehicleAssignment";
+import AdminVehicleAssignmentDetailPage from "../pages/Admin/VehicleAssignment/VehicleAssignmentDetail";
+import StaffVehicleAssignmentPage from "../pages/Staff/VehicleAssignment";
+import StaffVehicleAssignmentDetailPage from "../pages/Staff/VehicleAssignment/VehicleAssignmentDetail";
+import VehicleRulePage from "../pages/Admin/VehicleRule";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -76,10 +95,24 @@ const router = createBrowserRouter([
       </MainLayout>
     ),
     children: [
-      // Trang chủ - ai cũng có thể truy cập
+      // Trang chủ - chỉ cho phép customer hoặc người chưa đăng nhập
       {
         index: true,
-        element: <HomePage />,
+        element: (
+          <PermissionRoute
+            authenticationRequired="any"
+            allowedRoles={["customer"]}
+            roleRedirectPath={(auth) => {
+              // Chuyển hướng dựa trên vai trò
+              if (auth?.user?.role === "admin") return "/admin/dashboard";
+              if (auth?.user?.role === "staff") return "/staff/dashboard";
+              if (auth?.user?.role === "driver") return "/driver/dashboard";
+              return "/"; // Mặc định cho customer
+            }}
+          >
+            <HomePage />
+          </PermissionRoute>
+        ),
       },
 
       // Các trang yêu cầu đăng nhập và vai trò customer
@@ -118,7 +151,7 @@ const router = createBrowserRouter([
             authRedirectPath="/auth/login"
             roleRedirectPath="/"
           >
-            <OrderDetailPage />
+            <CustomerOrderDetailPage />
           </PermissionRoute>
         ),
       },
@@ -209,6 +242,14 @@ const router = createBrowserRouter([
         element: <IssueDetail />,
       },
       {
+        path: "vehicle-assignments",
+        element: <StaffVehicleAssignmentPage />,
+      },
+      {
+        path: "vehicle-assignments/:id",
+        element: <StaffVehicleAssignmentDetailPage />,
+      },
+      {
         path: "deliveries",
         element: <div>Quản lý vận chuyển</div>, // Thay thế bằng component thực tế
       },
@@ -261,7 +302,7 @@ const router = createBrowserRouter([
       },
       {
         path: "orders/:id",
-        element: <AdminOrderDetailPage />,
+        element: <StaffOrderDetailPage />,
       },
       {
         path: "orders/:id/edit",
@@ -280,8 +321,68 @@ const router = createBrowserRouter([
         element: <DriverDetail />,
       },
       {
-        path: "users",
-        element: <div>Quản lý người dùng</div>, // Thay thế bằng component thực tế
+        path: "customers",
+        element: <CustomerPage />,
+      },
+      {
+        path: "customers/:id",
+        element: <CustomerDetail />,
+      },
+      {
+        path: "staff",
+        element: <StaffPage />,
+      },
+      {
+        path: "staff/register",
+        element: <StaffRegister />,
+      },
+      {
+        path: "staff/:id",
+        element: <StaffDetail />,
+      },
+      {
+        path: "devices",
+        element: <DeviceManagement />,
+      },
+      {
+        path: "vehicles",
+        element: <VehiclePage />,
+      },
+      {
+        path: "vehicles/:id",
+        element: <VehicleDetailPage />,
+      },
+      {
+        path: "vehicle-assignments",
+        element: <AdminVehicleAssignmentPage />,
+      },
+      {
+        path: "vehicle-assignments/:id",
+        element: <AdminVehicleAssignmentDetailPage />,
+      },
+      {
+        path: "vehicle-maintenances",
+        element: <VehicleMaintenancePage />,
+      },
+      {
+        path: "vehicle-maintenances/:id",
+        element: <VehicleMaintenanceDetail />,
+      },
+      {
+        path: "vehicle-maintenances/create",
+        element: <CreateMaintenance />,
+      },
+      {
+        path: "vehicle-maintenances/edit/:id",
+        element: <EditMaintenance />,
+      },
+      {
+        path: "vehicle-rules",
+        element: <VehicleRulePage />,
+      },
+      {
+        path: "categories",
+        element: <CategoryManagement />,
       },
       {
         path: "settings",
@@ -333,18 +434,60 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Các trang bản đồ - có thể truy cập tự do
+  // Các trang bản đồ - chỉ cho phép customer hoặc người chưa đăng nhập
   {
     path: "/maps/vietmap",
-    element: <VietMapPage />,
+    element: (
+      <PermissionRoute
+        authenticationRequired="any"
+        allowedRoles={["customer"]}
+        roleRedirectPath={(auth) => {
+          // Chuyển hướng dựa trên vai trò
+          if (auth?.user?.role === "admin") return "/admin/dashboard";
+          if (auth?.user?.role === "staff") return "/staff/dashboard";
+          if (auth?.user?.role === "driver") return "/driver/dashboard";
+          return "/"; // Mặc định cho customer
+        }}
+      >
+        <VietMapPage />
+      </PermissionRoute>
+    ),
   },
   {
     path: "/maps/openmap",
-    element: <OpenMapPage />,
+    element: (
+      <PermissionRoute
+        authenticationRequired="any"
+        allowedRoles={["customer"]}
+        roleRedirectPath={(auth) => {
+          // Chuyển hướng dựa trên vai trò
+          if (auth?.user?.role === "admin") return "/admin/dashboard";
+          if (auth?.user?.role === "staff") return "/staff/dashboard";
+          if (auth?.user?.role === "driver") return "/driver/dashboard";
+          return "/"; // Mặc định cho customer
+        }}
+      >
+        <OpenMapPage />
+      </PermissionRoute>
+    ),
   },
   {
     path: "/maps/trackasia",
-    element: <TrackAsiaMapPage />,
+    element: (
+      <PermissionRoute
+        authenticationRequired="any"
+        allowedRoles={["customer"]}
+        roleRedirectPath={(auth) => {
+          // Chuyển hướng dựa trên vai trò
+          if (auth?.user?.role === "admin") return "/admin/dashboard";
+          if (auth?.user?.role === "staff") return "/staff/dashboard";
+          if (auth?.user?.role === "driver") return "/driver/dashboard";
+          return "/"; // Mặc định cho customer
+        }}
+      >
+        <TrackAsiaMapPage />
+      </PermissionRoute>
+    ),
   },
 ]);
 

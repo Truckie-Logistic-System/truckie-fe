@@ -1,0 +1,16 @@
+export { default as StatusBadge } from './StatusBadge';
+export { default as StatusTag } from './StatusTag';
+export { default as OrderStatusTag } from './OrderStatusTag';
+export { default as VehicleStatusTag } from './VehicleStatusTag';
+export { default as UserStatusTag } from './UserStatusTag';
+export { default as RoleTypeTag } from './RoleTypeTag';
+export { default as TransactionStatusTag } from './TransactionStatusTag';
+export { default as IssueStatusTag } from './IssueStatusTag';
+export { default as VehicleAssignmentTag } from './VehicleAssignmentTag';
+export { default as PenaltyStatusTag } from './PenaltyStatusTag';
+export { default as ConversationStatusTag } from './ConversationStatusTag';
+export { default as CommonStatusTag } from './CommonStatusTag';
+export { default as MaintenanceTypeTag } from './MaintenanceTypeTag';
+export { default as DeviceStatusTag } from './DeviceStatusTag';
+export { default as PriorityTag } from './PriorityTag';
+export { default as LicenseClassTag } from './LicenseClassTag'; 

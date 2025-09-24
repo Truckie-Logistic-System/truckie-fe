@@ -1,48 +1,63 @@
 import React from 'react';
-import { Row, Col, Card, Statistic, Typography, Table, Tag } from 'antd';
-import { UserOutlined, ShoppingCartOutlined, CarOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { useAuth } from '../../../context';
+import { Row, Col, Card, Statistic, Typography, Table } from 'antd';
+import {
+    UserOutlined,
+    CarOutlined,
+    DollarCircleOutlined,
+    FileTextOutlined
+} from '@ant-design/icons';
+import { useAuth } from '@/context';
+import { OrderStatusEnum } from '@/constants/enums';
+import { OrderStatusTag } from '@/components/common/tags';
 
 const { Title } = Typography;
+
+// Map trạng thái tiếng Việt sang OrderStatusEnum
+const mapStatusToEnum = (status: string): OrderStatusEnum => {
+    switch (status) {
+        case 'Đang giao': return OrderStatusEnum.ON_DELIVERED;
+        case 'Đã hoàn thành': return OrderStatusEnum.SUCCESSFUL;
+        case 'Đang xử lý': return OrderStatusEnum.PROCESSING;
+        default: return OrderStatusEnum.PENDING;
+    }
+};
 
 const AdminDashboard: React.FC = () => {
     const { user } = useAuth();
 
-    // Mock data for statistics
     const stats = [
         {
-            title: 'Tổng người dùng',
-            value: 1245,
+            title: 'Tổng khách hàng',
+            value: 128,
             icon: <UserOutlined />,
             color: '#1890ff'
         },
         {
-            title: 'Đơn hàng mới',
-            value: 28,
-            icon: <ShoppingCartOutlined />,
+            title: 'Phương tiện hoạt động',
+            value: 42,
+            icon: <CarOutlined />,
             color: '#52c41a'
         },
         {
-            title: 'Tài xế hoạt động',
-            value: 42,
-            icon: <CarOutlined />,
-            color: '#faad14'
+            title: 'Đơn hàng trong ngày',
+            value: 18,
+            icon: <FileTextOutlined />,
+            color: '#722ed1'
         },
         {
-            title: 'Đơn hàng hoàn thành',
-            value: 187,
-            icon: <CheckCircleOutlined />,
-            color: '#13c2c2'
+            title: 'Doanh thu trong ngày',
+            value: '12,500,000 ₫',
+            icon: <DollarCircleOutlined />,
+            color: '#fa8c16'
         }
     ];
 
-    // Mock data for recent orders
     const recentOrders = [
         {
             key: '1',
             id: 'ORD-1234',
             customer: 'Nguyễn Văn A',
-            status: 'Đang giao',
+            status: 'Đã hoàn thành',
             amount: '1,200,000 ₫',
             date: '12/06/2023'
         },
@@ -50,7 +65,7 @@ const AdminDashboard: React.FC = () => {
             key: '2',
             id: 'ORD-1235',
             customer: 'Trần Thị B',
-            status: 'Đã hoàn thành',
+            status: 'Đang giao',
             amount: '850,000 ₫',
             date: '12/06/2023'
         },
@@ -96,11 +111,8 @@ const AdminDashboard: React.FC = () => {
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => {
-                let color = '';
-                if (status === 'Đang giao') color = 'blue';
-                else if (status === 'Đã hoàn thành') color = 'green';
-                else if (status === 'Đang xử lý') color = 'orange';
-                return <Tag color={color}>{status}</Tag>;
+                const orderStatus = mapStatusToEnum(status);
+                return <OrderStatusTag status={orderStatus} />;
             }
         },
         {

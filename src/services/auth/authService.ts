@@ -1,15 +1,12 @@
 import httpClient from '../api/httpClient';
-import { AUTH_REFRESH_TOKEN_KEY, AUTH_ACCESS_TOKEN_KEY } from '../../config';
 import type {
     LoginRequest,
     LoginResponse,
     RegisterRequest,
     RegisterResponse,
-    RefreshTokenResponse,
     ChangePasswordRequest,
     ChangePasswordResponse
 } from './types';
-import { mapUserResponseToModel } from '@/models/User';
 import { handleApiError } from '../api/errorHandler';
 
 /**
@@ -33,9 +30,7 @@ const authService = {
                 throw new Error(response.data.message || 'Đăng nhập thất bại');
             }
 
-            // Lưu token và thông tin người dùng vào localStorage
-            localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, response.data.data.authToken);
-            localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
+            // Lưu thông tin người dùng vào localStorage (không lưu token)
             localStorage.setItem('user_role', response.data.data.user.role.roleName.toLowerCase());
             localStorage.setItem('userId', response.data.data.user.id);
             localStorage.setItem('username', response.data.data.user.username);
@@ -79,41 +74,26 @@ const authService = {
      * Refresh the authentication token
      * @returns Promise with refresh token response
      */
-    refreshToken: async (): Promise<RefreshTokenResponse> => {
+    refreshToken: async (): Promise<void> => {
         try {
-            const refreshToken = localStorage.getItem(AUTH_REFRESH_TOKEN_KEY);
+            console.log("Starting token refresh process...");
 
-            if (!refreshToken) {
-                throw new Error('Không tìm thấy refresh token');
-            }
+            // Không cần gửi refresh token, server sẽ đọc từ cookie
+            const response = await httpClient.post('/auths/token/refresh', {});
 
-            const response = await httpClient.post<RefreshTokenResponse>('/auths/token/refresh', {
-                refreshToken
+            console.log("Token refresh API call successful", {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
             });
 
-            // Kiểm tra response có thành công không
-            if (!response.data.success) {
-                throw new Error(response.data.message || 'Làm mới token thất bại');
-            }
-
-            // Lưu token mới vào localStorage
-            if (response.data.data && response.data.data.accessToken && response.data.data.refreshToken) {
-                localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, response.data.data.accessToken);
-                localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
-
-                // Cập nhật Authorization header cho các request tiếp theo
-                httpClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.data.accessToken}`;
-            } else {
-                console.error('Invalid refresh token response format:', response.data);
-                throw new Error('Định dạng phản hồi token không hợp lệ');
-            }
-
-            return response.data;
+            // API không trả về response, chỉ cần gọi thành công là được
+            return;
         } catch (error: any) {
             console.error('Token refresh error:', error);
             // Xử lý trường hợp refresh token hết hạn hoặc không hợp lệ
             if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                // Xóa token không hợp lệ và đăng xuất người dùng
+                // Đăng xuất người dùng
                 authService.logout();
             }
             throw handleApiError(error, 'Làm mới token thất bại');
@@ -123,13 +103,19 @@ const authService = {
     /**
      * Logout the current user
      */
-    logout: (): void => {
-        localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY);
-        localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
-        localStorage.removeItem('user_role');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('username');
-        localStorage.removeItem('email');
+    logout: async (): Promise<void> => {
+        try {
+            // Gọi API logout để xóa cookie phía server
+            await httpClient.post('/auths/logout');
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            // Xóa thông tin người dùng khỏi localStorage
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('username');
+            localStorage.removeItem('email');
+        }
     },
 
     /**
@@ -137,7 +123,8 @@ const authService = {
      * @returns Boolean indicating if user is logged in
      */
     isLoggedIn: (): boolean => {
-        return !!localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
+        // Kiểm tra dựa trên thông tin người dùng trong localStorage
+        return !!localStorage.getItem('username');
     },
 
     /**

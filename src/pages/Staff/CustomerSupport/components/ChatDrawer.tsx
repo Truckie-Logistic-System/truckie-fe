@@ -1,14 +1,5 @@
 import React from 'react';
-import {
-    Drawer,
-    Typography,
-    Button,
-    Input,
-    Space,
-    Tag,
-    Avatar,
-    Select
-} from 'antd';
+import { Drawer, Avatar, Input, Button, Space, Typography, Select } from 'antd';
 import {
     UserOutlined,
     SendOutlined,
@@ -17,6 +8,8 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import type { ChatConversation, ChatMessage } from '@/models/Chat';
+import { ConversationStatusEnum } from '@/constants/enums';
+import { ConversationStatusTag } from '@/components/common/tags';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -87,9 +80,7 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
                 <Space direction="vertical" className="w-full">
                     <div className="flex justify-between items-center">
                         <Text type="secondary">Trạng thái:</Text>
-                        <Tag color={conversation.status === 'active' ? 'green' : 'orange'}>
-                            {conversation.status === 'active' ? 'Đang hoạt động' : 'Đang chờ'}
-                        </Tag>
+                        <ConversationStatusTag status={conversation.status as ConversationStatusEnum} size="small" />
                     </div>
                     <div className="flex justify-between items-center">
                         <Text type="secondary">Phân loại:</Text>
@@ -111,8 +102,8 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
                     >
                         <div
                             className={`inline-block rounded-lg px-4 py-2 max-w-[80%] ${msg.senderType === 'staff'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-100 text-gray-800'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-800'
                                 }`}
                         >
                             <div className="text-sm">{msg.content}</div>

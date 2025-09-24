@@ -1,30 +1,70 @@
-// User model
+export interface Role {
+    id: string;
+    roleName: string;
+    description: string;
+    isActive: boolean;
+}
+
+export interface UserModel {
+    id: string;
+    username: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    gender: boolean;
+    dateOfBirth: string;
+    imageUrl: string;
+    status: string;
+    role: Role;
+}
+
+export interface UsersResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: UserModel[];
+}
+
+// Sửa lại UserResponse để phù hợp với API thực tế
+export interface UserResponse {
+    id: string;
+    username: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    gender: boolean;
+    dateOfBirth: string;
+    imageUrl: string;
+    status: string;
+    role: Role;
+}
+
+export interface UserStatusUpdateRequest {
+    status: string;
+}
+
+export interface RegisterEmployeeRequest {
+    username: string;
+    email: string;
+    password: string;
+    gender: boolean;
+    dateOfBirth: string;
+    imageUrl?: string;
+    fullName: string;
+    phoneNumber: string;
+}
+
+// For backward compatibility with existing code
 export interface User {
     id: string;
     username: string;
     email: string;
-    role: 'admin' | 'customer' | 'driver' | 'staff';
+    role: 'admin' | 'customer' | 'staff' | 'driver';
 }
 
 export interface UserCredentials {
     username: string;
     password: string;
-}
-
-export interface UserResponse {
-    id: string;
-    username: string;
-    email: string;
-    fullName?: string;
-    phoneNumber?: string;
-    gender?: boolean;
-    dateOfBirth?: string;
-    imageUrl?: string;
-    status?: string;
-    role: {
-        roleName: string;
-        permissions?: string[];
-    };
 }
 
 // Chuyển đổi từ API response sang model

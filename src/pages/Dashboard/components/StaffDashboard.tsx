@@ -1,14 +1,30 @@
 import React from 'react';
-import { Row, Col, Card, Statistic, Typography, List, Tag, Badge, Space } from 'antd';
+import { Row, Col, Card, Statistic, Typography, List, Space, Badge } from 'antd';
 import {
-    ShoppingCartOutlined,
-    ClockCircleOutlined,
+    FileTextOutlined,
     CheckCircleOutlined,
-    ExclamationCircleOutlined
+    ClockCircleOutlined,
+    ExclamationCircleOutlined,
+    CarOutlined,
+    UserOutlined,
+    ToolOutlined,
+    BellOutlined
 } from '@ant-design/icons';
-import { useAuth } from '../../../context';
+import { useAuth } from '@/context';
+import { OrderStatusEnum, PriorityEnum } from '@/constants/enums';
+import { OrderStatusTag, PriorityTag } from '@/components/common/tags';
 
 const { Title } = Typography;
+
+// Map trạng thái tiếng Việt sang OrderStatusEnum
+const mapStatusToEnum = (status: string): OrderStatusEnum => {
+    switch (status) {
+        case 'Đang giao': return OrderStatusEnum.ON_DELIVERED;
+        case 'Đã giao': return OrderStatusEnum.DELIVERED;
+        case 'Chậm trễ': return OrderStatusEnum.IN_TROUBLES;
+        default: return OrderStatusEnum.PENDING;
+    }
+};
 
 const StaffDashboard: React.FC = () => {
     const { user } = useAuth();
@@ -18,7 +34,7 @@ const StaffDashboard: React.FC = () => {
         {
             title: 'Đơn hàng mới',
             value: 12,
-            icon: <ShoppingCartOutlined />,
+            icon: <FileTextOutlined />,
             color: '#1890ff'
         },
         {
@@ -159,9 +175,7 @@ const StaffDashboard: React.FC = () => {
                                         title={<span>{item.title}</span>}
                                         description={
                                             <Space>
-                                                <Tag color={getPriorityColor(item.priority)}>
-                                                    {item.priority}
-                                                </Tag>
+                                                <PriorityTag priority={item.priority} />
                                                 <span>
                                                     <ClockCircleOutlined /> Hạn: {item.deadline}
                                                 </span>
@@ -188,7 +202,7 @@ const StaffDashboard: React.FC = () => {
                                     <Space direction="vertical" size={1} style={{ width: '100%' }}>
                                         <div className="flex justify-between">
                                             <span className="font-medium">{item.id}</span>
-                                            <Tag color={getStatusColor(item.status)}>{item.status}</Tag>
+                                            <OrderStatusTag status={mapStatusToEnum(item.status)} />
                                         </div>
                                         <div>Tài xế: {item.driver}</div>
                                         <div className="text-xs text-gray-500">{item.address}</div>

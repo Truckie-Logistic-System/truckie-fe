@@ -2,6 +2,8 @@ import React from 'react';
 import { Table, Button, Space, Tag, Avatar, Tooltip, Skeleton } from 'antd';
 import { EyeOutlined, SwapOutlined, IdcardOutlined, CarOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
 import type { DriverModel } from '../../../../services/driver';
+import { UserStatusEnum } from '@/constants/enums';
+import { UserStatusTag } from '@/components/common/tags';
 
 interface DriverTableProps {
     data: DriverModel[];
@@ -96,9 +98,7 @@ const DriverTable: React.FC<DriverTableProps> = ({
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => (
-                <Tag color={getStatusColor(status)} className="px-3 py-1 text-sm">
-                    {getStatusText(status)}
-                </Tag>
+                <UserStatusTag status={status as UserStatusEnum} />
             ),
         },
         {

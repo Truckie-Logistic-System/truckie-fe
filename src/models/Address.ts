@@ -15,7 +15,7 @@ export interface AddressCreateDto {
     ward: string;
     province: string;
     addressType: boolean;
-    customerId: string;
+    customerId?: string; // Make customerId optional since it will be handled by the backend
 }
 
 export interface AddressUpdateDto {

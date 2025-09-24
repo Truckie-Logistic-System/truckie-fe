@@ -1,14 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Button,
-  Form,
-  Steps,
-  Card,
-  Typography,
-  notification,
-  Skeleton,
-} from "antd";
+import { Button, Form, Steps, Card, Typography, App, Skeleton } from "antd";
 import orderService from "../../services/order";
 import categoryService from "../../services/category";
 import addressService from "../../services/address";
@@ -18,10 +10,10 @@ import type { Category } from "../../models/Category";
 import type { Address } from "../../models/Address";
 import type { OrderSize } from "../../models/OrderSize";
 import { OrderDetailFormList } from "./components";
+import OrderCreationSuccess from "./components/OrderCreationSuccess";
 import { formatToVietnamTime } from "../../utils/dateUtils";
 import {
-  ReceiverInfoStep,
-  AddressInfoStep,
+  ReceiverAndAddressStep,
   OrderSummaryStep,
   StepActions,
 } from "./components/CreateOrderSteps";
@@ -31,64 +23,71 @@ const { Title, Text } = Typography;
 
 export default function CreateOrder() {
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const [currentStep, setCurrentStep] = useState(0);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orderSizes, setOrderSizes] = useState<OrderSize[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [units, setUnits] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<any>({
-    notes: "Không có ghi chú",
-    packageDescription: "Gói hàng thông thường",
-    orderDetailsList: [
-      {
-        weight: 1,
-        orderSizeId: null,
-        description: "",
-      },
-    ], // Initialize với 1 OrderDetail
+    orderDetailsList: [{ quantity: 1, unit: "Kí" }], // Initialize with one default item
   });
+  const [createdOrder, setCreatedOrder] = useState<{
+    id: string;
+    orderCode: string;
+  } | null>(null);
 
   const [form] = Form.useForm();
 
   // Cập nhật giá trị form từ state khi component mount
   useEffect(() => {
+    console.log("Setting form values from state:", formValues);
     form.setFieldsValue(formValues);
   }, [form, formValues]);
+
+  // Tự động lưu dữ liệu form khi có thay đổi
+  const handleFormChange = () => {
+    const currentValues = form.getFieldsValue(true);
+    setFormValues((prev: any) => ({ ...prev, ...currentValues }));
+  };
 
   // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
+        // Fetch categories
+        const categoriesResponse = await categoryService.getAllCategories();
+        setCategories(categoriesResponse);
 
-        const [addressesData, orderSizesData, categoriesData] =
-          await Promise.all([
-            addressService.getAllAddresses(),
-            orderSizeService.getAllOrderSizes(),
-            categoryService.getAllCategories(),
-          ]);
+        // Fetch order sizes
+        const orderSizesResponse = await orderSizeService.getAllOrderSizes();
+        setOrderSizes(orderSizesResponse);
 
-        // Thêm trường fullAddress nếu chưa có
-        const addressesWithFullAddress = addressesData.map((address) => ({
-          ...address,
-          fullAddress:
-            address.fullAddress ||
-            `${address.street}, ${address.ward}, ${address.province}`,
-        }));
+        // Fetch units
+        const unitsResponse = await orderService.getUnitsList();
+        setUnits(unitsResponse);
 
-        setAddresses(addressesWithFullAddress);
-        setOrderSizes(orderSizesData);
-        setCategories(categoriesData);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || "Không thể tải dữ liệu");
-        notification.error({
-          message: "Lỗi",
-          description: "Không thể tải dữ liệu cần thiết. Vui lòng thử lại sau.",
-        });
-      } finally {
+        // Cập nhật unit trong formValues với giá trị từ API
+        if (unitsResponse && unitsResponse.length > 0) {
+          setFormValues((prev: any) => ({
+            ...prev,
+            orderDetailsList: [{ quantity: 1, unit: unitsResponse[0] }], // Always initialize with one item
+          }));
+        }
+
+        // Fetch addresses using the new my-addresses endpoint
+        const addressesResponse = await addressService.getMyAddresses();
+        setAddresses(addressesResponse);
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
         setLoading(false);
       }
     };
@@ -96,160 +95,251 @@ export default function CreateOrder() {
     fetchData();
   }, []);
 
-  const handleSubmit = async (values: any) => {
-    // Kết hợp giá trị từ form và state
-    const finalValues = {
-      ...formValues,
-      ...values,
-    };
+  // Cập nhật form với giá trị đã lưu khi chuyển step
+  useEffect(() => {
+    if (formValues && Object.keys(formValues).length > 0) {
+      form.setFieldsValue(formValues);
+    }
+  }, [currentStep, formValues, form]);
 
+  // Refresh addresses after creating/updating
+  const refreshAddresses = async () => {
     try {
-      setIsSubmitting(true);
+      const addressesResponse = await addressService.getMyAddresses();
+      setAddresses(addressesResponse);
+    } catch (error) {
+      console.error("Error refreshing addresses:", error);
+    }
+  };
 
-      // Xử lý orderDetailsList - lấy item đầu tiên để tạo đơn hàng chính
-      // (Tùy theo API có hỗ trợ multiple OrderDetails hay không)
-      const orderDetails = finalValues.orderDetailsList || [];
-      if (orderDetails.length === 0) {
-        throw new Error("Vui lòng thêm ít nhất một gói hàng!");
+  // Handle receiver details loaded from suggestion
+  const handleReceiverDetailsLoaded = (data: any) => {
+    form.setFieldsValue({
+      pickupAddressId: data.pickupAddressId,
+      deliveryAddressId: data.deliveryAddressId,
+    });
+  };
+
+  const next = async () => {
+    try {
+      // Validate current step fields before proceeding
+      await form.validateFields();
+
+      // Lưu giá trị form hiện tại trước khi chuyển step
+      const currentValues = form.getFieldsValue(true);
+      setFormValues((prev: any) => ({ ...prev, ...currentValues }));
+
+      // Kiểm tra orderDetailsList không được rỗng khi ở step 0 (step đầu tiên)
+      if (currentStep === 0) {
+        const orderDetailsList = currentValues.orderDetailsList || [];
+        if (orderDetailsList.length === 0) {
+          message.error(
+            "Vui lòng thêm ít nhất một lô hàng trước khi tiếp tục!"
+          );
+          return;
+        }
       }
 
-      // Chuẩn bị orderDetails cho API
-      const orderDetailsForAPI = orderDetails.map((detail: any) => ({
-        weight: detail.weight,
-        description: detail.description,
-        orderSizeId: detail.orderSizeId,
-      }));
+      setCurrentStep(currentStep + 1);
+    } catch (error) {
+      console.error("Validation error:", error);
+    }
+  };
 
-      // Xử lý estimateStartTime - format theo UTC+7 định dạng YYYY-MM-DDTHH:mm:ss
-      const estimateStartTime = finalValues.estimateStartTime
-        ? formatToVietnamTime(finalValues.estimateStartTime.toDate())
-        : undefined;
+  const prev = () => {
+    // Lưu giá trị form hiện tại trước khi quay lại bước trước
+    const currentValues = form.getFieldsValue(true);
+    setFormValues((prev: any) => ({ ...prev, ...currentValues }));
+    setCurrentStep(currentStep - 1);
+  };
 
-      // Prepare data for API theo cấu trúc mới
-      const orderData: OrderCreateRequest = {
-        orderRequest: {
-          notes: finalValues.notes,
-          receiverName: finalValues.receiverName,
-          receiverPhone: finalValues.receiverPhone,
-          packageDescription: finalValues.packageDescription,
-          estimateStartTime: estimateStartTime,
-          deliveryAddressId: finalValues.deliveryAddressId,
-          pickupAddressId: finalValues.pickupAddressId,
-          categoryId: finalValues.categoryId,
-        },
-        orderDetails: orderDetailsForAPI,
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const currentFormValues = form.getFieldsValue(true);
+      console.log("Current form values:", currentFormValues);
+      let formattedEstimateStartTime;
+      if (currentFormValues.estimateStartTime) {
+        if (currentFormValues.estimateStartTime._isAMomentObject) {
+          const dateObj = currentFormValues.estimateStartTime.toDate();
+          formattedEstimateStartTime = formatToVietnamTime(dateObj);
+        } else if (currentFormValues.estimateStartTime instanceof Date) {
+          formattedEstimateStartTime = formatToVietnamTime(
+            currentFormValues.estimateStartTime
+          );
+        } else {
+          formattedEstimateStartTime = currentFormValues.estimateStartTime;
+        }
+      }
+
+      const formattedValues = {
+        ...currentFormValues,
+        estimateStartTime: formattedEstimateStartTime,
       };
 
-      console.log("Submitting order data:", orderData);
+      // Đảm bảo orderDetailsList luôn là một mảng
+      const orderDetailsList = Array.isArray(formattedValues.orderDetailsList)
+        ? formattedValues.orderDetailsList
+        : [];
 
-      // Call API to create order
-      const response = await orderService.createOrder(orderData);
+      if (orderDetailsList.length === 0) {
+        throw new Error("Vui lòng thêm ít nhất một lô hàng");
+      }
 
-      notification.success({
-        message: "Đặt hàng thành công",
-        description: `Đơn hàng của bạn đã được tạo thành công với mã ${response.orderCode}.`,
+      // Kiểm tra các trường bắt buộc trong orderDetailsList
+      const invalidDetails = orderDetailsList.filter(
+        (detail: any) =>
+          !detail.weight ||
+          !detail.orderSizeId ||
+          !detail.description ||
+          !detail.quantity
+      );
+
+      if (invalidDetails.length > 0) {
+        throw new Error(
+          "Một số lô hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước, mô tả và số lượng."
+        );
+      }
+
+      // Mở rộng orderDetailsList dựa trên quantity của từng item
+      const expandedOrderDetailsList: any[] = [];
+      orderDetailsList.forEach((detail: any) => {
+        const quantity = detail.quantity || 1;
+        // Tạo nhiều bản copy của item dựa trên quantity
+        for (let i = 0; i < quantity; i++) {
+          expandedOrderDetailsList.push({
+            weight: detail.weight,
+            unit: detail.unit || "kg",
+            description: detail.description || "",
+            orderSizeId: detail.orderSizeId,
+          });
+        }
       });
 
-      // Redirect to order list page
-      navigate("/orders");
-    } catch (err: any) {
-      notification.error({
-        message: "Đặt hàng thất bại",
-        description:
-          err.message ||
-          "Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại sau.",
-      });
+      // Extract orderDetailsList from formValues
+      const { orderDetailsList: _, ...orderRequestData } = formattedValues;
+
+      // Create order request
+      const orderRequest: OrderCreateRequest = {
+        orderRequest: {
+          notes: orderRequestData.notes || "Không có ghi chú",
+          receiverName: orderRequestData.receiverName,
+          receiverPhone: orderRequestData.receiverPhone,
+          receiverIdentity: orderRequestData.receiverIdentity || "",
+          packageDescription:
+            orderRequestData.packageDescription || "Đơn hàng thông thường",
+          estimateStartTime: formattedEstimateStartTime,
+          deliveryAddressId:
+            orderRequestData.deliveryAddressId?.value ||
+            orderRequestData.deliveryAddressId,
+          pickupAddressId:
+            orderRequestData.pickupAddressId?.value ||
+            orderRequestData.pickupAddressId,
+          categoryId: orderRequestData.categoryId,
+        },
+        orderDetails: expandedOrderDetailsList,
+      };
+
+      // Log để debug
+      console.log("Order request:", orderRequest);
+
+      // Kiểm tra dữ liệu trước khi gửi
+      if (
+        !orderRequest.orderRequest.receiverName ||
+        !orderRequest.orderRequest.receiverPhone ||
+        !orderRequest.orderRequest.receiverIdentity ||
+        !orderRequest.orderRequest.pickupAddressId ||
+        !orderRequest.orderRequest.deliveryAddressId ||
+        !orderRequest.orderRequest.categoryId
+      ) {
+        throw new Error(
+          "Vui lòng điền đầy đủ thông tin bắt buộc (tên người nhận, số điện thoại, CMND/CCCD, địa chỉ gửi/nhận, loại hàng hóa)"
+        );
+      }
+
+      // Submit order
+      const response = await orderService.createOrder(orderRequest);
+
+      if (response && response.success === true) {
+        message.success("Đơn hàng đã được tạo thành công");
+        if (response.data && response.data.id) {
+          setCreatedOrder({
+            id: response.data.id,
+            orderCode: response.data.orderCode,
+          });
+          // Don't navigate, show success component instead
+        } else {
+          navigate("/orders");
+        }
+      } else {
+        message.error(response?.message || "Có lỗi xảy ra khi tạo đơn hàng");
+      }
+    } catch (error: any) {
+      console.error("Error creating order:", error);
+      message.error(error.message || "Có lỗi xảy ra khi tạo đơn hàng");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Validate form fields in current step
-  const validateForm = async () => {
-    try {
-      let fieldsToValidate: string[] = [];
-
-      switch (currentStep) {
-        case 0:
-          fieldsToValidate = [
-            "receiverName",
-            "receiverPhone",
-            "categoryId",
-            "packageDescription",
-          ];
-          break;
-        case 1:
-          fieldsToValidate = ["weight", "orderSizeId", "description"];
-          break;
-        case 2:
-          fieldsToValidate = ["pickupAddressId", "deliveryAddressId", "notes"];
-          break;
-        default:
-          fieldsToValidate = [];
-      }
-
-      await form.validateFields(fieldsToValidate);
-      return true;
-    } catch (errorInfo) {
-      console.log("Failed form validation:", errorInfo);
-      return false;
-    }
-  };
-
-  // Move to next step
-  const next = () => {
-    validateForm().then((isValid) => {
-      if (isValid) {
-        // Save current step form values
-        const values = form.getFieldsValue();
-        setFormValues((prev: any) => ({
-          ...prev,
-          ...values,
-        }));
-
-        setCurrentStep(currentStep + 1);
-      }
-    });
-  };
-
-  // Move to previous step
-  const prev = () => {
-    setCurrentStep(currentStep - 1);
-  };
+  // If order was created successfully, show success component
+  if (createdOrder) {
+    return (
+      <div className="p-6">
+        <Card>
+          <OrderCreationSuccess
+            orderId={createdOrder.id}
+            orderCode={createdOrder.orderCode}
+          />
+        </Card>
+      </div>
+    );
+  }
 
   // Render form based on current step
   const renderForm = () => {
     if (loading) {
       return (
-        <div className="py-8">
-          <div className="mb-6">
-            <Skeleton.Input active size="large" style={{ width: '50%' }} />
-            <div className="mt-3">
-              <Skeleton.Input active size="small" style={{ width: '70%' }} />
+        <div className="space-y-8">
+          <div>
+            <Skeleton.Input
+              active
+              size="large"
+              className="mb-4 w-1/3"
+              style={{ height: "2rem" }}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Skeleton active paragraph={{ rows: 4 }} />
+              </div>
+              <div>
+                <Skeleton active paragraph={{ rows: 4 }} />
+              </div>
             </div>
           </div>
-
-          <Card>
-            <Skeleton.Button active size="large" shape="circle" className="mb-4" />
-            <Skeleton active paragraph={{ rows: 8 }} />
-            <div className="mt-6 flex justify-end">
-              <Skeleton.Button active size="large" shape="round" className="mr-3" />
-              <Skeleton.Button active size="large" shape="round" />
-            </div>
-          </Card>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="p-6 bg-red-50 rounded-md">
-          <Title level={4} className="text-red-500">
-            Đã xảy ra lỗi
-          </Title>
-          <Text className="text-red-500">{error}</Text>
-          <div className="mt-4">
-            <Button onClick={() => window.location.reload()}>Thử lại</Button>
+        <div className="text-center py-12">
+          <div className="max-w-md mx-auto">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-8">
+              <div className="text-red-500 text-5xl mb-4">⚠️</div>
+              <Title level={4} className="text-red-600 mb-3">
+                Đã xảy ra lỗi
+              </Title>
+              <Text className="text-red-500 block mb-6">{error}</Text>
+              <Button
+                type="primary"
+                size="large"
+                onClick={() => window.location.reload()}
+                className="bg-red-500 hover:bg-red-600 border-red-500"
+              >
+                Thử lại
+              </Button>
+            </div>
           </div>
         </div>
       );
@@ -257,24 +347,35 @@ export default function CreateOrder() {
 
     switch (currentStep) {
       case 0:
-        return <ReceiverInfoStep categories={categories} />;
-      case 1:
         return (
           <OrderDetailFormList
             name="orderDetailsList"
-            label="Danh sách gói hàng"
+            label="Danh sách lô hàng"
             orderSizes={orderSizes}
+            units={units}
+          />
+        );
+      case 1:
+        return (
+          <ReceiverAndAddressStep
+            categories={categories}
+            addresses={addresses}
+            onReceiverDetailsLoaded={handleReceiverDetailsLoaded}
+            onAddressesUpdated={refreshAddresses}
           />
         );
       case 2:
-        return <AddressInfoStep addresses={addresses} />;
-      case 3:
+        // Lấy lại giá trị form mới nhất trước khi hiển thị trang tóm tắt
+        const currentFormValues = form.getFieldsValue(true);
+        const updatedFormValues = { ...formValues, ...currentFormValues };
+        console.log("Summary step - Updated form values:", updatedFormValues);
+
         return (
           <OrderSummaryStep
-            formValues={formValues}
+            formValues={updatedFormValues}
             categories={categories}
-            orderSizes={orderSizes}
             addresses={addresses}
+            orderSizes={orderSizes}
           />
         );
       default:
@@ -283,46 +384,72 @@ export default function CreateOrder() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <Title level={2}>Tạo đơn hàng mới</Title>
-        <Link to="/orders">
-          <Button>Quay lại danh sách</Button>
-        </Link>
+    <div className="min-h-screen bg-gray-50 py-6">
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <Title level={2} className="mb-2">
+              Tạo đơn hàng mới
+            </Title>
+            <Text className="text-gray-600">
+              Điền thông tin chi tiết để tạo đơn hàng vận chuyển
+            </Text>
+          </div>
+          <Link to="/orders">
+            <Button type="default" size="large" className="shrink-0">
+              ← Quay lại danh sách
+            </Button>
+          </Link>
+        </div>
+
+        {/* Main Form Card */}
+        <Card className="shadow-lg border-0 rounded-2xl overflow-hidden">
+          {/* Steps Navigation */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6">
+            <Steps current={currentStep} className="mb-0">
+              <Step
+                title="Thông tin lô hàng"
+                description="Nhập thông tin lô hàng"
+              />
+              <Step
+                title="Thông tin vận chuyển"
+                description="Nhập thông tin vận chuyển"
+              />
+              <Step
+                title="Tổng hợp và xác nhận"
+                description="Xác nhận thông tin đơn hàng"
+              />
+            </Steps>
+          </div>
+
+          {/* Form Content */}
+          <div className="p-8">
+            <Form
+              form={form}
+              layout="vertical"
+              requiredMark={false}
+              onFinish={handleSubmit}
+              onValuesChange={handleFormChange}
+              className="space-y-6"
+            >
+              {renderForm()}
+
+              {/* Step Actions */}
+              {!createdOrder && (
+                <StepActions
+                  currentStep={currentStep}
+                  totalSteps={3}
+                  onPrev={prev}
+                  onNext={next}
+                  onSubmit={handleSubmit}
+                  isSubmitting={isSubmitting}
+                />
+              )}
+            </Form>
+          </div>
+        </Card>
       </div>
-
-      <Card className="mb-6">
-        <Steps current={currentStep} className="mb-8">
-          <Step
-            title="Thông tin người nhận"
-            description="Nhập thông tin người nhận"
-          />
-          <Step
-            title="Kích thước & Trọng lượng & trọng lượng"
-            description="Nhập thông tin gói hàng"
-          />
-          <Step title="Địa chỉ" description="Chọn địa chỉ giao và nhận" />
-          <Step title="Xác nhận" description="Xác nhận thông tin đơn hàng" />
-        </Steps>
-
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={formValues}
-        >
-          {renderForm()}
-
-          <StepActions
-            currentStep={currentStep}
-            totalSteps={4}
-            onPrev={prev}
-            onNext={next}
-            onSubmit={() => form.submit()}
-            isSubmitting={isSubmitting}
-          />
-        </Form>
-      </Card>
     </div>
   );
 }

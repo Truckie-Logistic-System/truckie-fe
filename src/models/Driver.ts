@@ -1,4 +1,5 @@
 import type { UserResponse } from './User';
+import type { Penalty } from './Penalty';
 
 export interface DriverRoleResponse {
     id: string;
@@ -7,13 +8,17 @@ export interface DriverRoleResponse {
     isActive: boolean;
 }
 
-export interface DriverUserResponse extends UserResponse {
+export interface DriverUserResponse {
+    id: string;
+    username: string;
     fullName: string;
+    email: string;
     phoneNumber: string;
     gender: boolean;
     dateOfBirth: string;
     imageUrl: string;
     status: string;
+    role: DriverRoleResponse;
 }
 
 export interface DriverModel {
@@ -28,6 +33,7 @@ export interface DriverModel {
     dateOfPassing: string;
     status: string;
     userResponse: DriverUserResponse;
+    penaltyHistories?: Penalty[];
 }
 
 export interface DriverRegisterRequest {

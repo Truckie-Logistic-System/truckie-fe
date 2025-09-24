@@ -4,17 +4,23 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context';
 import {
     DashboardOutlined,
-    UserOutlined,
     ShoppingCartOutlined,
     CarOutlined,
     SettingOutlined,
     TeamOutlined,
-    FileTextOutlined,
+    VideoCameraOutlined,
     BarChartOutlined,
     BellOutlined,
     ExclamationCircleOutlined,
     CustomerServiceOutlined,
     ToolOutlined,
+    ShopOutlined,
+    MobileOutlined,
+    TagsOutlined,
+    CarFilled,
+    IdcardOutlined,
+    SwapOutlined,
+    DollarOutlined
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -24,7 +30,6 @@ const AdminSidebar: React.FC = () => {
     const { user } = useAuth();
     const location = useLocation();
 
-    // Define menu items based on user role
     const getMenuItems = () => {
         const baseItems = [
             {
@@ -44,14 +49,34 @@ const AdminSidebar: React.FC = () => {
             return [
                 ...baseItems,
                 {
-                    key: '/admin/users',
-                    icon: <UserOutlined />,
-                    label: <Link to="/admin/users">Người dùng</Link>,
+                    key: '/admin/customers',
+                    icon: <ShopOutlined />,
+                    label: <Link to="/admin/customers">Khách hàng</Link>,
                 },
                 {
                     key: '/admin/drivers',
-                    icon: <CarOutlined />,
+                    icon: <IdcardOutlined />,
                     label: <Link to="/admin/drivers">Tài xế</Link>,
+                },
+                {
+                    key: '/admin/vehicles',
+                    icon: <CarFilled />,
+                    label: <Link to="/admin/vehicles">Phương tiện</Link>,
+                },
+                {
+                    key: '/admin/vehicle-assignments',
+                    icon: <SwapOutlined />,
+                    label: <Link to="/admin/vehicle-assignments">Phân công xe</Link>,
+                },
+                {
+                    key: '/admin/vehicle-maintenances',
+                    icon: <ToolOutlined />,
+                    label: <Link to="/admin/vehicle-maintenances">Bảo trì phương tiện</Link>,
+                },
+                {
+                    key: '/admin/vehicle-rules',
+                    icon: <DollarOutlined />,
+                    label: <Link to="/admin/vehicle-rules">Bảng giá vận chuyển</Link>,
                 },
                 {
                     key: '/admin/staff',
@@ -59,15 +84,19 @@ const AdminSidebar: React.FC = () => {
                     label: <Link to="/admin/staff">Nhân viên</Link>,
                 },
                 {
-                    key: '/admin/reports',
-                    icon: <BarChartOutlined />,
-                    label: <Link to="/admin/reports">Thống kê</Link>,
+                    key: '/admin/devices',
+                    icon: <MobileOutlined />,
+                    label: <Link to="/admin/devices">Thiết bị</Link>,
+                },
+                {
+                    key: '/admin/categories',
+                    icon: <TagsOutlined />,
+                    label: <Link to="/admin/categories">Danh mục</Link>,
                 },
                 {
                     key: '/admin/settings',
                     icon: <SettingOutlined />,
                     label: <Link to="/admin/settings">Cài đặt</Link>,
-
                 },
             ];
         }
@@ -78,33 +107,23 @@ const AdminSidebar: React.FC = () => {
                 ...baseItems,
                 {
                     key: '/staff/issues',
-                    icon: <ToolOutlined />,
-                    label: <Link to="/staff/issues">Sự cố</Link>,
+                    icon: <ExclamationCircleOutlined />,
+                    label: <Link to="/staff/issues">Vấn đề</Link>,
+                },
+                {
+                    key: '/staff/vehicle-assignments',
+                    icon: <SwapOutlined />,
+                    label: <Link to="/staff/vehicle-assignments">Phân công xe</Link>,
                 },
                 {
                     key: '/staff/penalties',
-                    icon: <ExclamationCircleOutlined />,
-                    label: <Link to="/staff/penalties">Vi phạm</Link>,
+                    icon: <ToolOutlined />,
+                    label: <Link to="/staff/penalties">Phạt vi phạm</Link>,
                 },
                 {
                     key: '/staff/customer-support',
                     icon: <CustomerServiceOutlined />,
-                    label: <Link to="/staff/customer-support">CSKH</Link>,
-                },
-                {
-                    key: '/staff/deliveries',
-                    icon: <CarOutlined />,
-                    label: <Link to="/staff/deliveries">Vận chuyển</Link>,
-                },
-                {
-                    key: '/staff/customers',
-                    icon: <UserOutlined />,
-                    label: <Link to="/staff/customers">Khách hàng</Link>,
-                },
-                {
-                    key: '/staff/reports',
-                    icon: <FileTextOutlined />,
-                    label: <Link to="/staff/reports">Báo cáo</Link>,
+                    label: <Link to="/staff/customer-support">Hỗ trợ khách hàng</Link>,
                 },
                 {
                     key: '/staff/notifications',
@@ -114,6 +133,7 @@ const AdminSidebar: React.FC = () => {
             ];
         }
 
+        // Default menu items for other roles
         return baseItems;
     };
 

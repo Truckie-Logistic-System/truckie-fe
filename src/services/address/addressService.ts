@@ -27,6 +27,20 @@ const addressService = {
     },
 
     /**
+     * Get my addresses (for the logged in user)
+     * @returns Promise with array of addresses
+     */
+    getMyAddresses: async (): Promise<Address[]> => {
+        try {
+            const response = await httpClient.get<AddressesResponse>('/address/my-addresses');
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching my addresses:', error);
+            throw handleApiError(error, 'Không thể tải danh sách địa chỉ của bạn');
+        }
+    },
+
+    /**
      * Get address by ID
      * @param id Address ID
      * @returns Promise with address data
@@ -38,6 +52,21 @@ const addressService = {
         } catch (error) {
             console.error(`Error fetching address ${id}:`, error);
             throw handleApiError(error, 'Không thể tải thông tin địa chỉ');
+        }
+    },
+
+    /**
+     * Get addresses for a specific customer
+     * @param customerId Customer ID
+     * @returns Promise with array of addresses
+     */
+    getAddressesByCustomerId: async (customerId: string): Promise<Address[]> => {
+        try {
+            const response = await httpClient.get<AddressesResponse>(`/address/${customerId}/list`);
+            return response.data.data;
+        } catch (error) {
+            console.error(`Error fetching addresses for customer ${customerId}:`, error);
+            throw handleApiError(error, 'Không thể tải danh sách địa chỉ của khách hàng');
         }
     },
 

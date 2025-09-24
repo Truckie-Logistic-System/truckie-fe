@@ -1,12 +1,11 @@
 import React from 'react';
-import { ChatProvider, useChatContext } from '@/context/ChatContext';
+import { useChatContext } from '@/context/ChatContext';
 import StaffChatButton from './StaffChatButton';
 import StaffChatWindow from './StaffChatWindow';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// Component nội bộ để tránh lỗi context
-const StaffChatWidgetContent: React.FC = () => {
+const StaffChatWidget: React.FC = () => {
     const { isOpen, toggleChat } = useChatContext();
 
     return (
@@ -24,14 +23,6 @@ const StaffChatWidgetContent: React.FC = () => {
                 pauseOnHover
             />
         </>
-    );
-};
-
-const StaffChatWidget: React.FC = () => {
-    return (
-        <ChatProvider isStaff={true}>
-            <StaffChatWidgetContent />
-        </ChatProvider>
     );
 };
 

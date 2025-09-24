@@ -8,9 +8,10 @@ const { Text } = Typography;
 
 interface EditProfileModalProps {
     customerData: Customer;
+    onRefresh?: () => void;
 }
 
-const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData }) => {
+const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData, onRefresh }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { message } = App.useApp();
 
@@ -32,6 +33,11 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ customerData }) => 
                 duration: 5,
                 className: 'custom-message-success'
             });
+
+            // Refresh data after update
+            if (onRefresh) {
+                onRefresh();
+            }
         }, 100);
     };
 

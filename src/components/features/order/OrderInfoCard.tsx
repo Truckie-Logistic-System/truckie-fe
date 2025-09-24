@@ -30,7 +30,7 @@ const OrderInfoCard: React.FC<OrderInfoCardProps> = ({ order }) => {
                 </div>
                 <div>
                     <h3 className="text-lg font-medium mb-3 text-gray-700 flex items-center">
-                        <FileTextOutlined className="mr-2 text-blue-500" /> Thông tin gói hàng
+                        <FileTextOutlined className="mr-2 text-blue-500" /> Thông tin đơn hàng
                     </h3>
                     <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="mb-2"><span className="font-medium">Mô tả:</span> {order.packageDescription || 'Không có mô tả'}</p>

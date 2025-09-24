@@ -1,0 +1,59 @@
+/* Contract Preview Modal Styles */
+.contract-preview-modal .ant-modal-body {
+  padding: 0;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.contract-preview-modal .ant-modal-content {
+  border-radius: 8px;
+}
+
+/* Print Styles */
+@media print {
+  /* Hide everything except the contract preview */
+  body * {
+    visibility: hidden;
+  }
+
+  .contract-preview,
+  .contract-preview * {
+    visibility: visible;
+  }
+
+  .contract-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Hide modal elements when printing */
+  .ant-modal,
+  .ant-modal-mask,
+  .ant-modal-wrap {
+    display: none !important;
+  }
+
+  /* Ensure contract content is printable */
+  .contract-preview .signature-section {
+    page-break-inside: avoid;
+  }
+
+  .contract-preview .terms-section {
+    break-inside: avoid;
+  }
+
+  .contract-preview table {
+    break-inside: auto;
+  }
+
+  .contract-preview table tr {
+    break-inside: avoid;
+  }
+}

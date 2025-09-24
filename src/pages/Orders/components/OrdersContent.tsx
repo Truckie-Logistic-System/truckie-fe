@@ -1,282 +1,598 @@
-import React from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import type { Order, OrderStatus } from "../../../models/Order";
-import { formatCurrency } from "../../../utils/formatters";
+import {
+  Card,
+  Button,
+  Typography,
+  Row,
+  Col,
+  Tag,
+  Input,
+  Select,
+  Pagination,
+  Divider,
+  Space,
+} from "antd";
+import {
+  EnvironmentOutlined,
+  UserOutlined,
+  SearchOutlined,
+  FilterOutlined,
+  ClockCircleOutlined,
+  BoxPlotOutlined,
+  EyeOutlined,
+  CarOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
+import { PackageIcon } from "lucide-react";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+import type { Order, OrderStatus, CustomerOrder } from "../../../models/Order";
+
+import { formatDate, formatDateTimeWithSeconds } from "../../../utils/formatters";
+
+// Initialize dayjs plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const { Text, Title } = Typography;
+const { Option } = Select;
+
 
 interface OrdersContentProps {
-  orders: Order[];
+  orders: CustomerOrder[];
+  allOrders?: CustomerOrder[];
+  onFilterChange?: (filters: {
+    year?: number;
+    quarter?: number;
+    status?: string;
+    deliveryAddressId?: string;
+  }) => void;
+  onResetFilters?: () => void;
 }
 
-const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case "DELIVERED":
-      case "SUCCESSFUL":
-        return "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg";
-      case "ON_DELIVERED":
-      case "ONGOING_DELIVERED":
-      case "IN_DELIVERED":
-      case "PICKED_UP":
-        return "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg";
-      case "PENDING":
-      case "PROCESSING":
-        return "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg";
-      case "CANCELLED":
-      case "REJECT_ORDER":
-        return "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg";
-      case "IN_TROUBLES":
-        return "bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-lg";
-      case "RETURNING":
-      case "RETURNED":
-        return "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg";
-      default:
-        return "bg-gradient-to-r from-gray-500 to-slate-500 text-white shadow-lg";
+/**
+ * Provides color-coding for order status tags.
+ * @param status The order status string.
+ * @returns The Ant Design color string for the tag.
+ */
+const getStatusColor = (status: string): string => {
+  switch (status) {
+    case "PENDING":
+      return "orange";
+    case "PROCESSING":
+      return "blue";
+    case "PICKED_UP":
+    case "ON_DELIVERED":
+    case "ONGOING_DELIVERED":
+      return "purple";
+    case "DELIVERED":
+    case "SUCCESSFUL":
+      return "green";
+    case "CANCELLED":
+    case "REJECT_ORDER":
+      return "red";
+    case "IN_TROUBLES":
+      return "red";
+    case "RETURNED":
+    case "RETURNING":
+      return "orange";
+    default:
+      return "default";
+  }
+};
+
+/**
+ * Provides a Vietnamese display name for an order status.
+ * @param status The order status string.
+ * @returns The Vietnamese display text.
+ */
+const getStatusText = (status: string): string => {
+  switch (status) {
+    case "PENDING":
+      return "Chờ xử lý";
+    case "PROCESSING":
+      return "Đang xử lý";
+    case "PICKED_UP":
+      return "Đã lấy hàng";
+    case "ON_DELIVERED":
+    case "ONGOING_DELIVERED":
+      return "Đang vận chuyển";
+    case "DELIVERED":
+    case "SUCCESSFUL":
+      return "Đã giao hàng";
+    case "CANCELLED":
+    case "REJECT_ORDER":
+      return "Đã hủy";
+    case "IN_TROUBLES":
+      return "Gặp sự cố";
+    case "RETURNED":
+    case "RETURNING":
+      return "Đang hoàn trả";
+    default:
+      return status.replace(/_/g, " ");
+  }
+};
+
+// Status group definitions
+const statusGroups = [
+  {
+    name: "Đang chờ",
+    color: "orange",
+    statuses: ["PENDING", "PROCESSING"],
+  },
+  {
+    name: "Đang vận chuyển",
+    color: "blue",
+    statuses: ["PICKED_UP", "ON_DELIVERED", "ONGOING_DELIVERED", "IN_DELIVERED"],
+  },
+  {
+    name: "Hoàn thành",
+    color: "green",
+    statuses: ["DELIVERED", "SUCCESSFUL"],
+  },
+  {
+    name: "Đã hủy",
+    color: "red",
+    statuses: ["CANCELLED", "REJECT_ORDER"],
+  },
+  {
+    name: "Sự cố",
+    color: "red",
+    statuses: ["IN_TROUBLES"],
+  },
+  {
+    name: "Hoàn trả",
+    color: "purple",
+    statuses: ["RETURNING", "RETURNED"],
+  },
+];
+
+const OrdersContent: React.FC<OrdersContentProps> = ({
+  orders,
+  onFilterChange,
+  onResetFilters,
+  allOrders = []
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusGroupFilter, setStatusGroupFilter] = useState<string>("ALL");
+  const [yearFilter, setYearFilter] = useState<number | undefined>(undefined);
+  const [quarterFilter, setQuarterFilter] = useState<number | undefined>(undefined);
+  const [addressFilter, setAddressFilter] = useState<string | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [filters, setFilters] = useState<{
+    year?: number;
+    quarter?: number;
+    status?: string;
+    deliveryAddressId?: string;
+  }>({});
+
+  // Generate year options (current year and 2 years back)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 3 }, (_, i) => currentYear - i);
+
+  // Quarter options
+  const quarterOptions = [
+    { value: 1, label: "Quý 1 (Tháng 1-3)" },
+    { value: 2, label: "Quý 2 (Tháng 4-6)" },
+    { value: 3, label: "Quý 3 (Tháng 7-9)" },
+    { value: 4, label: "Quý 4 (Tháng 10-12)" },
+  ];
+
+  // Extract unique addresses from orders
+  const uniqueAddresses = useMemo(() => {
+    // Sử dụng allOrders nếu có để có danh sách địa chỉ đầy đủ
+    const sourceOrders = allOrders && allOrders.length > 0 ? allOrders : orders;
+
+    if (!sourceOrders || sourceOrders.length === 0) {
+      return [];
+    }
+
+    const addresses = sourceOrders.map((order) => ({
+      id: order.deliveryAddressId,
+      address: order.deliveryAddress
+    })).filter((item) => item.id && item.address) // Filter out any undefined values
+      .filter((item, index, self) =>
+        index === self.findIndex((t) => t.id === item.id)
+      );
+    return addresses;
+  }, [orders, allOrders]);
+
+  // Status options
+  const statuses = [
+    { value: "ALL", label: "Tất cả" },
+    { value: "PENDING", label: "Chờ xử lý" },
+    { value: "PROCESSING", label: "Đang xử lý" },
+    { value: "PICKED_UP", label: "Đã lấy hàng" },
+    { value: "ON_DELIVERED", label: "Đang vận chuyển" },
+    { value: "DELIVERED", label: "Đã giao" },
+    { value: "SUCCESSFUL", label: "Thành công" },
+    { value: "CANCELLED", label: "Đã hủy" },
+    { value: "IN_TROUBLES", label: "Gặp sự cố" },
+    { value: "RETURNED", label: "Đã hoàn trả" },
+  ];
+
+
+
+  // Reset filters
+  const resetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("ALL");
+    setStatusGroupFilter("ALL");
+    setYearFilter(undefined);
+    setQuarterFilter(undefined);
+    setAddressFilter(undefined);
+    setCurrentPage(1);
+    setFilters({});
+
+    // Reset server-side filters
+    if (onResetFilters) {
+      onResetFilters();
     }
   };
 
-  const getStatusText = (status: OrderStatus) => {
-    switch (status) {
-      case "DELIVERED":
-      case "SUCCESSFUL":
-        return "Đã giao";
-      case "ON_DELIVERED":
-      case "ONGOING_DELIVERED":
-      case "IN_DELIVERED":
-        return "Đang vận chuyển";
-      case "PENDING":
-        return "Chờ xử lý";
-      case "PROCESSING":
-        return "Đang xử lý";
-      case "CANCELLED":
-      case "REJECT_ORDER":
-        return "Đã hủy";
-      case "PICKED_UP":
-        return "Đã lấy hàng";
-      case "IN_TROUBLES":
-        return "Gặp sự cố";
-      case "RETURNING":
-        return "Đang hoàn trả";
-      case "RETURNED":
-        return "Đã hoàn trả";
-      default:
-        return "Không xác định";
+  const filteredOrders = useMemo(() => {
+    const filtered = orders.filter((order) => {
+      // Text search
+      const matchesSearch =
+        !searchTerm ||
+        order.orderCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.pickupAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.deliveryAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.receiverName?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Status group filter (chỉ áp dụng khi không có onFilterChange, vì nếu có thì đã được xử lý ở component cha)
+      const matchesStatusGroup = !onFilterChange ||
+        statusGroupFilter === "ALL" ||
+        statusGroups
+          .find((group) => group.name === statusGroupFilter)
+          ?.statuses.includes(order.status);
+
+      return matchesSearch && matchesStatusGroup;
+    });
+
+    return filtered;
+  }, [
+    orders,
+    searchTerm,
+    statusGroupFilter,
+    onFilterChange
+  ]);
+
+  // Update current page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, statusGroupFilter, yearFilter, quarterFilter, addressFilter]);
+
+  // Pagination logic
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredOrders.slice(startIndex, endIndex);
+  }, [filteredOrders, currentPage, pageSize]);
+
+  const handlePageChange = (page: number, size?: number) => {
+    setCurrentPage(page);
+    if (size && size !== pageSize) {
+      setPageSize(size);
+      setCurrentPage(1); // Reset to first page when page size changes
     }
   };
 
-  // Function to get pickup and delivery addresses from order
-  const getPickupAddress = (order: Order): string => {
-    if (order.pickupAddress) {
-      return `${order.pickupAddress.street}, ${order.pickupAddress.ward}, ${order.pickupAddress.province}`;
-    }
-    return "Chưa có địa chỉ lấy hàng";
-  };
-
-  const getDeliveryAddress = (order: Order): string => {
-    if (order.deliveryAddress) {
-      return `${order.deliveryAddress.street}, ${order.deliveryAddress.ward}, ${order.deliveryAddress.province}`;
-    }
-    return "Chưa có địa chỉ giao hàng";
+  // Format date to Vietnam timezone with hours and minutes
+  const formatDateToVNTime = (date: string | undefined) => {
+    if (!date) return "N/A";
+    return dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {orders.length > 0 ? (
-        <div className="space-y-6">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 transition-all duration-200 hover:shadow-xl hover:border-blue-200 bg-gradient-to-r from-white to-gray-50 hover:from-blue-50 hover:to-indigo-50"
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="max-w-4xl mx-auto">
+        {/* Search and Filter Section */}
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+          <div className="mb-4">
+            <Text className="text-sm text-gray-600 mb-1 block">
+              Tìm Kiếm
+            </Text>
+            <Input
+              placeholder="Mã đơn hàng, địa điểm, người nhận..."
+              prefix={<SearchOutlined />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              allowClear
+              size="large"
+              className="mb-4"
+            />
+          </div>
+
+          <Divider orientation="left">Bộ lọc</Divider>
+
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} sm={12} md={6}>
+              <div>
+                <Text className="text-sm text-gray-600 mb-1 block">
+                  Năm
+                </Text>
+                <Select
+                  placeholder="Chọn năm"
+                  value={yearFilter}
+                  onChange={(value) => {
+                    setYearFilter(value);
+                    if (onFilterChange) {
+                      const newFilters = { ...filters, year: value };
+                      setFilters(newFilters);
+                      onFilterChange(newFilters);
+                    }
+                  }}
+                  className="w-full"
+                  allowClear
+                  size="middle"
+                >
+                  {yearOptions.map((year) => (
+                    <Option key={year} value={year}>
+                      {year}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </Col>
+
+            <Col xs={24} sm={12} md={6}>
+              <div>
+                <Text className="text-sm text-gray-600 mb-1 block">
+                  Quý
+                </Text>
+                <Select
+                  placeholder="Chọn quý"
+                  value={quarterFilter}
+                  onChange={(value) => {
+                    setQuarterFilter(value);
+                    if (onFilterChange) {
+                      const newFilters = { ...filters, quarter: value };
+                      setFilters(newFilters);
+                      onFilterChange(newFilters);
+                    }
+                  }}
+                  className="w-full"
+                  allowClear
+                  size="middle"
+                >
+                  {quarterOptions.map((quarter) => (
+                    <Option key={quarter.value} value={quarter.value}>
+                      {quarter.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </Col>
+
+            <Col xs={24} sm={12} md={6}>
+              <div>
+                <Text className="text-sm text-gray-600 mb-1 block">
+                  Địa chỉ nhận hàng
+                </Text>
+                <Select
+                  placeholder="Chọn địa chỉ"
+                  value={addressFilter}
+                  onChange={(value) => {
+                    setAddressFilter(value);
+                    if (onFilterChange) {
+                      const newFilters = { ...filters, deliveryAddressId: value };
+                      setFilters(newFilters);
+                      onFilterChange(newFilters);
+                    }
+                  }}
+                  className="w-full"
+                  allowClear
+                  showSearch
+                  optionFilterProp="children"
+                  size="middle"
+                >
+                  {uniqueAddresses.map((item) => (
+                    <Option key={item.id} value={item.id}>
+                      {item.address}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </Col>
+          </Row>
+
+          <div className="mt-4 flex justify-end">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={resetFilters}
+              className="mr-2"
             >
-              <div className="flex justify-between items-start">
+              Đặt lại bộ lọc
+            </Button>
+          </div>
+        </div>
+
+        {/* Status Group Tags */}
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+          <Text className="text-sm text-gray-600 mb-2 block">
+            Lọc nhanh theo nhóm trạng thái
+          </Text>
+          <Space size="middle" wrap>
+            <Tag
+              className="px-3 py-1 cursor-pointer text-base"
+              color={statusGroupFilter === "ALL" ? "blue" : undefined}
+              onClick={() => {
+                setStatusGroupFilter("ALL");
+                setStatusFilter("ALL");
+                if (onFilterChange) {
+                  const newFilters = { ...filters, status: undefined };
+                  setFilters(newFilters);
+                  onFilterChange(newFilters);
+                }
+              }}
+            >
+              Tất cả
+            </Tag>
+            {statusGroups.map((group) => (
+              <Tag
+                key={group.name}
+                className="px-3 py-1 cursor-pointer text-base"
+                color={statusGroupFilter === group.name ? group.color : undefined}
+                onClick={() => {
+                  setStatusGroupFilter(group.name);
+                  // Khi chọn nhóm, chọn trạng thái đầu tiên trong nhóm
+                  const firstStatus = group.statuses[0];
+                  setStatusFilter(firstStatus);
+                  if (onFilterChange) {
+                    const newFilters = { ...filters, status: firstStatus };
+                    setFilters(newFilters);
+                    onFilterChange(newFilters);
+                  }
+                }}
+              >
+                {group.name}
+              </Tag>
+            ))}
+          </Space>
+        </div>
+
+        {/* Orders List */}
+        <div className="space-y-5">
+          {paginatedOrders.map((order) => (
+            <Card
+              key={order.id}
+              className="shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center justify-between">
+                {/* Left Section - Order Info */}
                 <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                        <svg
-                          className="w-6 h-6 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M20 7l-8-4-8 4m16 0l-8 4-8-4m16 0v10l-8 4-8-4V7"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        #{order.orderCode}
-                      </h3>
+                  {/* Header Row */}
+                  <div className="flex items-center justify-between gap-4 mb-3">
+                    <div className="flex items-center gap-2">
+                      <PackageIcon className="text-blue-600" />
+                      <Text strong className="text-lg">
+                        {order.orderCode ||
+                          `SHIP${order.id?.slice(-8) || "12345678"}`}
+                      </Text>
                     </div>
-                    <span
-                      className={`px-4 py-2 text-sm font-semibold rounded-full shadow-sm ${getStatusColor(
-                        order.status
-                      )}`}
-                    >
+                    <Tag color={getStatusColor(order.status)}>
                       {getStatusText(order.status)}
-                    </span>
+                    </Tag>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <svg
-                          className="w-5 h-5 text-green-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 font-medium">
-                          Địa điểm lấy hàng
-                        </p>
-                        <p className="text-gray-700">{getPickupAddress(order)}</p>
-                      </div>
-                    </div>
+                  <Text className="text-gray-500 text-sm mb-3 block">
+                    Ngày tạo đơn:{" "}
+                    <strong>
+                      {order.createdAt ? formatDateTimeWithSeconds(order.createdAt) : "N/A"}
+                    </strong>
+                  </Text>
 
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <svg
-                          className="w-5 h-5 text-blue-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
+                  {/* Address and Details Row */}
+                  <Row gutter={[24, 8]} className="mb-3">
+                    <Col span={8}>
+                      <div className="flex items-start gap-2">
+                        <EnvironmentOutlined className="text-gray-400 mt-1" />
+                        <div>
+                          <Text className="text-xs text-gray-500 block">
+                            TỪ
+                          </Text>
+                          <Text className="text-sm">
+                            {order.pickupAddress || "N/A"}
+                          </Text>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500 font-medium">
-                          Ngày tạo đơn
-                        </p>
-                        <p className="text-gray-700">
-                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "N/A"}
-                        </p>
+                    </Col>
+                    <Col span={8}>
+                      <div className="flex items-start gap-2">
+                        <EnvironmentOutlined className="text-gray-400 mt-1" />
+                        <div>
+                          <Text className="text-xs text-gray-500 block">
+                            ĐẾN
+                          </Text>
+                          <Text className="text-sm">
+                            {order.deliveryAddress || "N/A"}
+                          </Text>
+                        </div>
                       </div>
-                    </div>
+                    </Col>
+                  </Row>
 
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <svg
-                          className="w-5 h-5 text-purple-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 font-medium">
-                          Địa điểm giao hàng
-                        </p>
-                        <p className="text-gray-700">{getDeliveryAddress(order)}</p>
-                      </div>
+                  {/* Recipient and Details Row */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <UserOutlined className="text-gray-400" />
+                      <Text className="text-sm">
+                        Người nhận: {order.receiverName || "N/A"}
+                      </Text>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                        <svg
-                          className="w-5 h-5 text-amber-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 font-medium">
-                          Giá trị đơn hàng
-                        </p>
-                        <p className="text-gray-700 font-medium">
-                          {formatCurrency(order.totalPrice)} VNĐ
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span>Giao hàng tiêu chuẩn</span>
+                      <span>{order.totalQuantity || 0} mục</span>
                     </div>
                   </div>
-                </div>
 
-                <div className="ml-4">
-                  <Link
-                    to={`/orders/${order.id}`}
-                    className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 hover:shadow-lg"
-                  >
-                    Xem chi tiết
-                  </Link>
+                  {/* Right Section - Actions */}
+                  <div className="flex justify-end gap-3 ">
+                    <Link to={`/orders/${order.id}`}>
+                      <Button
+                        type="default"
+                        shape="circle"
+                        size="large"
+                        icon={<EyeOutlined />}
+                        title="View Details"
+                      />
+                    </Link>
+                    <Button
+                      type="primary"
+                      shape="circle"
+                      size="large"
+                      icon={<CarOutlined />}
+                      title="Track Package"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
-      ) : (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 bg-gray-100 rounded-full mx-auto flex items-center justify-center mb-6">
-            <svg
-              className="w-12 h-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-              />
-            </svg>
+
+        {/* Pagination */}
+        {filteredOrders.length > 0 && (
+          <div className="flex justify-center mt-8">
+            <Pagination
+              current={currentPage}
+              total={filteredOrders.length}
+              pageSize={pageSize}
+              showSizeChanger
+              showQuickJumper
+              showTotal={(total, range) =>
+                `${range[0]}-${range[1]} của ${total} đơn hàng`
+              }
+              onChange={handlePageChange}
+              onShowSizeChange={handlePageChange}
+              pageSizeOptions={["5", "10", "20", "50"]}
+            />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            Không có đơn hàng nào
-          </h3>
-          <p className="text-gray-500 max-w-md mx-auto mb-6">
-            Bạn chưa có đơn hàng nào. Hãy tạo đơn hàng mới để bắt đầu.
-          </p>
-          <Link
-            to="/create-order"
-            className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 hover:shadow-lg"
-          >
-            Tạo đơn hàng mới
-          </Link>
-        </div>
-      )}
+        )}
+
+        {filteredOrders.length === 0 && (
+          <Card className="text-center py-12">
+            <div className="space-y-4">
+              <BoxPlotOutlined className="text-6xl text-gray-300" />
+              <div>
+                <Title level={3} type="secondary">
+                  Không tìm thấy đơn hàng
+                </Title>
+                <Text type="secondary">
+                  {searchTerm || statusFilter !== "ALL" || yearFilter || quarterFilter || addressFilter
+                    ? "Thử thay đổi điều kiện tìm kiếm hoặc bộ lọc"
+                    : "Chưa có đơn hàng nào được tạo"}
+                </Text>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
