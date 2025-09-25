@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Form, Steps, Card, Typography, App, Skeleton } from "antd";
 import orderService from "../../services/order";
@@ -12,6 +12,7 @@ import type { OrderSize } from "../../models/OrderSize";
 import { OrderDetailFormList } from "./components";
 import OrderCreationSuccess from "./components/OrderCreationSuccess";
 import { formatToVietnamTime } from "../../utils/dateUtils";
+import dayjs from "dayjs";
 import {
   ReceiverAndAddressStep,
   OrderSummaryStep,
@@ -25,7 +26,7 @@ export default function CreateOrder() {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [currentStep, setCurrentStep] = useState(0);
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [addresses, setAddresses] = useState<any[]>([]);
   const [orderSizes, setOrderSizes] = useState<OrderSize[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<string[]>([]);
@@ -160,7 +161,8 @@ export default function CreateOrder() {
       console.log("Current form values:", currentFormValues);
       let formattedEstimateStartTime;
       if (currentFormValues.estimateStartTime) {
-        if (currentFormValues.estimateStartTime._isAMomentObject) {
+        if (currentFormValues.estimateStartTime._isAMomentObject || dayjs.isDayjs(currentFormValues.estimateStartTime)) {
+          // Handle dayjs object from DateSelectGroup
           const dateObj = currentFormValues.estimateStartTime.toDate();
           formattedEstimateStartTime = formatToVietnamTime(dateObj);
         } else if (currentFormValues.estimateStartTime instanceof Date) {
@@ -302,12 +304,7 @@ export default function CreateOrder() {
       return (
         <div className="space-y-8">
           <div>
-            <Skeleton.Input
-              active
-              size="large"
-              className="mb-4 w-1/3"
-              style={{ height: "2rem" }}
-            />
+            <Skeleton active />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Skeleton active paragraph={{ rows: 4 }} />

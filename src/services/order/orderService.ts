@@ -30,6 +30,7 @@ import {
   getTomorrowVietnamTime,
 } from "../../utils/dateUtils";
 import customerService from "../customer/customerService";
+import dayjs from "dayjs";
 
 /**
  * Service for handling order-related API calls
@@ -222,6 +223,15 @@ const orderService = {
       if (orderData.orderRequest.estimateStartTime) {
         // Nếu có estimateStartTime từ form, format lại theo UTC+7
         const inputDate = new Date(orderData.orderRequest.estimateStartTime);
+
+        // Validate that the pickup time is at least 2 days in the future
+        const minPickupTime = dayjs().add(2, 'day');
+        if (dayjs(inputDate).isBefore(minPickupTime)) {
+          throw new Error(
+            "Thời gian lấy hàng dự kiến phải cách thời điểm hiện tại ít nhất 2 ngày để đảm bảo đủ thời gian chuẩn bị."
+          );
+        }
+
         finalEstimateStartTime = formatToVietnamTime(inputDate);
       }
 

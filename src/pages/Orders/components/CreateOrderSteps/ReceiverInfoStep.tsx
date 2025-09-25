@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Form, Input, Select, Typography, App, Row, Col, DatePicker } from "antd";
+import { Form, Input, Select, Typography, App, Row, Col } from "antd";
 import type { Category } from "../../../../models/Category";
 import dayjs from "dayjs";
 import ReceiverSuggestions from "./ReceiverSuggestions";
 import orderService from "@/services/order/orderService";
+import DateSelectGroup from "@/components/common/DateSelectGroup";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -46,6 +47,9 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
       setLoadingReceiverDetails(false);
     }
   };
+
+  // Minimum time for pickup - at least 2 days from now
+  const minPickupTime = dayjs().add(2, 'day');
 
   return (
     <>
@@ -113,23 +117,16 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
             </Select>
           </Form.Item>
         </Col>
-        <Col span={8}>
+        <Col span={16}>
           <Form.Item
             name="estimateStartTime"
             label="Thời gian lấy hàng dự kiến"
             rules={[
               { required: true, message: "Vui lòng chọn thời gian lấy hàng" },
             ]}
+            tooltip="Thời gian lấy hàng phải cách thời điểm hiện tại ít nhất 2 ngày để đảm bảo đủ thời gian chuẩn bị"
           >
-            <DatePicker
-              showTime
-              placeholder="Chọn ngày và giờ lấy hàng"
-              style={{ width: "100%" }}
-              disabledDate={(current) =>
-                current && current < dayjs().startOf("day")
-              }
-              format="DD/MM/YYYY HH:mm"
-            />
+            <DateSelectGroup minDate={minPickupTime} />
           </Form.Item>
         </Col>
       </Row>

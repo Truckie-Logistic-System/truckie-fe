@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Select, Space, Form } from 'antd';
 import dayjs from 'dayjs';
 
@@ -6,122 +6,179 @@ const { Option } = Select;
 
 interface DateSelectGroupProps {
     value?: dayjs.Dayjs;
-    onChange?: (value: dayjs.Dayjs | null) => void;
-    disabledDate?: (date: dayjs.Dayjs) => boolean;
-    placeholder?: string;
+    onChange?: (value: dayjs.Dayjs) => void;
+    minDate?: dayjs.Dayjs;
+    disabled?: boolean;
 }
 
 const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
     value,
     onChange,
-    disabledDate,
-    placeholder = 'Chọn ngày'
+    minDate = dayjs().add(2, 'day'),
+    disabled = false,
 }) => {
-    const [day, setDay] = useState<number | undefined>(value?.date());
-    const [month, setMonth] = useState<number | undefined>(value ? value.month() + 1 : undefined);
-    const [year, setYear] = useState<number | undefined>(value?.year());
+    // Initialize with current date + 2 days if no value provided
+    const initialDate = value || minDate;
 
+    const [selectedDay, setSelectedDay] = useState<number>(initialDate.date());
+    const [selectedMonth, setSelectedMonth] = useState<number>(initialDate.month() + 1); // dayjs months are 0-indexed
+    const [selectedYear, setSelectedYear] = useState<number>(initialDate.year());
+    const [selectedHour, setSelectedHour] = useState<number>(initialDate.hour());
+    const [selectedMinute, setSelectedMinute] = useState<number>(initialDate.minute());
+    // Always use 0 for seconds
+    const selectedSecond = 0;
+
+    // Generate options for days based on selected month and year
+    const getDaysInMonth = (year: number, month: number): number => {
+        return new Date(year, month, 0).getDate();
+    };
+
+    // Update the internal state when the external value changes
     useEffect(() => {
         if (value) {
-            setDay(value.date());
-            setMonth(value.month() + 1);
-            setYear(value.year());
-        } else {
-            setDay(undefined);
-            setMonth(undefined);
-            setYear(undefined);
+            setSelectedDay(value.date());
+            setSelectedMonth(value.month() + 1);
+            setSelectedYear(value.year());
+            setSelectedHour(value.hour());
+            setSelectedMinute(value.minute());
         }
     }, [value]);
 
-    const handleChange = (type: 'day' | 'month' | 'year', val: number | undefined) => {
-        let newDay = type === 'day' ? val : day;
-        let newMonth = type === 'month' ? val : month;
-        let newYear = type === 'year' ? val : year;
+    // Call the onChange prop when any of the selects change
+    const handleChange = (type: 'day' | 'month' | 'year' | 'hour' | 'minute', newValue: number) => {
+        let day = selectedDay;
+        let month = selectedMonth;
+        let year = selectedYear;
+        let hour = selectedHour;
+        let minute = selectedMinute;
 
-        if (type === 'year') {
-            setYear(val);
-        } else if (type === 'month') {
-            setMonth(val);
-        } else if (type === 'day') {
-            setDay(val);
+        // Update the specific value based on type
+        switch (type) {
+            case 'day':
+                day = newValue;
+                setSelectedDay(newValue);
+                break;
+            case 'month':
+                month = newValue;
+                setSelectedMonth(newValue);
+                break;
+            case 'year':
+                year = newValue;
+                setSelectedYear(newValue);
+                break;
+            case 'hour':
+                hour = newValue;
+                setSelectedHour(newValue);
+                break;
+            case 'minute':
+                minute = newValue;
+                setSelectedMinute(newValue);
+                break;
         }
 
-        if (newDay && newMonth && newYear) {
-            // Kiểm tra ngày hợp lệ
-            const daysInMonth = dayjs(`${newYear}-${newMonth}-01`).daysInMonth();
-            if (newDay > daysInMonth) {
-                newDay = daysInMonth;
-                setDay(daysInMonth);
-            }
+        // Create the new date object
+        if (onChange) {
+            const newDate = dayjs()
+                .year(year)
+                .month(month - 1)
+                .date(day)
+                .hour(hour)
+                .minute(minute)
+                .second(selectedSecond);
 
-            const newDate = dayjs(`${newYear}-${newMonth}-${newDay}`);
-
-            // Kiểm tra disabledDate nếu có
-            if (disabledDate && disabledDate(newDate)) {
-                return;
-            }
-
-            onChange?.(newDate);
-        } else {
-            onChange?.(null);
+            onChange(newDate);
         }
     };
 
-    // Tạo danh sách ngày dựa trên tháng và năm đã chọn
-    const getDaysInMonth = () => {
-        if (!month || !year) return Array.from({ length: 31 }, (_, i) => i + 1);
-        return Array.from({ length: dayjs(`${year}-${month}-01`).daysInMonth() }, (_, i) => i + 1);
-    };
+    // Get valid days for the selected month and year
+    const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
 
-    // Tạo danh sách tháng (1-12)
+    // Generate arrays for options
+    const years = Array.from({ length: 5 }, (_, i) => dayjs().year() + i);
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
+    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const minutes = Array.from({ length: 60 }, (_, i) => i);
 
-    // Tạo danh sách năm (từ 1900 đến năm hiện tại)
-    const currentYear = dayjs().year();
-    const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => currentYear - i);
+    // Filter days based on minDate
+    const validDays = days.filter(day => {
+        if (selectedYear === minDate.year() && selectedMonth === minDate.month() + 1) {
+            return day >= minDate.date();
+        }
+        return true;
+    });
+
+    // Filter months based on minDate
+    const validMonths = months.filter(month => {
+        if (selectedYear === minDate.year()) {
+            return month >= minDate.month() + 1;
+        }
+        return true;
+    });
+
+    // Adjust day if it exceeds days in month
+    useEffect(() => {
+        const maxDays = getDaysInMonth(selectedYear, selectedMonth);
+        if (selectedDay > maxDays) {
+            setSelectedDay(maxDays);
+            handleChange('day', maxDays);
+        }
+    }, [selectedMonth, selectedYear]);
 
     return (
-        <Space className="w-full">
+        <Space>
             <Select
-                placeholder="Ngày"
-                value={day}
-                onChange={(val) => handleChange('day', val)}
-                className="w-1/3"
-                showSearch
-                optionFilterProp="children"
+                value={selectedDay}
+                onChange={(value) => handleChange('day', value)}
+                style={{ width: 70 }}
+                disabled={disabled}
             >
-                {getDaysInMonth().map((d) => (
-                    <Option key={d} value={d}>
-                        {d}
-                    </Option>
+                {validDays.map(day => (
+                    <Option key={day} value={day}>{day}</Option>
                 ))}
             </Select>
+            <span>/</span>
             <Select
-                placeholder="Tháng"
-                value={month}
-                onChange={(val) => handleChange('month', val)}
-                className="w-1/3"
-                showSearch
-                optionFilterProp="children"
+                value={selectedMonth}
+                onChange={(value) => handleChange('month', value)}
+                style={{ width: 70 }}
+                disabled={disabled}
             >
-                {months.map((m) => (
-                    <Option key={m} value={m}>
-                        {m}
-                    </Option>
+                {validMonths.map(month => (
+                    <Option key={month} value={month}>{month}</Option>
                 ))}
             </Select>
+            <span>/</span>
             <Select
-                placeholder="Năm"
-                value={year}
-                onChange={(val) => handleChange('year', val)}
-                className="w-1/3"
-                showSearch
-                optionFilterProp="children"
+                value={selectedYear}
+                onChange={(value) => handleChange('year', value)}
+                style={{ width: 90 }}
+                disabled={disabled}
             >
-                {years.map((y) => (
-                    <Option key={y} value={y}>
-                        {y}
-                    </Option>
+                {years.map(year => (
+                    <Option key={year} value={year}>{year}</Option>
+                ))}
+            </Select>
+            <span>-</span>
+            <Select
+                value={selectedHour}
+                onChange={(value) => handleChange('hour', value)}
+                style={{ width: 70 }}
+                disabled={disabled}
+            >
+                {hours.map(hour => (
+                    <Option key={hour} value={hour}>{hour.toString().padStart(2, '0')}</Option>
+                ))}
+            </Select>
+            <span>:</span>
+            <Select
+                value={selectedMinute}
+                onChange={(value) => handleChange('minute', value)}
+                style={{ width: 70 }}
+                disabled={disabled}
+            >
+                {minutes.map(minute => (
+                    <Option key={minute} value={minute}>{minute.toString().padStart(2, '0')}</Option>
                 ))}
             </Select>
         </Space>

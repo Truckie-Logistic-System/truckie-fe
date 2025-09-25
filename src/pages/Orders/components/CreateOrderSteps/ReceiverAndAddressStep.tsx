@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Form, Input, Select, Typography, DatePicker, Divider, Skeleton, App, Button, Modal, Spin, Row, Col } from "antd";
+import { Form, Input, Select, Typography, Divider, Skeleton, App, Button, Modal, Spin, Row, Col } from "antd";
 import { PlusOutlined, EditOutlined } from "@ant-design/icons";
 import type { Category } from "../../../../models/Category";
 import type { Address, AddressCreateDto } from "../../../../models/Address";
@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import ReceiverSuggestions from "./ReceiverSuggestions";
 import orderService from "@/services/order/orderService";
 import addressService from "@/services/address/addressService";
+import DateSelectGroup from "@/components/common/DateSelectGroup";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -307,16 +308,9 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
                             rules={[
                                 { required: true, message: "Vui lòng chọn thời gian nhận hàng" },
                             ]}
+                            tooltip="Thời gian lấy hàng phải cách thời điểm hiện tại ít nhất 2 ngày để đảm bảo đủ thời gian chuẩn bị"
                         >
-                            <DatePicker
-                                showTime
-                                placeholder="Chọn ngày và giờ lấy hàng"
-                                style={{ width: "100%" }}
-                                disabledDate={(current) =>
-                                    current && current < dayjs().startOf("day")
-                                }
-                                format="DD/MM/YYYY HH:mm"
-                            />
+                            <DateSelectGroup minDate={dayjs().add(2, 'day')} />
                         </Form.Item>
                     </div>
                 </Col>
