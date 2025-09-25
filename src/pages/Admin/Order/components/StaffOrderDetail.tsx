@@ -460,6 +460,19 @@ const StaffOrderDetail: React.FC = () => {
     );
   };
 
+  // Tab 3: Hợp đồng và thanh toán
+  const renderContractAndPaymentTab = () => {
+    return (
+      <div>
+        {/* Contract Information */}
+        <StaffContractSection contract={contract} />
+
+        {/* Transaction Information */}
+        <TransactionSection transactions={transactions} />
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="mb-6 flex flex-wrap items-center justify-between">
@@ -502,6 +515,16 @@ const StaffOrderDetail: React.FC = () => {
           key="detail"
         >
           {renderOrderDetailTab()}
+        </TabPane>
+        <TabPane
+          tab={
+            <span>
+              <ProfileOutlined /> Hợp đồng & Thanh toán
+            </span>
+          }
+          key="contract"
+        >
+          {renderContractAndPaymentTab()}
         </TabPane>
         <TabPane
           tab={

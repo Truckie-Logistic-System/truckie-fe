@@ -572,15 +572,54 @@ const orderService = {
    * @param orderId Order ID
    * @returns Promise with bill of lading preview data
    */
-  previewBillOfLading: async (orderId: string): Promise<BillOfLadingPreviewResponse['data']> => {
+  previewBillOfLading: async (
+    orderId: string
+  ): Promise<BillOfLadingPreviewResponse["data"]> => {
     try {
       const response = await httpClient.get<BillOfLadingPreviewResponse>(
         `/bill-of-ladings/order/${orderId}/preview`
       );
       return response.data.data;
     } catch (error) {
-      console.error(`Error previewing bill of lading for order ${orderId}:`, error);
+      console.error(
+        `Error previewing bill of lading for order ${orderId}:`,
+        error
+      );
       throw handleApiError(error, "Không thể tải vận đơn");
+    }
+  },
+
+  /**
+   * Sign contract for an order
+   * @param contractId Contract ID
+   * @returns Promise with response data
+   */
+  signContract: async (contractId: string): Promise<any> => {
+    try {
+      const response = await httpClient.put(
+        `/orders/sign-contract?contractId=${contractId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error signing contract ${contractId}:`, error);
+      throw handleApiError(error, "Không thể ký hợp đồng");
+    }
+  },
+
+  /**
+   * Pay deposit for a signed contract
+   * @param contractId Contract ID
+   * @returns Promise with response data
+   */
+  payDeposit: async (contractId: string): Promise<any> => {
+    try {
+      const response = await httpClient.post(
+        `/transactions/pay-os/${contractId}/deposit`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error paying deposit for contract ${contractId}:`, error);
+      throw handleApiError(error, "Không thể thanh toán đặt cọc");
     }
   },
 };
