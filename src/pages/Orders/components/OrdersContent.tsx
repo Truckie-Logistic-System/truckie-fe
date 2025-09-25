@@ -12,6 +12,7 @@ import {
   Pagination,
   Divider,
   Space,
+  App,
 } from "antd";
 import {
   EnvironmentOutlined,
@@ -29,6 +30,8 @@ import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import type { Order, OrderStatus, CustomerOrder } from "../../../models/Order";
+import type { Address } from "../../../models/Address";
+import addressService from "../../../services/address/addressService";
 
 import { formatDate, formatDateTimeWithSeconds } from "../../../utils/formatters";
 
@@ -169,6 +172,27 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
     status?: string;
     deliveryAddressId?: string;
   }>({});
+  const [deliveryAddresses, setDeliveryAddresses] = useState<Address[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = useState<boolean>(false);
+  const { message } = App.useApp();
+
+  // Fetch delivery addresses when component mounts
+  useEffect(() => {
+    const fetchDeliveryAddresses = async () => {
+      setLoadingAddresses(true);
+      try {
+        const addresses = await addressService.getMyDeliveryAddresses();
+        setDeliveryAddresses(addresses);
+      } catch (error) {
+        console.error("Error fetching delivery addresses:", error);
+        message.error("Không thể tải danh sách địa chỉ giao hàng");
+      } finally {
+        setLoadingAddresses(false);
+      }
+    };
+
+    fetchDeliveryAddresses();
+  }, []);
 
   // Generate year options (current year and 2 years back)
   const currentYear = new Date().getFullYear();
@@ -388,14 +412,21 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                   className="w-full"
                   allowClear
                   showSearch
-                  optionFilterProp="children"
+                  loading={loadingAddresses}
+                  optionFilterProp="label"
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                  }
                   size="middle"
                 >
-                  {uniqueAddresses.map((item) => (
-                    <Option key={item.id} value={item.id}>
-                      {item.address}
-                    </Option>
-                  ))}
+                  {deliveryAddresses.map((address) => {
+                    const addressText = `${address.street}, ${address.ward}, ${address.province}`;
+                    return (
+                      <Option key={address.id} value={address.id} label={addressText}>
+                        {addressText}
+                      </Option>
+                    );
+                  })}
                 </Select>
               </div>
             </Col>

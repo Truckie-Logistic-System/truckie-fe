@@ -47,6 +47,20 @@ const addressService = {
   },
 
   /**
+   * Get delivery addresses for the current user
+   * @returns Promise with array of delivery addresses
+   */
+  getMyDeliveryAddresses: async (): Promise<Address[]> => {
+    try {
+      const response = await httpClient.get<Address[]>("/addresses/me/delivery");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching delivery addresses:", error);
+      throw handleApiError(error, "Không thể tải danh sách địa chỉ giao hàng");
+    }
+  },
+
+  /**
    * Get address by ID
    * @param id Address ID
    * @returns Promise with address data
