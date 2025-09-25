@@ -343,8 +343,13 @@ export interface CustomerOrderDetailItem {
   };
   vehicleAssignment?: {
     id: string;
-    vehicleName: string;
-    licensePlateNumber: string;
+    vehicle: {
+      id: string;
+      manufacturer: string;
+      model: string;
+      licensePlateNumber: string;
+      vehicleType: string;
+    };
     primaryDriver?: {
       id: string;
       fullName: string;

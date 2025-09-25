@@ -178,9 +178,6 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                                 <div className="flex items-center mb-3">
                                     <CarOutlined className="text-xl text-blue-500 mr-3" />
                                     <span className="text-lg font-medium">{vehicleAssignment.vehicle?.licensePlateNumber || "Chưa có thông tin"}</span>
-                                    <Tag className="ml-3" color={getStatusColor(vehicleAssignment.status)}>
-                                        {vehicleAssignment.status}
-                                    </Tag>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div className="flex items-center">
