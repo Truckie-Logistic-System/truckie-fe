@@ -28,30 +28,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Check if user is logged in
         const checkAuth = async () => {
             try {
-                // Kiểm tra đăng nhập dựa trên token và thông tin người dùng trong localStorage
-                const authToken = localStorage.getItem("authToken");
+                // Initialize auth state first - this will attempt to refresh the token if needed
+                await authService.initAuth();
+
+                // Check if we're authenticated after initialization
+                const isLoggedIn = authService.isLoggedIn();
+
+                if (!isLoggedIn) {
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Get user data from localStorage
                 const userRole = localStorage.getItem("user_role");
                 const userId = localStorage.getItem("userId");
                 const username = localStorage.getItem("username");
                 const email = localStorage.getItem("email");
 
-                // Nếu không có token hoặc thông tin người dùng, thử refresh token
-                if (!authToken || !username || !userId || !email) {
-                    try {
-                        // Thử refresh token
-                        await authService.refreshToken();
-                        // Sau khi refresh thành công, kiểm tra lại auth
-                        checkAuth();
-                        return;
-                    } catch (refreshError) {
-                        console.error("Token refresh failed during auth check:", refreshError);
-                        authService.logout();
-                        setIsLoading(false);
-                        return;
-                    }
+                // Validate user data
+                if (!userRole || !userId || !username || !email) {
+                    console.error("Missing user data in localStorage");
+                    authService.logout();
+                    setIsLoading(false);
+                    return;
                 }
 
-                // Tạo đối tượng user từ dữ liệu lưu trữ
+                // Create user object from stored data
                 const userData: User = {
                     id: userId,
                     username: username,
@@ -102,18 +104,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     const refreshToken = async () => {
+        setIsLoading(true);
         try {
             await authService.refreshToken();
         } catch (error) {
             console.error("Token refresh failed:", error);
             logout();
             throw error;
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const logout = () => {
+        setIsLoading(true);
         authService.logout();
         setUser(null);
+        setIsLoading(false);
     };
 
     // Xác định đường dẫn chuyển hướng dựa trên vai trò người dùng

@@ -12,11 +12,59 @@ import { handleApiError } from '../api/errorHandler';
 
 // In-memory token storage
 let authToken: string | null = null;
+// Flag to track if initialization is in progress
+let isInitializing = false;
+// Promise for initialization
+let initPromise: Promise<void> | null = null;
 
 /**
  * Service for handling authentication API calls
  */
 const authService = {
+    /**
+     * Initialize authentication state
+     * This should be called when the application starts
+     * @returns Promise that resolves when initialization is complete
+     */
+    initAuth: async (): Promise<void> => {
+        // If already initializing, return the existing promise
+        if (isInitializing && initPromise) {
+            return initPromise;
+        }
+
+        isInitializing = true;
+
+        initPromise = (async () => {
+            try {
+                // If we already have a token in memory, we're already authenticated
+                if (authToken) {
+                    return;
+                }
+
+                // Check if we have user data in localStorage, which indicates
+                // the user was previously logged in
+                const userRole = localStorage.getItem('user_role');
+                const userId = localStorage.getItem('userId');
+
+                // If we have user data but no token, try to refresh the token
+                if (userRole && userId) {
+                    try {
+                        await authService.refreshToken();
+                        console.log('Authentication restored after page refresh');
+                    } catch (error) {
+                        console.error('Failed to restore authentication:', error);
+                        // Clear user data if refresh token fails
+                        authService.logout();
+                    }
+                }
+            } finally {
+                isInitializing = false;
+            }
+        })();
+
+        return initPromise;
+    },
+
     /**
      * Login with username and password
      * @param username User's username
@@ -47,7 +95,7 @@ const authService = {
             localStorage.setItem('email', user.email);
 
             // Thêm dòng hello username
-            response.data.message = `Hello ${user.username}! ${response.data.message}`;
+            response.data.message = `Đăng nhập thành công`;
 
             return response.data;
         } catch (error) {

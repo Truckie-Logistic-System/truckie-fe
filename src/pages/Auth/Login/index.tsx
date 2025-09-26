@@ -26,13 +26,14 @@ const LoginPage: React.FC = () => {
     }
   }, [location.state, messageApi]);
 
-  // Check if user is already authenticated
+  // Remove the auto-redirect effect since we'll handle it manually after login success
+  // We only want to redirect if the user is already authenticated when first loading the page
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && !loading) {
       const redirectPath = getRedirectPath();
       navigate(redirectPath, { replace: true });
     }
-  }, [isAuthenticated, navigate, getRedirectPath, user]);
+  }, []);  // Only run once on component mount
 
   const handleLoginSubmit = (values: { username: string; password: string; remember: boolean }) => {
     setLoading(true);
@@ -40,6 +41,16 @@ const LoginPage: React.FC = () => {
 
     // Call login function
     login(values.username, values.password)
+      .then(response => {
+        // On successful login, show success message and redirect
+        messageApi.success(response.message || "Đăng nhập thành công");
+
+        // Get the redirect path based on user role
+        const redirectPath = getRedirectPath();
+
+        // Navigate to the appropriate page
+        navigate(redirectPath, { replace: true });
+      })
       .catch(error => {
         console.error("Đăng nhập thất bại:", error);
 

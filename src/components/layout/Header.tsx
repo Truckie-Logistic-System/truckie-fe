@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Layout, Menu, Button, Drawer, Space, Dropdown, Avatar } from "antd";
+import { Layout, Menu, Button, Drawer, Space, Dropdown, Avatar, Skeleton } from "antd";
 import {
   MenuOutlined,
   EnvironmentOutlined,
@@ -19,7 +19,7 @@ const Header: React.FC = () => {
   const [visible, setVisible] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, isLoading } = useAuth();
   const [selectedKey, setSelectedKey] = useState("trangchu");
 
   // Cập nhật selectedKey dựa trên đường dẫn hiện tại
@@ -135,7 +135,12 @@ const Header: React.FC = () => {
 
           {/* Auth Buttons - Desktop */}
           <div className="hidden lg:flex items-center space-x-4">
-            {isAuthenticated ? (
+            {isLoading ? (
+              <div className="flex items-center h-8">
+                <Skeleton.Avatar active size="small" className="mr-2" />
+                <Skeleton.Input active size="small" style={{ width: 120 }} />
+              </div>
+            ) : isAuthenticated ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                 <div className="flex items-center cursor-pointer">
                   <Avatar icon={<UserOutlined />} className="mr-2 bg-blue-600" />
@@ -181,7 +186,12 @@ const Header: React.FC = () => {
             className="border-0"
           />
           <div className="mt-4 flex flex-col space-y-2">
-            {isAuthenticated ? (
+            {isLoading ? (
+              <div className="py-4">
+                <Skeleton.Avatar active size="small" className="mb-2" />
+                <Skeleton.Input active size="small" style={{ width: 180 }} />
+              </div>
+            ) : isAuthenticated ? (
               <>
                 <div className="flex items-center py-2">
                   <Avatar
