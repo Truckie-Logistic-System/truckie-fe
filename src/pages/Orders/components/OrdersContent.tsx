@@ -185,7 +185,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
         setDeliveryAddresses(addresses);
       } catch (error) {
         console.error("Error fetching delivery addresses:", error);
-        message.error("Không thể tải danh sách địa chỉ giao hàng");
+        // message.error("Không thể tải danh sách địa chỉ giao hàng");
       } finally {
         setLoadingAddresses(false);
       }

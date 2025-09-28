@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Form, Input, Select, Typography, Divider, Skeleton, App, Button, Modal, Spin, Row, Col } from "antd";
+import React, { useState, useEffect } from "react";
+import { Form, Input, Select, Typography, Divider, App, Button, Row, Col } from "antd";
 import { PlusOutlined, EditOutlined } from "@ant-design/icons";
 import type { Category } from "../../../../models/Category";
-import type { Address, AddressCreateDto } from "../../../../models/Address";
+import type { Address } from "../../../../models/Address";
 import dayjs from "dayjs";
 import ReceiverSuggestions from "./ReceiverSuggestions";
 import orderService from "@/services/order/orderService";
-import addressService from "@/services/address/addressService";
 import DateSelectGroup from "@/components/common/DateSelectGroup";
+import AddressModal from "@/components/common/AddressModal";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -26,9 +26,8 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
     onAddressesUpdated
 }) => {
     const [addressModalVisible, setAddressModalVisible] = useState(false);
-    const [addressForm] = Form.useForm();
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
-    const [isAddressLoading, setIsAddressLoading] = useState(false);
+    const [addressType, setAddressType] = useState<boolean>(true); // true for pickup, false for delivery
     const { message } = App.useApp();
     const form = Form.useFormInstance();
 
@@ -141,48 +140,21 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
     };
 
     const handleAddAddress = (addressType: boolean) => {
-        addressForm.resetFields();
-        addressForm.setFieldsValue({
-            addressType // true là địa chỉ gửi, false là địa chỉ nhận
-        });
+        setAddressType(addressType);
         setEditingAddress(null);
         setAddressModalVisible(true);
     };
 
     const handleEditAddress = (address: Address) => {
-        addressForm.resetFields();
-        addressForm.setFieldsValue({
-            street: address.street,
-            ward: address.ward,
-            province: address.province,
-            addressType: address.addressType // true là địa chỉ gửi, false là địa chỉ nhận
-        });
         setEditingAddress(address);
+        setAddressType(address.addressType);
         setAddressModalVisible(true);
     };
 
-    const handleAddressSubmit = async (values: AddressCreateDto) => {
-        setIsAddressLoading(true);
-        try {
-            if (editingAddress) {
-                // Update existing address
-                await addressService.updateAddress(editingAddress.id, values);
-                message.success("Địa chỉ đã được cập nhật");
-            } else {
-                // Create new address
-                await addressService.createAddress(values);
-                message.success("Địa chỉ đã được tạo");
-            }
-
-            // Refresh addresses list
-            await onAddressesUpdated();
-            setAddressModalVisible(false);
-        } catch (error) {
-            message.error("Không thể lưu địa chỉ");
-            console.error("Error saving address:", error);
-        } finally {
-            setIsAddressLoading(false);
-        }
+    const handleAddressSuccess = async () => {
+        // Refresh addresses list
+        await onAddressesUpdated();
+        setAddressModalVisible(false);
     };
 
     // Xử lý khi chọn địa chỉ
@@ -310,7 +282,7 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
                             ]}
                             tooltip="Thời gian lấy hàng phải cách thời điểm hiện tại ít nhất 2 ngày để đảm bảo đủ thời gian chuẩn bị"
                         >
-                            <DateSelectGroup minDate={dayjs().add(2, 'day')} />
+                            <DateSelectGroup minDate={dayjs().add(2, 'day')} mode="delivery" />
                         </Form.Item>
                     </div>
                 </Col>
@@ -419,58 +391,16 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
             </Row>
 
             {/* Modal for adding/editing addresses */}
-            <Modal
-                title={editingAddress ? "Chỉnh sửa địa chỉ" : "Thêm địa chỉ mới"}
-                open={addressModalVisible}
+            <AddressModal
+                visible={addressModalVisible}
                 onCancel={() => setAddressModalVisible(false)}
-                footer={null}
-                destroyOnClose
-            >
-                <Spin spinning={isAddressLoading}>
-                    <Form
-                        form={addressForm}
-                        layout="vertical"
-                        onFinish={handleAddressSubmit}
-                    >
-                        <Form.Item
-                            name="street"
-                            label="Đường/Số nhà"
-                            rules={[{ required: true, message: 'Vui lòng nhập đường/số nhà' }]}
-                        >
-                            <Input placeholder="Nhập đường/số nhà" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="ward"
-                            label="Phường/Xã"
-                            rules={[{ required: true, message: 'Vui lòng nhập phường/xã' }]}
-                        >
-                            <Input placeholder="Nhập phường/xã" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="province"
-                            label="Tỉnh/Thành phố"
-                            rules={[{ required: true, message: 'Vui lòng nhập tỉnh/thành phố' }]}
-                        >
-                            <Input placeholder="Nhập tỉnh/thành phố" />
-                        </Form.Item>
-
-                        <Form.Item name="addressType" hidden>
-                            <Input />
-                        </Form.Item>
-
-                        <div className="flex justify-end gap-2 mt-4">
-                            <Button onClick={() => setAddressModalVisible(false)}>
-                                Hủy
-                            </Button>
-                            <Button type="primary" htmlType="submit" loading={isAddressLoading}>
-                                {editingAddress ? "Cập nhật" : "Thêm mới"}
-                            </Button>
-                        </div>
-                    </Form>
-                </Spin>
-            </Modal>
+                onSuccess={handleAddressSuccess}
+                initialValues={editingAddress}
+                mode={editingAddress ? 'edit' : 'create'}
+                showAddressType={false}
+                defaultAddressType={addressType}
+                title={editingAddress ? "Chỉnh sửa địa chỉ" : "Thêm địa chỉ mới"}
+            />
         </>
     );
 };
