@@ -15,3 +15,4 @@ export * from "./Vehicle";
 export * from "./VehicleRule";
 export * from "./Contract";
 export * from "./Province";
+export * from "./TrackAsia";

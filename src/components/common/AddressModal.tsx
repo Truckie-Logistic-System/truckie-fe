@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Radio, App, Spin, Select, Alert, Button } from 'antd';
+import { Modal, Form, App, Spin, Alert, Button, Divider, Space, Row, Col, Typography } from 'antd';
 import addressService from '../../services/address/addressService';
+import trackasiaService from '../../services/map/trackasiaService';
 import type { Address, AddressCreateDto, AddressUpdateDto } from '../../models/Address';
 import useProvinces from '../../hooks/useProvinces';
+import type { MapLocation } from '../../models/Map';
+import type { PlaceDetailResult, AutocompleteResult } from '../../models/TrackAsia';
+import AddressMap from './AddressMap';
+import AddressSearch from './AddressSearch';
+import AddressForm from './AddressForm';
+import { createCustomFilterOption, processPlaceDetail } from './AddressHelper';
+
+// Định nghĩa interface cho window để thêm trackasia
+declare global {
+    interface Window {
+        trackasia?: any;
+        trackasiagl?: any;
+    }
+}
 
 interface AddressModalProps {
     visible: boolean;
@@ -14,14 +29,6 @@ interface AddressModalProps {
     defaultAddressType?: boolean;
     title?: string;
 }
-
-// Hàm so sánh tiếng Việt không dấu để cải thiện tìm kiếm
-const removeVietnameseAccents = (str: string): string => {
-    return str
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-};
 
 const AddressModal: React.FC<AddressModalProps> = ({
     visible,
@@ -36,9 +43,14 @@ const AddressModal: React.FC<AddressModalProps> = ({
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
     const [useManualInput, setUseManualInput] = useState(false);
+    const [useTrackAsia, setUseTrackAsia] = useState(true);
     const { message } = App.useApp();
 
-    // Use custom hook for provinces data
+    // TrackAsia states
+    const [selectedPlace, setSelectedPlace] = useState<PlaceDetailResult | null>(null);
+    const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
+
+    // Use custom hook for provinces data (as fallback)
     const {
         provinces,
         isLoading: isLoadingProvinces,
@@ -49,10 +61,12 @@ const AddressModal: React.FC<AddressModalProps> = ({
         wards,
         findWard,
         isValidData
-    } = useProvinces(visible);
+    } = useProvinces(visible && !useTrackAsia);
 
     console.log('AddressModal render:', {
         visible,
+        useTrackAsia,
+        selectedPlace: selectedPlace?.name,
         provinces: provinces?.length,
         wards: wards?.length,
         isLoadingProvinces,
@@ -61,39 +75,95 @@ const AddressModal: React.FC<AddressModalProps> = ({
         selectedProvince: selectedProvince?.name
     });
 
-    // Nếu dữ liệu không hợp lệ hoặc không có wards, chuyển sang nhập thủ công
+    // Nếu TrackAsia không hoạt động và dữ liệu không hợp lệ hoặc không có wards, chuyển sang nhập thủ công
     useEffect(() => {
-        if (visible && !isLoadingProvinces && (!isValidData || wards.length === 0)) {
-            console.log('Data is invalid or no wards available, switching to manual input');
-            setUseManualInput(true);
-        }
-    }, [visible, isLoadingProvinces, isValidData, wards]);
+        // Chỉ xử lý khi modal hiển thị và không sử dụng TrackAsia
+        if (!visible || useTrackAsia) return;
 
-    // Reset form when modal opens or closes
-    useEffect(() => {
-        if (visible) {
-            console.log('Modal is visible, resetting form');
-            form.resetFields();
+        // Chỉ kiểm tra khi đã load xong provinces và không đang loading
+        if (!isLoadingProvinces) {
+            const shouldUseManualInput = !isValidData || wards.length === 0;
 
-            // Chỉ reset useManualInput khi có dữ liệu hợp lệ
-            if (isValidData && wards.length > 0) {
-                setUseManualInput(false);
+            if (shouldUseManualInput && !useManualInput) {
+                console.log('Data is invalid or no wards available, switching to manual input');
+                setUseManualInput(true);
             }
+        }
+    }, [visible, useTrackAsia, isLoadingProvinces, isValidData, wards, useManualInput]);
 
-            if (initialValues && mode === 'edit') {
-                console.log('Setting initial values for edit mode:', initialValues);
+    // Khởi tạo bản đồ khi modal hiển thị
+    useEffect(() => {
+        let isMounted = true;
+
+        // Kiểm tra TrackAsia API khi modal hiển thị và đang ở chế độ TrackAsia
+        if (visible && useTrackAsia) {
+            try {
+                trackasiaService.autocomplete('test', 1)
+                    .then((results: AutocompleteResult[]) => {
+                        if (!isMounted) return;
+                        if (results.length === 0) {
+                            console.warn('TrackAsia API not working, switching to province API');
+                            setUseTrackAsia(false);
+                        } else {
+                            console.log('TrackAsia API is working');
+                        }
+                    })
+                    .catch((error: Error) => {
+                        if (!isMounted) return;
+                        console.error('Error testing TrackAsia API:', error);
+                        setUseTrackAsia(false);
+                    });
+            } catch (error) {
+                console.error('Error initializing TrackAsia:', error);
+                setUseTrackAsia(false);
+            }
+        }
+        return () => { isMounted = false; };
+    }, [visible]);
+
+
+    useEffect(() => {
+        if (!visible) return;
+
+        console.log('Modal is visible, resetting form');
+        form.resetFields();
+        setSelectedPlace(null);
+        setMapLocation(null);
+
+        // Đặt lại chế độ nhập liệu dựa trên trạng thái TrackAsia và dữ liệu tỉnh/thành phố
+        if (useTrackAsia) {
+            setUseManualInput(false);
+        } else if (isValidData && wards.length > 0) {
+            setUseManualInput(false);
+        }
+
+        if (initialValues && mode === 'edit') {
+            console.log('Setting initial values for edit mode:', initialValues);
+
+            // Sử dụng setTimeout để tránh Maximum update depth exceeded
+            setTimeout(() => {
                 form.setFieldsValue({
                     street: initialValues.street,
                     ward: initialValues.ward,
                     province: initialValues.province,
-                    addressType: initialValues.addressType
+                    addressType: initialValues.addressType,
+                    latitude: initialValues.latitude,
+                    longitude: initialValues.longitude
                 });
 
-                // If editing and we have wards, try to find the matching ward
-                if (wards.length > 0) {
+                if (initialValues.latitude && initialValues.longitude) {
+                    const location = {
+                        lat: initialValues.latitude,
+                        lng: initialValues.longitude,
+                        address: `${initialValues.street}, ${initialValues.ward}, ${initialValues.province}`
+                    };
+                    setMapLocation(location);
+                }
+
+                // Nếu không dùng TrackAsia và có dữ liệu wards, cố gắng tìm ward
+                if (!useTrackAsia && wards.length > 0) {
                     const wardName = initialValues.ward;
                     const matchingWard = findWard(wardName);
-
                     if (matchingWard) {
                         console.log(`Found matching ward for "${wardName}":`, matchingWard);
                         form.setFieldsValue({ ward: matchingWard.code });
@@ -103,20 +173,20 @@ const AddressModal: React.FC<AddressModalProps> = ({
                         form.setFieldsValue({ ward: wardName });
                     }
                 }
-            } else if (defaultAddressType !== undefined) {
-                form.setFieldsValue({
-                    addressType: defaultAddressType
-                });
-            }
+            }, 0);
+        } else if (defaultAddressType !== undefined) {
+            form.setFieldsValue({ addressType: defaultAddressType });
+        }
 
-            // Set province field
+        // Đặt giá trị mặc định cho province nếu không dùng TrackAsia
+        if (!useTrackAsia) {
             if (selectedProvince) {
                 form.setFieldsValue({ province: selectedProvince.name });
             } else {
                 form.setFieldsValue({ province: 'Thành phố Hồ Chí Minh' });
             }
         }
-    }, [visible, initialValues, form, mode, defaultAddressType, wards, selectedProvince, findWard, isValidData]);
+    }, [visible, initialValues, mode, defaultAddressType, useTrackAsia, selectedProvince]);
 
     // Handle form submission
     const handleSubmit = async () => {
@@ -126,7 +196,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
 
             // If using select boxes, get the ward name from the selected ward code
             let wardName = values.ward;
-            if (!useManualInput && typeof values.ward === 'number') {
+            if (!useTrackAsia && !useManualInput && typeof values.ward === 'number') {
                 const selectedWard = wards.find(ward => ward.code === values.ward);
                 if (selectedWard) {
                     wardName = selectedWard.name;
@@ -134,12 +204,21 @@ const AddressModal: React.FC<AddressModalProps> = ({
             }
 
             // Prepare address data with required fields
-            const addressData = {
+            const addressData: any = {
                 street: values.street,
                 ward: wardName,
-                province: selectedProvince?.name || values.province || 'Thành phố Hồ Chí Minh',
+                province: values.province || 'Thành phố Hồ Chí Minh',
                 addressType: values.addressType
             };
+
+            // Thêm tọa độ từ form values hoặc mapLocation
+            if (values.latitude && values.longitude) {
+                addressData.latitude = values.latitude;
+                addressData.longitude = values.longitude;
+            } else if (mapLocation) {
+                addressData.latitude = mapLocation.lat;
+                addressData.longitude = mapLocation.lng;
+            }
 
             console.log('Submitting address data:', addressData);
 
@@ -198,43 +277,198 @@ const AddressModal: React.FC<AddressModalProps> = ({
         }
     };
 
-    // Tùy chỉnh hàm lọc cho Select để cải thiện tìm kiếm
-    const customFilterOption = (input: string, option: any) => {
-        const optionLabel = option?.label?.toString() || '';
-        const inputValue = input.toLowerCase();
-        const optionLabelLower = optionLabel.toLowerCase();
+    // Switch to TrackAsia mode
+    const switchToTrackAsia = () => {
+        setUseTrackAsia(true);
+        setUseManualInput(false);
+    };
 
-        // Kiểm tra nếu label chứa input trực tiếp
-        if (optionLabelLower.includes(inputValue)) {
-            return true;
+    // Switch to Province API mode
+    const switchToProvinceAPI = () => {
+        setUseTrackAsia(false);
+        // Chỉ gọi invalidateAndRefetch nếu cần thiết
+        if (!isValidData && !isLoadingProvinces) {
+            invalidateAndRefetch();
         }
+    };
 
-        // Kiểm tra không dấu
-        const optionLabelNormalized = removeVietnameseAccents(optionLabel);
-        const inputValueNormalized = removeVietnameseAccents(input);
+    // Tùy chỉnh hàm lọc cho Select để cải thiện tìm kiếm
+    const customFilterOption = createCustomFilterOption();
 
-        // Tách từ khóa tìm kiếm và kiểm tra từng phần
-        const inputParts = inputValueNormalized.split(/\s+/).filter(Boolean);
+    // Xử lý khi chọn địa điểm từ TrackAsia
+    const handlePlaceSelect = (place: PlaceDetailResult) => {
+        console.log('handlePlaceSelect called with place:', place);
+        setSelectedPlace(place);
 
-        // Nếu tất cả các phần của input đều có trong option (không phân biệt thứ tự)
-        return inputParts.every(part => optionLabelNormalized.includes(part));
+        // Xử lý dữ liệu từ place
+        try {
+            // Tìm street_number và route
+            const streetNumber = place.address_components?.find(c => c.types && c.types.includes('street_number'));
+            const route = place.address_components?.find(c => c.types && c.types.includes('route'));
+
+            // Tìm ward từ administrative_area_level_2
+            const ward = place.address_components?.find(c => c.types && c.types.includes('administrative_area_level_2'));
+
+            // Tìm province từ administrative_area_level_1
+            const province = place.address_components?.find(c => c.types && c.types.includes('administrative_area_level_1'));
+
+            // Xử lý street
+            let street = '';
+            if (streetNumber && route) {
+                // Nếu có cả street_number và route, kết hợp chúng
+                street = `${streetNumber.long_name} ${route.long_name}`;
+            } else {
+                // Nếu không có cả street_number và route, sử dụng name
+                street = place.name || '';
+            }
+
+            // Xử lý ward
+            let wardName = '';
+            if (ward) {
+                wardName = ward.long_name;
+            } else {
+                // Nếu không có ward, thử lấy từ formatted_address
+                const addressParts = place.formatted_address?.split(',') || [];
+                if (addressParts.length > 1) {
+                    wardName = addressParts[1].trim();
+                }
+            }
+
+            // Xử lý province
+            let provinceName = '';
+            if (province) {
+                provinceName = province.long_name;
+                // Đảm bảo có "Thành phố" ở đầu nếu là Hồ Chí Minh
+                if (provinceName.includes('Hồ Chí Minh') && !provinceName.includes('Thành phố')) {
+                    provinceName = `Thành phố ${provinceName}`;
+                }
+            } else {
+                // Nếu không có province, thử lấy từ formatted_address
+                const addressParts = place.formatted_address?.split(',') || [];
+                if (addressParts.length > 2) {
+                    provinceName = addressParts[addressParts.length - 1].trim();
+                    if (provinceName.includes('Hồ Chí Minh') && !provinceName.includes('Thành phố')) {
+                        provinceName = `Thành phố ${provinceName}`;
+                    }
+                } else {
+                    provinceName = 'Thành phố Hồ Chí Minh';
+                }
+            }
+
+            // Cập nhật vị trí trên bản đồ
+            if (place.geometry && place.geometry.location) {
+                setMapLocation({
+                    lat: place.geometry.location.lat,
+                    lng: place.geometry.location.lng,
+                    address: place.formatted_address || place.name
+                });
+            }
+
+            // Điền thông tin vào form
+            const formValues = {
+                street: street,
+                ward: wardName,
+                province: provinceName,
+                latitude: place.geometry?.location.lat,
+                longitude: place.geometry?.location.lng
+            };
+
+            console.log('Setting form values:', formValues);
+
+            // Reset form trước khi set lại giá trị
+            form.resetFields();
+
+            // Sử dụng setTimeout để đảm bảo form values được cập nhật
+            setTimeout(() => {
+                // Set từng field riêng biệt
+                Object.entries(formValues).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        form.setFields([{
+                            name: key,
+                            value: value,
+                            touched: true
+                        }]);
+                        console.log(`Set field ${key} to:`, value);
+                    }
+                });
+
+                console.log('Form values after setting fields:', form.getFieldsValue());
+            }, 0);
+
+            // Log để debug
+            console.log('Form values after place selection:', form.getFieldsValue());
+        } catch (error) {
+            console.error('Error processing place details:', error);
+
+            // Fallback: Sử dụng thông tin cơ bản từ place
+            if (place.geometry && place.geometry.location) {
+                setMapLocation({
+                    lat: place.geometry.location.lat,
+                    lng: place.geometry.location.lng,
+                    address: place.formatted_address || place.name
+                });
+
+                // Cố gắng lấy thông tin từ formatted_address, vicinity hoặc name
+                let streetValue = place.name || '';
+                let wardValue = '';
+                let provinceValue = 'Thành phố Hồ Chí Minh';
+
+                if (place.formatted_address) {
+                    const addressParts = place.formatted_address.split(',').map(part => part.trim());
+
+                    if (addressParts.length > 1) {
+                        wardValue = addressParts[1];
+                    }
+
+                    if (addressParts.length > 2) {
+                        provinceValue = addressParts[addressParts.length - 1];
+                        if (provinceValue.includes('Hồ Chí Minh') && !provinceValue.includes('Thành phố')) {
+                            provinceValue = `Thành phố ${provinceValue}`;
+                        }
+                    }
+                }
+
+                const formValues = {
+                    street: streetValue,
+                    ward: wardValue,
+                    province: provinceValue,
+                    latitude: place.geometry.location.lat,
+                    longitude: place.geometry.location.lng
+                };
+
+                console.log('Setting fallback form values:', formValues);
+
+                // Reset form trước khi set lại giá trị
+                form.resetFields();
+
+                // Sử dụng setTimeout để đảm bảo form values được cập nhật
+                setTimeout(() => {
+                    // Set từng field riêng biệt
+                    Object.entries(formValues).forEach(([key, value]) => {
+                        if (value !== undefined && value !== null) {
+                            form.setFields([{
+                                name: key,
+                                value: value,
+                                touched: true
+                            }]);
+                            console.log(`Set field ${key} to:`, value);
+                        }
+                    });
+
+                    console.log('Fallback form values after setting fields:', form.getFieldsValue());
+                }, 0);
+
+                console.log('Fallback form values after place selection:', form.getFieldsValue());
+            }
+        }
+    };
+
+    // Xử lý khi vị trí trên bản đồ thay đổi
+    const handleLocationChange = (location: MapLocation) => {
+        setMapLocation(location);
     };
 
     const modalTitle = title || (mode === 'create' ? 'Thêm địa chỉ mới' : 'Chỉnh sửa địa chỉ');
-
-    // Hiển thị thông tin debug khi có lỗi
-    const renderDebugInfo = () => {
-        if (!isProvincesError && isValidData) return null;
-
-        return (
-            <div className="text-xs text-gray-500 mt-1 mb-2">
-                <div>Provinces: {provinces?.length || 0}</div>
-                <div>Wards: {wards?.length || 0}</div>
-                <div>Selected province: {selectedProvince?.name || 'None'}</div>
-                <div>Valid data: {isValidData ? 'Yes' : 'No'}</div>
-            </div>
-        );
-    };
 
     return (
         <Modal
@@ -246,9 +480,10 @@ const AddressModal: React.FC<AddressModalProps> = ({
             cancelText="Hủy"
             confirmLoading={submitting}
             maskClosable={false}
+            width={1000}
         >
             <Spin spinning={isLoadingProvinces || submitting}>
-                {isProvincesError && (
+                {isProvincesError && !useTrackAsia && (
                     <Alert
                         message={`Không thể tải danh sách tỉnh/thành phố: ${provincesError?.toString()}`}
                         type="warning"
@@ -262,7 +497,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     />
                 )}
 
-                {!isProvincesError && !isValidData && !isLoadingProvinces && (
+                {!isProvincesError && !isValidData && !isLoadingProvinces && !useTrackAsia && (
                     <Alert
                         message="Dữ liệu tỉnh/thành phố không hợp lệ. Đang sử dụng chế độ nhập thủ công."
                         type="warning"
@@ -276,98 +511,65 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     />
                 )}
 
-                {renderDebugInfo()}
-
-                <Form
-                    form={form}
-                    layout="vertical"
-                    initialValues={{ addressType: defaultAddressType !== undefined ? defaultAddressType : true }}
-                >
-                    <Form.Item
-                        name="street"
-                        label="Đường/Số nhà"
-                        rules={[{ required: true, message: 'Vui lòng nhập đường/số nhà' }]}
-                    >
-                        <Input placeholder="Nhập đường và số nhà" />
-                    </Form.Item>
-
-                    {!useManualInput && isValidData && wards.length > 0 ? (
-                        <>
-                            <Form.Item
-                                name="ward"
-                                label="Phường/Xã"
-                                rules={[{ required: true, message: 'Vui lòng chọn phường/xã' }]}
-                            // extra={
-                            //     <a onClick={switchToManualInput} className="text-blue-500 text-sm">
-                            //         Nhập thủ công
-                            //     </a>
-                            // }
-                            >
-                                <Select
-                                    placeholder="Chọn phường/xã"
-                                    showSearch
-                                    optionFilterProp="label"
-                                    filterOption={customFilterOption}
-                                    options={wards.map(ward => ({
-                                        value: ward.code,
-                                        label: ward.name
-                                    }))}
-                                />
-                            </Form.Item>
-
-                            <Form.Item
-                                name="province"
-                                label="Tỉnh/Thành phố"
-                                initialValue={selectedProvince?.name || 'Thành phố Hồ Chí Minh'}
-                            >
-                                <Input disabled value={selectedProvince?.name || 'Thành phố Hồ Chí Minh'} />
-                            </Form.Item>
-                        </>
+                {/* <Space className="mb-4 w-full justify-end">
+                    {useTrackAsia ? (
+                        <Button size="small" onClick={switchToProvinceAPI}>
+                            Sử dụng API tỉnh/thành phố
+                        </Button>
                     ) : (
-                        <>
-                            <Form.Item
-                                name="ward"
-                                label="Phường/Xã"
-                                rules={[{ required: true, message: 'Vui lòng nhập phường/xã' }]}
-                                extra={
-                                    isValidData && wards.length > 0 ? (
-                                        <a onClick={switchToDropdownMode} className="text-blue-500 text-sm">
-                                            Chọn từ danh sách
-                                        </a>
-                                    ) : null
-                                }
-                            >
-                                <Input placeholder="Nhập phường/xã" />
-                            </Form.Item>
+                        <Button size="small" onClick={switchToTrackAsia}>
+                            Sử dụng bản đồ
+                        </Button>
+                    )}
+                </Space> */}
 
+                <Row gutter={24}>
+                    <Col span={12}>
+                        {/* Cột trái: Form tìm kiếm và nhập địa chỉ */}
+                        {useTrackAsia && (
                             <Form.Item
-                                name="province"
-                                label="Tỉnh/Thành phố"
-                                initialValue="Thành phố Hồ Chí Minh"
-                                rules={[{ required: true, message: 'Vui lòng nhập tỉnh/thành phố' }]}
+                                label="Tìm kiếm địa điểm"
+                                help="Nhập địa chỉ để tìm kiếm (ít nhất 3 ký tự)"
                             >
-                                <Input
-                                    placeholder="Nhập tỉnh/thành phố"
-                                    disabled
-                                    value="Thành phố Hồ Chí Minh"
+                                <AddressSearch
+                                    onPlaceSelect={handlePlaceSelect}
+                                    initialValue={mapLocation?.address || (initialValues ? `${initialValues.street}, ${initialValues.ward}, ${initialValues.province}` : '')}
                                 />
                             </Form.Item>
-                        </>
-                    )}
+                        )}
 
-                    {showAddressType && (
-                        <Form.Item
-                            name="addressType"
-                            label="Loại địa chỉ"
-                            rules={[{ required: true, message: 'Vui lòng chọn loại địa chỉ' }]}
-                        >
-                            <Radio.Group>
-                                <Radio value={true}>Địa chỉ gửi hàng</Radio>
-                                <Radio value={false}>Địa chỉ nhận hàng</Radio>
-                            </Radio.Group>
-                        </Form.Item>
-                    )}
-                </Form>
+                        <AddressForm
+                            form={form}
+                            useManualInput={useManualInput}
+                            useTrackAsia={useTrackAsia}
+                            isValidData={isValidData}
+                            wards={wards}
+                            selectedProvince={selectedProvince}
+                            switchToManualInput={switchToManualInput}
+                            switchToDropdownMode={switchToDropdownMode}
+                            customFilterOption={customFilterOption}
+                            showAddressType={showAddressType}
+                        />
+                    </Col>
+
+                    <Col span={12}>
+                        {/* Cột phải: Bản đồ */}
+                        {useTrackAsia && (
+                            <div className="h-full">
+                                <Typography.Title level={5} className="mb-3">Bản đồ</Typography.Title>
+                                <div style={{ minHeight: '400px' }}>
+                                    <AddressMap
+                                        mapLocation={mapLocation}
+                                        onLocationChange={handleLocationChange}
+                                    />
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        Click vào bản đồ để chọn vị trí chính xác
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </Col>
+                </Row>
             </Spin>
         </Modal>
     );

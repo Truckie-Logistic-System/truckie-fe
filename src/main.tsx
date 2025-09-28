@@ -4,6 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
 
+// Import TrackAsia GL
+import 'trackasia-gl/dist/trackasia-gl.css';
+import trackasiagl from 'trackasia-gl';
+
+// Gán trackasiagl vào window để có thể sử dụng ở mọi nơi
+window.trackasiagl = trackasiagl;
+
 // Tạo một QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {

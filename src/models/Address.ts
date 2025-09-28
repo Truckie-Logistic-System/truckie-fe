@@ -4,8 +4,8 @@ export interface Address {
     ward: string;
     street: string;
     addressType: boolean;
-    latitude: number;
-    longitude: number;
+    latitude: number | null;
+    longitude: number | null;
     customerId: string;
     fullAddress?: string; // Thêm để tương thích với code hiện tại
 }
@@ -15,6 +15,8 @@ export interface AddressCreateDto {
     ward: string;
     province: string;
     addressType: boolean;
+    latitude?: number | null;
+    longitude?: number | null;
     customerId?: string; // Make customerId optional since it will be handled by the backend
 }
 
@@ -23,4 +25,6 @@ export interface AddressUpdateDto {
     ward?: string;
     province?: string;
     addressType?: boolean;
+    latitude?: number | null;
+    longitude?: number | null;
 } 

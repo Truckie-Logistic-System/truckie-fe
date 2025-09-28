@@ -11,6 +11,12 @@ import trackasiaService from '../../services/map/trackasiaService';
 // Import các hàm từ models
 import { calculateDistance } from '../../models/Map';
 
+// Định nghĩa kiểu cho prediction với distance
+type PredictionWithDistance = AutocompleteResult & {
+    location?: { lat: number; lng: number };
+    distance?: number;
+};
+
 // Định nghĩa lại hàm formatDistance để tương thích với code hiện tại
 const formatDistance = (meters: number): string => {
     if (meters >= 1000) {
@@ -46,11 +52,19 @@ const calculateDistanceWrapper = (lat1: number, lon1: number, lat2: number, lon2
 import type {
     AutocompleteResult,
     PlaceDetailResult as PlaceDetailsResult,
-    ReverseGeocodingResponse
-} from '../../services/map/trackasiaService';
+    ReverseGeocodingResponse,
+    ReverseGeocodingResult
+} from '../../models/TrackAsia';
 import NavigationPanel from './components/NavigationPanel';
 import TripSummary from './components/TripSummary';
 import MapControls from './components/MapControls';
+
+// Khai báo kiểu cho window object
+declare global {
+    interface Window {
+        __AUTH_TOKEN__?: string | null;
+    }
+}
 
 const { Title } = Typography;
 const { TabPane } = Tabs;
@@ -427,6 +441,18 @@ const TrackAsiaMapPage: React.FC = () => {
                         right: 100
                     },
                     maxZoom: 12
+                },
+                transformRequest: (url: string, resourceType?: string) => {
+                    // Chỉ thêm token vào header mà không xử lý URL
+                    const authToken = window.__AUTH_TOKEN__;
+                    const headers: Record<string, string> = {};
+
+                    // Thêm Authorization header nếu có authToken
+                    if (authToken) {
+                        headers['Authorization'] = `Bearer ${authToken}`;
+                    }
+
+                    return { url, headers };
                 }
             });
 
@@ -927,15 +953,15 @@ const TrackAsiaMapPage: React.FC = () => {
 
                                 // Lọc các kết quả có thông tin khoảng cách
                                 const resultsWithDistance = predictionsWithDetails.filter(
-                                    (pred): pred is PredictionWithDistance & { distance: number } =>
+                                    (pred: any): pred is PredictionWithDistance & { distance: number } =>
                                         pred.hasOwnProperty('distance') && typeof pred.distance === 'number'
                                 );
 
                                 // Sắp xếp theo khoảng cách tăng dần
-                                resultsWithDistance.sort((a, b) => a.distance - b.distance);
+                                resultsWithDistance.sort((a: any, b: any) => a.distance - b.distance);
 
                                 // Chuyển đổi kết quả thành options cho AutoComplete
-                                const formattedOptions = resultsWithDistance.map(prediction => ({
+                                const formattedOptions = resultsWithDistance.map((prediction: any) => ({
                                     value: prediction.description,
                                     label: (
                                         <div>
@@ -1910,26 +1936,29 @@ const TrackAsiaMapPage: React.FC = () => {
 
     // Wrapper functions for API calls
     const reverseGeocodeV2 = async (lat: number, lng: number) => {
-        const result = await trackasiaService.reverseGeocode(lat, lng);
+        const result = await trackasiaService.reverseGeocode(`${lat},${lng}`);
         // Chuyển đổi từ MapLocation sang định dạng cũ
-        if (result) {
+        if (result && result.results && result.results.length > 0) {
             return {
                 status: 'OK',
                 results: [{
-                    formatted_address: result.address || `${lat}, ${lng}`,
-                    address_components: [],
-                    name: result.name || '',
-                    place_id: result.placeId || ''
+                    formatted_address: result.results[0].formatted_address || `${lat}, ${lng}`,
+                    geometry: {
+                        location: { lat, lng }
+                    }
                 }]
             };
         }
-        return { status: 'ERROR', results: [] };
+        return null;
     };
 
     const searchPlacesAutocomplete = async (query: string, bounds?: any, location?: any) => {
         // Convert location to format expected by trackasiaService.autocomplete if needed
-        const locationParam = location ? [location.lat, location.lng] as [number, number] : undefined;
-        const results = await trackasiaService.autocomplete(query, locationParam);
+        let locationParam: string | undefined = undefined;
+        if (location) {
+            locationParam = `${location.lng},${location.lat}`;
+        }
+        const results = await trackasiaService.autocomplete(query, 10, bounds ? JSON.stringify(bounds) : undefined, locationParam);
 
         // Chuyển đổi kết quả sang định dạng cũ
         return {

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transportation Management System</title>
+    <!-- TrackAsia Map SDK -->
+    <link href="https://maps.track-asia.com/css/v2/trackasia-gl.css" rel="stylesheet" />
+    <script src="https://maps.track-asia.com/js/v2/trackasia-gl.js"></script>
+
+    <!-- CSP Directives -->
+    <meta http-equiv="Content-Security-Policy" content="
+        worker-src blob: ;
+        child-src blob: ;
+        img-src data: blob: https://maps.track-asia.com ;
+        connect-src https://maps.track-asia.com https://api.trackasia.vn ;
+    ">
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
