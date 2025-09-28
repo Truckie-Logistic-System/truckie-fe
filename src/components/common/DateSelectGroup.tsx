@@ -9,16 +9,30 @@ interface DateSelectGroupProps {
     onChange?: (value: dayjs.Dayjs) => void;
     minDate?: dayjs.Dayjs;
     disabled?: boolean;
+    mode?: 'birthdate' | 'delivery';
+    maxYear?: number;
+    minYear?: number;
 }
 
 const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
     value,
     onChange,
-    minDate = dayjs().add(2, 'day'),
+    minDate,
     disabled = false,
+    mode = 'delivery',
+    maxYear = dayjs().year(),
+    minYear = maxYear - 100,
 }) => {
-    // Initialize with current date + 2 days if no value provided
-    const initialDate = value || minDate;
+    // Initialize with appropriate default date based on mode
+    const getDefaultDate = () => {
+        if (mode === 'birthdate') {
+            return dayjs().subtract(18, 'year');
+        } else {
+            return minDate || dayjs().add(2, 'day');
+        }
+    };
+
+    const initialDate = value || getDefaultDate();
 
     const [selectedDay, setSelectedDay] = useState<number>(initialDate.date());
     const [selectedMonth, setSelectedMonth] = useState<number>(initialDate.month() + 1); // dayjs months are 0-indexed
@@ -93,28 +107,28 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
     // Get valid days for the selected month and year
     const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
 
-    // Generate arrays for options
-    const years = Array.from({ length: 5 }, (_, i) => dayjs().year() + i);
+    // Generate arrays for options based on mode
+    let years;
+    if (mode === 'birthdate') {
+        years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i);
+    } else {
+        years = Array.from({ length: 5 }, (_, i) => dayjs().year() + i);
+    }
+
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const minutes = Array.from({ length: 60 }, (_, i) => i);
 
-    // Filter days based on minDate
-    const validDays = days.filter(day => {
-        if (selectedYear === minDate.year() && selectedMonth === minDate.month() + 1) {
-            return day >= minDate.date();
-        }
-        return true;
-    });
+    // Filter days based on minDate (only for delivery mode)
+    const validDays = mode === 'delivery' && minDate && selectedYear === minDate.year() && selectedMonth === minDate.month() + 1
+        ? days.filter(day => day >= minDate.date())
+        : days;
 
-    // Filter months based on minDate
-    const validMonths = months.filter(month => {
-        if (selectedYear === minDate.year()) {
-            return month >= minDate.month() + 1;
-        }
-        return true;
-    });
+    // Filter months based on minDate (only for delivery mode)
+    const validMonths = mode === 'delivery' && minDate && selectedYear === minDate.year()
+        ? months.filter(month => month >= minDate.month() + 1)
+        : months;
 
     // Adjust day if it exceeds days in month
     useEffect(() => {
@@ -159,28 +173,33 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
                     <Option key={year} value={year}>{year}</Option>
                 ))}
             </Select>
-            <span>-</span>
-            <Select
-                value={selectedHour}
-                onChange={(value) => handleChange('hour', value)}
-                style={{ width: 70 }}
-                disabled={disabled}
-            >
-                {hours.map(hour => (
-                    <Option key={hour} value={hour}>{hour.toString().padStart(2, '0')}</Option>
-                ))}
-            </Select>
-            <span>:</span>
-            <Select
-                value={selectedMinute}
-                onChange={(value) => handleChange('minute', value)}
-                style={{ width: 70 }}
-                disabled={disabled}
-            >
-                {minutes.map(minute => (
-                    <Option key={minute} value={minute}>{minute.toString().padStart(2, '0')}</Option>
-                ))}
-            </Select>
+
+            {mode === 'delivery' && (
+                <>
+                    <span>-</span>
+                    <Select
+                        value={selectedHour}
+                        onChange={(value) => handleChange('hour', value)}
+                        style={{ width: 70 }}
+                        disabled={disabled}
+                    >
+                        {hours.map(hour => (
+                            <Option key={hour} value={hour}>{hour.toString().padStart(2, '0')}</Option>
+                        ))}
+                    </Select>
+                    <span>:</span>
+                    <Select
+                        value={selectedMinute}
+                        onChange={(value) => handleChange('minute', value)}
+                        style={{ width: 70 }}
+                        disabled={disabled}
+                    >
+                        {minutes.map(minute => (
+                            <Option key={minute} value={minute}>{minute.toString().padStart(2, '0')}</Option>
+                        ))}
+                    </Select>
+                </>
+            )}
         </Space>
     );
 };

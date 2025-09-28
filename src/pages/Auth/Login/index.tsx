@@ -21,9 +21,9 @@ const LoginPage: React.FC = () => {
       | { registered?: boolean; username?: string }
       | undefined;
 
-    if (state?.registered && state?.username) {
-      messageApi.success(`Đăng ký thành công! Vui lòng đăng nhập với tài khoản ${state.username}`);
-    }
+    // if (state?.registered && state?.username) {
+    //   messageApi.success(`Đăng ký thành công! Vui lòng đăng nhập với tài khoản ${state.username}`);
+    // }
   }, [location.state, messageApi]);
 
   // Remove the auto-redirect effect since we'll handle it manually after login success

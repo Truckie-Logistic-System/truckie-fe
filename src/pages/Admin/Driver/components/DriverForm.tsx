@@ -228,7 +228,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     dependencies={['licenseClass']}
                 >
                     <DateSelectGroup
-                        disabledDate={date => date.isAfter(dayjs())}
+                        mode="birthdate"
                     />
                 </Form.Item>
 
@@ -341,7 +341,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     dependencies={['dateOfBirth', 'licenseClass']}
                 >
                     <DateSelectGroup
-                        disabledDate={date => date.isAfter(dayjs())}
+                        mode="birthdate"
                     />
                 </Form.Item>
 
@@ -356,10 +356,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     dependencies={['dateOfPassing']}
                 >
                     <DateSelectGroup
-                        disabledDate={date => {
-                            const passingDate = form.getFieldValue('dateOfPassing');
-                            return (passingDate && date.isBefore(passingDate)) || date.isAfter(dayjs());
-                        }}
+                        mode="birthdate"
                     />
                 </Form.Item>
 
@@ -374,10 +371,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     dependencies={['dateOfIssue']}
                 >
                     <DateSelectGroup
-                        disabledDate={date => {
-                            const issueDate = form.getFieldValue('dateOfIssue');
-                            return issueDate && date.isBefore(issueDate);
-                        }}
+                        mode="birthdate"
                     />
                 </Form.Item>
             </div>

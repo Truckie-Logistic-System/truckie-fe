@@ -197,7 +197,7 @@ const StaffRegister: React.FC = () => {
                                 label="Ngày sinh"
                                 rules={[{ required: true, message: 'Vui lòng chọn ngày sinh' }]}
                             >
-                                <DateSelectGroup />
+                                <DateSelectGroup mode="birthdate" />
                             </Form.Item>
 
                             <Form.Item

@@ -412,7 +412,7 @@ const OrderEdit: React.FC = () => {
                                         label="Thời gian giao hàng dự kiến"
                                     >
                                         <DateSelectGroup
-                                            placeholder="Chọn ngày giao hàng dự kiến"
+                                            mode="delivery"
                                         />
                                     </Form.Item>
                                 </Col>
@@ -422,7 +422,7 @@ const OrderEdit: React.FC = () => {
                                         label="Thời gian giao hàng thực tế"
                                     >
                                         <DateSelectGroup
-                                            placeholder="Chọn ngày giao hàng thực tế"
+                                            mode="delivery"
                                         />
                                     </Form.Item>
                                 </Col>

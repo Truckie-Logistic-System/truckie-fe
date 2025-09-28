@@ -436,7 +436,7 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
                                 name="installedAt"
                                 label="Ngày lắp đặt"
                             >
-                                <DateSelectGroup placeholder="Chọn ngày lắp đặt" />
+                                <DateSelectGroup mode="birthdate" />
                             </Form.Item>
                         </div>
                     </div>

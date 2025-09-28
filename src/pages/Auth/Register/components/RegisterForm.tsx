@@ -101,7 +101,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
             <Form
                 form={form}
                 layout="vertical"
-                requiredMark="optional"
+                requiredMark={true}
                 initialValues={{
                     gender: 'male',
                     dateOfBirth: dayjs().subtract(18, 'year')
@@ -150,6 +150,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                             name="password"
                             label="Mật khẩu"
                             rules={[
+                                { required: true, message: 'Vui lòng nhập mật khẩu' },
                                 { validator: validatePassword }
                             ]}
                         >
@@ -237,7 +238,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                             label="Ngày sinh"
                             rules={[{ required: true, message: 'Vui lòng chọn ngày sinh' }]}
                         >
-                            <DateSelectGroup />
+                            <DateSelectGroup mode="birthdate" />
                         </Form.Item>
                     </Col>
                 </Row>
