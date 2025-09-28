@@ -39,11 +39,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     return;
                 }
 
-                // Get user data from localStorage
-                const userRole = localStorage.getItem("user_role");
-                const userId = localStorage.getItem("userId");
-                const username = localStorage.getItem("username");
-                const email = localStorage.getItem("email");
+                // Get user data from sessionStorage (not localStorage)
+                const userRole = sessionStorage.getItem("user_role");
+                const userId = sessionStorage.getItem("userId");
+                const username = sessionStorage.getItem("username");
+                const email = sessionStorage.getItem("email");
 
                 // Validate user data
                 if (!userRole || !userId || !username || !email) {
