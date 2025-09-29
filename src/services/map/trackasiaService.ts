@@ -13,106 +13,6 @@ import type {
 // Lưu trữ controller cho request hiện tại để có thể hủy nếu cần
 let currentSearchController: AbortController | null = null;
 
-// Mock data cho autocomplete
-const mockAutocompleteResults: AutocompleteResult[] = [
-    {
-        place_id: 'mock_place_1',
-        description: 'Quận 1, Thành phố Hồ Chí Minh',
-        name: 'Quận 1',
-        reference: 'mock_reference_1',
-        formatted_address: 'Quận 1, Thành phố Hồ Chí Minh, Việt Nam',
-        icon: '',
-        matched_substrings: [{ length: 6, offset: 0 }],
-        structured_formatting: {
-            main_text: 'Quận 1',
-            main_text_matched_substrings: [{ length: 6, offset: 0 }],
-            secondary_text: 'Thành phố Hồ Chí Minh, Việt Nam'
-        },
-        terms: [{ offset: 0, value: 'Quận 1' }],
-        types: ['political', 'sublocality']
-    },
-    {
-        place_id: 'mock_place_2',
-        description: 'Quận 2, Thành phố Hồ Chí Minh',
-        name: 'Quận 2',
-        reference: 'mock_reference_2',
-        formatted_address: 'Quận 2, Thành phố Hồ Chí Minh, Việt Nam',
-        icon: '',
-        matched_substrings: [{ length: 6, offset: 0 }],
-        structured_formatting: {
-            main_text: 'Quận 2',
-            main_text_matched_substrings: [{ length: 6, offset: 0 }],
-            secondary_text: 'Thành phố Hồ Chí Minh, Việt Nam'
-        },
-        terms: [{ offset: 0, value: 'Quận 2' }],
-        types: ['political', 'sublocality']
-    },
-    {
-        place_id: 'mock_place_3',
-        description: 'Quận 3, Thành phố Hồ Chí Minh',
-        name: 'Quận 3',
-        reference: 'mock_reference_3',
-        formatted_address: 'Quận 3, Thành phố Hồ Chí Minh, Việt Nam',
-        icon: '',
-        matched_substrings: [{ length: 6, offset: 0 }],
-        structured_formatting: {
-            main_text: 'Quận 3',
-            main_text_matched_substrings: [{ length: 6, offset: 0 }],
-            secondary_text: 'Thành phố Hồ Chí Minh, Việt Nam'
-        },
-        terms: [{ offset: 0, value: 'Quận 3' }],
-        types: ['political', 'sublocality']
-    }
-];
-
-// Mock data cho place detail
-const mockPlaceDetail: PlaceDetailResult = {
-    place_id: 'mock_place_1',
-    formatted_address: 'Quận 1, Thành phố Hồ Chí Minh, Việt Nam',
-    geometry: {
-        location: {
-            lat: 10.7743,
-            lng: 106.6974
-        },
-        viewport: {
-            northeast: {
-                lat: 10.7743,
-                lng: 106.6974
-            },
-            southwest: {
-                lat: 10.7743,
-                lng: 106.6974
-            }
-        },
-        location_type: "ROOFTOP"
-    },
-    icon: "",
-    name: "Quận 1",
-    types: ["point_of_interest"],
-    address_components: [
-        {
-            types: ["street_number"],
-            long_name: "1",
-            short_name: "1"
-        },
-        {
-            types: ["route"],
-            long_name: "Đường Nguyễn Huệ",
-            short_name: "Nguyễn Huệ"
-        },
-        {
-            types: ["administrative_area_level_2", "political"],
-            long_name: "Quận 1",
-            short_name: "Quận 1"
-        },
-        {
-            types: ["administrative_area_level_1", "political"],
-            long_name: "Thành phố Hồ Chí Minh",
-            short_name: "HCM"
-        }
-    ]
-};
-
 // Hàm định dạng khoảng cách
 const formatDistance = (meters: number): string => {
     if (meters >= 1000) {
@@ -131,6 +31,49 @@ const formatTime = (seconds: number): string => {
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.round((seconds % 3600) / 60);
         return `${hours} giờ ${minutes > 0 ? `${minutes} phút` : ''}`;
+    }
+};
+
+// Hàm kiểm tra xem cache có hết hạn chưa (1 tuần)
+const isCacheExpired = (timestamp: number): boolean => {
+    const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; // 1 tuần tính bằng milliseconds
+    return Date.now() - timestamp > oneWeekInMs;
+};
+
+// Hàm lưu style vào sessionStorage
+const cacheMapStyle = (styleType: string, styleData: any): void => {
+    try {
+        const cacheItem = {
+            timestamp: Date.now(),
+            data: styleData
+        };
+        sessionStorage.setItem(`trackasia_style_${styleType}`, JSON.stringify(cacheItem));
+        console.log(`Cached map style "${styleType}" to sessionStorage`);
+    } catch (error) {
+        console.error('Error caching map style:', error);
+    }
+};
+
+// Hàm lấy style từ sessionStorage
+const getCachedMapStyle = (styleType: string): any | null => {
+    try {
+        const cachedItem = sessionStorage.getItem(`trackasia_style_${styleType}`);
+        if (!cachedItem) return null;
+
+        const { timestamp, data } = JSON.parse(cachedItem);
+
+        // Kiểm tra xem cache có hết hạn chưa
+        if (isCacheExpired(timestamp)) {
+            console.log(`Cached map style "${styleType}" has expired`);
+            sessionStorage.removeItem(`trackasia_style_${styleType}`);
+            return null;
+        }
+
+        console.log(`Using cached map style "${styleType}" from sessionStorage`);
+        return data;
+    } catch (error) {
+        console.error('Error retrieving cached map style:', error);
+        return null;
     }
 };
 
@@ -178,12 +121,29 @@ const trackasiaService = {
         const styleType = options.styleType || 'streets';
 
         try {
-            return new mapLib.Map({
+            // Kiểm tra xem có style đã cache chưa
+            const cachedStyle = getCachedMapStyle(styleType);
+
+            const map = new mapLib.Map({
                 container: containerId,
-                style: `/trackasia/style?styleType=${styleType}`,
+                style: cachedStyle || `/trackasia/style?styleType=${styleType}`,
                 center: [center.lng, center.lat], // TrackAsia expects [lng, lat]
                 zoom: zoom
             });
+
+            // Nếu không có cache, fetch style và cache lại
+            if (!cachedStyle) {
+                fetch(`/trackasia/style?styleType=${styleType}`)
+                    .then(response => response.json())
+                    .then(styleData => {
+                        cacheMapStyle(styleType, styleData);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching map style for caching:', error);
+                    });
+            }
+
+            return map;
         } catch (error) {
             console.error('Error creating TrackAsia map:', error);
             return null;
@@ -237,11 +197,8 @@ const trackasiaService = {
                 return response.data.predictions || [];
             }
 
-            console.warn('No valid autocomplete results found in response, using mock data');
-            return mockAutocompleteResults.filter(item =>
-                item.description.toLowerCase().includes(input.toLowerCase()) ||
-                item.name.toLowerCase().includes(input.toLowerCase())
-            );
+            console.warn('No valid autocomplete results found in response');
+            return [];
         } catch (error: any) {
             // Nếu lỗi không phải do hủy request
             if (error.name !== 'AbortError') {
@@ -251,11 +208,8 @@ const trackasiaService = {
                     console.error('Error response status:', error.response.status);
                 }
             }
-            console.warn('Error in autocomplete, using mock data');
-            return mockAutocompleteResults.filter(item =>
-                item.description.toLowerCase().includes(input.toLowerCase()) ||
-                item.name.toLowerCase().includes(input.toLowerCase())
-            );
+            console.warn('Error in autocomplete');
+            return [];
         } finally {
             // Đảm bảo controller được reset
             currentSearchController = null;
@@ -270,52 +224,31 @@ const trackasiaService = {
     getPlaceDetail: async (place_id: string): Promise<PlaceDetailResult | null> => {
         console.log('trackasiaService.getPlaceDetail called with place_id:', place_id);
 
-        // Nếu là mock place ID, trả về mock data
-        if (place_id.startsWith('mock_place_')) {
-            console.log('Using mock place detail for place_id:', place_id);
-            return {
-                ...mockPlaceDetail,
-                place_id: place_id
-            };
-        }
-
-        // Thử với cả hai endpoint để xem cái nào hoạt động
-        const endpoints = [
-            '/trackasia/place/details'
-        ];
-
-        for (const endpoint of endpoints) {
-            try {
-                console.log(`Trying endpoint ${endpoint} with place_id:`, place_id);
-                const response = await httpClient.get<PlaceDetailResponse>(endpoint, {
-                    params: {
-                        place_id
-                    }
-                });
-
-                console.log(`Response from ${endpoint}:`, response);
-
-                if (response.data && response.data.status === 'OK') {
-                    console.log('Place detail found:', response.data.result);
-                    return response.data.result;
+        try {
+            console.log(`Trying endpoint /trackasia/place/details with place_id:`, place_id);
+            const response = await httpClient.get<PlaceDetailResponse>('/trackasia/place/details', {
+                params: {
+                    place_id
                 }
-            } catch (error: any) {
-                console.error(`Error with endpoint ${endpoint}:`, error);
-                if (error.response) {
-                    console.error('Error response data:', error.response.data);
-                    console.error('Error response status:', error.response.status);
-                }
+            });
+
+            console.log(`Response from /trackasia/place/details:`, response);
+
+            if (response.data && response.data.status === 'OK') {
+                console.log('Place detail found:', response.data.result);
+                return response.data.result;
             }
-        }
 
-        // Nếu tất cả các endpoint đều thất bại, trả về mock data
-        console.warn('All endpoints failed to get place detail, using mock data');
-        return {
-            ...mockPlaceDetail,
-            place_id: place_id,
-            name: `Địa điểm ${place_id}`,
-            formatted_address: `Địa điểm ${place_id}, Thành phố Hồ Chí Minh, Việt Nam`
-        };
+            console.warn('No valid place detail found in response');
+            return null;
+        } catch (error: any) {
+            console.error(`Error with place details:`, error);
+            if (error.response) {
+                console.error('Error response data:', error.response.data);
+                console.error('Error response status:', error.response.status);
+            }
+            return null;
+        }
     },
 
     /**

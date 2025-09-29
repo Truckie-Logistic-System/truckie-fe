@@ -136,58 +136,8 @@ const AddressSearch: React.FC<AddressSearchProps> = ({ onPlaceSelect, initialVal
                 }, 0);
             } else {
                 console.error('Invalid place detail response:', placeDetail);
-                // Tạo một đối tượng place detail giả để test
-                const mockPlaceDetail: PlaceDetailResult = {
-                    place_id: placeId,
-                    formatted_address: searchValue,
-                    geometry: {
-                        location: {
-                            lat: 10.7743,
-                            lng: 106.6974
-                        },
-                        viewport: {
-                            northeast: {
-                                lat: 10.7743,
-                                lng: 106.6974
-                            },
-                            southwest: {
-                                lat: 10.7743,
-                                lng: 106.6974
-                            }
-                        },
-                        location_type: "ROOFTOP"
-                    },
-                    icon: "",
-                    name: searchValue,
-                    types: ["point_of_interest"],
-                    address_components: [
-                        {
-                            types: ["street_number"],
-                            long_name: "1",
-                            short_name: "1"
-                        },
-                        {
-                            types: ["route"],
-                            long_name: "Đường không rõ",
-                            short_name: "Đường không rõ"
-                        },
-                        {
-                            types: ["administrative_area_level_2", "political"],
-                            long_name: "Quận 1",
-                            short_name: "Quận 1"
-                        },
-                        {
-                            types: ["administrative_area_level_1", "political"],
-                            long_name: "Hồ Chí Minh",
-                            short_name: "HCM"
-                        }
-                    ]
-                };
-
-                console.log('Using mock place detail for testing:', mockPlaceDetail);
-                setTimeout(() => {
-                    onPlaceSelect(mockPlaceDetail);
-                }, 0);
+                // Hiển thị thông báo lỗi
+                setSearchValue(searchOptions.find(opt => opt.value === placeId)?.label || searchValue);
             }
         } catch (error) {
             console.error('Error getting place details:', error);
