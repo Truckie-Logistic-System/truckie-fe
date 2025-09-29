@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, App, Spin, Alert, Button, Divider, Space, Row, Col, Typography } from 'antd';
+import { Modal, Form, App, Spin, Alert, Button, Divider, Space, Row, Col, Typography, Input, Select, Radio } from 'antd';
 import addressService from '../../services/address/addressService';
 import trackasiaService from '../../services/map/trackasiaService';
 import type { Address, AddressCreateDto, AddressUpdateDto } from '../../models/Address';
@@ -60,7 +60,8 @@ const AddressModal: React.FC<AddressModalProps> = ({
         selectedProvince,
         wards,
         findWard,
-        isValidData
+        isValidData,
+        isLoading
     } = useProvinces(visible && !useTrackAsia);
 
     console.log('AddressModal render:', {
@@ -468,43 +469,68 @@ const AddressModal: React.FC<AddressModalProps> = ({
         setMapLocation(location);
     };
 
+    // Xử lý khi modal đóng
+    const handleCancel = () => {
+        // Clear form và reset state
+        form.resetFields();
+        setSelectedPlace(null);
+        setMapLocation(null);
+        onCancel();
+    };
+
     const modalTitle = title || (mode === 'create' ? 'Thêm địa chỉ mới' : 'Chỉnh sửa địa chỉ');
 
     return (
         <Modal
-            title={modalTitle}
+            title={
+                <div className="flex items-center">
+                    <span className="text-lg font-medium">{modalTitle}</span>
+                    {useTrackAsia && <span className="ml-2 text-sm text-gray-500">(Có thể chọn trên bản đồ)</span>}
+                </div>
+            }
             open={visible}
-            onCancel={onCancel}
+            onCancel={handleCancel}
             onOk={handleSubmit}
             okText={mode === 'create' ? 'Thêm' : 'Cập nhật'}
             cancelText="Hủy"
             confirmLoading={submitting}
             maskClosable={false}
             width={1000}
+            className="address-modal"
+            okButtonProps={{ className: 'rounded-md' }}
+            cancelButtonProps={{ className: 'rounded-md border-gray-300 hover:border-gray-400' }}
+            bodyStyle={{ paddingTop: '1rem' }}
+            style={{ top: 20 }}
         >
-            <Spin spinning={isLoadingProvinces || submitting}>
+            <Spin spinning={isLoading || submitting}>
                 {isProvincesError && !useTrackAsia && (
                     <Alert
                         message={`Không thể tải danh sách tỉnh/thành phố: ${provincesError?.toString()}`}
                         type="warning"
                         showIcon
-                        className="mb-4"
+                        className="mb-6 rounded-md shadow-sm"
                         action={
-                            <Button size="small" onClick={invalidateAndRefetch}>
+                            <Button size="small" onClick={invalidateAndRefetch} className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
                                 Thử lại
                             </Button>
                         }
                     />
                 )}
 
-                {!isProvincesError && !isValidData && !isLoadingProvinces && !useTrackAsia && (
+                {!isProvincesError && !isValidData && !isLoading && !useTrackAsia && (
                     <Alert
                         message="Dữ liệu tỉnh/thành phố không hợp lệ. Đang sử dụng chế độ nhập thủ công."
                         type="warning"
                         showIcon
-                        className="mb-4"
+                        className="mb-6 rounded-md shadow-sm"
                         action={
-                            <Button size="small" onClick={invalidateAndRefetch}>
+                            <Button size="small" onClick={invalidateAndRefetch} className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
                                 Thử lại
                             </Button>
                         }
@@ -524,51 +550,199 @@ const AddressModal: React.FC<AddressModalProps> = ({
                 </Space> */}
 
                 <Row gutter={24}>
-                    <Col span={12}>
-                        {/* Cột trái: Form tìm kiếm và nhập địa chỉ */}
+                    {/* Cột bên trái: Form nhập liệu */}
+                    <Col span={useTrackAsia ? 12 : 24}>
                         {useTrackAsia && (
-                            <Form.Item
-                                label="Tìm kiếm địa điểm"
-                                help="Nhập địa chỉ để tìm kiếm (ít nhất 3 ký tự)"
-                            >
-                                <AddressSearch
-                                    onPlaceSelect={handlePlaceSelect}
-                                    initialValue={mapLocation?.address || (initialValues ? `${initialValues.street}, ${initialValues.ward}, ${initialValues.province}` : '')}
-                                />
-                            </Form.Item>
-                        )}
-
-                        <AddressForm
-                            form={form}
-                            useManualInput={useManualInput}
-                            useTrackAsia={useTrackAsia}
-                            isValidData={isValidData}
-                            wards={wards}
-                            selectedProvince={selectedProvince}
-                            switchToManualInput={switchToManualInput}
-                            switchToDropdownMode={switchToDropdownMode}
-                            customFilterOption={customFilterOption}
-                            showAddressType={showAddressType}
-                        />
-                    </Col>
-
-                    <Col span={12}>
-                        {/* Cột phải: Bản đồ */}
-                        {useTrackAsia && (
-                            <div className="h-full">
-                                <Typography.Title level={5} className="mb-3">Bản đồ</Typography.Title>
-                                <div style={{ minHeight: '400px' }}>
-                                    <AddressMap
-                                        mapLocation={mapLocation}
-                                        onLocationChange={handleLocationChange}
+                            <div className="mb-6">
+                                <label className="block mb-2 text-sm font-medium text-gray-700">Tìm kiếm địa chỉ:</label>
+                                <div className="relative">
+                                    <AddressSearch
+                                        onPlaceSelect={handlePlaceSelect}
+                                        initialValue={initialValues?.street}
+                                        street={form.getFieldValue('street')}
+                                        ward={form.getFieldValue('ward')}
+                                        province={form.getFieldValue('province')}
                                     />
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        Click vào bản đồ để chọn vị trí chính xác
+                                    <div className="mt-1 text-xs text-gray-500">
+                                        Nhập địa chỉ để tìm kiếm (ít nhất 3 ký tự)
                                     </div>
                                 </div>
                             </div>
                         )}
+
+                        <Form
+                            form={form}
+                            layout="vertical"
+                            onFinish={handleSubmit}
+                            className="address-form"
+                        >
+                            {/* Đường */}
+                            <Form.Item
+                                name="street"
+                                label={<span className="text-gray-700 font-medium">Đường/Số nhà</span>}
+                                rules={[{ required: true, message: 'Vui lòng nhập tên đường và số nhà' }]}
+                            >
+                                <Input
+                                    placeholder="Nhập tên đường và số nhà"
+                                    className="rounded-md"
+                                />
+                            </Form.Item>
+
+                            {/* Phường/Xã */}
+                            {useTrackAsia ? (
+                                <Form.Item
+                                    name="ward"
+                                    label={<span className="text-gray-700 font-medium">Phường/Xã</span>}
+                                    rules={[{ required: true, message: 'Vui lòng nhập phường/xã' }]}
+                                >
+                                    <Input
+                                        placeholder="Nhập phường/xã"
+                                        className="rounded-md"
+                                    />
+                                </Form.Item>
+                            ) : useManualInput ? (
+                                <Form.Item
+                                    name="ward"
+                                    label={<span className="text-gray-700 font-medium">Phường/Xã</span>}
+                                    rules={[{ required: true, message: 'Vui lòng nhập phường/xã' }]}
+                                >
+                                    <Input
+                                        placeholder="Nhập phường/xã"
+                                        className="rounded-md"
+                                    />
+                                </Form.Item>
+                            ) : (
+                                <Form.Item
+                                    name="ward"
+                                    label={<span className="text-gray-700 font-medium">Phường/Xã</span>}
+                                    rules={[{ required: true, message: 'Vui lòng chọn phường/xã' }]}
+                                >
+                                    <Select
+                                        placeholder="Chọn phường/xã"
+                                        loading={isLoading}
+                                        disabled={!selectedProvince || isLoading}
+                                        showSearch
+                                        optionFilterProp="children"
+                                        filterOption={customFilterOption}
+                                        className="rounded-md"
+                                    >
+                                        {wards.map(ward => (
+                                            <Select.Option key={ward.code} value={ward.code}>
+                                                {ward.name}
+                                            </Select.Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            )}
+
+                            {/* Tỉnh/Thành phố */}
+                            {useTrackAsia ? (
+                                <Form.Item
+                                    name="province"
+                                    label={<span className="text-gray-700 font-medium">Tỉnh/Thành phố</span>}
+                                    rules={[{ required: true, message: 'Vui lòng nhập tỉnh/thành phố' }]}
+                                >
+                                    <Input
+                                        placeholder="Nhập tỉnh/thành phố"
+                                        className="rounded-md"
+                                    />
+                                </Form.Item>
+                            ) : (
+                                <Form.Item
+                                    name="province"
+                                    label={<span className="text-gray-700 font-medium">Tỉnh/Thành phố</span>}
+                                    rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}
+                                >
+                                    <Select
+                                        placeholder="Chọn tỉnh/thành phố"
+                                        loading={isLoading}
+                                        disabled={isLoading}
+                                        showSearch
+                                        optionFilterProp="children"
+                                        filterOption={customFilterOption}
+                                        value={selectedProvince?.code}
+                                        className="rounded-md"
+                                    >
+                                        {provinces.map(province => (
+                                            <Select.Option key={province.code} value={province.code}>
+                                                {province.name}
+                                            </Select.Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            )}
+
+                            {/* Tọa độ (ẩn) */}
+                            <Form.Item name="latitude" hidden={true}>
+                                <Input />
+                            </Form.Item>
+                            <Form.Item name="longitude" hidden={true}>
+                                <Input />
+                            </Form.Item>
+
+                            {/* Loại địa chỉ */}
+                            {showAddressType && (
+                                <Form.Item
+                                    name="addressType"
+                                    label={<span className="text-gray-700 font-medium">Loại địa chỉ</span>}
+                                    rules={[{ required: true, message: 'Vui lòng chọn loại địa chỉ' }]}
+                                    className="mb-6"
+                                >
+                                    <Radio.Group className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-8">
+                                        <Radio value={true} className="py-1">
+                                            <span className="text-gray-800">Địa chỉ gửi hàng</span>
+                                        </Radio>
+                                        <Radio value={false} className="py-1">
+                                            <span className="text-gray-800">Địa chỉ nhận hàng</span>
+                                        </Radio>
+                                    </Radio.Group>
+                                </Form.Item>
+                            )}
+
+                            {/* Nút submit */}
+                            {!useTrackAsia && (
+                                <Form.Item>
+                                    <Space className="w-full justify-end">
+                                        <Button
+                                            onClick={handleCancel}
+                                            className="border border-gray-300 hover:border-gray-400 rounded-md"
+                                        >
+                                            Hủy
+                                        </Button>
+                                        <Button
+                                            type="primary"
+                                            htmlType="submit"
+                                            loading={submitting}
+                                            className="rounded-md"
+                                        >
+                                            {mode === 'create' ? 'Thêm địa chỉ' : 'Cập nhật'}
+                                        </Button>
+                                    </Space>
+                                </Form.Item>
+                            )}
+                        </Form>
                     </Col>
+
+                    {/* Cột bên phải: Bản đồ */}
+                    {useTrackAsia && (
+                        <Col span={12}>
+                            <div className="h-full">
+                                <label className="block mb-2 text-sm font-medium text-gray-700">Bản đồ:</label>
+                                <div className="h-[400px] border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+                                    <AddressMap
+                                        mapLocation={mapLocation}
+                                        onLocationChange={handleLocationChange}
+                                    />
+                                </div>
+                                <div className="mt-2 text-xs text-gray-500 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Click vào bản đồ để chọn vị trí chính xác
+                                </div>
+                            </div>
+                        </Col>
+                    )}
                 </Row>
             </Spin>
         </Modal>

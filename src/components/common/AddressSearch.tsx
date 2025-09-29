@@ -10,20 +10,32 @@ const HCMC_BOUNDS = '106.5444,10.3369,107.0111,11.1602'; // southwest_lng,southw
 interface AddressSearchProps {
     onPlaceSelect: (place: PlaceDetailResult) => void;
     initialValue?: string;
+    street?: string;
+    ward?: string;
+    province?: string;
 }
 
-const AddressSearch: React.FC<AddressSearchProps> = ({ onPlaceSelect, initialValue }) => {
-    const [searchValue, setSearchValue] = useState(initialValue || '');
+const AddressSearch: React.FC<AddressSearchProps> = ({ onPlaceSelect, initialValue, street, ward, province }) => {
+    // Tạo giá trị hiển thị từ street, ward, province nếu có
+    const getDisplayValue = () => {
+        if (street && ward && province) {
+            return `${street}, ${ward}, ${province}`;
+        }
+        return initialValue || '';
+    };
+
+    const [searchValue, setSearchValue] = useState(getDisplayValue());
     const [searchOptions, setSearchOptions] = useState<{ value: string; label: string }[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
 
-    // Cập nhật searchValue khi initialValue thay đổi
+    // Cập nhật searchValue khi các props thay đổi
     useEffect(() => {
-        if (initialValue && initialValue !== searchValue) {
-            setSearchValue(initialValue);
+        const newDisplayValue = getDisplayValue();
+        if (newDisplayValue !== searchValue) {
+            setSearchValue(newDisplayValue);
         }
-    }, [initialValue]);
+    }, [initialValue, street, ward, province]);
 
     // Tìm kiếm địa điểm với TrackAsia
     const searchPlaces = async (query: string) => {
@@ -136,58 +148,8 @@ const AddressSearch: React.FC<AddressSearchProps> = ({ onPlaceSelect, initialVal
                 }, 0);
             } else {
                 console.error('Invalid place detail response:', placeDetail);
-                // Tạo một đối tượng place detail giả để test
-                const mockPlaceDetail: PlaceDetailResult = {
-                    place_id: placeId,
-                    formatted_address: searchValue,
-                    geometry: {
-                        location: {
-                            lat: 10.7743,
-                            lng: 106.6974
-                        },
-                        viewport: {
-                            northeast: {
-                                lat: 10.7743,
-                                lng: 106.6974
-                            },
-                            southwest: {
-                                lat: 10.7743,
-                                lng: 106.6974
-                            }
-                        },
-                        location_type: "ROOFTOP"
-                    },
-                    icon: "",
-                    name: searchValue,
-                    types: ["point_of_interest"],
-                    address_components: [
-                        {
-                            types: ["street_number"],
-                            long_name: "1",
-                            short_name: "1"
-                        },
-                        {
-                            types: ["route"],
-                            long_name: "Đường không rõ",
-                            short_name: "Đường không rõ"
-                        },
-                        {
-                            types: ["administrative_area_level_2", "political"],
-                            long_name: "Quận 1",
-                            short_name: "Quận 1"
-                        },
-                        {
-                            types: ["administrative_area_level_1", "political"],
-                            long_name: "Hồ Chí Minh",
-                            short_name: "HCM"
-                        }
-                    ]
-                };
-
-                console.log('Using mock place detail for testing:', mockPlaceDetail);
-                setTimeout(() => {
-                    onPlaceSelect(mockPlaceDetail);
-                }, 0);
+                // Hiển thị thông báo lỗi
+                setSearchValue(searchOptions.find(opt => opt.value === placeId)?.label || searchValue);
             }
         } catch (error) {
             console.error('Error getting place details:', error);
