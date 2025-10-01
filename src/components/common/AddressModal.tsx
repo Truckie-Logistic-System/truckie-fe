@@ -249,7 +249,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
                 street: values.street,
                 ward: wardName,
                 province: values.province || 'Thành phố Hồ Chí Minh',
-                addressType: values.addressType
+                addressType: showAddressType ? values.addressType : defaultAddressType
             };
 
             // Thêm tọa độ từ form values hoặc mapLocation
@@ -923,7 +923,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
                             )}
 
                             {/* Nút submit */}
-                            {!useTrackAsia && (
+                            {!useTrackAsia && !useVietMap && (
                                 <Form.Item>
                                     <Space className="w-full justify-end">
                                         <Button

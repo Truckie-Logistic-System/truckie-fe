@@ -52,8 +52,10 @@ const addressService = {
    */
   getMyDeliveryAddresses: async (): Promise<Address[]> => {
     try {
-      const response = await httpClient.get<Address[]>("/addresses/me/delivery");
-      return response.data;
+      const response = await httpClient.get<AddressesResponse>("/addresses/get-my-addresses");
+      // Lọc chỉ lấy địa chỉ giao hàng (addressType = false)
+      const deliveryAddresses = response.data.data.filter(address => address.addressType === false);
+      return deliveryAddresses;
     } catch (error) {
       console.error("Error fetching delivery addresses:", error);
       throw handleApiError(error, "Không thể tải danh sách địa chỉ giao hàng");

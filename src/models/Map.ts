@@ -5,6 +5,7 @@ export interface MapLocation {
     address?: string;
     name?: string;
     placeId?: string;
+    type?: 'carrier' | 'pickup' | 'delivery' | 'stopover';
 }
 
 export interface MapBounds {

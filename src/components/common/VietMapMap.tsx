@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Spin } from 'antd';
 import type { MapLocation } from '@/models/Map';
 import vietmapService from '@/services/map/vietmapService';
+import type { RouteSegment } from '@/models/RoutePoint';
+import type { VietMapAutocompleteResult } from '@/models/VietMap';
 
 // Định nghĩa interface cho window để thêm vietmapgl
 declare global {
@@ -13,6 +15,9 @@ declare global {
 interface VietMapMapProps {
     mapLocation: MapLocation | null;
     onLocationChange: (location: MapLocation) => void;
+    markers?: MapLocation[];
+    showRouteLines?: boolean;
+    routeSegments?: RouteSegment[];
 }
 
 // Khóa cho cache trong localStorage
@@ -20,10 +25,18 @@ const VIETMAP_STYLE_CACHE_KEY = 'vietmap_style_cache';
 // Thời gian cache (1 tuần tính bằng milliseconds)
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
 
-const VietMapMap: React.FC<VietMapMapProps> = ({ mapLocation, onLocationChange }) => {
+const VietMapMap: React.FC<VietMapMapProps> = ({
+    mapLocation,
+    onLocationChange,
+    markers = [],
+    showRouteLines = false,
+    routeSegments = []
+}) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markerRef = useRef<any>(null);
+    const markersRef = useRef<any[]>([]);
+    const routeLayersRef = useRef<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [mapLoaded, setMapLoaded] = useState(false);
     const [mapStyle, setMapStyle] = useState<any>(null);
@@ -140,7 +153,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({ mapLocation, onLocationChange }
                 trackUserLocation: true
             }));
 
-            // Tạo marker
+            // Tạo marker chính
             const marker = new window.vietmapgl.Marker({
                 draggable: true
             });
@@ -159,14 +172,37 @@ const VietMapMap: React.FC<VietMapMapProps> = ({ mapLocation, onLocationChange }
             // Xử lý khi click vào bản đồ
             map.on('click', (e: any) => {
                 const { lng, lat } = e.lngLat;
-                marker.setLngLat([lng, lat]).addTo(map);
 
-                const newLocation: MapLocation = {
-                    lat: lat,
-                    lng: lng,
-                    address: mapLocation?.address || ''
-                };
-                onLocationChange(newLocation);
+                // Reverse geocoding để lấy địa chỉ
+                vietmapService.reverseGeocode(lat, lng)
+                    .then(results => {
+                        let address = '';
+                        if (results && results.length > 0) {
+                            const result = results[0];
+                            address = result.address || '';
+                        }
+
+                        // Cập nhật vị trí marker
+                        marker.setLngLat([lng, lat]).addTo(map);
+
+                        const newLocation: MapLocation = {
+                            lat: lat,
+                            lng: lng,
+                            address: address
+                        };
+                        onLocationChange(newLocation);
+                    })
+                    .catch(error => {
+                        console.error('Error in reverse geocoding:', error);
+                        marker.setLngLat([lng, lat]).addTo(map);
+
+                        const newLocation: MapLocation = {
+                            lat: lat,
+                            lng: lng,
+                            address: ''
+                        };
+                        onLocationChange(newLocation);
+                    });
             });
 
             // Lưu tham chiếu
@@ -184,7 +220,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({ mapLocation, onLocationChange }
         }
     };
 
-    // Cập nhật vị trí marker khi mapLocation thay đổi
+    // Cập nhật vị trí marker chính khi mapLocation thay đổi
     useEffect(() => {
         if (!mapRef.current || !markerRef.current || !mapLocation || !mapLoaded) return;
 
@@ -200,6 +236,121 @@ const VietMapMap: React.FC<VietMapMapProps> = ({ mapLocation, onLocationChange }
             essential: true
         });
     }, [mapLocation, mapLoaded]);
+
+    // Hiển thị tất cả markers
+    useEffect(() => {
+        if (!mapRef.current || !mapLoaded || markers.length === 0) return;
+
+        // Xóa các markers cũ
+        markersRef.current.forEach(marker => {
+            if (marker) marker.remove();
+        });
+        markersRef.current = [];
+
+        // Tạo bounds để fit map
+        const bounds = new window.vietmapgl.LngLatBounds();
+
+        // Thêm markers mới
+        markers.forEach(location => {
+            // Tạo phần tử HTML cho marker
+            const el = document.createElement('div');
+            el.className = 'marker';
+            el.style.width = '30px';
+            el.style.height = '30px';
+            el.style.borderRadius = '50%';
+
+            // Set color based on point type
+            let color = '#1677ff'; // Default blue
+            if (location.type === 'carrier') {
+                color = '#52c41a'; // Green for carrier
+            } else if (location.type === 'pickup') {
+                color = '#faad14'; // Yellow for pickup
+            } else if (location.type === 'delivery') {
+                color = '#f5222d'; // Red for delivery
+            }
+
+            el.style.backgroundColor = color;
+            el.style.border = '2px solid white';
+            el.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+            el.style.cursor = 'pointer';
+
+            // Tạo popup
+            const popup = new window.vietmapgl.Popup({ offset: 25 })
+                .setHTML(`<strong>${location.name || 'Vị trí'}</strong><br>${location.address || ''}`);
+
+            // Tạo marker
+            const marker = new window.vietmapgl.Marker(el)
+                .setLngLat([location.lng, location.lat])
+                .setPopup(popup)
+                .addTo(mapRef.current);
+
+            // Thêm vào mảng markers
+            markersRef.current.push(marker);
+
+            // Mở rộng bounds
+            bounds.extend([location.lng, location.lat]);
+        });
+
+        // Fit map to bounds
+        if (markers.length > 1) {
+            mapRef.current.fitBounds(bounds, { padding: 100 });
+        }
+    }, [markers, mapLoaded]);
+
+    // Hiển thị route lines
+    useEffect(() => {
+        if (!mapRef.current || !mapLoaded || !showRouteLines || routeSegments.length === 0) return;
+
+        // Xóa các route layers cũ
+        routeLayersRef.current.forEach(id => {
+            if (mapRef.current.getLayer(id)) {
+                mapRef.current.removeLayer(id);
+            }
+            if (mapRef.current.getSource(id)) {
+                mapRef.current.removeSource(id);
+            }
+        });
+        routeLayersRef.current = [];
+
+        // Thêm route layers mới
+        routeSegments.forEach((segment, index) => {
+            const sourceId = `route-source-${index}`;
+            const layerId = `route-layer-${index}`;
+
+            // Thêm source
+            mapRef.current.addSource(sourceId, {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: segment.path
+                    }
+                }
+            });
+
+            // Thêm layer
+            mapRef.current.addLayer({
+                id: layerId,
+                type: 'line',
+                source: sourceId,
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': '#1677ff',
+                    'line-width': 6,
+                    'line-opacity': 0.8
+                }
+            });
+
+            // Lưu ID để dọn dẹp sau này
+            routeLayersRef.current.push(sourceId);
+            routeLayersRef.current.push(layerId);
+        });
+    }, [routeSegments, showRouteLines, mapLoaded]);
 
     return (
         <div className="relative h-full w-full">

@@ -5,6 +5,7 @@ export * from "./Category";
 export * from "./OrderSize";
 export * from "./Order";
 export * from "./Route";
+export * from './RoutePoint';
 export * from "./Penalty";
 export * from "./Map";
 export * from "./Chat";

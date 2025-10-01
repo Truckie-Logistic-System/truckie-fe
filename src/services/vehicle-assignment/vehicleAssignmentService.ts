@@ -11,6 +11,7 @@ import type {
     CreateGroupedVehicleAssignmentsRequest
 } from "./types";
 import type { ApiResponse } from "../api/types";
+import type { JourneyHistoryRequest } from "../../models/RoutePoint";
 
 const BASE_URL = "/vehicle-assignments";
 
@@ -101,53 +102,47 @@ export const vehicleAssignmentService = {
                 throw new Error("Invalid response structure");
             }
         } catch (error) {
-            console.error("Error in getSuggestionsForOrderDetails:", error);
+            console.error("Error fetching vehicle assignment suggestions:", error);
             throw error;
         }
     },
 
-    createAndAssignForDetails: async (data: CreateVehicleAssignmentForDetailsRequest): Promise<CreateVehicleAssignmentForDetailsResponse> => {
+    createAssignmentForDetails: async (data: CreateVehicleAssignmentForDetailsRequest): Promise<CreateVehicleAssignmentForDetailsResponse> => {
         try {
-            console.log("Sending assignment request:", data);
-
-            // Ensure the request has the correct structure
-            if (!data.assignments || typeof data.assignments !== 'object') {
-                throw new Error("Invalid request format: assignments must be an object");
-            }
-
-            const response = await httpClient.put<CreateVehicleAssignmentForDetailsResponse>(
-                `/order-details/create-and-assign-assignment-for-details`,
-                data
-            );
-            console.log("Assignment response:", response.data);
+            const response = await httpClient.post<CreateVehicleAssignmentForDetailsResponse>(`${BASE_URL}/create-for-details`, data);
             return response.data;
         } catch (error) {
-            console.error("Error in createAndAssignForDetails:", error);
+            console.error("Error creating vehicle assignment for details:", error);
             throw error;
         }
     },
 
-    getGroupedSuggestionsForOrderDetails: async (orderId: string) => {
+    getSuggestionsForGroupedDetails: async (): Promise<GroupedVehicleAssignmentSuggestionData> => {
         try {
-            const response = await httpClient.get<ApiResponse<GroupedVehicleAssignmentSuggestionData>>(
-                `/vehicle-assignments/${orderId}/grouped-suggestions`
-            );
-            return response.data;
+            const response = await httpClient.get<ApiResponse<GroupedVehicleAssignmentSuggestionData>>(`${BASE_URL}/suggest-grouped`);
+            return response.data.data;
         } catch (error) {
-            console.error("Error getting grouped vehicle assignment suggestions:", error);
+            console.error("Error fetching grouped vehicle assignment suggestions:", error);
             throw error;
         }
     },
 
-    createGroupedAssignments: async (data: CreateGroupedVehicleAssignmentsRequest) => {
+    createGroupedAssignments: async (data: CreateGroupedVehicleAssignmentsRequest): Promise<ApiResponse<any>> => {
         try {
-            const response = await httpClient.post<ApiResponse<any>>(
-                `/vehicle-assignments/create-grouped-assignments`,
-                data
-            );
+            const response = await httpClient.post<ApiResponse<any>>(`${BASE_URL}/create-grouped`, data);
             return response.data;
         } catch (error) {
             console.error("Error creating grouped vehicle assignments:", error);
+            throw error;
+        }
+    },
+
+    createJourneyHistory: async (data: JourneyHistoryRequest): Promise<ApiResponse<any>> => {
+        try {
+            const response = await httpClient.post<ApiResponse<any>>(`${BASE_URL}/journey-history`, data);
+            return response.data;
+        } catch (error) {
+            console.error("Error creating journey history:", error);
             throw error;
         }
     }

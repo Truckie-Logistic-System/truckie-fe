@@ -29,7 +29,7 @@ import {
   formatToVietnamTime,
   getTomorrowVietnamTime,
 } from "../../utils/dateUtils";
-import customerService from "../customer/customerService";
+
 import dayjs from "dayjs";
 
 /**
@@ -199,47 +199,36 @@ const orderService = {
         throw new Error(`Thiếu thông tin: ${missingFields.join(", ")}`);
       }
 
-      // Lấy ID người dùng từ localStorage
-      const userId = localStorage.getItem("userId");
-      if (!userId) {
-        throw new Error(
-          "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại."
-        );
-      }
+      // API không còn yêu cầu senderId, sẽ tự lấy từ token
 
-      // Gọi API để lấy thông tin customer từ userId
-      const customerData = await customerService.getCustomerProfile(userId);
-      if (!customerData || !customerData.id) {
-        throw new Error(
-          "Không thể lấy thông tin khách hàng. Vui lòng thử lại sau."
-        );
-      }
-
-      // Tạo ngày giờ ước tính bắt đầu (mặc định là 1 ngày sau) theo UTC+7
-      const defaultEstimateStartTime = getTomorrowVietnamTime();
+      // Tạo ngày giờ ước tính bắt đầu mặc định là 2 ngày sau hiện tại
+      // Thêm 2 ngày vào thời gian hiện tại để đảm bảo luôn hợp lệ
+      const minPickupTime = dayjs().add(2, 'day');
+      const defaultDate = minPickupTime.toDate();
+      const defaultEstimateStartTime = formatToVietnamTime(defaultDate);
 
       // Xử lý estimateStartTime từ orderData hoặc sử dụng default
       let finalEstimateStartTime = defaultEstimateStartTime;
+
       if (orderData.orderRequest.estimateStartTime) {
-        // Nếu có estimateStartTime từ form, format lại theo UTC+7
+        // Nếu có estimateStartTime từ form, kiểm tra và sử dụng
         const inputDate = new Date(orderData.orderRequest.estimateStartTime);
 
-        // Validate that the pickup time is at least 2 days in the future
-        const minPickupTime = dayjs().add(2, 'day');
+        // Kiểm tra xem thời gian đã chọn có đủ 2 ngày không
         if (dayjs(inputDate).isBefore(minPickupTime)) {
-          throw new Error(
-            "Thời gian lấy hàng dự kiến phải cách thời điểm hiện tại ít nhất 2 ngày để đảm bảo đủ thời gian chuẩn bị."
-          );
+          // Nếu không đủ 2 ngày, sử dụng thời gian mặc định thay vì báo lỗi
+          console.log("Thời gian lấy hàng đã chọn không đủ 2 ngày, sử dụng thời gian mặc định");
+          finalEstimateStartTime = defaultEstimateStartTime;
+        } else {
+          // Nếu đủ 2 ngày, sử dụng thời gian đã chọn
+          finalEstimateStartTime = formatToVietnamTime(inputDate);
         }
-
-        finalEstimateStartTime = formatToVietnamTime(inputDate);
       }
 
       // Chuyển đổi dữ liệu sang định dạng API mong đợi
       const apiOrderData = {
         orderRequest: {
           ...orderData.orderRequest,
-          senderId: customerData.id, // Sử dụng customerId thay vì userId
           estimateStartTime: finalEstimateStartTime,
           notes: orderData.orderRequest.notes || "Không có ghi chú",
           receiverIdentity: orderData.orderRequest.receiverIdentity || "",

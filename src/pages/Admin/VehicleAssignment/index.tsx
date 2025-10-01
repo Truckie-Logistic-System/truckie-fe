@@ -1,13 +1,15 @@
 import React, { useState } from "react";
-import { Modal, App } from "antd";
+import { Modal, App, Select, Button } from "antd";
 import { SwapOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { VehicleAssignmentList, VehicleAssignmentForm, VehicleAssignmentSkeleton } from "./components";
-import type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest } from "../../../models";
+import type { VehicleAssignment, CreateVehicleAssignmentRequest, UpdateVehicleAssignmentRequest, Order } from "../../../models";
 import { vehicleAssignmentService } from "../../../services/vehicle-assignment";
 import EntityManagementLayout from "../../../components/features/admin/EntityManagementLayout";
 import { VehicleAssignmentEnum } from "../../../constants/enums";
 import { VehicleAssignmentTag } from "../../../components/common";
+import orderService from "../../../services/order";
+import type { RouteSegment } from "../../../models/RoutePoint";
 
 const VehicleAssignmentPage: React.FC = () => {
     const { message } = App.useApp();
@@ -15,6 +17,8 @@ const VehicleAssignmentPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAssignment, setEditingAssignment] = useState<VehicleAssignment | undefined>(undefined);
     const [searchText, setSearchText] = useState("");
+    const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>(undefined);
+    const [isOrderSelectModalOpen, setIsOrderSelectModalOpen] = useState(false);
 
     // Fetch vehicle assignments
     const {
@@ -29,13 +33,45 @@ const VehicleAssignmentPage: React.FC = () => {
         queryFn: () => vehicleAssignmentService.getAll(),
     });
 
+    // Fetch orders
+    const {
+        data: ordersData,
+        isLoading: isLoadingOrders,
+    } = useQuery({
+        queryKey: ["orders"],
+        queryFn: () => orderService.getAllOrders(),
+        enabled: isOrderSelectModalOpen, // Only fetch when order select modal is open
+    });
+
     // Create mutation
     const createMutation = useMutation({
-        mutationFn: (data: CreateVehicleAssignmentRequest) => vehicleAssignmentService.create(data),
+        mutationFn: (data: CreateVehicleAssignmentRequest & { routeSegments?: RouteSegment[], orderId?: string }) => {
+            const { routeSegments, orderId, ...assignmentData } = data;
+
+            // If route segments are provided, create journey history
+            if (routeSegments && orderId) {
+                // First create the vehicle assignment
+                return vehicleAssignmentService.create(assignmentData)
+                    .then(response => {
+                        const vehicleAssignmentId = response.data.id;
+
+                        // Then create journey history with the route segments
+                        return vehicleAssignmentService.createJourneyHistory({
+                            vehicleAssignmentId,
+                            orderId,
+                            segments: routeSegments
+                        }).then(() => response);
+                    });
+            }
+
+            // Otherwise, just create the vehicle assignment
+            return vehicleAssignmentService.create(assignmentData);
+        },
         onSuccess: () => {
             message.success("Tạo phân công xe thành công");
             queryClient.invalidateQueries({ queryKey: ["vehicleAssignments"] });
             setIsModalOpen(false);
+            setSelectedOrderId(undefined);
         },
         onError: (error) => {
             message.error("Có lỗi xảy ra khi tạo phân công xe");
@@ -73,13 +109,29 @@ const VehicleAssignmentPage: React.FC = () => {
     });
 
     const handleOpenModal = () => {
-        setEditingAssignment(undefined);
-        setIsModalOpen(true);
+        setIsOrderSelectModalOpen(true);
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingAssignment(undefined);
+        setSelectedOrderId(undefined);
+    };
+
+    const handleCloseOrderSelectModal = () => {
+        setIsOrderSelectModalOpen(false);
+    };
+
+    const handleOrderSelect = (orderId: string) => {
+        setSelectedOrderId(orderId);
+        setIsOrderSelectModalOpen(false);
+        setIsModalOpen(true);
+    };
+
+    const handleCreateWithoutOrder = () => {
+        setSelectedOrderId(undefined);
+        setIsOrderSelectModalOpen(false);
+        setIsModalOpen(true);
     };
 
     const handleEdit = (record: VehicleAssignment) => {
@@ -102,7 +154,7 @@ const VehicleAssignmentPage: React.FC = () => {
             updateMutation.mutate({ id: editingAssignment.id, data: updatedValues });
         } else {
             // Khi tạo mới, đảm bảo status là ACTIVE
-            const newValues: CreateVehicleAssignmentRequest = {
+            const newValues: CreateVehicleAssignmentRequest & { routeSegments?: RouteSegment[], orderId?: string } = {
                 ...values as CreateVehicleAssignmentRequest,
                 status: VehicleAssignmentEnum.ASSIGNED_TO_DRIVER
             };
@@ -168,20 +220,54 @@ const VehicleAssignmentPage: React.FC = () => {
                 )
             }
             modalComponent={
-                <Modal
-                    title={editingAssignment ? "Cập nhật phân công xe" : "Tạo phân công xe mới"}
-                    open={isModalOpen}
-                    onCancel={handleCloseModal}
-                    footer={null}
-                    maskClosable={false}
-                    destroyOnClose
-                >
-                    <VehicleAssignmentForm
-                        initialValues={editingAssignment}
-                        onSubmit={handleSubmit}
-                        isSubmitting={createMutation.isPending || updateMutation.isPending}
-                    />
-                </Modal>
+                <>
+                    <Modal
+                        title="Chọn đơn hàng để phân công"
+                        open={isOrderSelectModalOpen}
+                        onCancel={handleCloseOrderSelectModal}
+                        footer={null}
+                        maskClosable={false}
+                        destroyOnClose
+                    >
+                        <div className="mb-4">
+                            <p className="mb-2">Chọn đơn hàng để phân công xe và định tuyến:</p>
+                            <Select
+                                placeholder="Chọn đơn hàng"
+                                loading={isLoadingOrders}
+                                className="w-full mb-4"
+                                onChange={handleOrderSelect}
+                            >
+                                {ordersData?.map((order: Order) => (
+                                    <Select.Option key={order.id} value={order.id}>
+                                        {order.id} - {order.pickupAddress?.street || 'Địa chỉ không có'}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                            <div className="text-center">
+                                <Button onClick={handleCreateWithoutOrder}>
+                                    Tạo phân công không có đơn hàng
+                                </Button>
+                            </div>
+                        </div>
+                    </Modal>
+
+                    <Modal
+                        title={editingAssignment ? "Cập nhật phân công xe" : "Tạo phân công xe mới"}
+                        open={isModalOpen}
+                        onCancel={handleCloseModal}
+                        footer={null}
+                        maskClosable={false}
+                        destroyOnClose
+                        width={selectedOrderId ? 800 : 520}
+                    >
+                        <VehicleAssignmentForm
+                            initialValues={editingAssignment}
+                            onSubmit={handleSubmit}
+                            isSubmitting={createMutation.isPending || updateMutation.isPending}
+                            orderId={selectedOrderId}
+                        />
+                    </Modal>
+                </>
             }
         />
     );

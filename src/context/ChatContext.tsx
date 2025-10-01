@@ -280,26 +280,26 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   // Handle new message from WebSocket
   const handleNewMessage = useCallback(
     (msg: ChatMessageDTO, roomId: string) => {
-      const currentUserId = localStorage.getItem("userId") || "";
+      const currentUserId = sessionStorage.getItem("userId") || "";
 
       // Update internal conversation state
       setConversations((prev) =>
         prev.map((conv) =>
           conv.roomId === roomId
             ? {
-                ...conv,
-                messages: [...conv.messages, msg].sort((a, b) => {
-                  const aTime = timestampToMillis(a.createAt);
-                  const bTime = timestampToMillis(b.createAt);
-                  return aTime - bTime;
-                }),
-                lastMessage: msg.content,
-                lastMessageTime: timestampToMillis(msg.createAt).toString(),
-                unreadCount:
-                  activeConversation?.roomId === roomId && isOpen
-                    ? conv.unreadCount
-                    : conv.unreadCount + 1,
-              }
+              ...conv,
+              messages: [...conv.messages, msg].sort((a, b) => {
+                const aTime = timestampToMillis(a.createAt);
+                const bTime = timestampToMillis(b.createAt);
+                return aTime - bTime;
+              }),
+              lastMessage: msg.content,
+              lastMessageTime: timestampToMillis(msg.createAt).toString(),
+              unreadCount:
+                activeConversation?.roomId === roomId && isOpen
+                  ? conv.unreadCount
+                  : conv.unreadCount + 1,
+            }
             : conv
         )
       );
@@ -309,15 +309,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         setActiveConversation((prev) =>
           prev
             ? {
-                ...prev,
-                messages: [...prev.messages, msg].sort((a, b) => {
-                  const aTime = timestampToMillis(a.createAt);
-                  const bTime = timestampToMillis(b.createAt);
-                  return aTime - bTime;
-                }),
-                lastMessage: msg.content,
-                lastMessageTime: timestampToMillis(msg.createAt).toString(),
-              }
+              ...prev,
+              messages: [...prev.messages, msg].sort((a, b) => {
+                const aTime = timestampToMillis(a.createAt);
+                const bTime = timestampToMillis(b.createAt);
+                return aTime - bTime;
+              }),
+              lastMessage: msg.content,
+              lastMessageTime: timestampToMillis(msg.createAt).toString(),
+            }
             : null
         );
       }
@@ -437,7 +437,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
           setChatMessages(updatedMessages);
 
           // Update UI messages
-          const currentUserId = localStorage.getItem("userId") || "";
+          const currentUserId = sessionStorage.getItem("userId") || "";
           const newUIMessages = mapChatMessageDTOArrayToUI(
             sortedNewMessages,
             currentUserId

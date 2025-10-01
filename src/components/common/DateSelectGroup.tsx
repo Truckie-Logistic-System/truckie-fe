@@ -58,6 +58,14 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
         }
     }, [value]);
 
+    // Trigger onChange with the initial value when component mounts
+    useEffect(() => {
+        if (onChange && !value) {
+            const defaultDate = getDefaultDate();
+            onChange(defaultDate);
+        }
+    }, []);
+
     // Call the onChange prop when any of the selects change
     const handleChange = (type: 'day' | 'month' | 'year' | 'hour' | 'minute', newValue: number) => {
         let day = selectedDay;
