@@ -10,6 +10,7 @@ import { VehicleAssignmentEnum } from "../../../constants/enums";
 import { VehicleAssignmentTag } from "../../../components/common";
 import orderService from "../../../services/order";
 import type { RouteSegment } from "../../../models/RoutePoint";
+import type { RouteInfo, GroupAssignment } from "../../../models/VehicleAssignment";
 
 const VehicleAssignmentPage: React.FC = () => {
     const { message } = App.useApp();
@@ -45,27 +46,32 @@ const VehicleAssignmentPage: React.FC = () => {
 
     // Create mutation
     const createMutation = useMutation({
-        mutationFn: (data: CreateVehicleAssignmentRequest & { routeSegments?: RouteSegment[], orderId?: string }) => {
-            const { routeSegments, orderId, ...assignmentData } = data;
+        mutationFn: (data: CreateVehicleAssignmentRequest & {
+            routeSegments?: RouteSegment[],
+            orderId?: string,
+            routeInfo?: RouteInfo
+        }) => {
+            const { routeSegments, orderId, routeInfo, ...assignmentData } = data;
 
-            // If route segments are provided, create journey history
-            if (routeSegments && orderId) {
-                // First create the vehicle assignment
-                return vehicleAssignmentService.create(assignmentData)
-                    .then(response => {
-                        const vehicleAssignmentId = response.data.id;
-
-                        // Then create journey history with the route segments
-                        return vehicleAssignmentService.createJourneyHistory({
-                            vehicleAssignmentId,
-                            orderId,
-                            segments: routeSegments
-                        }).then(() => response);
-                    });
+            // Bắt buộc phải có route info khi tạo phân công
+            if (!routeInfo) {
+                throw new Error("Phải có thông tin định tuyến khi tạo phân công xe");
             }
 
-            // Otherwise, just create the vehicle assignment
-            return vehicleAssignmentService.create(assignmentData);
+            // Tạo phân công nhóm với route info
+            const groupAssignment: GroupAssignment = {
+                orderDetailIds: orderId ? [orderId] : [], // Nếu có orderId, thêm vào orderDetailIds
+                vehicleId: assignmentData.vehicleId,
+                driverId_1: assignmentData.driverId_1,
+                driverId_2: assignmentData.driverId_2 || '',
+                description: assignmentData.description,
+                routeInfo: routeInfo
+            };
+
+            // Gọi API duy nhất để tạo phân công kèm thông tin route
+            return vehicleAssignmentService.createGroupedAssignments({
+                groupAssignments: [groupAssignment]
+            });
         },
         onSuccess: () => {
             message.success("Tạo phân công xe thành công");
@@ -74,7 +80,7 @@ const VehicleAssignmentPage: React.FC = () => {
             setSelectedOrderId(undefined);
         },
         onError: (error) => {
-            message.error("Có lỗi xảy ra khi tạo phân công xe");
+            message.error("Có lỗi xảy ra khi tạo phân công xe: " + (error instanceof Error ? error.message : ""));
             console.error("Error creating vehicle assignment:", error);
         },
     });
@@ -128,11 +134,12 @@ const VehicleAssignmentPage: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleCreateWithoutOrder = () => {
-        setSelectedOrderId(undefined);
-        setIsOrderSelectModalOpen(false);
-        setIsModalOpen(true);
-    };
+    // Xóa hàm handleCreateWithoutOrder vì không cho phép tạo phân công không có route
+    // const handleCreateWithoutOrder = () => {
+    //     setSelectedOrderId(undefined);
+    //     setIsOrderSelectModalOpen(false);
+    //     setIsModalOpen(true);
+    // };
 
     const handleEdit = (record: VehicleAssignment) => {
         setEditingAssignment(record);
@@ -154,7 +161,11 @@ const VehicleAssignmentPage: React.FC = () => {
             updateMutation.mutate({ id: editingAssignment.id, data: updatedValues });
         } else {
             // Khi tạo mới, đảm bảo status là ACTIVE
-            const newValues: CreateVehicleAssignmentRequest & { routeSegments?: RouteSegment[], orderId?: string } = {
+            const newValues: CreateVehicleAssignmentRequest & {
+                routeSegments?: RouteSegment[],
+                orderId?: string,
+                routeInfo?: RouteInfo
+            } = {
                 ...values as CreateVehicleAssignmentRequest,
                 status: VehicleAssignmentEnum.ASSIGNED_TO_DRIVER
             };
@@ -243,11 +254,7 @@ const VehicleAssignmentPage: React.FC = () => {
                                     </Select.Option>
                                 ))}
                             </Select>
-                            <div className="text-center">
-                                <Button onClick={handleCreateWithoutOrder}>
-                                    Tạo phân công không có đơn hàng
-                                </Button>
-                            </div>
+                            {/* Xóa nút "Tạo phân công không có đơn hàng" */}
                         </div>
                     </Modal>
 
@@ -265,6 +272,7 @@ const VehicleAssignmentPage: React.FC = () => {
                             onSubmit={handleSubmit}
                             isSubmitting={createMutation.isPending || updateMutation.isPending}
                             orderId={selectedOrderId}
+                            requireRoute={true} // Thêm prop để yêu cầu route
                         />
                     </Modal>
                 </>

@@ -12,6 +12,7 @@ import type {
 import { VehicleAssignmentStatus } from "../../../../models/Vehicle";
 import type { DriverModel } from "../../../../services/driver/types";
 import type { RouteSegment } from "../../../../models/RoutePoint";
+import type { RouteInfo } from "../../../../models/VehicleAssignment";
 import RoutePlanningStep from "./RoutePlanningStep";
 
 const { Step } = Steps;
@@ -21,6 +22,7 @@ interface VehicleAssignmentFormProps {
     onSubmit: (values: CreateVehicleAssignmentRequest | UpdateVehicleAssignmentRequest) => Promise<void>;
     isSubmitting: boolean;
     orderId?: string;
+    requireRoute?: boolean; // Thêm thuộc tính để yêu cầu route
 }
 
 const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
@@ -28,6 +30,7 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
     onSubmit,
     isSubmitting,
     orderId,
+    requireRoute = false, // Mặc định là false
 }) => {
     const [form] = Form.useForm();
     const { message } = App.useApp();
@@ -36,6 +39,7 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
     const [currentStep, setCurrentStep] = useState<number>(0);
     const [formValues, setFormValues] = useState<any>({});
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
+    const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | undefined>(undefined);
     const isEditing = !!initialValues;
 
@@ -90,14 +94,19 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
 
             setFormValues(values);
 
-            // If orderId is provided, go to route planning step
-            if (orderId && !isEditing) {
+            // Nếu yêu cầu route hoặc có orderId, chuyển sang bước định tuyến
+            if ((requireRoute || orderId) && !isEditing) {
                 setCurrentStep(1);
             } else {
-                // Otherwise, submit directly
-                await onSubmit(values);
-                if (!isEditing) {
-                    form.resetFields();
+                // Nếu không yêu cầu route và đang chỉnh sửa, submit trực tiếp
+                if (!requireRoute || isEditing) {
+                    await onSubmit(values);
+                    if (!isEditing) {
+                        form.resetFields();
+                    }
+                } else {
+                    // Nếu yêu cầu route nhưng không có orderId, hiển thị thông báo lỗi
+                    message.error("Không thể tạo phân công xe mà không có thông tin định tuyến");
                 }
             }
         } catch (error) {
@@ -105,15 +114,17 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
         }
     };
 
-    const handleRouteComplete = async (segments: RouteSegment[]) => {
+    const handleRouteComplete = async (segments: RouteSegment[], routeInfoData: RouteInfo) => {
         try {
             setRouteSegments(segments);
+            setRouteInfo(routeInfoData);
 
             // Combine form values with route segments
             const finalValues = {
                 ...formValues,
                 orderId: orderId,
                 routeSegments: segments,
+                routeInfo: routeInfoData
             };
 
             await onSubmit(finalValues);
@@ -204,15 +215,24 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
                     loading={isSubmitting}
                     disabled={isSubmitting}
                 >
-                    {orderId && !isEditing ? "Tiếp theo" : (isEditing ? "Cập nhật" : "Tạo mới")}
+                    {(orderId || requireRoute) && !isEditing ? "Tiếp theo" : (isEditing ? "Cập nhật" : "Tạo mới")}
                 </Button>
             </Form.Item>
         </Form>
     );
 
-    // If editing or no orderId, just show the basic form
-    if (isEditing || !orderId) {
+    // Nếu đang chỉnh sửa, chỉ hiển thị form cơ bản
+    if (isEditing) {
         return renderBasicInfoStep();
+    }
+
+    // Nếu yêu cầu route nhưng không có orderId, hiển thị thông báo
+    if (requireRoute && !orderId) {
+        return (
+            <div className="text-red-500">
+                Không thể tạo phân công xe mà không có đơn hàng. Vui lòng chọn đơn hàng để tạo phân công xe.
+            </div>
+        );
     }
 
     return (
@@ -226,7 +246,7 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
                 {currentStep === 0 && renderBasicInfoStep()}
                 {currentStep === 1 && (
                     <RoutePlanningStep
-                        orderId={orderId}
+                        orderId={orderId || ''}
                         vehicleId={formValues.vehicleId}
                         vehicle={selectedVehicle}
                         onComplete={handleRouteComplete}

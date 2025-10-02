@@ -5,6 +5,7 @@ export interface RoutePoint {
     lng: number;
     address: string;
     addressId: string;
+    segmentIndex?: number; // Thêm trường để biết stopover thuộc về đoạn nào
 }
 
 export interface OrderRoutePointsResponse {
@@ -17,6 +18,7 @@ export interface RouteSegment {
     endName: string;
     path: number[][];
     tolls: RouteToll[];
+    distance: number; // Thêm trường distance
     rawResponse: Record<string, any>;
 }
 
@@ -35,7 +37,15 @@ export interface SuggestRouteRequest {
 
 export interface SuggestRouteResponse {
     segments: RouteSegment[];
-    totalToll: number;
+    totalTollAmount: number; // Thêm trường totalTollAmount
+    totalTollCount: number; // Thêm trường totalTollCount
+    totalDistance: number; // Thêm trường totalDistance
+}
+
+export interface RouteInfoFromAPI {
+    totalDistance: number;
+    totalTollAmount: number;
+    totalTollCount: number;
 }
 
 export interface JourneyHistoryRequest {
