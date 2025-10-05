@@ -199,8 +199,8 @@ const orderService = {
         throw new Error(`Thiếu thông tin: ${missingFields.join(", ")}`);
       }
 
-      // Lấy ID người dùng từ localStorage
-      const userId = localStorage.getItem("userId");
+      // Lấy ID người dùng từ sessionStorage
+      const userId = sessionStorage.getItem("userId");
       if (!userId) {
         throw new Error(
           "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại."
@@ -224,22 +224,20 @@ const orderService = {
         // Nếu có estimateStartTime từ form, format lại theo UTC+7
         const inputDate = new Date(orderData.orderRequest.estimateStartTime);
 
-        // Validate that the pickup time is at least 2 days in the future
-        const minPickupTime = dayjs().add(2, 'day');
+        // Validate that the pickup time is at least 7 days in the futures
+        const minPickupTime = dayjs().add(7, "day");
         if (dayjs(inputDate).isBefore(minPickupTime)) {
           throw new Error(
-            "Thời gian lấy hàng dự kiến phải cách thời điểm hiện tại ít nhất 2 ngày để đảm bảo đủ thời gian chuẩn bị."
+            "Thời gian lấy hàng dự kiến phải cách thời điểm hiện tại ít nhất 7 ngày để đảm bảo đủ thời gian chuẩn bị."
           );
         }
 
         finalEstimateStartTime = formatToVietnamTime(inputDate);
       }
 
-      // Chuyển đổi dữ liệu sang định dạng API mong đợi
       const apiOrderData = {
         orderRequest: {
           ...orderData.orderRequest,
-          senderId: customerData.id, // Sử dụng customerId thay vì userId
           estimateStartTime: finalEstimateStartTime,
           notes: orderData.orderRequest.notes || "Không có ghi chú",
           receiverIdentity: orderData.orderRequest.receiverIdentity || "",
@@ -582,7 +580,9 @@ const orderService = {
    * @param orderId Order ID
    * @returns Promise with bill of lading preview data
    */
-  previewBillOfLading: async (orderId: string): Promise<BillOfLadingPreviewResponse['data']> => {
+  previewBillOfLading: async (
+    orderId: string
+  ): Promise<BillOfLadingPreviewResponse["data"]> => {
     try {
       const response = await httpClient.get<BillOfLadingPreviewResponse>(
         `/bill-of-ladings/order/${orderId}/preview`

@@ -1,9 +1,27 @@
 import React, { useState } from "react";
-import { Card, Descriptions, Empty, Button, Tag, App, Modal } from "antd";
-import { FileTextOutlined, DownloadOutlined } from "@ant-design/icons";
+import {
+  Card,
+  Descriptions,
+  Empty,
+  Button,
+  Tag,
+  App,
+  Modal,
+  Form,
+  Input,
+  DatePicker,
+  InputNumber,
+} from "antd";
+import {
+  FileTextOutlined,
+  DownloadOutlined,
+  PlusOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 import { contractService } from "../../../../services/contract";
 import { StaffContractPreview } from "../../../../components/features/order";
 import type { ContractData } from "../../../../services/contract/contractTypes";
+import httpClient from "../../../../services/api/httpClient";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -20,15 +38,23 @@ interface StaffContractProps {
     status: string;
     staffName: string;
   };
+  orderId?: string; // Add orderId for contract creation
 }
 
-const StaffContractSection: React.FC<StaffContractProps> = ({ contract }) => {
+const StaffContractSection: React.FC<StaffContractProps> = ({
+  contract,
+  orderId,
+}) => {
   const messageApi = App.useApp().message;
   const [contractData, setContractData] = useState<ContractData | null>(null);
   const [loadingContractData, setLoadingContractData] =
     useState<boolean>(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isCreationModalOpen, setIsCreationModalOpen] =
+    useState<boolean>(false);
+  const [creatingContract, setCreatingContract] = useState<boolean>(false);
+  const [form] = Form.useForm();
 
   const getStatusColor = (status: string) => {
     const statusMap: Record<string, string> = {
@@ -69,6 +95,46 @@ const StaffContractSection: React.FC<StaffContractProps> = ({ contract }) => {
   const handleSaveContract = (editedData: any) => {
     console.log("Saving contract with data:", editedData);
     messageApi.success("Đã lưu thay đổi hợp đồng");
+  };
+
+  const handleCreateContract = async (values: any) => {
+    if (!orderId) {
+      messageApi.error("Không tìm thấy thông tin đơn hàng để tạo hợp đồng");
+      return;
+    }
+
+    setCreatingContract(true);
+    try {
+      const contractData = {
+        contractName: values.contractName,
+        startDate: values.dateRange[0].format("YYYY-MM-DD"),
+        endDate: values.dateRange[1].format("YYYY-MM-DD"),
+        totalValue: values.totalValue,
+        supportedValue: values.supportedValue,
+        description: values.description,
+        attachFileUrl: values.attachFileUrl || "N/A",
+        orderId: orderId, // Using the orderId prop
+      };
+
+      console.log("Creating contract with data:", contractData);
+      const response = await httpClient.post("/contracts/both", contractData);
+
+      if (response.data.success) {
+        messageApi.success("Hợp đồng đã được tạo thành công!");
+        setIsCreationModalOpen(false);
+        form.resetFields();
+
+        // Reload the page to reflect the new contract status
+        window.location.reload();
+      } else {
+        throw new Error(response.data.message || "Failed to create contract");
+      }
+    } catch (error) {
+      console.error("Error creating contract:", error);
+      messageApi.error("Có lỗi xảy ra khi tạo hợp đồng");
+    } finally {
+      setCreatingContract(false);
+    }
   };
 
   const handleUploadContract = async () => {
@@ -462,17 +528,26 @@ const StaffContractSection: React.FC<StaffContractProps> = ({ contract }) => {
               <div className="flex gap-4 mb-4">
                 <Button
                   type="default"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsCreationModalOpen(true)}
+                  size="large"
+                  className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
+                >
+                  Tạo hợp đồng mới
+                </Button>
+                <Button
+                  type="default"
                   icon={<FileTextOutlined />}
                   onClick={handleOpenModal}
                   loading={loadingContractData}
                   size="large"
-                  className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
+                  className="border-purple-500 text-purple-500 hover:border-purple-600 hover:text-purple-600"
                 >
                   Xem hợp đồng (preview)
                 </Button>
                 <Button
                   type="primary"
-                  icon={<FileTextOutlined />}
+                  icon={<EditOutlined />}
                   onClick={handleTogglePreview}
                   loading={loadingContractData}
                   size="large"
@@ -482,7 +557,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({ contract }) => {
                       : "bg-green-500 hover:bg-green-600 border-green-500"
                   }
                 >
-                  {isPreviewOpen ? "Đóng chỉnh sửa" : "Chỉnh sửa hợp đồng"}
+                  {isPreviewOpen
+                    ? "Đóng chỉnh sửa"
+                    : "Chỉnh sửa nội dung hợp đồng"}
                 </Button>
                 {contractData && (
                   <Button
@@ -633,6 +710,118 @@ const StaffContractSection: React.FC<StaffContractProps> = ({ contract }) => {
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Contract Creation Modal */}
+      <Modal
+        title="Tạo hợp đồng mới"
+        open={isCreationModalOpen}
+        onCancel={() => {
+          setIsCreationModalOpen(false);
+          form.resetFields();
+        }}
+        width={600}
+        footer={null}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleCreateContract}
+          initialValues={{
+            contractName: "Hợp đồng vận chuyển",
+            totalValue: 0,
+            supportedValue: 0,
+            description: "Hợp đồng vận chuyển hàng hóa",
+            attachFileUrl: "",
+          }}
+        >
+          <Form.Item
+            label="Tên hợp đồng"
+            name="contractName"
+            rules={[{ required: true, message: "Vui lòng nhập tên hợp đồng" }]}
+          >
+            <Input placeholder="Nhập tên hợp đồng" />
+          </Form.Item>
+
+          <Form.Item
+            label="Thời gian hiệu lực"
+            name="dateRange"
+            rules={[
+              { required: true, message: "Vui lòng chọn thời gian hiệu lực" },
+            ]}
+          >
+            <DatePicker.RangePicker
+              style={{ width: "100%" }}
+              placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Tổng giá trị hợp đồng"
+            name="totalValue"
+            rules={[{ required: true, message: "Vui lòng nhập tổng giá trị" }]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="Nhập tổng giá trị"
+              formatter={(value) =>
+                `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+              }
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+              addonAfter="VND"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Giá trị hỗ trợ"
+            name="supportedValue"
+            rules={[
+              { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="Nhập giá trị hỗ trợ"
+              formatter={(value) =>
+                `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+              }
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+              addonAfter="VND"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Mô tả hợp đồng"
+            name="description"
+            rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
+          >
+            <Input.TextArea rows={3} placeholder="Nhập mô tả hợp đồng" />
+          </Form.Item>
+
+          <Form.Item label="URL file đính kèm (tùy chọn)" name="attachFileUrl">
+            <Input placeholder="Nhập URL file đính kèm" />
+          </Form.Item>
+
+          <Form.Item className="mb-0">
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={() => {
+                  setIsCreationModalOpen(false);
+                  form.resetFields();
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={creatingContract}
+              >
+                Tạo hợp đồng
+              </Button>
+            </div>
+          </Form.Item>
+        </Form>
       </Modal>
     </Card>
   );

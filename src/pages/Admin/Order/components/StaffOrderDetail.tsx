@@ -7,7 +7,7 @@ import {
   CarOutlined,
   CreditCardOutlined,
   PrinterOutlined,
-  UserAddOutlined
+  UserAddOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import type { StaffOrderDetailResponse } from "../../../../services/order/types";
@@ -38,8 +38,10 @@ const StaffOrderDetail: React.FC = () => {
   const [activeMainTab, setActiveMainTab] = useState<string>("basic");
   const [vehicleAssignmentModalVisible, setVehicleAssignmentModalVisible] =
     useState<boolean>(false);
-  const [billOfLadingPreviewVisible, setBillOfLadingPreviewVisible] = useState<boolean>(false);
-  const [billOfLadingPreviewLoading, setBillOfLadingPreviewLoading] = useState<boolean>(false);
+  const [billOfLadingPreviewVisible, setBillOfLadingPreviewVisible] =
+    useState<boolean>(false);
+  const [billOfLadingPreviewLoading, setBillOfLadingPreviewLoading] =
+    useState<boolean>(false);
   const [billOfLadingPreviewData, setBillOfLadingPreviewData] = useState<Array<{
     fileName: string;
     base64Content: string;
@@ -114,7 +116,7 @@ const StaffOrderDetail: React.FC = () => {
       OrderStatusEnum.SUCCESSFUL,
       OrderStatusEnum.REJECT_ORDER,
       OrderStatusEnum.RETURNING,
-      OrderStatusEnum.RETURNED
+      OrderStatusEnum.RETURNED,
     ];
 
     return statusesAllowingPrint.includes(orderStatus as OrderStatusEnum);
@@ -248,22 +250,24 @@ const StaffOrderDetail: React.FC = () => {
           }
           key="contract"
         >
-          <ContractAndPaymentTab contract={contract} transactions={transactions} />
+          <ContractAndPaymentTab
+            contract={contract}
+            transactions={transactions}
+            orderId={id}
+          />
         </TabPane>
       </Tabs>
 
       {/* Vehicle Assignment Modal */}
-      {
-        id && orderData && orderData.order && orderData.order.orderDetails && (
-          <VehicleAssignmentModal
-            visible={vehicleAssignmentModalVisible}
-            orderId={id}
-            orderDetails={orderData.order.orderDetails}
-            onClose={() => setVehicleAssignmentModalVisible(false)}
-            onSuccess={handleVehicleAssignmentSuccess}
-          />
-        )
-      }
+      {id && orderData && orderData.order && orderData.order.orderDetails && (
+        <VehicleAssignmentModal
+          visible={vehicleAssignmentModalVisible}
+          orderId={id}
+          orderDetails={orderData.order.orderDetails}
+          onClose={() => setVehicleAssignmentModalVisible(false)}
+          onSuccess={handleVehicleAssignmentSuccess}
+        />
+      )}
 
       {/* Bill of Lading Preview Modal */}
       <BillOfLadingPreviewModal
