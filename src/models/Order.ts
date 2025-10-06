@@ -393,6 +393,7 @@ export interface CustomerOrderDetailItem {
       journeyType: string;
       status: string;
       totalTollFee: number;
+      totalTollCount: number;
       reasonForReroute: string | null;
       vehicleAssignmentId: string;
       createdAt: string;
@@ -408,6 +409,7 @@ export interface CustomerOrderDetailItem {
         endLongitude: number;
         distanceMeters: number;
         pathCoordinatesJson: string;
+        tollDetailsJson: string | null;
         status: string;
         createdAt: string;
         modifiedAt: string;
@@ -604,6 +606,7 @@ export interface StaffOrderDetailItem {
       status: string;
       totalDistance?: number;
       totalTollFee?: number;
+      totalTollCount?: number;
       reasonForReroute?: string | null;
       vehicleAssignmentId?: string;
       isReportedIncident?: boolean;
@@ -620,6 +623,7 @@ export interface StaffOrderDetailItem {
         endLongitude: number;
         distanceMeters: number;
         pathCoordinatesJson: string;
+        tollDetailsJson: string | null;
         status: string;
         createdAt: string;
         modifiedAt: string;

@@ -4,6 +4,7 @@ import type { MapLocation } from '@/models/Map';
 import vietmapService from '@/services/map/vietmapService';
 import type { RouteSegment } from '@/models/RoutePoint';
 import type { VietMapAutocompleteResult } from '@/models/VietMap';
+import { parseTollDetails } from '@/models/JourneyHistory';
 
 // Định nghĩa interface cho window để thêm vietmapgl
 declare global {
@@ -27,6 +28,91 @@ const VIETMAP_STYLE_CACHE_KEY = 'vietmap_style_cache';
 // Thời gian cache (1 tuần tính bằng milliseconds)
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
 
+// CSS cho popup
+const POPUP_STYLE = `
+.route-popup .vietmapgl-popup-content {
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    max-width: 280px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: white;
+    overflow: hidden;
+}
+.route-popup .vietmapgl-popup-close-button {
+    display: none; /* Ẩn nút close mặc định */
+}
+.popup-header {
+    position: relative;
+    background-color: #f5f5f5;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eaeaea;
+}
+.popup-close-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: white;
+    color: #333;
+    font-size: 14px;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.popup-close-button:hover {
+    background-color: #f0f0f0;
+}
+.popup-content {
+    padding: 12px;
+}
+.popup-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    padding-right: 24px;
+}
+.popup-distance {
+    font-size: 13px;
+    color: #1677ff;
+    font-weight: 500;
+}
+.popup-toll-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 12px;
+    margin-bottom: 6px;
+    color: #1677ff;
+}
+.popup-toll-item {
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+}
+.popup-toll-name {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.popup-toll-address {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 2px;
+}
+.popup-toll-fee {
+    font-size: 12px;
+    color: #1677ff;
+    font-weight: 500;
+}
+`;
+
 const VietMapMap: React.FC<VietMapMapProps> = ({
     mapLocation,
     onLocationChange,
@@ -38,14 +124,27 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
-    // Xóa markerRef vì không cần thiết nữa
     const markersRef = useRef<any[]>([]);
+    const popupsRef = useRef<any[]>([]);
     const routeLayersRef = useRef<string[]>([]);
     const animationRef = useRef<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [mapLoaded, setMapLoaded] = useState(false);
     const [mapStyle, setMapStyle] = useState<any>(null);
     const [isAnimating, setIsAnimating] = useState(false);
+    const [activePopupIndex, setActivePopupIndex] = useState<number | null>(null);
+
+    // Inject CSS cho popup
+    useEffect(() => {
+        // Kiểm tra xem style đã tồn tại chưa
+        const existingStyle = document.getElementById('vietmap-popup-style');
+        if (!existingStyle) {
+            const styleElement = document.createElement('style');
+            styleElement.id = 'vietmap-popup-style';
+            styleElement.textContent = POPUP_STYLE;
+            document.head.appendChild(styleElement);
+        }
+    }, []);
 
     // Lấy style từ vietmapService hoặc từ cache
     useEffect(() => {
@@ -129,8 +228,13 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 // Xóa tất cả layers và sources trước khi xóa map
                 try {
                     cleanupLayers();
+                    // Xóa tất cả popups
+                    popupsRef.current.forEach(popup => {
+                        if (popup) popup.remove();
+                    });
+                    popupsRef.current = [];
                 } catch (error) {
-                    console.error('Error cleaning up layers:', error);
+                    console.error('Error cleaning up:', error);
                 }
 
                 mapRef.current.remove();
@@ -337,17 +441,10 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 textEl.textContent = `${index + 1}`;
                 el.appendChild(textEl);
 
-                // Tạo popup
-                const popup = new window.vietmapgl.Popup({ offset: 25 })
-                    .setHTML(`<strong>${location.name || 'Vị trí'}</strong><br>${location.address || ''}`);
-
                 // Tạo marker
                 const marker = new window.vietmapgl.Marker(el)
                     .setLngLat([location.lng, location.lat])
-                    .setPopup(popup)
                     .addTo(mapRef.current);
-
-                // console.log(`Added marker at ${location.lat},${location.lng} with type ${location.type}${location.id ? `, id: ${location.id}` : ''}`);
 
                 // Thêm vào mảng markers
                 markersRef.current.push(marker);
@@ -487,7 +584,94 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
         routeLayersRef.current = [];
     };
 
-    // Hiển thị route lines
+    // Tính toán vị trí offset cho popup để tránh đè lên nhau
+    const calculatePopupOffset = (index: number, total: number): [number, number] => {
+        // Nếu chỉ có 1-2 segment, sử dụng offset cố định
+        if (total <= 2) {
+            return [0, -15];
+        }
+
+        // Với nhiều segment, tính toán offset để phân bố đều
+        // Segment đầu tiên: bên trái, segment cuối cùng: bên phải, các segment giữa: phân bố đều
+        if (index === 0) {
+            return [-50, -15]; // Đầu tiên: lệch trái
+        } else if (index === total - 1) {
+            return [50, -15];  // Cuối cùng: lệch phải
+        } else {
+            // Các segment ở giữa: phân bố đều
+            const step = 100 / (total - 1);
+            const xOffset = -50 + (step * index);
+            return [xOffset, -15];
+        }
+    };
+
+    // Tạo popup cho từng segment
+    const createSegmentPopup = (segment: RouteSegment, index: number, totalSegments: number) => {
+        if (!mapRef.current || !segment.path || segment.path.length === 0) return null;
+
+        // Tính toán vị trí trung tâm của segment để đặt popup
+        const midPointIndex = Math.floor(segment.path.length / 2);
+        const popupCoordinates = segment.path[midPointIndex];
+
+        // Lấy tên điểm đầu và điểm cuối (loại bỏ phần khoảng cách trong ngoặc)
+        const startName = segment.startName;
+        const endName = segment.endName.split('(')[0].trim();
+
+        // Tạo nội dung cho popup với cấu trúc mới
+        let popupContent = `
+            <div>
+                <div class="popup-header">
+                    <div class="popup-title">${startName} → ${endName}</div>
+                    <div class="popup-close-button" onclick="this.closest('.vietmapgl-popup').remove()">×</div>
+                </div>
+                <div class="popup-content">
+                    <div class="popup-distance">Khoảng cách: ${segment.distance.toFixed(1)} km</div>
+        `;
+
+        // Thêm thông tin trạm thu phí nếu có
+        if (segment.tolls && segment.tolls.length > 0) {
+            popupContent += '<div class="popup-toll-title">Trạm thu phí:</div>';
+            segment.tolls.forEach(toll => {
+                popupContent += `
+                    <div class="popup-toll-item">
+                        <div class="popup-toll-name">${toll.name}</div>
+                        <div class="popup-toll-address">${toll.address}</div>
+                        <div class="popup-toll-fee">Phí: ${toll.amount.toLocaleString('vi-VN')} VND</div>
+                    </div>
+                `;
+            });
+        }
+
+        popupContent += '</div></div>';
+
+        // Tính toán offset để tránh đè lên nhau
+        const offset = calculatePopupOffset(index, totalSegments);
+
+        // Tạo popup
+        const popup = new window.vietmapgl.Popup({
+            closeButton: false, // Tắt nút close mặc định
+            closeOnClick: false,
+            maxWidth: '280px',
+            className: 'route-popup',
+            offset: offset
+        })
+            .setLngLat(popupCoordinates)
+            .setHTML(popupContent);
+
+        // Thêm sự kiện khi popup đóng
+        popup.on('close', () => {
+            if (activePopupIndex === index) {
+                setActivePopupIndex(null);
+            }
+        });
+
+        // Lưu popup để có thể xóa sau này
+        popupsRef.current[index] = popup;
+
+        return popup;
+    };
+
+    // Hiển thị route lines và popups
     useEffect(() => {
         if (!mapRef.current || !mapLoaded || !showRouteLines || routeSegments.length === 0) return;
 
@@ -499,6 +683,13 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
         // Xóa các route layers cũ một cách an toàn
         cleanupLayers();
+
+        // Xóa tất cả popups cũ
+        popupsRef.current.forEach(popup => {
+            if (popup) popup.remove();
+        });
+        popupsRef.current = [];
+        setActivePopupIndex(null);
 
         // Đợi một chút để map đã render xong các markers
         setTimeout(() => {
@@ -546,6 +737,49 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     // Lưu ID để dọn dẹp sau này
                     routeLayersRef.current.push(sourceId);
                     routeLayersRef.current.push(layerId);
+
+                    // Tạo popup cho segment này
+                    const popup = createSegmentPopup(segment, index, routeSegments.length);
+
+                    // Chỉ hiển thị popup đầu tiên khi load map
+                    if (index === 0) {
+                        if (popup) {
+                            popup.addTo(mapRef.current);
+                            setActivePopupIndex(0);
+                        }
+                    }
+
+                    // Thêm sự kiện click vào route để hiển thị/ẩn popup
+                    mapRef.current.on('click', layerId, (e: any) => {
+                        // Ngăn sự kiện lan truyền
+                        e.originalEvent.stopPropagation();
+
+                        // Đóng tất cả các popup khác
+                        popupsRef.current.forEach((p, i) => {
+                            if (p && i !== index) p.remove();
+                        });
+
+                        // Tìm popup tương ứng với segment này
+                        const popup = popupsRef.current[index];
+                        if (popup) {
+                            if (popup.isOpen()) {
+                                popup.remove();
+                                setActivePopupIndex(null);
+                            } else {
+                                popup.addTo(mapRef.current);
+                                setActivePopupIndex(index);
+                            }
+                        }
+                    });
+
+                    // Thay đổi con trỏ khi hover vào route
+                    mapRef.current.on('mouseenter', layerId, () => {
+                        mapRef.current.getCanvas().style.cursor = 'pointer';
+                    });
+
+                    mapRef.current.on('mouseleave', layerId, () => {
+                        mapRef.current.getCanvas().style.cursor = '';
+                    });
                 });
             }
         }, 100);

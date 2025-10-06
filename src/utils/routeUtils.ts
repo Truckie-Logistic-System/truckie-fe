@@ -28,7 +28,13 @@ export const convertRouteSegmentToRouteSegmentInfo = (
         distanceMeters: segment.distance, // Sử dụng trường distance mới
         pathCoordinates: segment.path,
         estimatedTollFee: totalToll,
-        tollDetails: segment.tolls // Thêm chi tiết trạm thu phí
+        tollDetails: segment.tolls.map(toll => ({
+            name: toll.name,
+            address: toll.address,
+            type: toll.type,
+            amount: toll.amount
+        })),
+        rawResponse: segment.rawResponse || {}
     };
 };
 
@@ -53,12 +59,16 @@ export const convertRouteSegmentsToRouteInfo = (segments: RouteSegment[]): Route
     // Tính tổng phí đường
     const totalTollFee = routeSegments.reduce((sum, segment) => sum + segment.estimatedTollFee, 0);
 
+    // Tính tổng số trạm thu phí
+    const totalTollCount = routeSegments.reduce((sum, segment) => sum + (segment.tollDetails?.length || 0), 0);
+
     // Tính tổng khoảng cách
     const totalDistance = routeSegments.reduce((sum, segment) => sum + segment.distanceMeters, 0);
 
     return {
         segments: routeSegments,
         totalTollFee,
+        totalTollCount,
         totalDistance
     };
 }; 

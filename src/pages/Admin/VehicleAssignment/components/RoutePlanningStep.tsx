@@ -400,6 +400,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             }
 
             // Clone carrier point để không ảnh hưởng đến reference
+            // Đảm bảo returnCarrier có tọa độ khác với carrier ban đầu
             const returnCarrier = {
                 ...carrier,
                 name: "Quay về " + carrier.name,
@@ -475,10 +476,11 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             console.log("ROUTE GEN - Segment 2 stopovers:", segment2Stopovers.length);
             console.log("ROUTE GEN - All custom points:", validCustomPts.length);
 
-            // Tạo mảng các điểm theo thứ tự đúng
+            // Tạo mảng các điểm theo thứ tự đúng, đảm bảo không có điểm trùng lặp
             const orderedPoints: RoutePoint[] = [];
 
             // Đoạn 1: Carrier -> Pickup
+            // Thêm carrier đầu tiên
             orderedPoints.push(carrier);
 
             // Thêm các điểm trung gian của đoạn Carrier -> Pickup (segmentIndex = 0)
@@ -492,6 +494,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             }
 
             // Đoạn 2: Pickup -> Delivery
+            // Thêm pickup
             orderedPoints.push(pickup);
 
             // Thêm các điểm trung gian của đoạn Pickup -> Delivery (segmentIndex = 1)
@@ -505,6 +508,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             }
 
             // Đoạn 3: Delivery -> Carrier
+            // Thêm delivery
             orderedPoints.push(delivery);
 
             // Thêm các điểm trung gian của đoạn Delivery -> Carrier (segmentIndex = 2)
@@ -518,7 +522,11 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             }
 
             // Kết thúc tại carrier (quay về)
-            orderedPoints.push(returnCarrier);
+            // Đảm bảo returnCarrier có type khác với carrier đầu tiên để không bị loại bỏ trong quá trình deduplication
+            orderedPoints.push({
+                ...returnCarrier,
+                type: 'carrier_return' as any // Sử dụng type khác để tránh bị lọc bỏ
+            });
 
             console.log("ROUTE GEN - Final ordered points:", orderedPoints.map(p => `${p.type}:${p.name}`));
 
@@ -533,6 +541,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
             // Đảm bảo không có điểm trùng lặp
             const usedCoordinates = new Set<string>();
+            const usedPointTypes = new Set<string>();
 
             // Log chi tiết từng điểm trong tuyến đường
             console.log("ROUTE GEN - Chi tiết các điểm trong tuyến đường:");
@@ -541,6 +550,15 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
                 // Tạo key duy nhất cho mỗi điểm
                 let key = `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
+
+                const pointTypeStr = String(point.type); // Chuyển đổi thành string để so sánh an toàn
+
+                // Kiểm tra nếu đã có điểm cùng loại (carrier, pickup, delivery) - chỉ cho phép một điểm mỗi loại
+                // Ngoại trừ điểm stopover và carrier_return có thể có nhiều điểm
+                if (pointTypeStr !== 'stopover' && pointTypeStr !== 'carrier_return' && usedPointTypes.has(pointTypeStr)) {
+                    console.log(`ROUTE GEN - Skipping duplicate point type: ${pointTypeStr}`);
+                    return; // Skip this point
+                }
 
                 // Nếu là điểm trùng lặp, thêm một offset nhỏ để tạo sự khác biệt
                 if (usedCoordinates.has(key)) {
@@ -553,17 +571,52 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                     console.log(`ROUTE GEN - Adjusted duplicate point at index ${index}: ${key}`);
                 }
 
-                // Đánh dấu tọa độ đã được sử dụng
+                // Đánh dấu tọa độ và loại điểm đã được sử dụng
                 usedCoordinates.add(key);
+                usedPointTypes.add(pointTypeStr);
 
                 // Thêm điểm vào mảng dữ liệu cho API
                 uniquePoints.push([point.lng, point.lat]);
                 uniquePointTypes.push(point.type);
             });
 
+            // Đảm bảo không có trùng lặp trong request
+            console.log("ROUTE GEN - Points before deduplication:", uniquePoints.length);
+            console.log("ROUTE GEN - Point types before deduplication:", uniquePointTypes);
+
+            // Tạo mảng mới không có trùng lặp point types
+            const finalPoints: [number, number][] = [];
+            const finalPointTypes: ('carrier' | 'pickup' | 'delivery' | 'stopover')[] = [];
+            const seenTypes = new Set<string>();
+
+            // Chỉ giữ lại một điểm cho mỗi loại (carrier, pickup, delivery)
+            // nhưng giữ lại tất cả các điểm stopover và carrier_return
+            uniquePointTypes.forEach((type, index) => {
+                const typeStr = String(type); // Chuyển đổi thành string để so sánh an toàn
+
+                // Xử lý đặc biệt cho carrier_return
+                if (typeStr === 'carrier_return') {
+                    // Thêm điểm quay về nhưng đổi type thành carrier cho API
+                    finalPoints.push(uniquePoints[index]);
+                    finalPointTypes.push('carrier');
+                    console.log(`ROUTE GEN - Converting carrier_return to carrier at index ${index}`);
+                }
+                // Nếu là stopover hoặc chưa thấy loại này trước đó
+                else if (type === 'stopover' || !seenTypes.has(typeStr)) {
+                    finalPoints.push(uniquePoints[index]);
+                    finalPointTypes.push(type);
+                    seenTypes.add(typeStr);
+                } else {
+                    console.log(`ROUTE GEN - Removing duplicate point type: ${type} at index ${index}`);
+                }
+            });
+
+            console.log("ROUTE GEN - Points after deduplication:", finalPoints.length);
+            console.log("ROUTE GEN - Point types after deduplication:", finalPointTypes);
+
             const requestData: SuggestRouteRequest = {
-                points: uniquePoints,
-                pointTypes: uniquePointTypes,
+                points: finalPoints,
+                pointTypes: finalPointTypes,
                 vehicleTypeId: vehicle?.vehicleTypeId || '',
             };
 
