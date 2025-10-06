@@ -113,12 +113,14 @@ export interface RouteSegmentInfo {
     pathCoordinates: number[][];
     estimatedTollFee: number;
     tollDetails?: RouteToll[]; // Thêm chi tiết trạm thu phí
+    rawResponse?: Record<string, any>; // Thêm rawResponse
 }
 
 export interface RouteInfo {
     segments: RouteSegmentInfo[];
     totalTollFee: number;
-    totalDistance?: number; // Thêm tổng khoảng cách
+    totalTollCount: number; // Thêm tổng số trạm thu phí
+    totalDistance: number; // Tổng khoảng cách
 }
 
 export interface GroupAssignment {

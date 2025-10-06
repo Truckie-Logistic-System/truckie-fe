@@ -310,7 +310,10 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
 
                                                     {/* Display route map if journey has segments */}
                                                     {journey.journeySegments && journey.journeySegments.length > 0 && (
-                                                        <RouteMapSection journeySegments={journey.journeySegments} />
+                                                        <RouteMapSection
+                                                            journeySegments={journey.journeySegments}
+                                                            journeyInfo={journey}
+                                                        />
                                                     )}
                                                 </div>
                                             ))}

@@ -66,8 +66,22 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
  * @returns Boolean cho biết có phải PDF không
  */
 export const isPdfBase64 = (base64String: string): boolean => {
-    return base64String.includes('data:application/pdf') ||
+    if (!base64String) return false;
+
+    // Check MIME type
+    const isMimeTypePdf =
+        base64String.toLowerCase().includes('application/pdf') ||
         base64String.toLowerCase().includes('pdf');
+
+    // Check if it's a data URL
+    if (base64String.startsWith('data:')) {
+        return isMimeTypePdf;
+    }
+
+    // Check for PDF signature in base64 (JVBERi- is "%PDF-" in base64)
+    const isPdfSignature = base64String.startsWith('JVBERi');
+
+    return isMimeTypePdf || isPdfSignature;
 };
 
 /**

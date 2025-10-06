@@ -219,6 +219,25 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             // Format the request according to the required structure
             const groupAssignments: GroupAssignment[] = [];
 
+            // Ensure the route info has all required fields
+            const completeRouteInfo: RouteInfo = {
+                segments: routeInfoData.segments.map(segment => ({
+                    ...segment,
+                    // Ensure each segment has tollDetails properly formatted
+                    tollDetails: segment.tollDetails?.map(toll => ({
+                        name: toll.name || '',
+                        address: toll.address || '',
+                        type: toll.type || '',
+                        amount: toll.amount || 0
+                    })) || [],
+                    // Ensure rawResponse is included
+                    rawResponse: segment.rawResponse || {}
+                })),
+                totalTollFee: routeInfoData.totalTollFee || 0,
+                totalTollCount: routeInfoData.totalTollCount || 0,
+                totalDistance: routeInfoData.totalDistance || 0
+            };
+
             // Convert the form values to the expected API format
             Object.entries(formValues).forEach(([groupKey, groupData]: [string, any]) => {
                 const groupIndex = parseInt(groupKey);
@@ -231,7 +250,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                         driverId_1: groupData.driverId_1,
                         driverId_2: groupData.driverId_2,
                         description: groupData.description || "",
-                        routeInfo: routeInfoData // Add route info to the assignment
+                        routeInfo: completeRouteInfo // Add complete route info to the assignment
                     });
                 }
             });
@@ -508,10 +527,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                         <span className="text-gray-500">Loại xe:</span>
                         <span className="font-medium">{vehicle.vehicleTypeName || "Không có thông tin"}</span>
                     </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">Số tài xế:</span>
-                        <span className="font-medium">{vehicle.suggestedDrivers.length}</span>
-                    </div>
                 </div>
             </div>
         );
@@ -636,7 +651,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             <TabPane
                 tab={
                     <span className="px-1 text-xs">
-                        <FileTextOutlined className="mr-1" /> Nhóm #{groupIndex + 1}
+                        <FileTextOutlined className="mr-1" /> Chuyến #{groupIndex + 1}
                         <Tag color="blue" className="ml-1 text-xs">{detailCount} lô hàng</Tag>
                     </span>
                 }

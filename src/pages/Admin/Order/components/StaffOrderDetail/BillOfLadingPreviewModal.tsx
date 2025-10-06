@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Modal, Button, Empty, Spin, Tabs, Carousel, Typography, message } from "antd";
 import { PrinterOutlined, FilePdfOutlined, FileImageOutlined, LeftOutlined, RightOutlined, DownloadOutlined, MergeCellsOutlined } from "@ant-design/icons";
 import { mergePDFs, isPdfBase64, createMergedFileName } from "../../../../../utils/pdfUtils";
@@ -16,6 +16,93 @@ interface BillOfLadingPreviewModalProps {
     documents: BillOfLadingDocument[] | null;
     onClose: () => void;
 }
+
+// Component để hiển thị PDF bằng Blob URL
+const PdfViewer: React.FC<{
+    base64Content: string;
+    mimeType: string;
+    fileName: string;
+}> = ({ base64Content, mimeType, fileName }) => {
+    const [blobUrl, setBlobUrl] = useState<string | null>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    useEffect(() => {
+        // Chuyển đổi base64 thành Blob URL
+        if (base64Content) {
+            try {
+                // Loại bỏ phần header nếu có
+                const base64Data = base64Content.includes('base64,')
+                    ? base64Content.split('base64,')[1]
+                    : base64Content;
+
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: mimeType });
+
+                // Tạo URL từ Blob
+                const url = URL.createObjectURL(blob);
+                setBlobUrl(url);
+
+                console.log("Created Blob URL:", url);
+            } catch (error) {
+                console.error("Error creating Blob URL:", error);
+            }
+        }
+
+        // Cleanup function
+        return () => {
+            if (blobUrl) {
+                URL.revokeObjectURL(blobUrl);
+            }
+        };
+    }, [base64Content, mimeType]);
+
+    const handleDownload = () => {
+        const link = document.createElement('a');
+        if (blobUrl) {
+            link.href = blobUrl;
+        } else {
+            link.href = `data:${mimeType};base64,${base64Content}`;
+        }
+        link.download = fileName;
+        link.click();
+    };
+
+    if (!blobUrl) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full">
+                <Spin tip="Đang tải PDF..." />
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="pdf-controls bg-gray-100 p-2 flex justify-end">
+                <Button
+                    type="primary"
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={handleDownload}
+                >
+                    Tải xuống
+                </Button>
+            </div>
+            <iframe
+                ref={iframeRef}
+                src={blobUrl}
+                title={fileName}
+                width="100%"
+                height="calc(100% - 40px)"
+                style={{ border: "none" }}
+            />
+        </>
+    );
+};
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -227,11 +314,38 @@ const BillOfLadingPreviewModal: React.FC<BillOfLadingPreviewModalProps> = ({
     };
 
     const handlePrintSingle = (doc: BillOfLadingDocument) => {
+        // Tạo Blob URL từ base64
+        let blobUrl = '';
+        try {
+            const base64Data = doc.base64Content.includes('base64,')
+                ? doc.base64Content.split('base64,')[1]
+                : doc.base64Content;
+
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: doc.mimeType });
+
+            // Tạo URL từ Blob
+            blobUrl = URL.createObjectURL(blob);
+        } catch (error) {
+            console.error("Error creating Blob URL:", error);
+            message.error("Không thể tạo Blob URL cho PDF");
+            return;
+        }
+
         const newWindow = window.open("", "_blank");
         if (newWindow) {
+            // Create a complete HTML document with proper doctype and meta tags
             newWindow.document.write(`
+        <!DOCTYPE html>
         <html>
           <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>${doc.fileName}</title>
             <style>
               body { margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; }
@@ -245,40 +359,104 @@ const BillOfLadingPreviewModal: React.FC<BillOfLadingPreviewModalProps> = ({
                 font-size: 16px;
                 font-weight: bold;
               }
-              .pdf-container {
+              .content-container {
                 flex: 1;
                 width: 100%;
+                display: flex;
+                flex-direction: column;
+              }
+              iframe, object, embed {
+                width: 100%;
+                height: 100%;
                 border: none;
+                flex: 1;
+              }
+              img {
+                max-width: 100%;
+                max-height: calc(100vh - 50px);
+                margin: 0 auto;
+                display: block;
               }
               @media print {
                 .document-title { padding: 5px 10px; }
+                .no-print { display: none; }
               }
             </style>
           </head>
           <body>
-            <div class="document-title">${doc.fileName}</div>
+            <div class="document-title">
+              ${doc.fileName}
+              <button class="no-print" onclick="window.print()" style="float:right; padding: 5px 10px; cursor: pointer;">Print</button>
+            </div>
+            <div class="content-container">
             ${doc.mimeType.includes("pdf")
-                    ? `<embed class="pdf-container" src="data:${doc.mimeType};base64,${doc.base64Content}" type="${doc.mimeType}" />`
-                    : `<img src="data:${doc.mimeType};base64,${doc.base64Content}" style="max-width:100%;" />`
+                    ? `<iframe src="${blobUrl}" style="width:100%; height:100%; border:none;"></iframe>`
+                    : `<img src="data:${doc.mimeType};base64,${doc.base64Content}" alt="${doc.fileName}">`
                 }
+            </div>
+            <script>
+              // Add event listener to print when loaded
+              window.onload = function() {
+                // Wait a bit for PDF to render
+                setTimeout(function() {
+                  // Uncomment the line below to automatically print
+                  // window.print();
+                }, 1000);
+              };
+              // Cleanup Blob URL when window closes
+              window.onbeforeunload = function() {
+                URL.revokeObjectURL("${blobUrl}");
+              };
+            </script>
           </body>
         </html>
       `);
             newWindow.document.close();
-            setTimeout(() => {
-                newWindow.print();
-            }, 1000);
         }
     };
 
     const printAllDocumentsOldMethod = () => {
         if (!documents || documents.length === 0) return;
 
+        // Tạo mảng Blob URLs cho các PDF
+        const blobUrls: string[] = [];
+
+        // Tạo Blob URLs cho từng document
+        documents.forEach((doc) => {
+            if (doc.mimeType.includes('pdf')) {
+                try {
+                    const base64Data = doc.base64Content.includes('base64,')
+                        ? doc.base64Content.split('base64,')[1]
+                        : doc.base64Content;
+
+                    const byteCharacters = atob(base64Data);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: doc.mimeType });
+
+                    // Tạo URL từ Blob
+                    const url = URL.createObjectURL(blob);
+                    blobUrls.push(url);
+                } catch (error) {
+                    console.error("Error creating Blob URL:", error);
+                    blobUrls.push(''); // Placeholder for error
+                }
+            } else {
+                blobUrls.push(''); // Not a PDF, use data URL later
+            }
+        });
+
         const newWindow = window.open("", "_blank");
         if (newWindow) {
             newWindow.document.write(`
+        <!DOCTYPE html>
         <html>
           <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Vận đơn hợp nhất</title>
             <style>
               body { margin: 0; padding: 0; }
@@ -300,42 +478,69 @@ const BillOfLadingPreviewModal: React.FC<BillOfLadingPreviewModalProps> = ({
                 font-size: 16px;
                 font-weight: bold;
               }
-              .pdf-container {
+              .content-container {
                 flex: 1;
                 width: 100%;
+                display: flex;
+                flex-direction: column;
+              }
+              iframe, object, embed {
+                width: 100%;
+                height: 100%;
                 border: none;
+                flex: 1;
+              }
+              img {
+                max-width: 100%;
+                max-height: calc(100vh - 60px);
+                margin: 0 auto;
+                display: block;
               }
               @media print {
                 .document-title { padding: 5px 10px; margin: 0; }
                 .document-container { height: 100vh; }
+                .no-print { display: none; }
               }
             </style>
           </head>
           <body>
+            <div class="no-print" style="padding: 10px; background: #f8f8f8; text-align: center; position: sticky; top: 0; z-index: 100;">
+              <button onclick="window.print()" style="padding: 8px 16px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px;">
+                In tất cả
+              </button>
+            </div>
       `);
 
             if (documents.length === 1) {
                 // Nếu chỉ có một tài liệu, hiển thị nó toàn màn hình
                 const doc = documents[0];
+                const blobUrl = doc.mimeType.includes('pdf') ? blobUrls[0] : '';
+
                 newWindow.document.write(`
           <div class="document-container">
             <div class="document-title">${doc.fileName}</div>
+            <div class="content-container">
             ${doc.mimeType.includes('pdf')
-                        ? `<embed class="pdf-container" src="data:${doc.mimeType};base64,${doc.base64Content}" type="${doc.mimeType}" />`
-                        : `<img src="data:${doc.mimeType};base64,${doc.base64Content}" style="max-width:100%;" />`
+                        ? `<iframe src="${blobUrl}" style="width:100%; height:100%; border:none;"></iframe>`
+                        : `<img src="data:${doc.mimeType};base64,${doc.base64Content}" alt="${doc.fileName}">`
                     }
+            </div>
           </div>
         `);
             } else {
                 // Nếu có nhiều tài liệu
                 documents.forEach((doc, index) => {
+                    const blobUrl = doc.mimeType.includes('pdf') ? blobUrls[index] : '';
+
                     newWindow.document.write(`
             <div class="document-container">
               <div class="document-title">${doc.fileName}</div>
+              <div class="content-container">
               ${doc.mimeType.includes('pdf')
-                            ? `<embed class="pdf-container" src="data:${doc.mimeType};base64,${doc.base64Content}" type="${doc.mimeType}" />`
-                            : `<img src="data:${doc.mimeType};base64,${doc.base64Content}" style="max-width:100%;" />`
+                            ? `<iframe src="${blobUrl}" style="width:100%; height:100%; border:none;"></iframe>`
+                            : `<img src="data:${doc.mimeType};base64,${doc.base64Content}" alt="${doc.fileName}">`
                         }
+              </div>
             </div>
           `);
                 });
@@ -346,9 +551,16 @@ const BillOfLadingPreviewModal: React.FC<BillOfLadingPreviewModalProps> = ({
         <script>
           window.onload = function() {
             // Đảm bảo tất cả các tài liệu đã được tải
+            console.log("Documents loaded, preparing to print...");
             setTimeout(function() {
-              window.print();
+              // Uncomment to automatically print
+              // window.print();
             }, 1500);
+          };
+          
+          // Cleanup Blob URLs when window closes
+          window.onbeforeunload = function() {
+            ${blobUrls.map(url => url ? `URL.revokeObjectURL("${url}");` : '').join('\n')}
           };
         </script>
       `);
@@ -375,6 +587,15 @@ const BillOfLadingPreviewModal: React.FC<BillOfLadingPreviewModalProps> = ({
         if (!documents || documents.length === 0) {
             return <Empty description="Không có dữ liệu vận đơn" />;
         }
+
+        // Debug: Log document information
+        console.log("Documents received:", documents);
+        documents.forEach((doc, index) => {
+            console.log(`Document ${index} - Filename: ${doc.fileName}`);
+            console.log(`Document ${index} - MimeType: ${doc.mimeType}`);
+            console.log(`Document ${index} - Content length: ${doc.base64Content?.length || 0}`);
+            console.log(`Document ${index} - Content starts with: ${doc.base64Content?.substring(0, 50)}...`);
+        });
 
         // Kiểm tra xem có file PDF nào không
         const hasPdfFiles = documents.some(doc => isPdfBase64(doc.mimeType));
@@ -442,13 +663,14 @@ const BillOfLadingPreviewModal: React.FC<BillOfLadingPreviewModalProps> = ({
                             </div>
                             <div className="preview-container border border-gray-200 rounded-lg overflow-hidden bg-white">
                                 {doc.mimeType.includes("pdf") ? (
-                                    <embed
-                                        src={`data:${doc.mimeType};base64,${doc.base64Content}`}
-                                        type={doc.mimeType}
-                                        width="100%"
-                                        height="600px"
-                                        className="shadow-sm"
-                                    />
+                                    <div className="pdf-viewer-container" style={{ height: "600px" }}>
+                                        {/* Sử dụng Blob URL thay vì data URL để tránh bị chặn */}
+                                        <PdfViewer
+                                            base64Content={doc.base64Content}
+                                            mimeType={doc.mimeType}
+                                            fileName={doc.fileName}
+                                        />
+                                    </div>
                                 ) : (
                                     <div className="flex justify-center p-4">
                                         <img
