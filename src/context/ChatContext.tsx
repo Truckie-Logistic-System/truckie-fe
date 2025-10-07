@@ -139,39 +139,35 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     },
     [user, setUIChatMessages]
   );
-  const fetchSupportRooms = async () => {
-    if (!user) return;
+  const fetchSupportRooms = useCallback(async () => {
+  if (!user) return;
 
-    setLoadingRooms(true);
-    try {
-      const rooms = await roomService.getListSupportRoomsForStaff();
+  setLoadingRooms(true);
+  try {
+    const rooms = await roomService.getListSupportRoomsForStaff();
 
-      // --- START OF FIX ---
-      // Transform the fetched rooms to the SupportRoom type
-      const supportRoomsData: SupportRoom[] = rooms.map((room) => ({
-        ...room,
-        // Ensure 'type' is one of the allowed values or a fallback
-        type:
-          room.type === "SUPPORT" || room.type === "SUPPORTED"
-            ? (room.type as "SUPPORT" | "SUPPORTED")
-            : "SUPPORT", // Default to 'SUPPORT' if the type is not valid
-      }));
+    const supportRoomsData: SupportRoom[] = rooms.map((room) => ({
+      ...room,
+      type:
+        room.type === "SUPPORT" || room.type === "SUPPORTED"
+          ? (room.type as "SUPPORT" | "SUPPORTED")
+          : "SUPPORT",
+    }));
 
-      // SẮP XẾP: SUPPORT rooms lên đầu
-      const sortedRooms = supportRoomsData.sort((a, b) => {
-        if (a.type === "SUPPORT" && b.type !== "SUPPORT") return -1;
-        if (a.type !== "SUPPORT" && b.type === "SUPPORT") return 1;
-        return 0;
-      });
+    const sortedRooms = supportRoomsData.sort((a, b) => {
+      if (a.type === "SUPPORT" && b.type !== "SUPPORT") return -1;
+      if (a.type !== "SUPPORT" && b.type === "SUPPORT") return 1;
+      return 0;
+    });
 
-      setSupportRooms(sortedRooms);
-      // --- END OF FIX ---
-    } catch (error) {
-      console.error("Failed to fetch support rooms:", error);
-    } finally {
-      setLoadingRooms(false);
-    }
-  };
+    setSupportRooms(sortedRooms);
+  } catch (error) {
+    console.error("Failed to fetch support rooms:", error);
+  } finally {
+    setLoadingRooms(false);
+  }
+}, [user]);
+
 
   // Trong ChatContext.tsx - hàm joinRoom
   const joinRoom = async (roomId: string) => {
