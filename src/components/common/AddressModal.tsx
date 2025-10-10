@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, App, Spin, Alert, Button, Divider, Space, Row, Col, Typography, Input, Select, Radio } from 'antd';
 import addressService from '../../services/address/addressService';
 import trackasiaService from '../../services/map/trackasiaService';
+import vietmapService from '../../services/map/vietmapService';
 import type { Address, AddressCreateDto, AddressUpdateDto } from '../../models/Address';
 import useProvinces from '../../hooks/useProvinces';
 import type { MapLocation } from '../../models/Map';
 import type { PlaceDetailResult, AutocompleteResult } from '../../models/TrackAsia';
+import type { VietMapAutocompleteResult, VietMapPlaceDetail } from '../../models/VietMap';
 import AddressMap from './AddressMap';
+import VietMapMap from './VietMapMap';
 import AddressSearch from './AddressSearch';
+import VietMapSearch from './VietMapSearch';
 import AddressForm from './AddressForm';
 import { createCustomFilterOption, processPlaceDetail } from './AddressHelper';
 
@@ -16,6 +20,7 @@ declare global {
     interface Window {
         trackasia?: any;
         trackasiagl?: any;
+        vietmap?: any;
     }
 }
 
@@ -43,12 +48,18 @@ const AddressModal: React.FC<AddressModalProps> = ({
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
     const [useManualInput, setUseManualInput] = useState(false);
-    const [useTrackAsia, setUseTrackAsia] = useState(true);
+    const [useTrackAsia, setUseTrackAsia] = useState(false); // Default to false now
+    const [useVietMap, setUseVietMap] = useState(true); // Default to true
     const { message } = App.useApp();
 
     // TrackAsia states
     const [selectedPlace, setSelectedPlace] = useState<PlaceDetailResult | null>(null);
     const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
+
+    // VietMap states
+    const [selectedVietMapPlace, setSelectedVietMapPlace] = useState<VietMapPlaceDetail | null>(null);
+    const [vietMapAutocompleteResults, setVietMapAutocompleteResults] = useState<VietMapAutocompleteResult[]>([]);
+    const [isSearchingVietMap, setIsSearchingVietMap] = useState(false);
 
     // Use custom hook for provinces data (as fallback)
     const {
@@ -62,12 +73,14 @@ const AddressModal: React.FC<AddressModalProps> = ({
         findWard,
         isValidData,
         isLoading
-    } = useProvinces(visible && !useTrackAsia);
+    } = useProvinces(visible && !useTrackAsia && !useVietMap);
 
     console.log('AddressModal render:', {
         visible,
         useTrackAsia,
+        useVietMap,
         selectedPlace: selectedPlace?.name,
+        selectedVietMapPlace: selectedVietMapPlace?.name,
         provinces: provinces?.length,
         wards: wards?.length,
         isLoadingProvinces,
@@ -78,8 +91,8 @@ const AddressModal: React.FC<AddressModalProps> = ({
 
     // Nếu TrackAsia không hoạt động và dữ liệu không hợp lệ hoặc không có wards, chuyển sang nhập thủ công
     useEffect(() => {
-        // Chỉ xử lý khi modal hiển thị và không sử dụng TrackAsia
-        if (!visible || useTrackAsia) return;
+        // Chỉ xử lý khi modal hiển thị và không sử dụng TrackAsia hoặc VietMap
+        if (!visible || useTrackAsia || useVietMap) return;
 
         // Chỉ kiểm tra khi đã load xong provinces và không đang loading
         if (!isLoadingProvinces) {
@@ -90,14 +103,40 @@ const AddressModal: React.FC<AddressModalProps> = ({
                 setUseManualInput(true);
             }
         }
-    }, [visible, useTrackAsia, isLoadingProvinces, isValidData, wards, useManualInput]);
+    }, [visible, useTrackAsia, useVietMap, isLoadingProvinces, isValidData, wards, useManualInput]);
 
     // Khởi tạo bản đồ khi modal hiển thị
     useEffect(() => {
         let isMounted = true;
 
-        // Kiểm tra TrackAsia API khi modal hiển thị và đang ở chế độ TrackAsia
-        if (visible && useTrackAsia) {
+        // Kiểm tra VietMap API khi modal hiển thị và đang ở chế độ VietMap
+        if (visible && useVietMap) {
+            try {
+                vietmapService.searchPlaces('test')
+                    .then((results) => {
+                        if (!isMounted) return;
+                        if (!results || results.length === 0) {
+                            console.warn('VietMap API not working, switching to TrackAsia API');
+                            setUseVietMap(false);
+                            setUseTrackAsia(true);
+                        } else {
+                            console.log('VietMap API is working');
+                        }
+                    })
+                    .catch((error: Error) => {
+                        if (!isMounted) return;
+                        console.error('Error testing VietMap API:', error);
+                        setUseVietMap(false);
+                        setUseTrackAsia(true);
+                    });
+            } catch (error) {
+                console.error('Error initializing VietMap:', error);
+                setUseVietMap(false);
+                setUseTrackAsia(true);
+            }
+        }
+        // Fallback to TrackAsia if VietMap is not used
+        else if (visible && useTrackAsia) {
             try {
                 trackasiaService.autocomplete('test', 1)
                     .then((results: AutocompleteResult[]) => {
@@ -120,7 +159,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
             }
         }
         return () => { isMounted = false; };
-    }, [visible]);
+    }, [visible, useVietMap, useTrackAsia]);
 
 
     useEffect(() => {
@@ -129,10 +168,11 @@ const AddressModal: React.FC<AddressModalProps> = ({
         console.log('Modal is visible, resetting form');
         form.resetFields();
         setSelectedPlace(null);
+        setSelectedVietMapPlace(null);
         setMapLocation(null);
 
-        // Đặt lại chế độ nhập liệu dựa trên trạng thái TrackAsia và dữ liệu tỉnh/thành phố
-        if (useTrackAsia) {
+        // Đặt lại chế độ nhập liệu dựa trên trạng thái VietMap/TrackAsia và dữ liệu tỉnh/thành phố
+        if (useVietMap || useTrackAsia) {
             setUseManualInput(false);
         } else if (isValidData && wards.length > 0) {
             setUseManualInput(false);
@@ -161,8 +201,8 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     setMapLocation(location);
                 }
 
-                // Nếu không dùng TrackAsia và có dữ liệu wards, cố gắng tìm ward
-                if (!useTrackAsia && wards.length > 0) {
+                // Nếu không dùng VietMap/TrackAsia và có dữ liệu wards, cố gắng tìm ward
+                if (!useVietMap && !useTrackAsia && wards.length > 0) {
                     const wardName = initialValues.ward;
                     const matchingWard = findWard(wardName);
                     if (matchingWard) {
@@ -179,15 +219,15 @@ const AddressModal: React.FC<AddressModalProps> = ({
             form.setFieldsValue({ addressType: defaultAddressType });
         }
 
-        // Đặt giá trị mặc định cho province nếu không dùng TrackAsia
-        if (!useTrackAsia) {
+        // Đặt giá trị mặc định cho province nếu không dùng VietMap/TrackAsia
+        if (!useVietMap && !useTrackAsia) {
             if (selectedProvince) {
                 form.setFieldsValue({ province: selectedProvince.name });
             } else {
                 form.setFieldsValue({ province: 'Thành phố Hồ Chí Minh' });
             }
         }
-    }, [visible, initialValues, mode, defaultAddressType, useTrackAsia, selectedProvince]);
+    }, [visible, initialValues, mode, defaultAddressType, useVietMap, useTrackAsia, selectedProvince]);
 
     // Handle form submission
     const handleSubmit = async () => {
@@ -209,7 +249,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
                 street: values.street,
                 ward: wardName,
                 province: values.province || 'Thành phố Hồ Chí Minh',
-                addressType: values.addressType
+                addressType: showAddressType ? values.addressType : defaultAddressType
             };
 
             // Thêm tọa độ từ form values hoặc mapLocation
@@ -464,9 +504,113 @@ const AddressModal: React.FC<AddressModalProps> = ({
         }
     };
 
+    // Xử lý khi chọn địa điểm từ VietMap
+    const handleVietMapPlaceSelect = async (placeId: string) => {
+        console.log('handleVietMapPlaceSelect called with placeId:', placeId);
+        try {
+            setIsSearchingVietMap(true);
+            const placeDetail = await vietmapService.getPlaceDetail(placeId);
+            setIsSearchingVietMap(false);
+
+            if (!placeDetail) {
+                console.error('Failed to get place details');
+                return;
+            }
+
+            setSelectedVietMapPlace(placeDetail);
+
+            // Xử lý dữ liệu từ place
+            try {
+                // Xử lý street
+                const street = placeDetail.address || placeDetail.name || '';
+
+                // Xử lý ward
+                const ward = placeDetail.ward || '';
+
+                // Xử lý province
+                let province = placeDetail.city || 'Thành phố Hồ Chí Minh';
+                if (province.includes('Hồ Chí Minh') && !province.includes('Thành phố')) {
+                    province = `Thành phố ${province}`;
+                }
+
+                // Cập nhật vị trí trên bản đồ
+                if (placeDetail.lat && placeDetail.lng) {
+                    setMapLocation({
+                        lat: placeDetail.lat,
+                        lng: placeDetail.lng,
+                        address: placeDetail.display || placeDetail.address || placeDetail.name
+                    });
+                }
+
+                // Điền thông tin vào form
+                const formValues = {
+                    street: street,
+                    ward: ward,
+                    province: province,
+                    latitude: placeDetail.lat,
+                    longitude: placeDetail.lng
+                };
+
+                console.log('Setting form values:', formValues);
+
+                // Reset form trước khi set lại giá trị
+                form.resetFields();
+
+                // Sử dụng setTimeout để đảm bảo form values được cập nhật
+                setTimeout(() => {
+                    // Set từng field riêng biệt
+                    Object.entries(formValues).forEach(([key, value]) => {
+                        if (value !== undefined && value !== null) {
+                            form.setFields([{
+                                name: key,
+                                value: value,
+                                touched: true
+                            }]);
+                            console.log(`Set field ${key} to:`, value);
+                        }
+                    });
+
+                    console.log('Form values after setting fields:', form.getFieldsValue());
+                }, 0);
+
+                console.log('Form values after place selection:', form.getFieldsValue());
+            } catch (error) {
+                console.error('Error processing place details:', error);
+            }
+        } catch (error) {
+            console.error('Error getting place details:', error);
+            setIsSearchingVietMap(false);
+        }
+    };
+
     // Xử lý khi vị trí trên bản đồ thay đổi
     const handleLocationChange = (location: MapLocation) => {
         setMapLocation(location);
+
+        // Nếu đang sử dụng VietMap, thực hiện reverse geocoding
+        if (useVietMap && location.lat && location.lng) {
+            vietmapService.reverseGeocode(location.lat, location.lng)
+                .then(results => {
+                    if (results && results.length > 0) {
+                        const result = results[0];
+                        // Cập nhật form với thông tin từ reverse geocoding
+                        const street = result.name || '';
+                        const ward = result.boundaries?.find(b => b.type === 2)?.full_name || '';
+                        const province = result.boundaries?.find(b => b.type === 0)?.full_name || 'Thành phố Hồ Chí Minh';
+
+                        form.setFieldsValue({
+                            street,
+                            ward,
+                            province,
+                            latitude: location.lat,
+                            longitude: location.lng
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error in reverse geocoding with VietMap:', error);
+                });
+        }
     };
 
     // Xử lý khi modal đóng
@@ -480,12 +624,45 @@ const AddressModal: React.FC<AddressModalProps> = ({
 
     const modalTitle = title || (mode === 'create' ? 'Thêm địa chỉ mới' : 'Chỉnh sửa địa chỉ');
 
+    // Xử lý tìm kiếm địa điểm với VietMap
+    const handleVietMapSearch = async (searchText: string) => {
+        if (!searchText || searchText.length < 3) {
+            setVietMapAutocompleteResults([]);
+            return;
+        }
+
+        try {
+            setIsSearchingVietMap(true);
+            const results = await vietmapService.searchPlaces(searchText);
+            setVietMapAutocompleteResults(results || []);
+            setIsSearchingVietMap(false);
+        } catch (error) {
+            console.error('Error searching places with VietMap:', error);
+            setIsSearchingVietMap(false);
+            setVietMapAutocompleteResults([]);
+        }
+    };
+
+    // Xử lý khi chọn vị trí từ kết quả tìm kiếm VietMap
+    const handleVietMapLocationSelect = (result: VietMapAutocompleteResult) => {
+        if (result && result.ref_id) {
+            handleVietMapPlaceSelect(result.ref_id);
+        }
+    };
+
+    // Switch to VietMap mode
+    const switchToVietMap = () => {
+        setUseVietMap(true);
+        setUseTrackAsia(false);
+        setUseManualInput(false);
+    };
+
     return (
         <Modal
             title={
                 <div className="flex items-center">
                     <span className="text-lg font-medium">{modalTitle}</span>
-                    {useTrackAsia && <span className="ml-2 text-sm text-gray-500">(Có thể chọn trên bản đồ)</span>}
+                    {(useTrackAsia || useVietMap) && <span className="ml-2 text-sm text-gray-500">(Có thể chọn trên bản đồ)</span>}
                 </div>
             }
             open={visible}
@@ -503,7 +680,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
             style={{ top: 20 }}
         >
             <Spin spinning={isLoading || submitting}>
-                {isProvincesError && !useTrackAsia && (
+                {isProvincesError && !useTrackAsia && !useVietMap && (
                     <Alert
                         message={`Không thể tải danh sách tỉnh/thành phố: ${provincesError?.toString()}`}
                         type="warning"
@@ -520,7 +697,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     />
                 )}
 
-                {!isProvincesError && !isValidData && !isLoading && !useTrackAsia && (
+                {!isProvincesError && !isValidData && !isLoading && !useTrackAsia && !useVietMap && (
                     <Alert
                         message="Dữ liệu tỉnh/thành phố không hợp lệ. Đang sử dụng chế độ nhập thủ công."
                         type="warning"
@@ -537,21 +714,67 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     />
                 )}
 
-                {/* <Space className="mb-4 w-full justify-end">
-                    {useTrackAsia ? (
-                        <Button size="small" onClick={switchToProvinceAPI}>
-                            Sử dụng API tỉnh/thành phố
-                        </Button>
+                <Space className="mb-4 w-full justify-end">
+                    {useVietMap ? (
+                        <>
+                            {/* <Button size="small" onClick={() => {
+                                setUseTrackAsia(true);
+                                setUseVietMap(false);
+                            }}>
+                                Sử dụng TrackAsia
+                            </Button>
+                            <Button size="small" onClick={() => {
+                                setUseVietMap(false);
+                                setUseTrackAsia(false);
+                            }}>
+                                Sử dụng API tỉnh/thành phố
+                            </Button> */}
+                        </>
+                    ) : useTrackAsia ? (
+                        <>
+                            <Button size="small" onClick={switchToVietMap}>
+                                Sử dụng VietMap
+                            </Button>
+                            <Button size="small" onClick={() => setUseTrackAsia(false)}>
+                                Sử dụng API tỉnh/thành phố
+                            </Button>
+                        </>
                     ) : (
-                        <Button size="small" onClick={switchToTrackAsia}>
-                            Sử dụng bản đồ
-                        </Button>
+                        <>
+                            <Button size="small" onClick={switchToVietMap}>
+                                Sử dụng VietMap
+                            </Button>
+                            <Button size="small" onClick={() => setUseTrackAsia(true)}>
+                                Sử dụng TrackAsia
+                            </Button>
+                        </>
                     )}
-                </Space> */}
+                </Space>
 
                 <Row gutter={24}>
                     {/* Cột bên trái: Form nhập liệu */}
-                    <Col span={useTrackAsia ? 12 : 24}>
+                    <Col span={(useTrackAsia || useVietMap) ? 12 : 24}>
+                        {useVietMap && (
+                            <div className="mb-6">
+                                <label className="block mb-2 text-sm font-medium text-gray-700">Tìm kiếm địa chỉ:</label>
+                                <div className="relative">
+                                    <VietMapSearch
+                                        onSearch={handleVietMapSearch}
+                                        onSelect={handleVietMapLocationSelect}
+                                        results={vietMapAutocompleteResults}
+                                        loading={isSearchingVietMap}
+                                        initialValue={initialValues?.street}
+                                        street={form.getFieldValue('street')}
+                                        ward={form.getFieldValue('ward')}
+                                        province={form.getFieldValue('province')}
+                                    />
+                                    <div className="mt-1 text-xs text-gray-500">
+                                        Nhập địa chỉ để tìm kiếm (ít nhất 3 ký tự)
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {useTrackAsia && (
                             <div className="mb-6">
                                 <label className="block mb-2 text-sm font-medium text-gray-700">Tìm kiếm địa chỉ:</label>
@@ -589,7 +812,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
                             </Form.Item>
 
                             {/* Phường/Xã */}
-                            {useTrackAsia ? (
+                            {(useTrackAsia || useVietMap) ? (
                                 <Form.Item
                                     name="ward"
                                     label={<span className="text-gray-700 font-medium">Phường/Xã</span>}
@@ -636,7 +859,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
                             )}
 
                             {/* Tỉnh/Thành phố */}
-                            {useTrackAsia ? (
+                            {(useTrackAsia || useVietMap) ? (
                                 <Form.Item
                                     name="province"
                                     label={<span className="text-gray-700 font-medium">Tỉnh/Thành phố</span>}
@@ -700,7 +923,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
                             )}
 
                             {/* Nút submit */}
-                            {!useTrackAsia && (
+                            {!useTrackAsia && !useVietMap && (
                                 <Form.Item>
                                     <Space className="w-full justify-end">
                                         <Button
@@ -724,15 +947,24 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     </Col>
 
                     {/* Cột bên phải: Bản đồ */}
-                    {useTrackAsia && (
+                    {(useTrackAsia || useVietMap) && (
                         <Col span={12}>
                             <div className="h-full">
-                                <label className="block mb-2 text-sm font-medium text-gray-700">Bản đồ:</label>
+                                <label className="block mb-2 text-sm font-medium text-gray-700">
+                                    Bản đồ: {useVietMap ? '(VietMap)' : '(TrackAsia)'}
+                                </label>
                                 <div className="h-[400px] border border-gray-300 rounded-lg overflow-hidden shadow-sm">
-                                    <AddressMap
-                                        mapLocation={mapLocation}
-                                        onLocationChange={handleLocationChange}
-                                    />
+                                    {useVietMap ? (
+                                        <VietMapMap
+                                            mapLocation={mapLocation}
+                                            onLocationChange={handleLocationChange}
+                                        />
+                                    ) : (
+                                        <AddressMap
+                                            mapLocation={mapLocation}
+                                            onLocationChange={handleLocationChange}
+                                        />
+                                    )}
                                 </div>
                                 <div className="mt-2 text-xs text-gray-500 flex items-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

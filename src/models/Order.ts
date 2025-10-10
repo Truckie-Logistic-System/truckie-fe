@@ -361,6 +361,7 @@ export interface CustomerOrderDetailItem {
       phoneNumber: string;
     };
     status: string;
+    trackingCode?: string;
     issue?: {
       issue: {
         id: string;
@@ -385,6 +386,34 @@ export interface CustomerOrderDetailItem {
       sealDate: string;
       status: string;
       sealId: string;
+    }[];
+    journeyHistories?: {
+      id: string;
+      journeyName: string;
+      journeyType: string;
+      status: string;
+      totalTollFee: number;
+      totalTollCount: number;
+      reasonForReroute: string | null;
+      vehicleAssignmentId: string;
+      createdAt: string;
+      modifiedAt: string;
+      journeySegments: {
+        id: string;
+        segmentOrder: number;
+        startPointName: string;
+        endPointName: string;
+        startLatitude: number;
+        startLongitude: number;
+        endLatitude: number;
+        endLongitude: number;
+        distanceMeters: number;
+        pathCoordinatesJson: string;
+        tollDetailsJson: string | null;
+        status: string;
+        createdAt: string;
+        modifiedAt: string;
+      }[];
     }[];
     journeyHistory?: {
       id: string;
@@ -526,6 +555,7 @@ export interface StaffOrderDetailItem {
       createdAt: string;
     };
     status: string;
+    trackingCode?: string;
     penalties?: {
       id: string;
       violationType: string;
@@ -567,15 +597,37 @@ export interface StaffOrderDetailItem {
     }[];
     journeyHistories?: {
       id: string;
-      startLocation: number;
-      endLocation: number;
-      startTime: string;
-      endTime: string;
+      journeyName?: string;
+      journeyType?: string;
+      startLocation?: number;
+      endLocation?: number;
+      startTime?: string;
+      endTime?: string;
       status: string;
-      totalDistance: number;
-      isReportedIncident: boolean;
+      totalDistance?: number;
+      totalTollFee?: number;
+      totalTollCount?: number;
+      reasonForReroute?: string | null;
+      vehicleAssignmentId?: string;
+      isReportedIncident?: boolean;
       createdAt: string;
       modifiedAt: string;
+      journeySegments?: {
+        id: string;
+        segmentOrder: number;
+        startPointName: string;
+        endPointName: string;
+        startLatitude: number;
+        startLongitude: number;
+        endLatitude: number;
+        endLongitude: number;
+        distanceMeters: number;
+        pathCoordinatesJson: string;
+        tollDetailsJson: string | null;
+        status: string;
+        createdAt: string;
+        modifiedAt: string;
+      }[];
     }[];
     photoCompletions?: string[];
     issues?: {

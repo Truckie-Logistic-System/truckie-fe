@@ -1,4 +1,5 @@
 import type { Driver, Vehicle } from "./Issue";
+import type { RouteToll } from "./RoutePoint";
 
 export interface SuggestedDriver {
     id: string;
@@ -17,6 +18,8 @@ export interface VehicleSuggestion {
     licensePlateNumber: string;
     model: string;
     manufacturer: string;
+    vehicleTypeId: string;
+    vehicleTypeName?: string;
     suggestedDrivers: SuggestedDriver[];
     isRecommended: boolean;
 }
@@ -98,12 +101,35 @@ export interface GroupedVehicleAssignmentSuggestionData {
     groups: OrderDetailGroup[];
 }
 
+export interface RouteSegmentInfo {
+    segmentOrder: number;
+    startPointName: string;
+    endPointName: string;
+    startLatitude: number;
+    startLongitude: number;
+    endLatitude: number;
+    endLongitude: number;
+    distanceMeters: number;
+    pathCoordinates: number[][];
+    estimatedTollFee: number;
+    tollDetails?: RouteToll[]; // Thêm chi tiết trạm thu phí
+    rawResponse?: Record<string, any>; // Thêm rawResponse
+}
+
+export interface RouteInfo {
+    segments: RouteSegmentInfo[];
+    totalTollFee: number;
+    totalTollCount: number; // Thêm tổng số trạm thu phí
+    totalDistance: number; // Tổng khoảng cách
+}
+
 export interface GroupAssignment {
     orderDetailIds: string[];
     vehicleId: string;
     driverId_1: string;
     driverId_2: string;
     description?: string;
+    routeInfo?: RouteInfo;
 }
 
 export interface CreateGroupedVehicleAssignmentsRequest {

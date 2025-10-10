@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, Select, Input, Button, Tabs, Card, Row, Col, Tag, Tooltip, App, Spin, Empty, Divider, Skeleton } from "antd";
-import { CarOutlined, UserOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, FileTextOutlined, BoxPlotOutlined } from "@ant-design/icons";
+import { Modal, Form, Select, Input, Button, Tabs, Card, Row, Col, Tag, Tooltip, App, Spin, Empty, Divider, Skeleton, Steps } from "antd";
+import { CarOutlined, UserOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, FileTextOutlined, BoxPlotOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import type { VehicleSuggestion, SuggestedDriver, CreateGroupedVehicleAssignmentsRequest, OrderDetailGroup, GroupedVehicleAssignmentSuggestionData, GroupAssignment, OrderDetailInfo } from "../../../../models/VehicleAssignment";
 import { vehicleAssignmentService } from "../../../../services/vehicle-assignment/vehicleAssignmentService";
+import { RoutePlanningStep } from "../../../Admin/VehicleAssignment/components";
+import { convertRouteSegmentsToRouteInfo } from "../../../../utils/routeUtils";
+import type { RouteSegment } from "../../../../models/RoutePoint";
+import type { RouteInfo } from "../../../../models/VehicleAssignment";
 
 const { TabPane } = Tabs;
 const { Option } = Select;
 const { TextArea } = Input;
+const { Step } = Steps;
 
 interface VehicleAssignmentModalProps {
     visible: boolean;
@@ -43,6 +48,13 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     const [detailGroups, setDetailGroups] = useState<OrderDetailGroup[]>([]);
     const [suggestionsMap, setSuggestionsMap] = useState<Record<string, VehicleSuggestion[]>>({});
 
+    // State for two-step process
+    const [currentStep, setCurrentStep] = useState<number>(0);
+    const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
+    const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+    const [formValues, setFormValues] = useState<any>({});
+    const [currentGroupIndex, setCurrentGroupIndex] = useState<string>("0");
+
     // Fetch suggestions when modal opens
     useEffect(() => {
         if (visible && orderId) {
@@ -53,6 +65,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             setSelectedVehicles({});
             setSelectedDrivers({});
             setSuggestionsMap({});
+            setCurrentStep(0);
+            setRouteSegments([]);
+            setRouteInfo(null);
         }
     }, [visible, orderId]);
 
@@ -177,16 +192,54 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         }
     };
 
-    const handleSubmit = async () => {
+    const handleNextStep = async () => {
         try {
             const values = await form.validateFields();
+            setFormValues(values);
+            setCurrentStep(1);
+        } catch (error) {
+            console.error("Validation error:", error);
+        }
+    };
+
+    const handlePreviousStep = () => {
+        setCurrentStep(0);
+    };
+
+    const handleRouteComplete = (segments: RouteSegment[], routeInfoData: RouteInfo) => {
+        setRouteSegments(segments);
+        setRouteInfo(routeInfoData);
+        handleSubmitWithRoute(segments, routeInfoData);
+    };
+
+    const handleSubmitWithRoute = async (segments: RouteSegment[], routeInfoData: RouteInfo) => {
+        try {
             setSubmitting(true);
 
             // Format the request according to the required structure
             const groupAssignments: GroupAssignment[] = [];
 
+            // Ensure the route info has all required fields
+            const completeRouteInfo: RouteInfo = {
+                segments: routeInfoData.segments.map(segment => ({
+                    ...segment,
+                    // Ensure each segment has tollDetails properly formatted
+                    tollDetails: segment.tollDetails?.map(toll => ({
+                        name: toll.name || '',
+                        address: toll.address || '',
+                        type: toll.type || '',
+                        amount: toll.amount || 0
+                    })) || [],
+                    // Ensure rawResponse is included
+                    rawResponse: segment.rawResponse || {}
+                })),
+                totalTollFee: routeInfoData.totalTollFee || 0,
+                totalTollCount: routeInfoData.totalTollCount || 0,
+                totalDistance: routeInfoData.totalDistance || 0
+            };
+
             // Convert the form values to the expected API format
-            Object.entries(values).forEach(([groupKey, groupData]: [string, any]) => {
+            Object.entries(formValues).forEach(([groupKey, groupData]: [string, any]) => {
                 const groupIndex = parseInt(groupKey);
                 const group = detailGroups[groupIndex];
 
@@ -196,7 +249,8 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                         vehicleId: groupData.vehicleId,
                         driverId_1: groupData.driverId_1,
                         driverId_2: groupData.driverId_2,
-                        description: groupData.description || ""
+                        description: groupData.description || "",
+                        routeInfo: completeRouteInfo // Add complete route info to the assignment
                     });
                 }
             });
@@ -208,6 +262,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             // Debug log to show the final request structure
             console.log("Final assignment request structure:", JSON.stringify(request, null, 2));
 
+            // Call single API to create assignments with route info
             await vehicleAssignmentService.createGroupedAssignments(request);
             messageApi.success("Phân công xe thành công");
             onSuccess();
@@ -217,6 +272,19 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             messageApi.error("Không thể phân công xe");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleSubmit = async () => {
+        try {
+            const values = await form.validateFields();
+            setFormValues(values);
+
+            // Move to route planning step
+            setCurrentStep(1);
+        } catch (error) {
+            console.error("Error assigning vehicles:", error);
+            messageApi.error("Vui lòng điền đầy đủ thông tin phân công xe");
         }
     };
 
@@ -405,6 +473,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     <span className="font-medium">{vehicle.licensePlateNumber}</span>
                     <span className="text-gray-500 mx-2">-</span>
                     <span>{vehicle.manufacturer} {vehicle.model}</span>
+                    {vehicle.vehicleTypeName && (
+                        <span className="text-gray-500 mx-2">({vehicle.vehicleTypeName})</span>
+                    )}
                     {vehicle.isRecommended && (
                         <Tag color="green" className="ml-2">
                             <CheckCircleOutlined /> Đề xuất
@@ -453,8 +524,8 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                         <span className="font-medium">{vehicle.licensePlateNumber}</span>
                     </div>
                     <div className="flex justify-between">
-                        <span className="text-gray-500">Số tài xế:</span>
-                        <span className="font-medium">{vehicle.suggestedDrivers.length}</span>
+                        <span className="text-gray-500">Loại xe:</span>
+                        <span className="font-medium">{vehicle.vehicleTypeName || "Không có thông tin"}</span>
                     </div>
                 </div>
             </div>
@@ -580,7 +651,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             <TabPane
                 tab={
                     <span className="px-1 text-xs">
-                        <FileTextOutlined className="mr-1" /> Nhóm #{groupIndex + 1}
+                        <FileTextOutlined className="mr-1" /> Chuyến #{groupIndex + 1}
                         <Tag color="blue" className="ml-1 text-xs">{detailCount} lô hàng</Tag>
                     </span>
                 }
@@ -748,6 +819,96 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         );
     };
 
+    // Get the current selected vehicle for route planning
+    const getCurrentSelectedVehicle = () => {
+        const vehicleId = formValues[currentGroupIndex]?.vehicleId;
+        if (!vehicleId) return undefined;
+
+        const groupSuggestions = getSuggestionsForGroup(currentGroupIndex);
+        if (!groupSuggestions) return undefined;
+
+        return groupSuggestions.find(v => v.id === vehicleId);
+    };
+
+    // Render the content based on current step
+    const renderStepContent = () => {
+        if (currentStep === 0) {
+            return (
+                <Form form={form} layout="vertical" size="small">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg mb-4 border-l-4 border-blue-500">
+                        <div className="flex items-start">
+                            <InfoCircleOutlined className="text-blue-500 text-base mt-1 mr-2" />
+                            <div className="text-xs text-blue-700">
+                                <p className="font-medium mb-1">Lưu ý khi phân công:</p>
+                                <ul className="list-disc list-inside space-y-0.5">
+                                    <li>Các xe và tài xế được đề xuất dựa trên tính khả dụng và phù hợp với đơn hàng</li>
+                                    <li>Mỗi chuyến xe cần được phân công 1 xe và 2 tài xế</li>
+                                    <li>Tài xế 1 và Tài xế 2 không được trùng nhau</li>
+                                    <li>Các đề xuất có gắn thẻ <Tag color="green" className="text-xs ml-1 py-0"><CheckCircleOutlined /> Đề xuất</Tag> là lựa chọn tối ưu từ hệ thống</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Tabs
+                        activeKey={activeTab}
+                        onChange={(key) => {
+                            setActiveTab(key);
+                            setCurrentGroupIndex(key);
+                        }}
+                        type="card"
+                        className="custom-assignment-tabs"
+                        size="small"
+                    >
+                        {detailGroups.map((group, index) => (
+                            renderDetailForm(group, index)
+                        ))}
+                    </Tabs>
+                </Form>
+            );
+        } else {
+            // Get the current group's order details
+            const currentGroup = detailGroups[parseInt(currentGroupIndex)];
+            const currentVehicle = getCurrentSelectedVehicle();
+
+            if (!currentGroup || !currentVehicle) {
+                return <Empty description="Không tìm thấy thông tin nhóm hoặc xe đã chọn" />;
+            }
+
+            // Get the first order detail to use as the order ID for route planning
+            const firstOrderDetail = currentGroup.orderDetails[0];
+            if (!firstOrderDetail) {
+                return <Empty description="Không tìm thấy thông tin đơn hàng" />;
+            }
+
+            // Sử dụng orderId từ props của component VehicleAssignmentModal
+            // Đây là ID của đơn hàng, không phải ID của chi tiết đơn hàng
+            console.log("Using order ID for route planning:", orderId);
+
+            // Create a vehicle object with all required fields
+            const vehicleForRoute = {
+                id: currentVehicle.id,
+                licensePlateNumber: currentVehicle.licensePlateNumber,
+                model: currentVehicle.model,
+                manufacturer: currentVehicle.manufacturer,
+                vehicleTypeId: currentVehicle.vehicleTypeId || '',
+                year: 2023, // Default values for required fields
+                capacity: 1000,
+                status: 'ACTIVE'
+            };
+
+            return (
+                <RoutePlanningStep
+                    orderId={orderId} // Sử dụng OrderID từ props
+                    vehicleId={currentVehicle.id}
+                    vehicle={vehicleForRoute}
+                    onComplete={handleRouteComplete}
+                    onBack={handlePreviousStep}
+                />
+            );
+        }
+    };
+
     console.log("Modal render - suggestions:", suggestions);
     console.log("Modal render - orderDetails:", orderDetails);
     console.log("Modal render - selectedVehicles:", selectedVehicles);
@@ -771,20 +932,20 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             style={{ top: 10 }}
             bodyStyle={{ padding: '12px', maxHeight: 'calc(100vh - 150px)', overflowY: 'auto' }}
             footer={[
-                <Button key="back" onClick={onClose} disabled={submitting}>
+                currentStep === 0 && <Button key="back" onClick={onClose} disabled={submitting}>
                     Hủy
                 </Button>,
                 <Button
                     key="submit"
                     type="primary"
                     loading={submitting}
-                    onClick={handleSubmit}
-                    disabled={!hasSuggestions || loading}
+                    onClick={currentStep === 0 ? handleSubmit : undefined}
+                    disabled={!hasSuggestions || loading || currentStep !== 0}
                     className="bg-blue-500 hover:bg-blue-600"
                 >
-                    Phân công
+                    {currentStep === 0 ? "Tiếp theo" : ""}
                 </Button>,
-            ]}
+            ].filter(Boolean)}
         >
             {loading ? (
                 <div className="py-2">
@@ -849,34 +1010,13 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     description="Không có gợi ý phân công xe nào cho đơn hàng này"
                 />
             ) : (
-                <Form form={form} layout="vertical" size="small">
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg mb-4 border-l-4 border-blue-500">
-                        <div className="flex items-start">
-                            <InfoCircleOutlined className="text-blue-500 text-base mt-1 mr-2" />
-                            <div className="text-xs text-blue-700">
-                                <p className="font-medium mb-1">Lưu ý khi phân công:</p>
-                                <ul className="list-disc list-inside space-y-0.5">
-                                    <li>Các xe và tài xế được đề xuất dựa trên tính khả dụng và phù hợp với đơn hàng</li>
-                                    <li>Mỗi chuyến xe cần được phân công 1 xe và 2 tài xế</li>
-                                    <li>Tài xế 1 và Tài xế 2 không được trùng nhau</li>
-                                    <li>Các đề xuất có gắn thẻ <Tag color="green" className="text-xs ml-1 py-0"><CheckCircleOutlined /> Đề xuất</Tag> là lựa chọn tối ưu từ hệ thống</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <Tabs
-                        activeKey={activeTab}
-                        onChange={setActiveTab}
-                        type="card"
-                        className="custom-assignment-tabs"
-                        size="small"
-                    >
-                        {detailGroups.map((group, index) => (
-                            renderDetailForm(group, index)
-                        ))}
-                    </Tabs>
-                </Form>
+                <div>
+                    <Steps current={currentStep} className="mb-4">
+                        <Step title="Thông tin phân công" icon={<CarOutlined />} />
+                        <Step title="Định tuyến" icon={<EnvironmentOutlined />} />
+                    </Steps>
+                    {renderStepContent()}
+                </div>
             )}
         </Modal>
     );

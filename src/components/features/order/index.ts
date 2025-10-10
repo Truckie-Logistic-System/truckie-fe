@@ -1,6 +1,7 @@
 export { default as OrderStatusCard } from "./OrderStatusCard";
 export { default as OrderInfoCard } from "./OrderInfoCard";
 export { default as AddressCard } from "./AddressCard";
+export { default as TollInfoCard } from "./TollInfoCard";
 export { default as SenderInfoCard } from "./SenderInfoCard";
 export { default as OrderDetailsTable } from "./OrderDetailsTable";
 export { default as OrderSizeCard } from "./OrderSizeCard";

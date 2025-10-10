@@ -9,11 +9,13 @@ import {
     CameraOutlined,
     UserOutlined,
     PhoneOutlined,
-    TagOutlined
+    TagOutlined,
+    EnvironmentOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import RouteMapSection from "./RouteMapSection";
 
 // Configure dayjs to use timezone
 dayjs.extend(utc);
@@ -265,19 +267,19 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                 <TabPane
                                     tab={
                                         <span>
-                                            <HistoryOutlined /> Lịch sử hành trình
+                                            <EnvironmentOutlined /> Lộ trình vận chuyển
                                         </span>
                                     }
                                     key="journey"
                                 >
-                                    {vaGroup.vehicleAssignment.journeyHistory && vaGroup.vehicleAssignment.journeyHistory.length > 0 ? (
+                                    {vaGroup.vehicleAssignment.journeyHistories && vaGroup.vehicleAssignment.journeyHistories.length > 0 ? (
                                         <div className="p-2">
-                                            {vaGroup.vehicleAssignment.journeyHistory.map((journey: any, journeyIdx: number) => (
+                                            {vaGroup.vehicleAssignment.journeyHistories.map((journey: any, journeyIdx: number) => (
                                                 <div
-                                                    key={journey.id}
+                                                    key={journey.id || `journey-${journeyIdx}`}
                                                     className={journeyIdx > 0 ? "mt-4 pt-4 border-t border-gray-200" : ""}
                                                 >
-                                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                                    {/* <div className="bg-blue-50 p-3 rounded-lg mb-4">
                                                         <div className="flex items-center mb-2">
                                                             <span className="font-medium mr-1">Trạng thái:</span>
                                                             <Tag
@@ -294,22 +296,25 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                                         </div>
                                                         <div className="flex items-center mb-2">
                                                             <span className="font-medium mr-1">Thời gian bắt đầu:</span>
-                                                            <span>{formatDate(journey.startTime)}</span>
+                                                            <span>{formatDate(journey.createdAt)}</span>
                                                         </div>
                                                         <div className="flex items-center mb-2">
-                                                            <span className="font-medium mr-1">Thời gian kết thúc:</span>
-                                                            <span>{formatDate(journey.endTime)}</span>
+                                                            <span className="font-medium mr-1">Thời gian cập nhật:</span>
+                                                            <span>{formatDate(journey.modifiedAt)}</span>
                                                         </div>
                                                         <div className="flex items-center">
-                                                            <span className="font-medium mr-1">Tổng quãng đường:</span>
-                                                            <span>{journey.totalDistance} km</span>
+                                                            <span className="font-medium mr-1">Tổng phí đường:</span>
+                                                            <span>{(journey.totalTollFee || 0).toLocaleString('vi-VN')} VNĐ</span>
                                                         </div>
-                                                        {journey.isReportedIncident && (
-                                                            <div className="mt-2">
-                                                                <Tag color="red">Có báo cáo sự cố</Tag>
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    </div> */}
+
+                                                    {/* Display route map if journey has segments */}
+                                                    {journey.journeySegments && journey.journeySegments.length > 0 && (
+                                                        <RouteMapSection
+                                                            journeySegments={journey.journeySegments}
+                                                            journeyInfo={journey}
+                                                        />
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

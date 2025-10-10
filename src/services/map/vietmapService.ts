@@ -1,71 +1,15 @@
 import { VIET_MAPS_API_KEY } from '../../config/env';
-import axios from 'axios';
-import type { VietMapSearchResponse, VietMapRouteResponse } from './types';
-import type { MapLocation } from '@/models/Map';
+import httpClient from '../api/httpClient';
+import type { MapLocation, MapStyle } from '@/models/Map';
 import type { RouteResponse } from '@/models/Route';
-
-export interface AutocompleteResult {
-    ref_id: string;
-    distance: number;
-    address: string;
-    name: string;
-    display: string;
-    boundaries: {
-        type: number;
-        id: number;
-        name: string;
-        prefix: string;
-        full_name: string;
-    }[];
-    categories: any[];
-    entry_points: any[];
-}
-
-export interface PlaceDetail {
-    display: string;
-    name: string;
-    hs_num: string;
-    street: string;
-    address: string;
-    city_id: number;
-    city: string;
-    district_id: number;
-    district: string;
-    ward_id: number;
-    ward: string;
-    lat: number;
-    lng: number;
-}
-
-export interface RouteInstruction {
-    distance: number;
-    heading: number;
-    sign: number;
-    interval: number[];
-    text: string;
-    time: number;
-    street_name: string;
-    last_heading: number | null;
-}
-
-export interface RoutePath {
-    distance: number;
-    weight: number;
-    time: number;
-    transfers: number;
-    points_encoded: boolean;
-    bbox: number[];
-    points: string;
-    instructions: RouteInstruction[];
-    snapped_waypoints: string;
-}
-
-export interface VietMapRouteApiResponse {
-    license: string;
-    code: string;
-    messages: string | null;
-    paths: RoutePath[];
-}
+import type {
+    VietMapAutocompleteResult,
+    VietMapPlaceDetail,
+    VietMapRouteResponse,
+    VietMapTollItem,
+    VietMapRouteTollsRequest,
+    VietMapStyle
+} from '@/models/VietMap';
 
 // Lưu trữ controller cho request hiện tại để có thể hủy nếu cần
 let currentSearchController: AbortController | null = null;
@@ -80,7 +24,7 @@ const vietmapService = {
     searchPlaces: async (
         text: string,
         focus?: string
-    ): Promise<AutocompleteResult[]> => {
+    ): Promise<VietMapAutocompleteResult[]> => {
         try {
             // Hủy request cũ nếu đang có request đang chạy
             if (currentSearchController) {
@@ -90,13 +34,8 @@ const vietmapService = {
             // Tạo controller mới cho request này
             currentSearchController = new AbortController();
 
-            // Đảm bảo text được mã hóa đúng cách
-            const encodedText = encodeURIComponent(text.trim());
-            const focusParam = focus ? `&focus=${focus}` : '';
-
-            const url = `https://maps.vietmap.vn/api/autocomplete/v3?apikey=${VIET_MAPS_API_KEY}&text=${encodedText}${focusParam}&display_type=1`;
-
-            const response = await axios.get<AutocompleteResult[]>(url, {
+            const response = await httpClient.get<VietMapAutocompleteResult[]>('/vietmap/autocomplete', {
+                params: { text, focus },
                 signal: currentSearchController.signal
             });
 
@@ -118,10 +57,11 @@ const vietmapService = {
      * @param refId ID tham chiếu của địa điểm
      * @returns Chi tiết địa điểm
      */
-    getPlaceDetail: async (refId: string): Promise<PlaceDetail | null> => {
+    getPlaceDetail: async (refId: string): Promise<VietMapPlaceDetail | null> => {
         try {
-            const url = `https://maps.vietmap.vn/api/place/v3?apikey=${VIET_MAPS_API_KEY}&refid=${refId}`;
-            const response = await axios.get<PlaceDetail>(url);
+            const response = await httpClient.get<VietMapPlaceDetail>('/vietmap/place', {
+                params: { refid: refId }
+            });
             return response.data;
         } catch (error) {
             console.error('Error getting place detail:', error);
@@ -133,50 +73,25 @@ const vietmapService = {
      * Tìm đường đi giữa hai điểm
      * @param origin Điểm xuất phát [lng, lat]
      * @param destination Điểm đích [lng, lat]
+     * @param vehicle Loại phương tiện (car, bike, foot, motorcycle)
      * @returns Thông tin về tuyến đường
      */
     getRoute: async (
         origin: [number, number],
-        destination: [number, number]
-    ): Promise<RouteResponse | null> => {
+        destination: [number, number],
+        vehicle: 'car' | 'bike' | 'foot' | 'motorcycle' = 'car'
+    ): Promise<VietMapRouteResponse | null> => {
         try {
-            const url = `https://maps.vietmap.vn/api/route?api-version=1.1&apikey=${VIET_MAPS_API_KEY}&point=${origin[1]},${origin[0]}&point=${destination[1]},${destination[0]}&vehicle=car&weighting=fastest&locale=vi&elevation=false&points_encoded=true`;
+            const point = [
+                `${origin[1]},${origin[0]}`,
+                `${destination[1]},${destination[0]}`
+            ];
 
-            const response = await axios.get<VietMapRouteApiResponse>(url);
+            const response = await httpClient.get<VietMapRouteResponse>('/vietmap/route', {
+                params: { point, vehicle }
+            });
 
-            if (response.data.paths && response.data.paths.length > 0) {
-                const path = response.data.paths[0];
-
-                // Chuyển đổi sang định dạng RouteResponse
-                return {
-                    distance: path.distance,
-                    duration: path.time / 1000, // Convert từ milliseconds sang seconds
-                    geometry: {
-                        coordinates: [], // Cần giải mã polyline nếu cần
-                        type: "LineString"
-                    },
-                    legs: [{
-                        steps: path.instructions.map(instruction => ({
-                            distance: instruction.distance,
-                            duration: instruction.time / 1000,
-                            geometry: {
-                                coordinates: [],
-                                type: "LineString"
-                            },
-                            name: instruction.street_name,
-                            mode: "driving",
-                            maneuver: {
-                                type: "turn",
-                                modifier: instruction.sign.toString(),
-                                location: [0, 0], // Không có thông tin vị trí chi tiết
-                                instruction: instruction.text
-                            }
-                        }))
-                    }]
-                };
-            }
-
-            return null;
+            return response.data;
         } catch (error) {
             console.error('Error getting route:', error);
             return null;
@@ -189,25 +104,115 @@ const vietmapService = {
      * @param lng Kinh độ
      * @returns Thông tin địa điểm
      */
-    reverseGeocode: async (lat: number, lng: number): Promise<MapLocation | null> => {
+    reverseGeocode: async (lat: number, lng: number): Promise<VietMapAutocompleteResult[] | null> => {
         try {
-            const url = `https://maps.vietmap.vn/api/reverse/v3?apikey=${VIET_MAPS_API_KEY}&lat=${lat}&lng=${lng}`;
-            const response = await axios.get<any>(url);
+            const response = await httpClient.get<VietMapAutocompleteResult[]>('/vietmap/reverse', {
+                params: { lat, lng }
+            });
 
-            if (response.data) {
-                return {
-                    lat,
-                    lng,
-                    address: response.data.display || response.data.address,
-                    name: response.data.name
-                };
-            }
-
-            return null;
+            return response.data;
         } catch (error) {
             console.error('Error reverse geocoding:', error);
             return null;
         }
+    },
+
+    /**
+     * Tính phí đường bộ cho một tuyến đường
+     * @param path Mảng các điểm [lng, lat] tạo thành tuyến đường
+     * @returns Thông tin về phí đường bộ
+     */
+    getRouteTolls: async (path: [number, number][]): Promise<VietMapTollItem[] | null> => {
+        try {
+            const payload: VietMapRouteTollsRequest = { path };
+            const response = await httpClient.post<{ tolls: VietMapTollItem[] }>('/vietmap/route-tolls', payload);
+
+            return response.data.tolls || [];
+        } catch (error) {
+            console.error('Error getting route tolls:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Lấy style cho bản đồ
+     * @returns Style cho bản đồ
+     */
+    getMapStyles: async (): Promise<VietMapStyle | null> => {
+        try {
+            const response = await httpClient.get<VietMapStyle>('/vietmap/styles');
+            return response.data;
+        } catch (error) {
+            console.error('Error getting map styles:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Chuyển đổi kết quả tuyến đường từ VietMap sang định dạng RouteResponse
+     * @param vietMapRoute Kết quả tuyến đường từ VietMap
+     * @returns Tuyến đường ở định dạng RouteResponse
+     */
+    convertToRouteResponse: (vietMapRoute: VietMapRouteResponse): RouteResponse | null => {
+        if (vietMapRoute.paths && vietMapRoute.paths.length > 0) {
+            const path = vietMapRoute.paths[0];
+
+            return {
+                distance: path.distance,
+                duration: path.time / 1000, // Convert từ milliseconds sang seconds
+                geometry: {
+                    coordinates: [], // Cần giải mã polyline nếu cần
+                    type: "LineString"
+                },
+                legs: [{
+                    steps: path.instructions.map(instruction => ({
+                        distance: instruction.distance,
+                        duration: instruction.time / 1000,
+                        geometry: {
+                            coordinates: [],
+                            type: "LineString"
+                        },
+                        name: instruction.street_name,
+                        mode: "driving",
+                        maneuver: {
+                            type: "turn",
+                            modifier: instruction.sign.toString(),
+                            location: [0, 0], // Không có thông tin vị trí chi tiết
+                            instruction: instruction.text
+                        }
+                    }))
+                }]
+            };
+        }
+
+        return null;
+    },
+
+    /**
+     * Chuyển đổi kết quả reverse geocoding từ VietMap sang định dạng MapLocation
+     * @param reverseResult Kết quả reverse geocoding từ VietMap
+     * @returns Vị trí ở định dạng MapLocation
+     */
+    convertToMapLocation: (reverseResult: VietMapAutocompleteResult | VietMapPlaceDetail): MapLocation => {
+        // Kiểm tra nếu là PlaceDetail (có lat và lng trực tiếp)
+        if ('lat' in reverseResult && 'lng' in reverseResult &&
+            typeof reverseResult.lat === 'number' &&
+            typeof reverseResult.lng === 'number') {
+            return {
+                lat: reverseResult.lat,
+                lng: reverseResult.lng,
+                address: reverseResult.display || reverseResult.address,
+                name: reverseResult.name
+            };
+        }
+
+        // Nếu không, xử lý như AutocompleteResult với lat/lng có thể undefined
+        return {
+            lat: reverseResult.lat || 0,
+            lng: reverseResult.lng || 0,
+            address: reverseResult.display || reverseResult.address,
+            name: reverseResult.name
+        };
     }
 };
 

@@ -51,7 +51,7 @@ const contractService = {
     contractData: CreateContractRequest
   ): Promise<CreateContractResponse> => {
     try {
-      const staffId = localStorage.getItem("userId") || "unknown";
+      const staffId = sessionStorage.getItem("userId") || "unknown";
       const data = {
         ...contractData,
         attachFileUrl: "string",
