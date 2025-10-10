@@ -6,13 +6,12 @@ import React, {
   useCallback,
 } from "react";
 import type { ReactNode } from "react";
-import { Client, Stomp } from "@stomp/stompjs";
+import { Client } from "@stomp/stompjs";
 import type { IMessage } from "@stomp/stompjs";
 
 import type {
   ChatMessageDTO,
   MessageRequest,
-  FirestoreTimestamp,
 } from "@/models/Chat";
 import type { CreateRoomResponse } from "@/models/Room";
 import {
@@ -98,7 +97,6 @@ interface ChatProviderProps {
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({
   children,
-  isStaff = false,
 }) => {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeConversation, setActiveConversation] =
@@ -371,9 +369,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   const initChat = useCallback(
     async (userId: string) => {
       try {
-        const rooms = await roomService.getAllRoomsByUserId(userId);
+        const room = await roomService.getCustomerHasRoomSupported(userId);
 
-        if (!rooms || rooms.length === 0) {
+        if (!room) {
           setConversations([]);
           setActiveConversation(null);
           setUiMessages([]);
@@ -381,7 +379,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         }
 
         // Get messages for the first room
-        const room = rooms[0];
         const chatPage = await chatService.getMessages(room.roomId, 20);
         const conversation = buildConversation(room, chatPage.messages);
 

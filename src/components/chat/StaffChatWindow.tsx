@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Input, Button, Empty, Spin, Badge } from 'antd';
-import { SendOutlined, PaperClipOutlined, CloseOutlined } from '@ant-design/icons';
-import { useChatContext } from '@/context/ChatContext';
-import StaffChatMessage from './StaffChatMessage';
-import StaffChatConversationItem from './StaffChatConversationItem';
-import { useAuth } from '@/context/AuthContext';
-import MessageInput from './MessageInput';
-import type { SupportRoom } from '@/context/ChatContext';
+import React, { useRef, useEffect } from "react";
+import { Button, Empty, Spin, Badge } from "antd";
+import { CloseOutlined } from "@ant-design/icons";
+import { useChatContext } from "@/context/ChatContext";
+import StaffChatMessage from "./StaffChatMessage";
+import StaffChatConversationItem from "./StaffChatConversationItem";
+import { useAuth } from "@/context/AuthContext";
+import MessageInput from "./MessageInput";
+import type { SupportRoom } from "@/context/ChatContext";
 
 const StaffChatWindow: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -14,7 +14,6 @@ const StaffChatWindow: React.FC = () => {
 
   const {
     activeConversation,
-    sendMessage,
     isMinimized,
     toggleChat,
     supportRooms,
@@ -30,10 +29,9 @@ const StaffChatWindow: React.FC = () => {
     try {
       await loadMessagesForRoom(roomId);
     } catch (err) {
-      console.error('Failed to load messages for room', err);
+      console.error("Failed to load messages for room", err);
     }
   };
-
 
   // Fetch support rooms on open
   useEffect(() => {
@@ -50,21 +48,17 @@ const StaffChatWindow: React.FC = () => {
   // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current && !isMinimized) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [uiMessages, isMinimized]);
-
-  
-
- 
 
   const mapRoomToConversation = (room: SupportRoom) => ({
     id: room.roomId,
     customerName: room.customerName || `Khách hàng #${room.roomId.slice(0, 5)}`,
-    lastMessage: room.lastMessage || 'Yêu cầu hỗ trợ mới',
-    lastMessageTime: room.lastMessageTime || '',
+    lastMessage: room.lastMessage || "Yêu cầu hỗ trợ mới",
+    lastMessageTime: room.lastMessageTime || "",
     unreadCount: room.unreadCount || 0,
-    status: room.status.toLowerCase() as 'active' | 'pending' | 'closed',
+    status: room.status.toLowerCase() as "active" | "pending" | "closed",
     type: room.type,
   });
 
@@ -79,8 +73,6 @@ const StaffChatWindow: React.FC = () => {
       loadMessagesForRoom(room.roomId);
     }
   };
-
-
 
   if (isMinimized) return null;
 
@@ -103,7 +95,9 @@ const StaffChatWindow: React.FC = () => {
         {/* Left: Conversation List */}
         <div className="w-1/3 border-r overflow-y-auto flex flex-col">
           <div className="p-4 bg-gray-50 border-b">
-            <h4 className="text-lg font-medium text-gray-700">Các phòng chờ hỗ trợ</h4>
+            <h4 className="text-lg font-medium text-gray-700">
+              Các phòng chờ hỗ trợ
+            </h4>
           </div>
           {loadingRooms ? (
             <div className="flex-1 flex items-center justify-center">
@@ -134,38 +128,53 @@ const StaffChatWindow: React.FC = () => {
               {/* Chat Header */}
               <div className="p-4 bg-gray-50 border-b flex items-center">
                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium mr-3">
-                  {activeConversation.participants[0]?.userId.charAt(0).toUpperCase()}
+                  {activeConversation.participants[0]?.userId
+                    .charAt(0)
+                    .toUpperCase()}
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-lg font-medium text-gray-700">{`Khách hàng #${activeConversation.roomId.slice(0, 5)}`}</h4>
+                  <h4 className="text-lg font-medium text-gray-700">{`Khách hàng #${activeConversation.roomId.slice(
+                    0,
+                    5
+                  )}`}</h4>
                   <div className="text-sm text-gray-500">
-                    {activeConversation.status === 'active' ? 'Đang hoạt động' : 'Đã đóng'}
+                    {activeConversation.status === "active"
+                      ? "Đang hoạt động"
+                      : "Đã đóng"}
                   </div>
                 </div>
-                <Badge status={activeConversation.status === 'active' ? 'success' : 'default'} />
+                <Badge
+                  status={
+                    activeConversation.status === "active"
+                      ? "success"
+                      : "default"
+                  }
+                />
               </div>
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-5">
-                {uiMessages.map((msg) => (
-                  <StaffChatMessage
-                    key={msg.id}
-                    message={msg}
-                    isOwnMessage={msg.senderId === user?.id}
-                  />
-                ))}
+                {uiMessages
+                  .slice()
+                  .reverse()
+                  .map((msg) => (
+                    <StaffChatMessage
+                      key={msg.id}
+                      message={msg}
+                      isOwnMessage={msg.senderId === user?.id}
+                    />
+                  ))}
                 <div ref={messagesEndRef} />
               </div>
 
               {/* Input (use shared MessageInput) */}
-              {activeConversation.status === 'active' ? (
+              {activeConversation.status === "active" ? (
                 <MessageInput />
               ) : (
                 <div className="text-center text-gray-500 mt-2 text-sm p-3 border-t">
                   Cuộc hội thoại đã kết thúc.
                 </div>
               )}
-
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center p-5 text-gray-500">

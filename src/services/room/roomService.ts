@@ -7,7 +7,8 @@ import type {
   InactiveRoomResponse,
   JoinRoomResponse,
   GetSupportRoomsForStaffResponse,
-  IsCustomerHasRoomSupportedResponse, // Thêm 'type' ở đây
+  IsCustomerHasRoomSupportedResponse,
+  GetCustomerHasRoomSupported, // Thêm 'type' ở đây
 } from "./types";
 import { handleApiError } from "../api/errorHandler";
 
@@ -122,6 +123,18 @@ const roomService = {
     try {
       const response = await httpClient.get<IsCustomerHasRoomSupportedResponse>(
         `/rooms/customer/${userId}/has-supported-room`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error checking if customer ${userId} has supported room:`, error);
+      throw handleApiError(error, "Không thể kiểm tra trạng thái phòng hỗ trợ");
+    }
+  },
+
+  getCustomerHasRoomSupported: async (userId: string): Promise<CreateRoomResponse> => {
+    try {
+      const response = await httpClient.get<GetCustomerHasRoomSupported>(
+        `/rooms/customer/${userId}/get-supported-room`
       );
       return response.data.data;
     } catch (error) {
