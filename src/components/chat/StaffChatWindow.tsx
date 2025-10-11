@@ -52,6 +52,7 @@ const StaffChatWindow: React.FC = () => {
     }
   }, [uiMessages, isMinimized]);
 
+
   const mapRoomToConversation = (room: SupportRoom) => ({
     id: room.roomId,
     customerName: room.customerName || `Khách hàng #${room.roomId.slice(0, 5)}`,
@@ -63,18 +64,30 @@ const StaffChatWindow: React.FC = () => {
   });
 
   const handleRoomClick = (room: SupportRoom) => {
-    console.log("🟡 handleRoomClick:", room);
-
+    if (activeConversation?.roomId === room.roomId) {
+      console.log("⚠️ Already viewing this room");
+      return;
+    }
     if (room.type === "SUPPORT") {
-      // Staff nhận phòng hỗ trợ
       joinRoom(room.roomId);
     } else {
-      // Đã được hỗ trợ rồi → chỉ load message
       loadMessagesForRoom(room.roomId);
     }
   };
 
+
   if (isMinimized) return null;
+    // Cleanup WebSocket khi StaffChatWindow bị unmount
+  useEffect(() => {
+    return () => {
+      console.log("🧹 StaffChatWindow unmounted → disconnect WebSocket");
+      // Gọi cleanup từ context nếu có
+      if (typeof (window as any).disconnectWebSocket === "function") {
+        (window as any).disconnectWebSocket();
+      }
+    };
+  }, []);
+
 
   return (
     <div className="fixed bottom-20 right-4 z-50 w-[700px] h-[800px] bg-white shadow-lg rounded-lg flex flex-col border border-gray-200">

@@ -108,27 +108,25 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   >("disconnected");
   const [uiMessages, setUiMessages] = useState<ChatMessage[]>([]);
   const stompClientRef = useRef<Client | null>(null);
+  const subscriptionRef = useRef<any>(null); // Track subscription
+  const currentRoomIdRef = useRef<string | null>(null); // Track current room
   const [supportRooms, setSupportRooms] = useState<SupportRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [activeRoom, setActiveRoom] = useState<SupportRoom | null>(null);
   const { user } = useAuth();
+
   // UI Messages Management
   const setUIChatMessages = useCallback((messages: ChatMessage[]) => {
     const sortedMessages = messages.sort((a, b) => {
       const aTime = parseInt(a.timestamp);
       const bTime = parseInt(b.timestamp);
-      return aTime - bTime; // Sort ascending (oldest first)
+      return aTime - bTime;
     });
     setUiMessages(sortedMessages);
   }, []);
 
-  
-
-  
-
   // Load messages for a specific room
   const loadMessagesForRoom = async (roomId: string) => {
-    
     if (!user) return;
 
     try {
@@ -151,7 +149,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
           unreadCount: room.unreadCount || 0,
         };
 
-        // Chỉ cập nhật nếu giá trị thực sự thay đổi
         if (
           !activeConversation ||
           activeConversation.roomId !== roomInfo.roomId ||
@@ -194,7 +191,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     }
   }, [user]);
 
-  // Trong ChatContext.tsx - hàm joinRoom
   const joinRoom = async (roomId: string) => {
     if (!user) return;
 
@@ -227,7 +223,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         setUIChatMessages(uiMessages);
         console.log("🟢 setUIChatMessages done");
 
-        // ⚠️ Thêm phần này — tạo activeConversation
         const roomInfo = {
           id: roomId,
           roomId: roomId,
@@ -247,7 +242,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     }
   };
 
-  // Helper: convert FirestoreTimestamp to milliseconds
   const timestampToMillis = (timestamp: any): number => {
     if (!timestamp) return 0;
     if (typeof timestamp === "number") return timestamp;
@@ -263,7 +257,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     return 0;
   };
 
-  // Helper: build ChatConversation from CreateRoomResponse + messages
   const buildConversation = useCallback(
     (
       room: CreateRoomResponse,
@@ -272,7 +265,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       const sortedMessages = messages.sort((a, b) => {
         const aTime = timestampToMillis(a.createAt);
         const bTime = timestampToMillis(b.createAt);
-        return aTime - bTime; // Sort ascending (oldest first)
+        return aTime - bTime;
       });
 
       const lastMessage =
@@ -299,11 +292,27 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
   const addUIChatMessage = useCallback((message: ChatMessage) => {
     setUiMessages((prev) => {
-      // Check if message already exists (avoid duplicates)
+      // Check duplicate by ID
       const exists = prev.some((msg) => msg.id === message.id);
       if (exists) return prev;
 
-      // Add and sort
+      // ✅ FIX: Replace temp message with real message from server
+      // If this is a real message (not temp-*), check if there's a temp message with similar content and timestamp
+      if (!message.id.startsWith('temp-')) {
+        const tempIndex = prev.findIndex(msg => 
+          msg.id.startsWith('temp-') && 
+          msg.content === message.content &&
+          Math.abs(parseInt(msg.timestamp) - parseInt(message.timestamp)) < 5000 // Within 5 seconds
+        );
+        
+        if (tempIndex !== -1) {
+          // Replace temp message with real message
+          const updated = [...prev];
+          updated[tempIndex] = message;
+          return updated.sort((a, b) => parseInt(a.timestamp) - parseInt(b.timestamp));
+        }
+      }
+
       const updated = [...prev, message];
       return updated.sort((a, b) => {
         const aTime = parseInt(a.timestamp);
@@ -313,12 +322,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     });
   }, []);
 
-  // Handle new message from WebSocket
   const handleNewMessage = useCallback(
     (msg: ChatMessageDTO, roomId: string) => {
+      console.log("💬 New incoming message:", msg.id, msg.content, "in room:", roomId);
       const currentUserId = sessionStorage.getItem("userId") || "";
 
-      // Update internal conversation state
       setConversations((prev) =>
         prev.map((conv) =>
           conv.roomId === roomId
@@ -340,10 +348,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         )
       );
 
-      // Update active conversation if it's the same room
       if (activeConversation?.roomId === roomId) {
-        setActiveConversation((prev) =>
-          prev
+        setActiveConversation((prev) => {
+          console.log("🧩 Prev active messages:", prev?.messages.map(m => m.id));
+
+          const updated = prev
             ? {
               ...prev,
               messages: [...prev.messages, msg].sort((a, b) => {
@@ -354,18 +363,21 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
               lastMessage: msg.content,
               lastMessageTime: timestampToMillis(msg.createAt).toString(),
             }
-            : null
-        );
+            : null;
+
+          console.log("✅ Added new message:", msg.id, msg.content);
+          console.log("🆕 New active messages:", updated?.messages.map(m => m.id));
+
+          return updated;
+        });
       }
 
-      // Convert to UI format and add to UI messages
       const uiMessage = mapChatMessageDTOToUI(msg, currentUserId);
       addUIChatMessage(uiMessage);
     },
     [activeConversation, isOpen, timestampToMillis, addUIChatMessage]
   );
 
-  // Initialize chat for user
   const initChat = useCallback(
     async (userId: string) => {
       try {
@@ -378,21 +390,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
           return;
         }
 
-        // Get messages for the first room
         const chatPage = await chatService.getMessages(room.roomId, 20);
         const conversation = buildConversation(room, chatPage.messages);
 
         setConversations([conversation]);
         setActiveConversation(conversation);
 
-        // Convert to UI format and set UI messages
         const uiMessages = mapChatMessageDTOArrayToUI(
           chatPage.messages,
           userId
         );
         setUIChatMessages(uiMessages);
 
-        // Connect WebSocket
         connectWebSocket(userId, room.roomId);
       } catch (error) {
         console.error("Failed to initialize chat:", error);
@@ -404,7 +413,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [buildConversation, setUIChatMessages]
   );
 
-  // Open specific chat room
   const openChat = useCallback(
     async (userId: string, roomId: string) => {
       try {
@@ -424,7 +432,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         setConversations([conversation]);
         setActiveConversation(conversation);
 
-        // Convert to UI format and set UI messages
         const uiMessages = mapChatMessageDTOArrayToUI(
           chatPage.messages,
           userId
@@ -441,7 +448,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [buildConversation, setUIChatMessages]
   );
 
-  // Load more messages for pagination
   const loadMoreMessages = useCallback(
     async (roomId: string) => {
       if (!activeConversation || activeConversation.roomId !== roomId) return;
@@ -471,7 +477,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
           ];
           setChatMessages(updatedMessages);
 
-          // Update UI messages
           const currentUserId = sessionStorage.getItem("userId") || "";
           const newUIMessages = mapChatMessageDTOArrayToUI(
             sortedNewMessages,
@@ -479,7 +484,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
           );
           setUiMessages((prev) => {
             const combined = [...newUIMessages, ...prev];
-            // Remove duplicates and sort
             const unique = combined.filter(
               (msg, index, arr) =>
                 arr.findIndex((m) => m.id === msg.id) === index
@@ -496,21 +500,74 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [activeConversation, timestampToMillis]
   );
 
-  // WebSocket connection logic
+  // ✅ FIX: Improved WebSocket connection logic
   const connectWebSocket = useCallback(
     (userId: string, roomId: string) => {
-      // Ngắt kết nối cũ nếu có
-      if (stompClientRef.current) {
-        stompClientRef.current.deactivate();
+      console.log("🔌 connectWebSocket called:", { userId, roomId, currentRoom: currentRoomIdRef.current });
+
+      // If switching rooms, unsubscribe from old room
+      if (currentRoomIdRef.current && currentRoomIdRef.current !== roomId) {
+        console.log("🔄 Switching room, unsubscribe from:", currentRoomIdRef.current);
+        if (subscriptionRef.current) {
+          subscriptionRef.current.unsubscribe();
+          subscriptionRef.current = null;
+        }
       }
 
+      // If already connected to the same room with active subscription, skip
+      if (
+        stompClientRef.current?.connected &&
+        currentRoomIdRef.current === roomId &&
+        subscriptionRef.current
+      ) {
+        console.log("✅ Already connected and subscribed to this room, skip reconnect.");
+        return;
+      }
+
+      // If client exists and connected, just subscribe to new room
+      if (stompClientRef.current?.connected) {
+        console.log("🔗 WebSocket connected, subscribing to room:", roomId);
+        
+        subscriptionRef.current = stompClientRef.current.subscribe(
+          `/topic/room/${roomId}`,
+          (message: IMessage) => {
+            try {
+              const msg: ChatMessageDTO = JSON.parse(message.body);
+              
+              // ✅ FIX: Generate ID if missing
+              if (!msg.id) {
+                msg.id = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                console.warn("⚠️ Message missing ID, generated:", msg.id);
+              }
+              
+              if (!msg.createAt) {
+                msg.createAt = {
+                  seconds: Math.floor(Date.now() / 1000),
+                  nanos: (Date.now() % 1000) * 1000000,
+                };
+              }
+              
+              console.log("📨 Parsed WebSocket message:", msg.id, msg.content);
+              handleNewMessage(msg, roomId);
+            } catch (error) {
+              console.error("Error parsing WebSocket message:", error);
+            }
+          }
+        );
+        
+        currentRoomIdRef.current = roomId;
+        setConnectionStatus("connected");
+        return;
+      }
+
+      // Create new WebSocket connection
       setConnectionStatus("connecting");
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = 'localhost:8080'; // tạm thời
+      const host = 'localhost:8080';
       const wsUrl = `${protocol}//${host}/chat`;
 
-      console.log('Connecting to WebSocket:', wsUrl);
+      console.log('🆕 Creating new WebSocket connection:', wsUrl);
 
       const stompClient = new Client({
         brokerURL: wsUrl,
@@ -518,24 +575,38 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         debug: (str) => console.log('STOMP Debug:', str),
       });
 
-
       stompClient.onConnect = (frame) => {
-        console.log(`Connected to WebSocket for room: ${roomId}`);
+        console.log(`✅ WebSocket connected, subscribing to room: ${roomId}`);
         setConnectionStatus("connected");
-        stompClient.subscribe(`/topic/room/${roomId}`, (message: IMessage) => {
-          try {
-            const msg: ChatMessageDTO = JSON.parse(message.body);
-            if (!msg.createAt) {
-              msg.createAt = {
-                seconds: Math.floor(Date.now() / 1000),
-                nanos: (Date.now() % 1000) * 1000000,
-              };
+        
+        subscriptionRef.current = stompClient.subscribe(
+          `/topic/room/${roomId}`,
+          (message: IMessage) => {
+            try {
+              const msg: ChatMessageDTO = JSON.parse(message.body);
+              
+              // ✅ FIX: Generate ID if missing
+              if (!msg.id) {
+                msg.id = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                console.warn("⚠️ Message missing ID, generated:", msg.id);
+              }
+              
+              if (!msg.createAt) {
+                msg.createAt = {
+                  seconds: Math.floor(Date.now() / 1000),
+                  nanos: (Date.now() % 1000) * 1000000,
+                };
+              }
+              
+              console.log("📨 Parsed WebSocket message:", msg.id, msg.content);
+              handleNewMessage(msg, roomId);
+            } catch (error) {
+              console.error("Error parsing WebSocket message:", error);
             }
-            handleNewMessage(msg, roomId);
-          } catch (error) {
-            console.error("Error parsing WebSocket message:", error);
           }
-        });
+        );
+        
+        currentRoomIdRef.current = roomId;
       };
 
       stompClient.onWebSocketError = (error) => {
@@ -555,22 +626,29 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [handleNewMessage]
   );
 
-  // Disconnect WebSocket
+  // ✅ FIX: Improved disconnect logic
   const disconnectWebSocket = useCallback(() => {
+    console.log("🔌 Disconnecting WebSocket...");
+    
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
+    }
+    
     if (stompClientRef.current) {
       try {
         stompClientRef.current.deactivate();
-        console.log("WebSocket disconnected");
+        console.log("✅ WebSocket disconnected");
       } catch (error) {
         console.error("Error disconnecting WebSocket:", error);
       } finally {
         stompClientRef.current = null;
+        currentRoomIdRef.current = null;
         setConnectionStatus("disconnected");
       }
     }
   }, []);
 
-  // Update chat messages for active conversation
   const setChatMessages = useCallback(
     (messages: ChatMessageDTO[]) => {
       if (!activeConversation) return;
@@ -606,7 +684,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [activeConversation, timestampToMillis]
   );
 
-  // Send new message
   const sendMessage = useCallback(
     (request: MessageRequest) => {
       const roomId = request.roomId;
@@ -618,7 +695,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
             body: JSON.stringify(request),
             headers: {},
           });
-          console.log("Message sent via WebSocket");
+          console.log("✅ Message sent via WebSocket");
         } catch (error) {
           console.error("Failed to send message via WebSocket:", error);
         }
@@ -627,7 +704,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         return;
       }
 
-      // Optimistic UI update
       const now = Date.now();
       const newMsg: ChatMessageDTO = {
         id: `temp-${now}`,
@@ -645,7 +721,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [handleNewMessage]
   );
 
-  // Mark conversation as read
   const markAsRead = useCallback((conversationId: string) => {
     setConversations((prev) =>
       prev.map((conv) =>
@@ -654,18 +729,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     );
   }, []);
 
-  // UI control functions
   const toggleChat = useCallback(() => setIsOpen((v) => !v), []);
   const minimizeChat = useCallback(() => setIsMinimized(true), []);
   const maximizeChat = useCallback(() => setIsMinimized(false), []);
 
-  // Calculate total unread count
   const unreadCount = conversations.reduce(
     (sum, conv) => sum + conv.unreadCount,
     0
   );
 
-  // Cleanup on unmount
   React.useEffect(() => {
     return () => {
       disconnectWebSocket();
