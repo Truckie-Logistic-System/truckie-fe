@@ -1,5 +1,5 @@
 import httpClient from "../api/httpClient";
-import type { MessageRequest, ChatPageResponse } from '../../models';
+import type { MessageRequest, ChatPageResponse, ChatImageRequest } from '../../models';
 import { handleApiError } from "../api/errorHandler";
 
 /**
@@ -74,6 +74,32 @@ const chatService = {
       throw handleApiError(error, "Không thể tải tin nhắn hỗ trợ");
     }
   },
+
+  //Upload image for chat
+  uploadChatImage: async (req: ChatImageRequest): Promise<string> => {
+    try {
+      const formData = new FormData();
+      formData.append("file", req.file);
+      formData.append("senderId", req.senderId);
+      formData.append("roomId", req.roomId);
+
+      const response = await httpClient.post<string>(
+        "/chats/upload-image",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data", // 👈 BẮT BUỘC
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Error uploading chat image:", error);
+      throw error;
+    }
+  },
+
 };
 
 export default chatService;

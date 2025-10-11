@@ -1,50 +1,86 @@
-// MessageInput.tsx
 import React, { useState } from 'react';
-import { Input, Button, message } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import { Input, Button, Upload, message as antdMessage, Image } from 'antd';
+import {
+  SendOutlined,
+  PictureOutlined,
+  LoadingOutlined,
+  CloseCircleFilled,
+} from '@ant-design/icons';
 import { useChatContext } from '@/context/ChatContext';
 import type { MessageRequest } from '@/models/Chat';
-
-
+import chatService from "@/services/chat/chatService";
 
 const MessageInput: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
-  const { activeConversation, sendMessage, connectionStatus } = useChatContext();
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  const { activeConversation, sendMessage, connectionStatus } = useChatContext();
   const userId = sessionStorage.getItem('userId');
 
+  // ✅ Xử lý khi Ctrl+V dán ảnh
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData.items);
+    const imageItem = items.find((item) => item.type.startsWith('image/'));
+
+    if (!imageItem) return; // không có ảnh thì bỏ qua
+    e.preventDefault();
+
+    const blob = imageItem.getAsFile();
+    if (blob) {
+      setFile(blob);
+      setPreviewUrl(URL.createObjectURL(blob));
+    }
+  };
+
+  // Chọn file bằng nút upload
+  const handleFileChange = (file: File) => {
+    setFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    return false; // không upload ngay
+  };
+
+  // Gửi tin nhắn
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
-    if (!activeConversation) {
-      message.error('Không có cuộc hội thoại đang hoạt động');
-      return;
-    }
-    if (!userId) {
-      message.error('Bạn chưa đăng nhập');
-      return;
-    }
-    if (connectionStatus !== 'connected') {
-      message.error('Kết nối WebSocket chưa sẵn sàng');
-      return;
-    }
+    if (!inputValue.trim() && !file) return;
+    if (!activeConversation) return antdMessage.error('Không có cuộc hội thoại đang hoạt động');
+    if (!userId) return antdMessage.error('Bạn chưa đăng nhập');
+    if (connectionStatus !== 'connected') return antdMessage.error('Kết nối WebSocket chưa sẵn sàng');
 
     setSending(true);
 
     try {
+      let messageToSend = inputValue.trim();
+      let messageType: 'TEXT' | 'IMAGE' = 'TEXT';
+
+      if (file) {
+        const uploadedUrl = await chatService.uploadChatImage({
+          file,
+          senderId: userId,
+          roomId: activeConversation.roomId,
+        });
+
+        messageToSend = uploadedUrl;
+        messageType = 'IMAGE';
+      }
+
       const messageRequest: MessageRequest = {
         roomId: activeConversation.roomId,
         senderId: userId,
-        message: inputValue.trim(),
-        type: 'TEXT'
+        message: messageToSend,
+        type: messageType,
       };
 
       sendMessage(messageRequest);
-      setInputValue(''); // Clear input after sending
 
+      // Reset
+      setInputValue('');
+      setFile(null);
+      setPreviewUrl(null);
     } catch (error) {
       console.error('Send message error:', error);
-      message.error('Không thể gửi tin nhắn');
+      antdMessage.error('Không thể gửi tin nhắn');
     } finally {
       setSending(false);
     }
@@ -58,30 +94,58 @@ const MessageInput: React.FC = () => {
   };
 
   return (
-    <div className="border-t p-4">
-      <div className="flex gap-2">
+    <div className="border-t p-4 bg-white">
+      {/* Hiển thị preview ảnh */}
+      {previewUrl && (
+        <div className="mb-2 relative w-fit">
+          <Image
+            src={previewUrl}
+            alt="preview"
+            width={150}
+            height={100}
+            className="rounded-md border object-cover"
+          />
+          <CloseCircleFilled
+            onClick={() => {
+              setFile(null);
+              setPreviewUrl(null);
+            }}
+            className="absolute -top-2 -right-2 text-red-500 bg-white rounded-full cursor-pointer text-lg shadow"
+          />
+        </div>
+      )}
+
+      <div className="flex gap-2 items-end">
+        <Upload
+          beforeUpload={handleFileChange}
+          showUploadList={false}
+          accept="image/*"
+          disabled={sending}
+        >
+          <Button icon={<PictureOutlined />} />
+        </Upload>
+
         <Input.TextArea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          onPaste={handlePaste} // 👈 Dán ảnh Ctrl+V
           onKeyPress={handleKeyPress}
-          placeholder="Nhập tin nhắn..."
+          placeholder="Nhập tin nhắn hoặc dán ảnh (Ctrl + V)..."
           autoSize={{ minRows: 1, maxRows: 3 }}
           disabled={sending || connectionStatus !== 'connected'}
           className="flex-1"
         />
+
         <Button
           type="primary"
-          icon={<SendOutlined />}
+          icon={sending ? <LoadingOutlined /> : <SendOutlined />}
           onClick={handleSend}
-          loading={sending}
-          disabled={!inputValue.trim() || connectionStatus !== 'connected'}
-          className="self-end"
+          disabled={(!inputValue.trim() && !file) || connectionStatus !== 'connected'}
         >
           Gửi
         </Button>
       </div>
 
-      {/* Connection status indicator */}
       <div className="mt-2 text-xs text-gray-500">
         {connectionStatus === 'connected' && '🟢 Đã kết nối'}
         {connectionStatus === 'connecting' && '🟡 Đang kết nối...'}

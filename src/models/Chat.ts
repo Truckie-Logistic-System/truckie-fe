@@ -1,29 +1,38 @@
 export interface FirestoreTimestamp {
-  seconds: number;
-  nanos: number;
+    seconds: number;
+    nanos: number;
 }
 
 // Request DTO
 export interface MessageRequest {
-  roomId: string;      // ID của phòng chat
-  senderId: string;    // ID của người gửi
-  message: string;     // Nội dung tin nhắn
-  type: string;
+    roomId: string;      // ID của phòng chat
+    senderId: string;    // ID của người gửi
+    message: string;     // Nội dung tin nhắn
+    type: string;
 }
 
 export interface ChatMessageDTO {
-  id: string;
-  senderId: string;
-  content: string;
-  createAt: FirestoreTimestamp; 
-  type: string;
+    id: string;
+    senderId: string;
+    content: string;
+    createAt: FirestoreTimestamp;
+    type: string;
 }
+
+// Request DTO for uploading image 
+export interface ChatImageRequest {
+    file: File;
+    senderId: string;
+    roomId: string;
+}
+
+
 
 // Response DTO
 export interface ChatPageResponse {
-  messages: ChatMessageDTO[];
-  lastMessageId: string;
-  hasMore: boolean;
+    messages: ChatMessageDTO[];
+    lastMessageId: string;
+    hasMore: boolean;
 }
 
 /**
