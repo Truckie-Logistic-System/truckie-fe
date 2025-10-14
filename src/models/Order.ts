@@ -136,7 +136,7 @@ export type OrderStatus =
   | "ON_PLANNING"
   | "ASSIGNED_TO_DRIVER"
   | "DRIVER_CONFIRM"
-  | "PICKED_UP"
+  | "PICKING_UP"
   | "SEALED_COMPLETED"
   | "ON_DELIVERED"
   | "ONGOING_DELIVERED"

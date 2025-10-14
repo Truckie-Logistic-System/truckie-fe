@@ -106,13 +106,13 @@ const OrderList: React.FC<OrderListProps> = ({
             ['PENDING', 'PROCESSING', 'CONTRACT_DRAFT'].includes(order.status)).length;
 
         const inProgressOrders = safeOrders.filter(order =>
-            ['ON_PLANNING', 'ASSIGNED_TO_DRIVER', 'DRIVER_CONFIRM', 'PICKED_UP', 'ON_DELIVERED', 'ONGOING_DELIVERED', 'IN_DELIVERED'].includes(order.status)).length;
+            ['ON_PLANNING', 'ASSIGNED_TO_DRIVER', 'FULLY_PAID', 'PICKING_UP', 'ON_DELIVERED', 'ONGOING_DELIVERED'].includes(order.status)).length;
 
         const completedOrders = safeOrders.filter(order =>
-            ['DELIVERED', 'SUCCESSFUL'].includes(order.status)).length;
+            ['DELIVERED', 'SUCCESSFUL', 'RESOLVED'].includes(order.status)).length;
 
         const issueOrders = safeOrders.filter(order =>
-            ['CANCELLED', 'REJECT_ORDER', 'IN_TROUBLES', 'RETURNING', 'RETURNED'].includes(order.status)).length;
+            ['REJECT_ORDER', 'IN_TROUBLES', 'COMPENSATION', 'RETURNING', 'RETURNED'].includes(order.status)).length;
 
         return { pendingOrders, inProgressOrders, completedOrders, issueOrders };
     };
@@ -155,27 +155,6 @@ const OrderList: React.FC<OrderListProps> = ({
                 key: 'receiverPhone',
                 ellipsis: true,
                 responsive: ['lg'],
-            },
-            {
-                title: 'Tổng KL',
-                dataIndex: 'totalWeight',
-                key: 'totalWeight',
-                render: (weight: number | null) => weight !== null ? `${weight} kg` : '0 kg',
-                sorter: (a: Order, b: Order) => (a.totalWeight || 0) - (b.totalWeight || 0),
-                width: 100,
-                responsive: ['md'],
-            },
-            {
-                title: 'Tổng tiền',
-                dataIndex: 'totalPrice',
-                key: 'totalPrice',
-                render: (price: number | null) => (
-                    <span className="font-medium text-blue-600">
-                        {price !== null ? `${price.toLocaleString('vi-VN')} VNĐ` : '0 VNĐ'}
-                    </span>
-                ),
-                sorter: (a: Order, b: Order) => (a.totalPrice || 0) - (b.totalPrice || 0),
-                width: 150,
             },
             {
                 title: 'Trạng thái',
@@ -354,7 +333,7 @@ const OrderList: React.FC<OrderListProps> = ({
                                 <Option value="CONTRACT_SIGNED">Hợp đồng đã ký</Option>
                                 <Option value="ON_PLANNING">Đang lập kế hoạch</Option>
                                 <Option value="ASSIGNED_TO_DRIVER">Đã phân công tài xế</Option>
-                                <Option value="PICKED_UP">Đã lấy hàng</Option>
+                                <Option value="PICKING_UP">Đang lấy hàng</Option>
                                 <Option value="ON_DELIVERED">Đang vận chuyển</Option>
                                 <Option value="DELIVERED">Đã giao hàng</Option>
                                 <Option value="SUCCESSFUL">Hoàn thành</Option>

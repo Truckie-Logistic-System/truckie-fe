@@ -42,7 +42,7 @@ const PaymentReturn: React.FC = () => {
         setWebhookCalled(true);
 
         if (response.data?.success) {
-          console.log("Webhook called successfully");
+          console.log("Webhook called SUCCESSFUL");
         }
       } catch (error) {
         console.error("Error calling webhook:", error);

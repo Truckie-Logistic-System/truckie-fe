@@ -24,46 +24,34 @@ const OrderStatusDisplay: React.FC<OrderStatusDisplayProps> = ({
         case 'PROCESSING':
             bgColor = 'bg-gradient-to-r from-blue-400 to-blue-500';
             break;
-        case 'CANCELLED':
-            bgColor = 'bg-gradient-to-r from-red-500 to-pink-500';
-            break;
 
         // Trạng thái hợp đồng
         case 'CONTRACT_DRAFT':
             bgColor = 'bg-gradient-to-r from-cyan-500 to-blue-400';
             break;
-        case 'CONTRACT_DENIED':
-            bgColor = 'bg-gradient-to-r from-red-500 to-pink-500';
-            break;
         case 'CONTRACT_SIGNED':
             bgColor = 'bg-gradient-to-r from-green-500 to-emerald-500';
             break;
 
-        // Trạng thái lập kế hoạch và phân công
+        // Trạng thái lập kế hoạch và thanh toán
         case 'ON_PLANNING':
             bgColor = 'bg-gradient-to-r from-purple-500 to-indigo-500';
             break;
         case 'ASSIGNED_TO_DRIVER':
             bgColor = 'bg-gradient-to-r from-blue-500 to-indigo-500';
             break;
-        case 'DRIVER_CONFIRM':
-            bgColor = 'bg-gradient-to-r from-blue-500 to-cyan-500';
+        case 'FULLY_PAID':
+            bgColor = 'bg-gradient-to-r from-emerald-500 to-green-500';
             break;
 
         // Trạng thái vận chuyển
-        case 'PICKED_UP':
-            bgColor = 'bg-gradient-to-r from-cyan-500 to-blue-500';
-            break;
-        case 'SEALED_COMPLETED':
+        case 'PICKING_UP':
             bgColor = 'bg-gradient-to-r from-cyan-500 to-blue-500';
             break;
         case 'ON_DELIVERED':
             bgColor = 'bg-gradient-to-r from-blue-500 to-cyan-500';
             break;
         case 'ONGOING_DELIVERED':
-            bgColor = 'bg-gradient-to-r from-blue-500 to-cyan-500';
-            break;
-        case 'IN_DELIVERED':
             bgColor = 'bg-gradient-to-r from-blue-500 to-cyan-500';
             break;
 

@@ -19,7 +19,7 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({ order }) => {
             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <div className="mb-4 md:mb-0">
-                        <p className="text-gray-500 mb-1">Trạng thái đơn hàng</p>
+                        <p className="text-gray-600 mb-1 font-medium">Trạng thái đơn hàng</p>
                         <div className="flex items-center">
                             <OrderStatusDisplay status={order.status} />
                         </div>

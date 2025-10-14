@@ -22,6 +22,9 @@ interface OrderStatusTagProps {
  * Component hiển thị trạng thái đơn hàng với kiểu dáng phù hợp
  */
 const OrderStatusTag: React.FC<OrderStatusTagProps> = ({ status, className, size }) => {
+    // Debug log để kiểm tra status
+    console.log('OrderStatusTag received status:', status);
+    
     // Xác định icon dựa vào trạng thái
     const getStatusIcon = (status: OrderStatusEnum) => {
         // Trạng thái ban đầu
@@ -35,13 +38,12 @@ const OrderStatusTag: React.FC<OrderStatusTagProps> = ({ status, className, size
         }
 
         // Trạng thái lập kế hoạch và phân công
-        if ([OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.DRIVER_CONFIRM].includes(status)) {
+        if ([OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.FULLY_PAID].includes(status)) {
             return <UserOutlined />;
         }
 
         // Trạng thái vận chuyển
-        if ([OrderStatusEnum.PICKED_UP, OrderStatusEnum.SEALED_COMPLETED, OrderStatusEnum.ON_DELIVERED,
-        OrderStatusEnum.ONGOING_DELIVERED, OrderStatusEnum.IN_DELIVERED].includes(status)) {
+        if ([OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED].includes(status)) {
             return <CarOutlined />;
         }
 
@@ -55,11 +57,12 @@ const OrderStatusTag: React.FC<OrderStatusTagProps> = ({ status, className, size
             return <CheckCircleOutlined />;
         }
 
-        // Trạng thái từ chối và hoàn trả
-        if ([OrderStatusEnum.REJECT_ORDER, OrderStatusEnum.CANCELLED, OrderStatusEnum.CONTRACT_DENIED].includes(status)) {
+        // Trạng thái từ chối
+        if ([OrderStatusEnum.REJECT_ORDER].includes(status)) {
             return <CloseCircleOutlined />;
         }
 
+        // Trạng thái hoàn trả
         if ([OrderStatusEnum.RETURNING, OrderStatusEnum.RETURNED].includes(status)) {
             return <RollbackOutlined />;
         }
@@ -67,11 +70,15 @@ const OrderStatusTag: React.FC<OrderStatusTagProps> = ({ status, className, size
         return null;
     };
 
+    // Fallback nếu status không có trong enum
+    const colorClass = OrderStatusColors[status] || 'bg-gray-400 text-white';
+    const label = OrderStatusLabels[status] || status;
+    
     return (
         <StatusTag
             status={status}
-            colorClass={OrderStatusColors[status]}
-            label={OrderStatusLabels[status]}
+            colorClass={colorClass}
+            label={label}
             className={className}
             icon={getStatusIcon(status)}
             size={size}

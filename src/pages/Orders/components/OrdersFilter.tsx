@@ -52,26 +52,25 @@ const OrdersFilter: React.FC<OrdersFilterProps> = ({ onFilterChange }) => {
         {
             label: 'Khởi tạo',
             options: statusOptions.filter(status =>
-                [OrderStatusEnum.PENDING, OrderStatusEnum.PROCESSING, OrderStatusEnum.CANCELLED].includes(status.value as OrderStatusEnum)
+                [OrderStatusEnum.PENDING, OrderStatusEnum.PROCESSING].includes(status.value as OrderStatusEnum)
             )
         },
         {
             label: 'Hợp đồng',
             options: statusOptions.filter(status =>
-                [OrderStatusEnum.CONTRACT_DRAFT, OrderStatusEnum.CONTRACT_DENIED, OrderStatusEnum.CONTRACT_SIGNED].includes(status.value as OrderStatusEnum)
+                [OrderStatusEnum.CONTRACT_DRAFT, OrderStatusEnum.CONTRACT_SIGNED].includes(status.value as OrderStatusEnum)
             )
         },
         {
-            label: 'Lập kế hoạch',
+            label: 'Lập kế hoạch & Thanh toán',
             options: statusOptions.filter(status =>
-                [OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.DRIVER_CONFIRM].includes(status.value as OrderStatusEnum)
+                [OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.FULLY_PAID].includes(status.value as OrderStatusEnum)
             )
         },
         {
             label: 'Đang vận chuyển',
             options: statusOptions.filter(status =>
-                [OrderStatusEnum.PICKED_UP, OrderStatusEnum.SEALED_COMPLETED, OrderStatusEnum.ON_DELIVERED,
-                OrderStatusEnum.ONGOING_DELIVERED, OrderStatusEnum.IN_DELIVERED].includes(status.value as OrderStatusEnum)
+                [OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED].includes(status.value as OrderStatusEnum)
             )
         },
         {

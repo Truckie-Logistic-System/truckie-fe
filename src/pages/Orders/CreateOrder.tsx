@@ -284,7 +284,7 @@ export default function CreateOrder() {
     }
   };
 
-  // If order was created successfully, show success component
+  // If order was created SUCCESSFUL, show success component
   if (createdOrder) {
     return (
       <div className="p-6">

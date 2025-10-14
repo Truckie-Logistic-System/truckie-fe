@@ -1,9 +1,11 @@
 import React from "react";
-import { Card, Tag, Button } from "antd";
+import { Card, Button } from "antd";
 import { TruckOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { OrderStatusTag } from "@/components/common/tags";
+import { OrderStatusEnum } from "@/constants/enums";
 
 // Configure dayjs to use timezone
 dayjs.extend(utc);
@@ -37,28 +39,13 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
       .format("DD/MM/YYYY HH:mm:ss");
   };
 
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, string> = {
-      PENDING: "orange",
-      PROCESSING: "blue",
-      CANCELLED: "red",
-      DELIVERED: "green",
-      SUCCESSFUL: "green",
-      IN_TROUBLES: "red",
-      // Add more status mappings as needed
-    };
-    return statusMap[status] || "default";
-  };
-
   return (
-    <Card className="mb-6 shadow-md rounded-xl">
+    <div className="mb-6 bg-white shadow-md rounded-xl p-6 border border-gray-100">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
         <div className="mb-4 md:mb-0">
-          <p className="text-gray-500 mb-1">Trạng thái đơn hàng</p>
+          <p className="text-gray-600 mb-1 font-medium">Trạng thái đơn hàng</p>
           <div className="flex items-center">
-            <Tag color={getStatusColor(status)} className="text-base px-3 py-1">
-              {status}
-            </Tag>
+            <OrderStatusTag status={status as OrderStatusEnum} />
           </div>
         </div>
         <div className="flex flex-col md:flex-row gap-4">
@@ -114,7 +101,7 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 

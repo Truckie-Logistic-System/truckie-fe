@@ -1,6 +1,8 @@
 import React from "react";
-import { Card, Descriptions, Tag } from "antd";
+import { Card, Descriptions } from "antd";
 import { InfoCircleOutlined, FileTextOutlined } from "@ant-design/icons";
+import { OrderStatusTag } from "@/components/common/tags";
+import { OrderStatusEnum } from "@/constants/enums";
 
 interface OrderInfoSectionProps {
     packageDescription?: string;
@@ -24,18 +26,6 @@ const OrderInfoSection: React.FC<OrderInfoSectionProps> = ({
     notes,
     orderDetails,
 }) => {
-    const getStatusColor = (status: string) => {
-        const statusMap: Record<string, string> = {
-            PENDING: "orange",
-            PROCESSING: "blue",
-            CANCELLED: "red",
-            DELIVERED: "green",
-            SUCCESSFUL: "green",
-            IN_TROUBLES: "red",
-            // Add more status mappings as needed
-        };
-        return statusMap[status] || "default";
-    };
 
     return (
         <Card
@@ -83,7 +73,7 @@ const OrderInfoSection: React.FC<OrderInfoSectionProps> = ({
                                     {detail.weightBaseUnit} {detail.unit}
                                 </Descriptions.Item>
                                 <Descriptions.Item label="Trạng thái">
-                                    <Tag color={getStatusColor(detail.status)}>{detail.status}</Tag>
+                                    <OrderStatusTag status={detail.status as OrderStatusEnum} />
                                 </Descriptions.Item>
                                 <Descriptions.Item label="Mô tả">{detail.description || "Không có mô tả"}</Descriptions.Item>
                             </Descriptions>

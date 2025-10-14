@@ -32,6 +32,8 @@ import utc from "dayjs/plugin/utc";
 import type { Order, OrderStatus, CustomerOrder } from "../../../models/Order";
 import type { Address } from "../../../models/Address";
 import addressService from "../../../services/address/addressService";
+import { OrderStatusTag } from "../../../components/common/tags";
+import { OrderStatusEnum } from "../../../constants/enums";
 
 import { formatDate, formatDateTimeWithSeconds } from "../../../utils/formatters";
 
@@ -66,14 +68,13 @@ const getStatusColor = (status: string): string => {
       return "orange";
     case "PROCESSING":
       return "blue";
-    case "PICKED_UP":
+    case "PICKING_UP":
     case "ON_DELIVERED":
     case "ONGOING_DELIVERED":
       return "purple";
     case "DELIVERED":
     case "SUCCESSFUL":
       return "green";
-    case "CANCELLED":
     case "REJECT_ORDER":
       return "red";
     case "IN_TROUBLES":
@@ -97,22 +98,37 @@ const getStatusText = (status: string): string => {
       return "Chờ xử lý";
     case "PROCESSING":
       return "Đang xử lý";
-    case "PICKED_UP":
-      return "Đã lấy hàng";
+    case "CONTRACT_DRAFT":
+      return "Bản nháp hợp đồng";
+    case "CONTRACT_SIGNED":
+      return "Hợp đồng đã ký";
+    case "ON_PLANNING":
+      return "Đang lập kế hoạch";
+    case "ASSIGNED_TO_DRIVER":
+      return "Đã giao cho tài xế";
+    case "FULLY_PAID":
+      return "Đã thanh toán đầy đủ";
+    case "PICKING_UP":
+      return "Đang lấy hàng";
     case "ON_DELIVERED":
     case "ONGOING_DELIVERED":
       return "Đang vận chuyển";
     case "DELIVERED":
-    case "SUCCESSFUL":
       return "Đã giao hàng";
-    case "CANCELLED":
+    case "SUCCESSFUL":
+      return "Hoàn thành thành công";
     case "REJECT_ORDER":
-      return "Đã hủy";
+      return "Từ chối đơn hàng";
     case "IN_TROUBLES":
       return "Gặp sự cố";
+    case "RESOLVED":
+      return "Đã giải quyết";
+    case "COMPENSATION":
+      return "Đền bù";
     case "RETURNED":
+      return "Đã trả lại";
     case "RETURNING":
-      return "Đang hoàn trả";
+      return "Đang trả lại";
     default:
       return status.replace(/_/g, " ");
   }
@@ -123,27 +139,27 @@ const statusGroups = [
   {
     name: "Đang chờ",
     color: "orange",
-    statuses: ["PENDING", "PROCESSING"],
+    statuses: ["PENDING", "PROCESSING", "CONTRACT_DRAFT"],
   },
   {
     name: "Đang vận chuyển",
     color: "blue",
-    statuses: ["PICKED_UP", "ON_DELIVERED", "ONGOING_DELIVERED", "IN_DELIVERED"],
+    statuses: ["PICKING_UP", "ON_DELIVERED", "ONGOING_DELIVERED"],
   },
   {
     name: "Hoàn thành",
     color: "green",
-    statuses: ["DELIVERED", "SUCCESSFUL"],
+    statuses: ["DELIVERED", "SUCCESSFUL", "RESOLVED"],
   },
   {
-    name: "Đã hủy",
+    name: "Từ chối",
     color: "red",
-    statuses: ["CANCELLED", "REJECT_ORDER"],
+    statuses: ["REJECT_ORDER"],
   },
   {
     name: "Sự cố",
     color: "red",
-    statuses: ["IN_TROUBLES"],
+    statuses: ["IN_TROUBLES", "COMPENSATION"],
   },
   {
     name: "Hoàn trả",
@@ -230,11 +246,10 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
     { value: "ALL", label: "Tất cả" },
     { value: "PENDING", label: "Chờ xử lý" },
     { value: "PROCESSING", label: "Đang xử lý" },
-    { value: "PICKED_UP", label: "Đã lấy hàng" },
+    { value: "PICKING_UP", label: "Đang lấy hàng" },
     { value: "ON_DELIVERED", label: "Đang vận chuyển" },
     { value: "DELIVERED", label: "Đã giao" },
     { value: "SUCCESSFUL", label: "Thành công" },
-    { value: "CANCELLED", label: "Đã hủy" },
     { value: "IN_TROUBLES", label: "Gặp sự cố" },
     { value: "RETURNED", label: "Đã hoàn trả" },
   ];
@@ -506,9 +521,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                           `SHIP${order.id?.slice(-8) || "12345678"}`}
                       </Text>
                     </div>
-                    <Tag color={getStatusColor(order.status)}>
-                      {getStatusText(order.status)}
-                    </Tag>
+                    <OrderStatusTag status={order.status as OrderStatusEnum} />
                   </div>
 
                   <Text className="text-gray-500 text-sm mb-3 block">

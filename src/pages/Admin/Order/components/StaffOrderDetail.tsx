@@ -105,7 +105,7 @@ const StaffOrderDetail: React.FC = () => {
     const statusesAllowingPrint = [
       OrderStatusEnum.ASSIGNED_TO_DRIVER,
       OrderStatusEnum.DRIVER_CONFIRM,
-      OrderStatusEnum.PICKED_UP,
+      OrderStatusEnum.PICKING_UP,
       OrderStatusEnum.SEALED_COMPLETED,
       OrderStatusEnum.ON_DELIVERED,
       OrderStatusEnum.ONGOING_DELIVERED,

@@ -50,13 +50,12 @@ const OrderStatusFilterGroup: React.FC<OrderStatusFilterGroupProps> = ({
         }
 
         // Trạng thái lập kế hoạch và phân công
-        if ([OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.DRIVER_CONFIRM].includes(status)) {
+        if ([OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.FULLY_PAID].includes(status)) {
             return <UserOutlined />;
         }
 
         // Trạng thái vận chuyển
-        if ([OrderStatusEnum.PICKED_UP, OrderStatusEnum.SEALED_COMPLETED, OrderStatusEnum.ON_DELIVERED,
-        OrderStatusEnum.ONGOING_DELIVERED, OrderStatusEnum.IN_DELIVERED].includes(status)) {
+        if ([OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED].includes(status)) {
             return <CarOutlined />;
         }
 
@@ -70,11 +69,12 @@ const OrderStatusFilterGroup: React.FC<OrderStatusFilterGroupProps> = ({
             return <CheckCircleOutlined />;
         }
 
-        // Trạng thái từ chối và hoàn trả
-        if ([OrderStatusEnum.REJECT_ORDER, OrderStatusEnum.CANCELLED, OrderStatusEnum.CONTRACT_DENIED].includes(status)) {
+        // Trạng thái từ chối
+        if ([OrderStatusEnum.REJECT_ORDER].includes(status)) {
             return <CloseCircleOutlined />;
         }
 
+        // Trạng thái hoàn trả
         if ([OrderStatusEnum.RETURNING, OrderStatusEnum.RETURNED].includes(status)) {
             return <RollbackOutlined />;
         }
@@ -87,12 +87,12 @@ const OrderStatusFilterGroup: React.FC<OrderStatusFilterGroupProps> = ({
         const pendingStatuses = [OrderStatusEnum.PENDING, OrderStatusEnum.PROCESSING, OrderStatusEnum.CONTRACT_DRAFT];
         const inProgressStatuses = [
             OrderStatusEnum.CONTRACT_SIGNED, OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER,
-            OrderStatusEnum.DRIVER_CONFIRM, OrderStatusEnum.PICKED_UP, OrderStatusEnum.ON_DELIVERED,
-            OrderStatusEnum.ONGOING_DELIVERED, OrderStatusEnum.IN_DELIVERED
+            OrderStatusEnum.FULLY_PAID, OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED,
+            OrderStatusEnum.ONGOING_DELIVERED
         ];
-        const completedStatuses = [OrderStatusEnum.DELIVERED, OrderStatusEnum.SUCCESSFUL];
+        const completedStatuses = [OrderStatusEnum.DELIVERED, OrderStatusEnum.SUCCESSFUL, OrderStatusEnum.RESOLVED];
         const problemStatuses = [
-            OrderStatusEnum.CANCELLED, OrderStatusEnum.CONTRACT_DENIED, OrderStatusEnum.IN_TROUBLES,
+            OrderStatusEnum.IN_TROUBLES, OrderStatusEnum.COMPENSATION,
             OrderStatusEnum.REJECT_ORDER, OrderStatusEnum.RETURNING, OrderStatusEnum.RETURNED
         ];
 

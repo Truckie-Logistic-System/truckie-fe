@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Empty, Tabs, Card, Tag } from "antd";
 import { BoxPlotOutlined, CarOutlined, FileTextOutlined, ToolOutlined, CameraOutlined, EnvironmentOutlined, UserOutlined, PhoneOutlined, TagOutlined } from "@ant-design/icons";
 import type { StaffOrderDetailItem } from "../../../../../models/Order";
 import AdditionalNavTabs from "./AdditionalNavTabs";
-import RouteMapSection from "./RouteMapSection";
+import { OrderStatusEnum } from "../../../../../constants/enums/OrderStatusEnum";
+import { useVehicleTracking } from "../../../../../hooks/useVehicleTracking";
+import RouteMapWithRealTimeTracking from "./RouteMapWithRealTimeTracking";
 
 // Import missing components that need to be created
 import OrderDetailPackageTab from "./OrderDetailPackageTab";
@@ -27,6 +29,52 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
     setVehicleAssignmentModalVisible,
 }) => {
     const [activeDetailTab, setActiveDetailTab] = useState<string>("0");
+
+    // Kiểm tra xem có nên hiển thị tracking thời gian thực không (từ PICKING_UP trở đi)
+    const shouldShowRealTimeTracking = useMemo(() => {
+        if (!order?.status) return false;
+        
+        // Danh sách các trạng thái từ PICKING_UP trở về sau
+        const trackingStatuses = [
+            OrderStatusEnum.PICKING_UP,
+            OrderStatusEnum.SEALED_COMPLETED,
+            OrderStatusEnum.ON_DELIVERED,
+            OrderStatusEnum.ONGOING_DELIVERED,
+            OrderStatusEnum.IN_DELIVERED,
+            OrderStatusEnum.IN_TROUBLES,
+            OrderStatusEnum.RESOLVED,
+            OrderStatusEnum.COMPENSATION,
+            OrderStatusEnum.DELIVERED,
+            OrderStatusEnum.SUCCESSFUL,
+            OrderStatusEnum.RETURNING,
+            OrderStatusEnum.RETURNED
+        ];
+        
+        return trackingStatuses.includes(order.status as OrderStatusEnum);
+    }, [order?.status]);
+
+    // Sử dụng WebSocket hook cho tracking xe
+    const {
+        vehicleLocations,
+        isConnected,
+        isConnecting,
+        error: trackingError,
+    } = useVehicleTracking({
+        orderId: shouldShowRealTimeTracking ? order?.id : undefined,
+        autoConnect: shouldShowRealTimeTracking,
+        reconnectInterval: 5000,
+        maxReconnectAttempts: 5,
+    });
+
+    console.log('[OrderDetailTabs] Real-time tracking status (from PICKING_UP):', {
+        shouldShowRealTimeTracking,
+        orderStatus: order?.status,
+        orderId: order?.id,
+        isConnected,
+        isConnecting,
+        vehicleLocationsCount: vehicleLocations.length,
+        trackingError
+    });
 
     if (!order.orderDetails || order.orderDetails.length === 0) {
         return <Empty description="Không có thông tin chi tiết vận chuyển" />;
@@ -395,25 +443,30 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
                                         }
                                         key="journey"
                                     >
-                                        {vaGroup.vehicleAssignment.journeyHistories && vaGroup.vehicleAssignment.journeyHistories.length > 0 ? (
-                                            <div className="p-2">
-                                                {vaGroup.vehicleAssignment.journeyHistories.map((journey: any, journeyIdx: number) => (
-                                                    <div
-                                                        key={journey.id || `journey-${journeyIdx}`}
-                                                        className={journeyIdx > 0 ? "mt-4 pt-4 border-t border-gray-200" : ""}
-                                                    >
-                                                        {journey.journeySegments && journey.journeySegments.length > 0 && (
-                                                            <RouteMapSection
-                                                                journeySegments={journey.journeySegments}
-                                                                journeyInfo={journey}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <Empty description="Không có lịch sử hành trình nào" />
-                                        )}
+                                        <div className="space-y-4">
+                                            {/* Hiển thị bản đồ với real-time tracking */}
+                                            {vaGroup.vehicleAssignment.journeyHistories && vaGroup.vehicleAssignment.journeyHistories.length > 0 ? (
+                                                <div className="p-2">
+                                                    {vaGroup.vehicleAssignment.journeyHistories.map((journey: any, journeyIdx: number) => (
+                                                        <div
+                                                            key={journey.id || `journey-${journeyIdx}`}
+                                                            className={journeyIdx > 0 ? "mt-4 pt-4 border-t border-gray-200" : ""}
+                                                        >
+                                                            {journey.journeySegments && journey.journeySegments.length > 0 && (
+                                                                <RouteMapWithRealTimeTracking
+                                                                    journeySegments={journey.journeySegments}
+                                                                    journeyInfo={journey}
+                                                                    orderId={order.id}
+                                                                    shouldShowRealTimeTracking={shouldShowRealTimeTracking}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <Empty description="Không có lịch sử hành trình nào" />
+                                            )}
+                                        </div>
                                     </Tabs.TabPane>
 
                                     {/* Tab sự cố */}

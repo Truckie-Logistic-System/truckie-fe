@@ -49,7 +49,7 @@ const ContractSection: React.FC<ContractProps> = ({ contract, orderId }) => {
       console.log("Contract PDF data response:", response);
       if (response.success) {
         setContractData(response.data);
-        console.log("Contract data set successfully");
+        console.log("Contract data set SUCCESSFUL");
       } else {
         messageApi.error(response.message);
         console.error("Contract service returned error:", response.message);

@@ -1,7 +1,8 @@
 import React from "react";
-import { Card, Tag, Tooltip } from "antd";
-import { FileTextOutlined, CalendarOutlined, TagOutlined, DollarOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
 import dayjs from "dayjs";
+import { OrderStatusTag } from "@/components/common/tags";
+import { OrderStatusEnum } from "@/constants/enums";
 
 interface OrderStatusSectionProps {
     orderCode: string;
@@ -16,22 +17,6 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
     createdAt,
     totalPrice,
 }) => {
-    const getStatusColor = (status: string) => {
-        const statusMap: Record<string, string> = {
-            PENDING: "orange",
-            PROCESSING: "blue",
-            ON_PLANNING: "geekblue",
-            ASSIGNED_TO_DRIVER: "cyan",
-            IN_TRANSIT: "purple",
-            CANCELLED: "red",
-            DELIVERED: "green",
-            SUCCESSFUL: "green",
-            IN_TROUBLES: "red",
-            // Add more status mappings as needed
-        };
-        return statusMap[status] || "default";
-    };
-
     const formatDate = (dateString: string) => {
         return dayjs(dateString).format("DD/MM/YYYY HH:mm:ss");
     };
@@ -44,14 +29,12 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
     };
 
     return (
-        <Card className="mb-6 shadow-md rounded-xl">
+        <div className="mb-6 bg-white shadow-md rounded-xl p-6 border border-gray-100">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <div className="mb-4 md:mb-0">
-                    <p className="text-gray-500 mb-1">Trạng thái đơn hàng</p>
+                    <p className="text-gray-600 mb-1 font-medium">Trạng thái đơn hàng</p>
                     <div className="flex items-center">
-                        <Tag color={getStatusColor(status)} className="text-base px-3 py-1">
-                            {status}
-                        </Tag>
+                        <OrderStatusTag status={status as OrderStatusEnum} />
                     </div>
                 </div>
                 <div className="flex flex-col md:flex-row gap-4">
@@ -75,8 +58,8 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
                     </div>
                 </div>
             </div>
-        </Card>
+        </div>
     );
 };
 
-export default OrderStatusSection; 
+export default OrderStatusSection;
