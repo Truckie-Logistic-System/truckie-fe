@@ -32,7 +32,7 @@ export enum HttpStatusCode {
 // Error messages for each status code
 export const HttpErrorMessages: Record<HttpStatusCode, string> = {
   [HttpStatusCode.OK]: "Success",
-  [HttpStatusCode.CREATED]: "Resource created successfully",
+  [HttpStatusCode.CREATED]: "Resource created SUCCESSFUL",
   [HttpStatusCode.ACCEPTED]: "Request accepted",
   [HttpStatusCode.NO_CONTENT]: "No content",
 

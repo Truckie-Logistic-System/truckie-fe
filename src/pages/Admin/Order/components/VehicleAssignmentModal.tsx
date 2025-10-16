@@ -4,7 +4,6 @@ import { CarOutlined, UserOutlined, CheckCircleOutlined, CloseCircleOutlined, In
 import type { VehicleSuggestion, SuggestedDriver, CreateGroupedVehicleAssignmentsRequest, OrderDetailGroup, GroupedVehicleAssignmentSuggestionData, GroupAssignment, OrderDetailInfo } from "../../../../models/VehicleAssignment";
 import { vehicleAssignmentService } from "../../../../services/vehicle-assignment/vehicleAssignmentService";
 import { RoutePlanningStep } from "../../../Admin/VehicleAssignment/components";
-import { convertRouteSegmentsToRouteInfo } from "../../../../utils/routeUtils";
 import type { RouteSegment } from "../../../../models/RoutePoint";
 import type { RouteInfo } from "../../../../models/VehicleAssignment";
 
@@ -74,9 +73,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     const fetchSuggestions = async () => {
         setLoading(true);
         try {
-            console.log("Fetching suggestions for order ID:", orderId);
+            
             const response = await vehicleAssignmentService.getGroupedSuggestionsForOrderDetails(orderId);
-            console.log("Received suggestions response:", response);
+            
 
             if (!response || !response.data) {
                 console.error("Invalid response format:", response);
@@ -88,7 +87,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
 
             // Extract the actual suggestions data
             const suggestionsData = response.data;
-            console.log("Extracted suggestions data:", suggestionsData);
             setSuggestions(suggestionsData);
 
             // Store the detail groups
@@ -118,7 +116,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 const recommendedVehicle = vehicles.find((v: VehicleSuggestion) => v.isRecommended);
 
                 if (recommendedVehicle) {
-                    console.log(`Found recommended vehicle for group ${groupIndex}:`, recommendedVehicle);
                     const recommendedDrivers = recommendedVehicle.suggestedDrivers
                         .filter((d: SuggestedDriver) => d.isRecommended)
                         .slice(0, 2);
@@ -180,12 +177,10 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 }
             });
 
-            console.log("Setting initial form values:", initialValues);
             setSelectedVehicles(initialSelectedVehicles);
             setSelectedDrivers(initialSelectedDrivers);
             form.setFieldsValue(initialValues);
         } catch (error) {
-            console.error("Error fetching vehicle assignment suggestions:", error);
             messageApi.error("Không thể tải gợi ý phân công xe");
         } finally {
             setLoading(false);
@@ -198,7 +193,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             setFormValues(values);
             setCurrentStep(1);
         } catch (error) {
-            console.error("Validation error:", error);
+            messageApi.error("Không thể tải gợi ý phân công xe");
         }
     };
 
@@ -259,9 +254,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 groupAssignments: groupAssignments
             };
 
-            // Debug log to show the final request structure
-            console.log("Final assignment request structure:", JSON.stringify(request, null, 2));
-
             // Call single API to create assignments with route info
             await vehicleAssignmentService.createGroupedAssignments(request);
             messageApi.success("Phân công xe thành công");
@@ -289,28 +281,21 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     };
 
     const handleVehicleChange = (groupKey: string, vehicleId: string) => {
-        console.log(`Vehicle changed for group ${groupKey}: ${vehicleId}`);
         setSelectedVehicles(prev => ({ ...prev, [groupKey]: vehicleId }));
 
         // Get vehicle suggestions for this group
         const groupSuggestions = getSuggestionsForGroup(groupKey);
         if (!groupSuggestions || groupSuggestions.length === 0) {
-            console.log("No vehicle suggestions found for auto-fill drivers");
             return;
         }
 
-        // Find the selected vehicle
         const selectedVehicle = groupSuggestions.find(v => v.id === vehicleId);
         if (!selectedVehicle) {
-            console.log("Selected vehicle not found in suggestions");
             return;
         }
 
-        // Get available drivers for this vehicle
         const availableDrivers = selectedVehicle.suggestedDrivers;
         if (!availableDrivers || availableDrivers.length < 2) {
-            console.log("Not enough drivers available for auto-fill");
-
             // Reset driver selections when vehicle changes
             form.setFieldsValue({
                 [groupKey]: {
@@ -365,7 +350,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             if (otherDrivers.length > 0) {
                 driver2 = otherDrivers[0];
             } else {
-                console.log("Could not find suitable driver2");
                 return;
             }
         } else {
@@ -389,13 +373,11 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 driver1 = sortedDrivers[0];
                 driver2 = sortedDrivers[1];
             } else {
-                console.log("Not enough drivers available after sorting");
                 return;
             }
         }
 
         if (!driver1 || !driver2) {
-            console.log("Failed to select two drivers");
             return;
         }
 
@@ -413,12 +395,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             ...prev,
             [groupKey]: { driver1: driver1.id, driver2: driver2.id }
         }));
-
-        console.log(`Auto-filled drivers for group ${groupKey}: Driver1=${driver1.fullName}, Driver2=${driver2.fullName}`);
     };
 
     const handleDriver1Change = (groupKey: string, driverId: string) => {
-        console.log(`Driver 1 changed for group ${groupKey}: ${driverId}`);
         setSelectedDrivers(prev => ({
             ...prev,
             [groupKey]: { ...prev[groupKey], driver1: driverId }
@@ -442,7 +421,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     };
 
     const handleDriver2Change = (groupKey: string, driverId: string) => {
-        console.log(`Driver 2 changed for group ${groupKey}: ${driverId}`);
         setSelectedDrivers(prev => ({
             ...prev,
             [groupKey]: { ...prev[groupKey], driver2: driverId }
@@ -461,11 +439,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         const groupSuggestions = getSuggestionsForGroup(groupKey);
 
         if (!groupSuggestions || groupSuggestions.length === 0) {
-            console.log(`No vehicle suggestions found for group ${groupKey}`);
             return [];
         }
 
-        console.log(`Rendering ${groupSuggestions.length} vehicle options for group ${groupKey}`);
         return groupSuggestions.map(vehicle => (
             <Option key={vehicle.id} value={vehicle.id}>
                 <div className="flex items-center">
@@ -635,11 +611,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
 
     const renderDetailForm = (group: OrderDetailGroup, groupIndex: number) => {
         const groupKey = groupIndex.toString();
-        console.log(`Rendering detail form for group ${groupKey}`);
         const currentVehicleId = selectedVehicles[groupKey];
         const currentDrivers = selectedDrivers[groupKey] || { driver1: '', driver2: '' };
 
-        // Get the first detail in the group to display some info
         const firstDetail = group.orderDetails && group.orderDetails.length > 0
             ? group.orderDetails[0]
             : null;
@@ -881,10 +855,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 return <Empty description="Không tìm thấy thông tin đơn hàng" />;
             }
 
-            // Sử dụng orderId từ props của component VehicleAssignmentModal
-            // Đây là ID của đơn hàng, không phải ID của chi tiết đơn hàng
-            console.log("Using order ID for route planning:", orderId);
-
             // Create a vehicle object with all required fields
             const vehicleForRoute = {
                 id: currentVehicle.id,
@@ -909,13 +879,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         }
     };
 
-    console.log("Modal render - suggestions:", suggestions);
-    console.log("Modal render - orderDetails:", orderDetails);
-    console.log("Modal render - selectedVehicles:", selectedVehicles);
-    console.log("Modal render - selectedDrivers:", selectedDrivers);
-    console.log("Modal render - suggestionsMap:", suggestionsMap);
-
-    // Check if we have any suggestions
     const hasSuggestions = detailGroups.length > 0;
 
     return (

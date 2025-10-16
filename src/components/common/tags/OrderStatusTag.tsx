@@ -22,8 +22,6 @@ interface OrderStatusTagProps {
  * Component hiển thị trạng thái đơn hàng với kiểu dáng phù hợp
  */
 const OrderStatusTag: React.FC<OrderStatusTagProps> = ({ status, className, size }) => {
-    // Debug log để kiểm tra status
-    console.log('OrderStatusTag received status:', status);
     
     // Xác định icon dựa vào trạng thái
     const getStatusIcon = (status: OrderStatusEnum) => {

@@ -8,6 +8,7 @@ import React, {
 import type { ReactNode } from "react";
 import { Client } from "@stomp/stompjs";
 import type { IMessage } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 
 import type {
   ChatMessageDTO,
@@ -560,17 +561,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         return;
       }
 
-      // Create new WebSocket connection
+      // Create new WebSocket connection with SockJS
       setConnectionStatus("connecting");
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = 'localhost:8080';
-      const wsUrl = `${protocol}//${host}/chat`;
+      const host = window.location.hostname;
+      const sockJsUrl = `http://${host}:8080/chat-browser`;
 
-      console.log('🆕 Creating new WebSocket connection:', wsUrl);
+      console.log('🆕 Creating new WebSocket connection via SockJS:', sockJsUrl);
 
       const stompClient = new Client({
-        brokerURL: wsUrl,
+        webSocketFactory: () => {
+          return new SockJS(sockJsUrl);
+        },
         reconnectDelay: 5000,
         debug: (str) => console.log('STOMP Debug:', str),
       });

@@ -142,7 +142,7 @@ const OrderDetailPage: React.FC = () => {
       if (response.success) {
         setContractData(response.data);
         setContractPreviewVisible(true);
-        console.log("Contract data set successfully");
+        console.log("Contract data set SUCCESSFUL");
       } else {
         messageApi.error(response.message);
         console.error("Contract service returned error:", response.message);
@@ -255,7 +255,7 @@ const OrderDetailPage: React.FC = () => {
         case "DRIVER_CONFIRM":
           currentStep = 2;
           break;
-        case "PICKED_UP":
+        case "PICKING_UP":
         case "SEALED_COMPLETED":
         case "ON_DELIVERED":
           currentStep = 3;

@@ -741,13 +741,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     // Tạo popup cho segment này
                     const popup = createSegmentPopup(segment, index, routeSegments.length);
 
-                    // Chỉ hiển thị popup đầu tiên khi load map
-                    if (index === 0) {
-                        if (popup) {
-                            popup.addTo(mapRef.current);
-                            setActivePopupIndex(0);
-                        }
-                    }
+                    // Không tự động hiển thị popup khi load map
+                    // User sẽ click vào route để xem thông tin
 
                     // Thêm sự kiện click vào route để hiển thị/ẩn popup
                     mapRef.current.on('click', layerId, (e: any) => {

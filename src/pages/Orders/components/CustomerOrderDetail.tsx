@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { App, Button, Typography, Skeleton, Empty, Tabs, Card } from "antd";
 import {
@@ -16,6 +16,8 @@ import type {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { OrderStatusEnum } from "../../../constants/enums";
+import { useVehicleTracking } from "../../../hooks/useVehicleTracking";
 
 // Import components
 import BasicInfoTab from "./CustomerOrderDetail/BasicInfoTab";
@@ -50,6 +52,54 @@ const CustomerOrderDetail: React.FC = () => {
   const [hasContract, setHasContract] = useState<boolean>(false);
   const [checkingContract, setCheckingContract] = useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
+
+  // Kiểm tra xem có nên hiển thị tracking thời gian thực không (từ PICKING_UP trở đi)
+  const shouldShowRealTimeTracking = useMemo(() => {
+    if (!orderData?.order?.status) return false;
+    
+    // Danh sách các trạng thái từ PICKING_UP trở về sau
+    const trackingStatuses = [
+      OrderStatusEnum.PICKING_UP,
+      OrderStatusEnum.ON_DELIVERED,
+      OrderStatusEnum.ONGOING_DELIVERED,
+      OrderStatusEnum.IN_TROUBLES,
+      OrderStatusEnum.RESOLVED,
+      OrderStatusEnum.COMPENSATION,
+      OrderStatusEnum.DELIVERED,
+      OrderStatusEnum.SUCCESSFUL,
+      OrderStatusEnum.RETURNING,
+      OrderStatusEnum.RETURNED
+    ];
+    
+    return trackingStatuses.includes(orderData.order.status as OrderStatusEnum);
+  }, [orderData?.order?.status]);
+
+  // Sử dụng WebSocket hook cho tracking xe
+  const {
+    vehicleLocations,
+    isConnected,
+    isConnecting,
+    error: trackingError,
+  } = useVehicleTracking({
+    orderId: shouldShowRealTimeTracking ? orderData?.order?.id : undefined,
+    autoConnect: shouldShowRealTimeTracking,
+    reconnectInterval: 5000,
+    maxReconnectAttempts: 5,
+  });
+
+  console.log('[CustomerOrderDetail] Real-time tracking status:', {
+    shouldShowRealTimeTracking,
+    orderStatus: orderData?.order?.status,
+    orderId: orderData?.order?.id,
+    isConnected,
+    isConnecting,
+    vehicleLocationsCount: vehicleLocations.length,
+    validVehicleLocationsCount: vehicleLocations.filter(vehicle =>
+      !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
+      isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
+    ).length,
+    trackingError
+  });
 
   useEffect(() => {
     if (id) {

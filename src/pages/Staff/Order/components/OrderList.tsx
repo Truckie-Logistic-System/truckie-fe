@@ -85,15 +85,14 @@ const OrderList: React.FC = () => {
             [OrderStatusEnum.PENDING, OrderStatusEnum.PROCESSING, OrderStatusEnum.CONTRACT_DRAFT].includes(order.status as OrderStatusEnum)).length;
 
         const inProgressOrders = orders.filter(order =>
-            [OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.DRIVER_CONFIRM,
-            OrderStatusEnum.PICKED_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED,
-            OrderStatusEnum.IN_DELIVERED].includes(order.status as OrderStatusEnum)).length;
+            [OrderStatusEnum.ON_PLANNING, OrderStatusEnum.ASSIGNED_TO_DRIVER, OrderStatusEnum.FULLY_PAID,
+            OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED].includes(order.status as OrderStatusEnum)).length;
 
         const completedOrders = orders.filter(order =>
-            [OrderStatusEnum.DELIVERED, OrderStatusEnum.SUCCESSFUL].includes(order.status as OrderStatusEnum)).length;
+            [OrderStatusEnum.DELIVERED, OrderStatusEnum.SUCCESSFUL, OrderStatusEnum.RESOLVED].includes(order.status as OrderStatusEnum)).length;
 
         const issueOrders = orders.filter(order =>
-            [OrderStatusEnum.CANCELLED, OrderStatusEnum.REJECT_ORDER, OrderStatusEnum.IN_TROUBLES,
+            [OrderStatusEnum.REJECT_ORDER, OrderStatusEnum.IN_TROUBLES, OrderStatusEnum.COMPENSATION,
             OrderStatusEnum.RETURNING, OrderStatusEnum.RETURNED].includes(order.status as OrderStatusEnum)).length;
 
         return { pendingOrders, inProgressOrders, completedOrders, issueOrders };
@@ -144,27 +143,6 @@ const OrderList: React.FC = () => {
                 key: 'receiverPhone',
                 ellipsis: true,
                 responsive: ['lg'],
-            },
-            {
-                title: 'Tổng KL',
-                dataIndex: 'totalWeight',
-                key: 'totalWeight',
-                render: (weight: number | null) => weight !== null ? `${weight} kg` : '0 kg',
-                sorter: (a: Order, b: Order) => (a.totalWeight || 0) - (b.totalWeight || 0),
-                width: 100,
-                responsive: ['md'],
-            },
-            {
-                title: 'Tổng tiền',
-                dataIndex: 'totalPrice',
-                key: 'totalPrice',
-                render: (price: number | null) => (
-                    <span className="font-medium text-blue-600">
-                        {price !== null ? `${price.toLocaleString('vi-VN')} VNĐ` : '0 VNĐ'}
-                    </span>
-                ),
-                sorter: (a: Order, b: Order) => (a.totalPrice || 0) - (b.totalPrice || 0),
-                width: 150,
             },
             {
                 title: 'Trạng thái',
@@ -339,7 +317,7 @@ const OrderList: React.FC = () => {
                                 <Option value="CONTRACT_SIGNED">Hợp đồng đã ký</Option>
                                 <Option value="ON_PLANNING">Đang lập kế hoạch</Option>
                                 <Option value="ASSIGNED_TO_DRIVER">Đã phân công tài xế</Option>
-                                <Option value="PICKED_UP">Đã lấy hàng</Option>
+                                <Option value="PICKING_UP">Đang lấy hàng</Option>
                                 <Option value="ON_DELIVERED">Đang vận chuyển</Option>
                                 <Option value="DELIVERED">Đã giao hàng</Option>
                                 <Option value="SUCCESSFUL">Hoàn thành</Option>

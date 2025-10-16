@@ -37,9 +37,6 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
         large: 'py-1.5 px-3 text-base',
     };
 
-    // Debug log để kiểm tra
-    console.log('StatusBadge:', { status, colorClass, label });
-
     // Xác định màu dựa vào colorClass
     const getColorFromClass = () => {
         if (!colorClass) return 'default';

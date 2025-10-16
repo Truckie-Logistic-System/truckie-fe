@@ -39,7 +39,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSucce
             queryClient.invalidateQueries({ queryKey: ['customerProfile'] });
 
             // Thông báo thành công sẽ được hiển thị bởi component cha
-            console.log('Profile updated successfully');
+            console.log('Profile updated SUCCESSFUL');
             onSuccess();
         } catch (error) {
             console.error('Error updating profile:', error);

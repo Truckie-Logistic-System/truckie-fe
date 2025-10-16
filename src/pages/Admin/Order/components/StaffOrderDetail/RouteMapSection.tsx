@@ -29,9 +29,10 @@ interface RouteMapSectionProps {
         trackingCode?: string;
     };
     journeyInfo?: Partial<JourneyHistory>;
+    onMapReady?: (map: any) => void;
 }
 
-const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehicleInfo, journeyInfo }) => {
+const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehicleInfo, journeyInfo, onMapReady }) => {
     const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
     const [markers, setMarkers] = useState<MapLocation[]>([]);
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -50,21 +51,57 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
     const handleMapInstance = (map: any) => {
         mapRef.current = map;
 
+        // Notify parent component that map is ready
+        if (onMapReady) {
+            onMapReady(map);
+        }
+
         // Apply closer zoom when map is loaded
         if (map && markers.length > 1) {
             setTimeout(() => {
                 try {
-                    // Create bounds for all markers
-                    const bounds = new window.vietmapgl.LngLatBounds();
-                    markers.forEach(marker => {
-                        bounds.extend([marker.lng, marker.lat]);
-                    });
+                    // Filter out markers with invalid coordinates
+                    const validMarkers = markers.filter(marker =>
+                        !isNaN(marker.lat) && !isNaN(marker.lng) &&
+                        isFinite(marker.lat) && isFinite(marker.lng)
+                    );
 
-                    // Fit map to bounds with balanced padding for better context
-                    map.fitBounds(bounds, {
-                        padding: 80, // Moderate padding for context
-                        maxZoom: undefined // Let the map determine the optimal zoom level
-                    });
+                    if (validMarkers.length > 1) {
+                        try {
+                            // Initialize bounds with first marker to avoid NaN
+                            const firstMarker = validMarkers[0];
+                            const bounds = new window.vietmapgl.LngLatBounds(
+                                [firstMarker.lng, firstMarker.lat],
+                                [firstMarker.lng, firstMarker.lat]
+                            );
+                            
+                            // Extend bounds with remaining markers
+                            for (let i = 1; i < validMarkers.length; i++) {
+                                const marker = validMarkers[i];
+                                bounds.extend([marker.lng, marker.lat]);
+                            }
+
+                            // Fit map to bounds with balanced padding for better context
+                            map.fitBounds(bounds, {
+                                padding: 80,
+                                maxZoom: 15,
+                                duration: 1000
+                            });
+                        } catch (err) {
+                            console.error('Error fitting bounds:', err);
+                            // Fallback: center on first marker
+                            const marker = validMarkers[0];
+                            map.setCenter([marker.lng, marker.lat]);
+                            map.setZoom(12);
+                        }
+                    } else if (validMarkers.length === 1) {
+                        // If only one valid marker, center the map on it
+                        const marker = validMarkers[0];
+                        map.setCenter([marker.lng, marker.lat]);
+                        map.setZoom(12);
+                    } else {
+                        console.warn('No valid markers found for map bounds');
+                    }
                 } catch (error) {
                     console.error("Error adjusting map zoom:", error);
                 }
@@ -85,7 +122,9 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                         const pathCoordinates = JSON.parse(segment.pathCoordinatesJson);
 
                         // Add start point marker
-                        if (segment.startLatitude && segment.startLongitude) {
+                        if (segment.startLatitude && segment.startLongitude &&
+                            !isNaN(segment.startLatitude) && !isNaN(segment.startLongitude) &&
+                            isFinite(segment.startLatitude) && isFinite(segment.startLongitude)) {
                             const translatedStartName = translatePointName(segment.startPointName || '');
                             newMarkers.push({
                                 lat: segment.startLatitude,
@@ -98,7 +137,9 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                         }
 
                         // Add end point marker
-                        if (segment.endLatitude && segment.endLongitude) {
+                        if (segment.endLatitude && segment.endLongitude &&
+                            !isNaN(segment.endLatitude) && !isNaN(segment.endLongitude) &&
+                            isFinite(segment.endLatitude) && isFinite(segment.endLongitude)) {
                             const translatedEndName = translatePointName(segment.endPointName || '');
                             const distance = segment.distanceMeters.toFixed(1);
                             newMarkers.push({

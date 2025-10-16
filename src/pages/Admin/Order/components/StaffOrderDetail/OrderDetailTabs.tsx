@@ -37,10 +37,8 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
         // Danh sách các trạng thái từ PICKING_UP trở về sau
         const trackingStatuses = [
             OrderStatusEnum.PICKING_UP,
-            OrderStatusEnum.SEALED_COMPLETED,
             OrderStatusEnum.ON_DELIVERED,
             OrderStatusEnum.ONGOING_DELIVERED,
-            OrderStatusEnum.IN_DELIVERED,
             OrderStatusEnum.IN_TROUBLES,
             OrderStatusEnum.RESOLVED,
             OrderStatusEnum.COMPENSATION,
