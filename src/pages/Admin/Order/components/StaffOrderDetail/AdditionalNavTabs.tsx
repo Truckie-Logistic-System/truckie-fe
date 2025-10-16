@@ -15,7 +15,7 @@ import {
     CalendarOutlined,
     EnvironmentOutlined,
 } from "@ant-design/icons";
-import RouteMapSection from "./RouteMapSection";
+import RouteMapWithRealTimeTracking from "./RouteMapWithRealTimeTracking";
 import { OrderStatusEnum } from "../../../../../constants/enums";
 import type { StaffOrderDetail, StaffOrderDetailItem } from "../../../../../models/Order";
 import { formatJourneyType, getJourneyStatusColor } from "../../../../../models/JourneyHistory";
@@ -151,15 +151,27 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                 if (!journey.journeySegments || journey.journeySegments.length === 0) {
                                                     return null;
                                                 }
+                                                // Check if order status allows real-time tracking
+                                                const shouldShowRealTimeTracking = orderData.order?.status ? [
+                                                    OrderStatusEnum.PICKING_UP,
+                                                    OrderStatusEnum.ON_DELIVERED,
+                                                    OrderStatusEnum.ONGOING_DELIVERED,
+                                                    OrderStatusEnum.DELIVERED,
+                                                    OrderStatusEnum.IN_TROUBLES,
+                                                    OrderStatusEnum.RESOLVED,
+                                                    OrderStatusEnum.COMPENSATION,
+                                                    OrderStatusEnum.SUCCESSFUL,
+                                                    OrderStatusEnum.RETURNING,
+                                                    OrderStatusEnum.RETURNED
+                                                ].includes(orderData.order.status as OrderStatusEnum) : false;
+
                                                 return (
                                                     <div key={journey.id || `journey-${journeyIdx}`} className="mb-4">
-                                                        <RouteMapSection
+                                                        <RouteMapWithRealTimeTracking
                                                             journeySegments={journey.journeySegments}
-                                                            vehicleInfo={{
-                                                                licensePlateNumber: va.vehicle?.licensePlateNumber,
-                                                                trackingCode: va.trackingCode
-                                                            }}
                                                             journeyInfo={journey}
+                                                            orderId={orderData.order.id}
+                                                            shouldShowRealTimeTracking={shouldShowRealTimeTracking}
                                                         />
                                                     </div>
                                                 );

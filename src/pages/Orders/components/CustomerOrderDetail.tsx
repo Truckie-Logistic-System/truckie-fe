@@ -102,6 +102,9 @@ const CustomerOrderDetail: React.FC = () => {
   });
 
   useEffect(() => {
+    // Scroll to top when entering order detail page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     if (id) {
       fetchOrderDetails(id);
     }

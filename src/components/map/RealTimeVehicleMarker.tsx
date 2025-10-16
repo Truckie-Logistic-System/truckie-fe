@@ -20,8 +20,30 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
   const popupRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!map || !vehicle || !window.vietmapgl) return;
+    console.log('=== [RealTimeVehicleMarker] EFFECT TRIGGERED ===');
+    console.log('map:', map ? 'EXISTS' : 'NULL');
+    console.log('vehicle:', vehicle);
+    console.log('window.vietmapgl:', typeof window.vietmapgl !== 'undefined' ? 'AVAILABLE' : 'NOT AVAILABLE');
+    
+    if (!map) {
+      console.warn('[RealTimeVehicleMarker] Map not available yet');
+      return;
+    }
+    
+    if (!vehicle) {
+      console.warn('[RealTimeVehicleMarker] Vehicle data not available');
+      return;
+    }
+    
+    if (!window.vietmapgl) {
+      console.error('[RealTimeVehicleMarker] VietMapGL not loaded!');
+      return;
+    }
 
+    console.log('=== [RealTimeVehicleMarker] CREATING/UPDATING MARKER ===');
+    console.log('Vehicle ID:', vehicle.vehicleId);
+    console.log('License Plate:', vehicle.licensePlateNumber);
+    console.log('Position:', { lat: vehicle.latitude, lng: vehicle.longitude });
     console.log('[RealTimeVehicleMarker] Creating/updating marker for vehicle:', vehicle.vehicleId);
 
     // Tạo HTML cho popup thông tin xe
@@ -131,8 +153,11 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
 
     // Nếu marker đã tồn tại, chỉ cập nhật vị trí
     if (markerRef.current) {
-      console.log('[RealTimeVehicleMarker] Updating existing marker position');
+      console.log('=== [RealTimeVehicleMarker] UPDATING EXISTING MARKER ===');
+      console.log('Old position:', markerRef.current.getLngLat());
+      console.log('New position:', [vehicle.longitude, vehicle.latitude]);
       markerRef.current.setLngLat([vehicle.longitude, vehicle.latitude]);
+      console.log('Marker position updated successfully');
       
       // Cập nhật popup content
       if (popupRef.current) {
@@ -140,7 +165,9 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
       }
     } else {
       // Tạo marker mới
-      console.log('[RealTimeVehicleMarker] Creating new marker');
+      console.log('=== [RealTimeVehicleMarker] CREATING NEW MARKER ===');
+      console.log('Position:', [vehicle.longitude, vehicle.latitude]);
+      console.log('Vehicle:', vehicle);
       
       // Tạo popup
       const popup = new window.vietmapgl.Popup({
@@ -162,10 +189,14 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
         .addTo(map);
 
       markerRef.current = marker;
+      console.log('Marker created and added to map successfully');
+      console.log('Marker reference:', markerRef.current);
 
       // Thêm event click
       el.addEventListener('click', () => {
-        console.log('[RealTimeVehicleMarker] Marker clicked:', vehicle.vehicleId);
+        console.log('=== [RealTimeVehicleMarker] MARKER CLICKED ===');
+        console.log('Vehicle ID:', vehicle.vehicleId);
+        console.log('Vehicle:', vehicle);
         if (onMarkerClick) {
           onMarkerClick(vehicle);
         }
@@ -177,9 +208,11 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
     // Cleanup function
     return () => {
       if (markerRef.current) {
-        console.log('[RealTimeVehicleMarker] Removing marker');
+        console.log('=== [RealTimeVehicleMarker] CLEANUP - REMOVING MARKER ===');
+        console.log('Vehicle ID:', vehicle.vehicleId);
         markerRef.current.remove();
         markerRef.current = null;
+        console.log('Marker removed successfully');
       }
       if (popupRef.current) {
         popupRef.current = null;

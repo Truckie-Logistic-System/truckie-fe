@@ -82,7 +82,15 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   // Handle incoming vehicle location messages
   const handleVehicleLocationMessage = useCallback((message: IMessage) => {
     try {
+      console.log('=== [VehicleTracking] RAW MESSAGE RECEIVED ===');
+      console.log('Message destination:', message.headers.destination);
+      console.log('Message body (raw):', message.body);
+      console.log('Message headers:', message.headers);
+      
       const locationData: VehicleLocationMessage | VehicleLocationMessage[] = JSON.parse(message.body);
+      console.log('=== [VehicleTracking] PARSED LOCATION DATA ===');
+      console.log('Type:', Array.isArray(locationData) ? 'Array' : 'Single Object');
+      console.log('Data:', JSON.stringify(locationData, null, 2));
       log('Received vehicle location data:', locationData);
       
       if (Array.isArray(locationData)) {
@@ -154,6 +162,9 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     // Connection success handler
     client.onConnect = (frame) => {
+      console.log('=== [VehicleTracking] WEBSOCKET CONNECTED ===');
+      console.log('Frame:', frame);
+      console.log('Connection headers:', frame.headers);
       log('Connected to WebSocket SUCCESSFUL', frame);
       setIsConnected(true);
       setIsConnecting(false);
@@ -163,30 +174,54 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       try {
         // Subscribe to appropriate topic based on configuration
         if (config.orderId) {
-          log(`Subscribing to order vehicles topic: /topic/orders/${config.orderId}/vehicles`);
+          const topicPath = `/topic/orders/${config.orderId}/vehicles`;
+          console.log('=== [VehicleTracking] SUBSCRIBING TO TOPIC ===');
+          console.log('Topic path:', topicPath);
+          console.log('Order ID:', config.orderId);
+          log(`Subscribing to order vehicles topic: ${topicPath}`);
           
           const subscription = client.subscribe(
-            `/topic/orders/${config.orderId}/vehicles`,
-            handleVehicleLocationMessage
+            topicPath,
+            (message) => {
+              console.log('=== [VehicleTracking] MESSAGE RECEIVED ON TOPIC ===');
+              console.log('Topic:', topicPath);
+              console.log('Message:', message);
+              handleVehicleLocationMessage(message);
+            }
           );
           subscriptionsRef.current.push(subscription);
+          console.log('Subscription successful:', subscription.id);
 
           // Request initial location data for all vehicles in the order
+          console.log('=== [VehicleTracking] REQUESTING INITIAL LOCATIONS ===');
+          console.log('Destination:', `/app/order/${config.orderId}/get-locations`);
+          console.log('Request body:', { orderId: config.orderId });
           log(`Requesting locations for order: ${config.orderId}`);
           client.publish({
             destination: `/app/order/${config.orderId}/get-locations`,
             body: JSON.stringify({ orderId: config.orderId }),
           });
+          console.log('Initial location request sent');
         }
 
         if (config.vehicleId) {
-          log(`Subscribing to single vehicle topic: /topic/vehicles/${config.vehicleId}`);
+          const topicPath = `/topic/vehicles/${config.vehicleId}`;
+          console.log('=== [VehicleTracking] SUBSCRIBING TO VEHICLE TOPIC ===');
+          console.log('Topic path:', topicPath);
+          console.log('Vehicle ID:', config.vehicleId);
+          log(`Subscribing to single vehicle topic: ${topicPath}`);
           
           const subscription = client.subscribe(
-            `/topic/vehicles/${config.vehicleId}`,
-            handleVehicleLocationMessage
+            topicPath,
+            (message) => {
+              console.log('=== [VehicleTracking] MESSAGE RECEIVED ON VEHICLE TOPIC ===');
+              console.log('Topic:', topicPath);
+              console.log('Message:', message);
+              handleVehicleLocationMessage(message);
+            }
           );
           subscriptionsRef.current.push(subscription);
+          console.log('Vehicle subscription successful:', subscription.id);
 
           // Request initial location data for the specific vehicle
           log(`Requesting location for vehicle: ${config.vehicleId}`);

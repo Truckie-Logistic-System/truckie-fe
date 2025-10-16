@@ -76,10 +76,15 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                                 bounds.extend([marker.lng, marker.lat]);
                             }
 
-                            // Fit map to bounds with balanced padding for better context
+                            // Fit map to bounds with generous padding for full route overview
                             map.fitBounds(bounds, {
-                                padding: 80,
-                                maxZoom: 15,
+                                padding: {
+                                    top: 100,
+                                    bottom: 100,
+                                    left: 100,
+                                    right: 100
+                                },
+                                maxZoom: 13, // Lower zoom for better overview
                                 duration: 1000
                             });
                         } catch (err) {

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Card, Alert } from 'antd';
 import { WifiOutlined, DisconnectOutlined, LoadingOutlined } from '@ant-design/icons';
 import RouteMapSection from './RouteMapSection';
-import RealTimeVehicleMarker from '../../../../../components/map/RealTimeVehicleMarker';
-import { useVehicleTracking, type VehicleLocationMessage } from '../../../../../hooks/useVehicleTracking';
-import type { JourneySegment, JourneyHistory } from '../../../../../models/JourneyHistory';
+import RealTimeVehicleMarker from '../../../../components/map/RealTimeVehicleMarker';
+import { useVehicleTracking, type VehicleLocationMessage } from '../../../../hooks/useVehicleTracking';
+import type { JourneySegment, JourneyHistory } from '../../../../models/JourneyHistory';
 
 interface RouteMapWithRealTimeTrackingProps {
   journeySegments: JourneySegment[];
@@ -14,7 +14,7 @@ interface RouteMapWithRealTimeTrackingProps {
 }
 
 /**
- * Component kết hợp hiển thị lộ trình tĩnh và tracking xe real-time
+ * Component kết hợp hiển thị lộ trình tĩnh và tracking xe real-time cho Customer
  * - Hiển thị route từ journey segments
  * - Overlay các marker xe đang di chuyển real-time
  * - Tự động cập nhật vị trí xe khi nhận WebSocket message
@@ -25,7 +25,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   orderId,
   shouldShowRealTimeTracking
 }) => {
-  console.log('🎯 [RouteMapWithRealTimeTracking] COMPONENT RENDERED/RE-RENDERED');
+  console.log('🎯 [CustomerRouteMapWithRealTimeTracking] COMPONENT RENDERED/RE-RENDERED');
   console.log('Props:', { orderId, shouldShowRealTimeTracking, journeySegmentsCount: journeySegments?.length });
   
   const [mapInstance, setMapInstance] = useState<any>(null);
@@ -44,25 +44,19 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     maxReconnectAttempts: 5,
   });
 
-  console.log('=== [RouteMapWithRealTimeTracking] COMPONENT STATE ===');
+  console.log('=== [CustomerRouteMapWithRealTimeTracking] COMPONENT STATE ===');
   console.log('shouldShowRealTimeTracking:', shouldShowRealTimeTracking);
   console.log('orderId:', orderId);
   console.log('isConnected:', isConnected);
   console.log('isConnecting:', isConnecting);
   console.log('vehicleCount:', vehicleLocations.length);
   console.log('vehicleLocations:', vehicleLocations);
-  console.log('validVehicleCount:', vehicleLocations.filter(vehicle =>
-    !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
-    isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
-  ).length);
   console.log('trackingError:', trackingError);
   console.log('hasMap:', !!mapInstance);
-  console.log('mapInstance:', mapInstance);
-  console.log('================================================');
 
   // Callback khi map được khởi tạo
   const handleMapReady = (map: any) => {
-    console.log('=== [RouteMapWithRealTimeTracking] MAP READY ===');
+    console.log('=== [CustomerRouteMapWithRealTimeTracking] MAP READY ===');
     console.log('Map instance:', map);
     console.log('Map loaded:', map ? 'YES' : 'NO');
     console.log('VietMapGL available:', typeof window.vietmapgl !== 'undefined');
@@ -71,7 +65,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
 
   // Callback khi click vào marker xe
   const handleVehicleMarkerClick = (vehicle: VehicleLocationMessage) => {
-    console.log('[RouteMapWithRealTimeTracking] Vehicle marker clicked:', vehicle);
+    console.log('[CustomerRouteMapWithRealTimeTracking] Vehicle marker clicked:', vehicle);
     
     // Center map to vehicle location
     if (mapInstance) {
@@ -83,93 +77,8 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     }
   };
 
-  // Render connection status
-  const renderConnectionStatus = () => {
-    if (!shouldShowRealTimeTracking) return null;
-
-    if (isConnecting) {
-      return (
-        <Alert
-          message="Đang kết nối WebSocket..."
-          type="info"
-          icon={<LoadingOutlined />}
-          showIcon
-          className="mb-4"
-        />
-      );
-    }
-
-    if (trackingError) {
-      return (
-        <Alert
-          message="Lỗi kết nối WebSocket"
-          description={trackingError}
-          type="error"
-          showIcon
-          className="mb-4"
-          action={
-            <a onClick={reconnect} className="text-blue-600 hover:text-blue-800">
-              Thử lại
-            </a>
-          }
-        />
-      );
-    }
-
-    if (isConnected && vehicleLocations.length > 0) {
-      const validVehicleCount = vehicleLocations.filter(vehicle =>
-        !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
-        isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
-      ).length;
-
-      return (
-        <Alert
-          message={
-            <span>
-              <WifiOutlined className="mr-2" />
-              Đang theo dõi {validVehicleCount} xe real-time
-            </span>
-          }
-          type="success"
-          showIcon
-          className="mb-4"
-        />
-      );
-    }
-
-    if (isConnected && vehicleLocations.length === 0) {
-      return (
-        <Alert
-          message="Đã kết nối WebSocket"
-          description="Đang chờ dữ liệu vị trí xe..."
-          type="info"
-          showIcon
-          className="mb-4"
-        />
-      );
-    }
-
-    return (
-      <Alert
-        message="Mất kết nối WebSocket"
-        type="warning"
-        icon={<DisconnectOutlined />}
-        showIcon
-        className="mb-4"
-        action={
-          <a onClick={reconnect} className="text-blue-600 hover:text-blue-800">
-            Kết nối lại
-          </a>
-        }
-      />
-    );
-  };
-
   return (
-    <div className="route-map-with-tracking">
-      {/* Connection status */}
-      {renderConnectionStatus()}
-
+    <>
       <div className="relative">
         {/* Live tracking indicator */}
         {shouldShowRealTimeTracking && (
@@ -193,6 +102,25 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
           </div>
         )}
 
+        {/* Hiển thị lỗi tracking nếu có */}
+        {shouldShowRealTimeTracking && trackingError && (
+          <Alert
+            message="Lỗi theo dõi real-time"
+            description={trackingError}
+            type="warning"
+            showIcon
+            className="mb-4"
+            action={
+              <button
+                onClick={reconnect}
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                Thử lại
+              </button>
+            }
+          />
+        )}
+
         {/* Hiển thị route map */}
         <RouteMapSection
           journeySegments={journeySegments}
@@ -203,7 +131,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
         {/* Overlay real-time vehicle markers */}
         {(() => {
           const shouldRender = shouldShowRealTimeTracking && mapInstance && vehicleLocations.length > 0;
-          console.log('=== [RouteMapWithRealTimeTracking] MARKER RENDER CHECK ===');
+          console.log('=== [CustomerRouteMapWithRealTimeTracking] MARKER RENDER CHECK ===');
           console.log('shouldShowRealTimeTracking:', shouldShowRealTimeTracking);
           console.log('mapInstance exists:', !!mapInstance);
           console.log('vehicleLocations.length:', vehicleLocations.length);
@@ -223,7 +151,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
                   isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
                 )
                 .map((vehicle) => {
-                  console.log('=== [RouteMapWithRealTimeTracking] Rendering marker for vehicle:', vehicle.vehicleId);
+                  console.log('=== [CustomerRouteMapWithRealTimeTracking] Rendering marker for vehicle:', vehicle.vehicleId);
                   return (
                     <RealTimeVehicleMarker
                       key={vehicle.vehicleId}
@@ -238,25 +166,22 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
         })()}
       </div>
 
-      {/* Debug info (chỉ hiển thị trong development) */}
+      {/* Debug info cho customer (chỉ hiển thị trong development) */}
       {process.env.NODE_ENV === 'development' && shouldShowRealTimeTracking && (
-        <Card className="mt-4" size="small" title="Debug Info">
+        <Card className="mt-4" size="small" title="Debug Info (Customer)">
           <pre className="text-xs">
             {JSON.stringify({
               isConnected,
               isConnecting,
               vehicleCount: vehicleLocations.length,
-              validVehicleCount: vehicleLocations.filter(vehicle =>
-                !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
-                isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
-              ).length,
               hasMap: !!mapInstance,
-              error: trackingError
+              orderId,
+              trackingError: trackingError ? trackingError.substring(0, 100) + '...' : null
             }, null, 2)}
           </pre>
         </Card>
       )}
-    </div>
+    </>
   );
 };
 

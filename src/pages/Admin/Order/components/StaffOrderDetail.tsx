@@ -49,6 +49,9 @@ const StaffOrderDetail: React.FC = () => {
   }> | null>(null);
 
   useEffect(() => {
+    // Scroll to top when entering order detail page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     if (id) {
       fetchOrderDetails(id);
     }
@@ -104,12 +107,9 @@ const StaffOrderDetail: React.FC = () => {
     const orderStatus = orderData.order.status;
     const statusesAllowingPrint = [
       OrderStatusEnum.ASSIGNED_TO_DRIVER,
-      OrderStatusEnum.DRIVER_CONFIRM,
       OrderStatusEnum.PICKING_UP,
-      OrderStatusEnum.SEALED_COMPLETED,
       OrderStatusEnum.ON_DELIVERED,
       OrderStatusEnum.ONGOING_DELIVERED,
-      OrderStatusEnum.IN_DELIVERED,
       OrderStatusEnum.IN_TROUBLES,
       OrderStatusEnum.RESOLVED,
       OrderStatusEnum.COMPENSATION,

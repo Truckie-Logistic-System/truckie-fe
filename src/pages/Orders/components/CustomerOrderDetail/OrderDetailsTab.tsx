@@ -14,7 +14,8 @@ import {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import RouteMapSection from "./RouteMapSection";
+import RouteMapWithRealTimeTracking from "./RouteMapWithRealTimeTracking";
+import { OrderStatusEnum } from "../../../../constants/enums";
 
 // Configure dayjs to use timezone
 dayjs.extend(utc);
@@ -439,9 +440,22 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
 
                                                     {/* Display route map if journey has segments */}
                                                     {journey.journeySegments && journey.journeySegments.length > 0 && (
-                                                        <RouteMapSection
+                                                        <RouteMapWithRealTimeTracking
                                                             journeySegments={journey.journeySegments}
                                                             journeyInfo={journey}
+                                                            orderId={order.id}
+                                                            shouldShowRealTimeTracking={[
+                                                                OrderStatusEnum.PICKING_UP,
+                                                                OrderStatusEnum.ON_DELIVERED,
+                                                                OrderStatusEnum.ONGOING_DELIVERED,
+                                                                OrderStatusEnum.DELIVERED,
+                                                                OrderStatusEnum.IN_TROUBLES,
+                                                                OrderStatusEnum.RESOLVED,
+                                                                OrderStatusEnum.COMPENSATION,
+                                                                OrderStatusEnum.SUCCESSFUL,
+                                                                OrderStatusEnum.RETURNING,
+                                                                OrderStatusEnum.RETURNED
+                                                            ].includes(order.status as OrderStatusEnum)}
                                                         />
                                                     )}
                                                 </div>

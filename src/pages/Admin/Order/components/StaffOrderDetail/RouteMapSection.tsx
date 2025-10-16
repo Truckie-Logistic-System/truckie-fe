@@ -49,11 +49,18 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
 
     // Custom function to get map instance
     const handleMapInstance = (map: any) => {
+        console.log('=== [RouteMapSection] handleMapInstance CALLED ===');
+        console.log('Map:', map);
+        console.log('onMapReady callback exists:', !!onMapReady);
+        
         mapRef.current = map;
 
         // Notify parent component that map is ready
         if (onMapReady) {
+            console.log('=== [RouteMapSection] Calling onMapReady callback ===');
             onMapReady(map);
+        } else {
+            console.warn('[RouteMapSection] onMapReady callback is not provided!');
         }
 
         // Apply closer zoom when map is loaded
@@ -81,10 +88,15 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                                 bounds.extend([marker.lng, marker.lat]);
                             }
 
-                            // Fit map to bounds with balanced padding for better context
+                            // Fit map to bounds with generous padding for full route overview
                             map.fitBounds(bounds, {
-                                padding: 80,
-                                maxZoom: 15,
+                                padding: {
+                                    top: 100,
+                                    bottom: 100,
+                                    left: 100,
+                                    right: 100
+                                },
+                                maxZoom: 13, // Lower zoom for better overview
                                 duration: 1000
                             });
                         } catch (err) {
@@ -110,6 +122,9 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
     };
 
     useEffect(() => {
+        console.log('=== [RouteMapSection] useEffect - Processing journey segments ===');
+        console.log('journeySegments count:', journeySegments?.length || 0);
+        
         if (journeySegments && journeySegments.length > 0) {
             const newMarkers: MapLocation[] = [];
             const newRouteSegments: RouteSegment[] = [];
@@ -179,6 +194,11 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
             }
 
             // Update state
+            console.log('=== [RouteMapSection] Setting state ===');
+            console.log('Markers:', newMarkers.length);
+            console.log('Route segments:', newRouteSegments.length);
+            console.log('Has valid route:', validRouteFound);
+            
             setMarkers(newMarkers);
             setRouteSegments(newRouteSegments);
             setHasValidRoute(validRouteFound);
