@@ -61,11 +61,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   const reconnectAttemptsRef = useRef(0);
   const subscriptionsRef = useRef<any[]>([]);
 
-  // Logging function
-  const log = useCallback((message: string, data?: any) => {
-    console.log(`[VehicleTracking] ${message}`, data || '');
-  }, []);
-
   // Error logging function
   const logError = useCallback((message: string, error?: any) => {
     console.error(`[VehicleTracking] ${message}`, error || '');
@@ -82,31 +77,29 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   // Handle incoming vehicle location messages
   const handleVehicleLocationMessage = useCallback((message: IMessage) => {
     try {
-      console.log('=== [VehicleTracking] RAW MESSAGE RECEIVED ===');
-      console.log('Message destination:', message.headers.destination);
-      console.log('Message body (raw):', message.body);
-      console.log('Message headers:', message.headers);
-      
       const locationData: VehicleLocationMessage | VehicleLocationMessage[] = JSON.parse(message.body);
-      console.log('=== [VehicleTracking] PARSED LOCATION DATA ===');
-      console.log('Type:', Array.isArray(locationData) ? 'Array' : 'Single Object');
-      console.log('Data:', JSON.stringify(locationData, null, 2));
-      log('Received vehicle location data:', locationData);
       
       if (Array.isArray(locationData)) {
-        log(`Setting ${locationData.length} vehicle locations from array`);
         setVehicleLocations(locationData);
       } else {
-        log(`Updating single vehicle location: ${locationData.vehicleId}`);
         setVehicleLocations(prev => {
           const existingIndex = prev.findIndex(v => v.vehicleId === locationData.vehicleId);
           if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = locationData;
-            log(`Updated existing vehicle at index ${existingIndex}`);
-            return updated;
+            const existing = prev[existingIndex];
+            
+            // Check if position actually changed to avoid unnecessary updates
+            const positionChanged = 
+              Math.abs(existing.latitude - locationData.latitude) > 0.000001 ||
+              Math.abs(existing.longitude - locationData.longitude) > 0.000001;
+            
+            if (positionChanged || existing.lastUpdated !== locationData.lastUpdated) {
+              const updated = [...prev];
+              updated[existingIndex] = locationData;
+              return updated;
+            } else {
+              return prev; // No change, return same reference
+            }
           } else {
-            log(`Added new vehicle to tracking list`);
             return [...prev, locationData];
           }
         });
@@ -117,12 +110,11 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       logError('Failed to parse vehicle location message:', err);
       setError('Lỗi khi xử lý dữ liệu vị trí xe');
     }
-  }, [log, logError]);
+  }, [logError]);
 
   // Connect to WebSocket
   const connect = useCallback(() => {
     if (clientRef.current?.connected || isConnecting) {
-      log('Already connected or connecting, skipping...');
       return;
     }
 
@@ -141,7 +133,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     setIsConnecting(true);
     setError(null);
-    log('Connecting to WebSocket via SockJS...');
 
     // Create STOMP client with SockJS transport
     const client = new Client({
@@ -153,7 +144,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
         Authorization: `Bearer ${token}`,
       },
       debug: (str) => {
-        log('STOMP Debug:', str);
       },
       reconnectDelay: config.reconnectInterval,
       heartbeatIncoming: 4000,
@@ -162,10 +152,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     // Connection success handler
     client.onConnect = (frame) => {
-      console.log('=== [VehicleTracking] WEBSOCKET CONNECTED ===');
-      console.log('Frame:', frame);
-      console.log('Connection headers:', frame.headers);
-      log('Connected to WebSocket SUCCESSFUL', frame);
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
@@ -175,70 +161,52 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
         // Subscribe to appropriate topic based on configuration
         if (config.orderId) {
           const topicPath = `/topic/orders/${config.orderId}/vehicles`;
-          console.log('=== [VehicleTracking] SUBSCRIBING TO TOPIC ===');
-          console.log('Topic path:', topicPath);
-          console.log('Order ID:', config.orderId);
-          log(`Subscribing to order vehicles topic: ${topicPath}`);
           
           const subscription = client.subscribe(
             topicPath,
             (message) => {
-              console.log('=== [VehicleTracking] MESSAGE RECEIVED ON TOPIC ===');
-              console.log('Topic:', topicPath);
-              console.log('Message:', message);
               handleVehicleLocationMessage(message);
             }
           );
           subscriptionsRef.current.push(subscription);
-          console.log('Subscription successful:', subscription.id);
 
           // Request initial location data for all vehicles in the order
-          console.log('=== [VehicleTracking] REQUESTING INITIAL LOCATIONS ===');
-          console.log('Destination:', `/app/order/${config.orderId}/get-locations`);
-          console.log('Request body:', { orderId: config.orderId });
-          log(`Requesting locations for order: ${config.orderId}`);
-          client.publish({
-            destination: `/app/order/${config.orderId}/get-locations`,
-            body: JSON.stringify({ orderId: config.orderId }),
-          });
-          console.log('Initial location request sent');
+          // Add small delay to ensure subscription is fully established
+          setTimeout(() => {
+            client.publish({
+              destination: `/app/order/${config.orderId}/get-locations`,
+              body: JSON.stringify({ orderId: config.orderId }),
+            });
+          }, 500); // 500ms delay to ensure subscription is ready
         }
 
         if (config.vehicleId) {
           const topicPath = `/topic/vehicles/${config.vehicleId}`;
-          console.log('=== [VehicleTracking] SUBSCRIBING TO VEHICLE TOPIC ===');
-          console.log('Topic path:', topicPath);
-          console.log('Vehicle ID:', config.vehicleId);
-          log(`Subscribing to single vehicle topic: ${topicPath}`);
           
           const subscription = client.subscribe(
             topicPath,
             (message) => {
-              console.log('=== [VehicleTracking] MESSAGE RECEIVED ON VEHICLE TOPIC ===');
-              console.log('Topic:', topicPath);
-              console.log('Message:', message);
               handleVehicleLocationMessage(message);
             }
           );
           subscriptionsRef.current.push(subscription);
-          console.log('Vehicle subscription successful:', subscription.id);
 
           // Request initial location data for the specific vehicle
-          log(`Requesting location for vehicle: ${config.vehicleId}`);
-          client.publish({
-            destination: `/app/vehicle/${config.vehicleId}/get-location`,
-            body: JSON.stringify({ vehicleId: config.vehicleId }),
-          });
+          // Add small delay to ensure subscription is fully established
+          setTimeout(() => {
+            client.publish({
+              destination: `/app/vehicle/${config.vehicleId}/get-location`,
+              body: JSON.stringify({ vehicleId: config.vehicleId }),
+            });
+          }, 500); // 500ms delay to ensure subscription is ready
         }
       } catch (subscriptionError) {
-        logError('Failed to subscribe to topics:', subscriptionError);
         setError('Lỗi khi đăng ký nhận dữ liệu');
       }
     };
 
     // Connection error handler
     client.onStompError = (frame) => {
-      logError('STOMP error:', frame);
       setIsConnected(false);
       setIsConnecting(false);
       setError(`Lỗi kết nối WebSocket: ${frame.headers['message'] || 'Unknown error'}`);
@@ -251,7 +219,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     // WebSocket error handler
     client.onWebSocketError = (event) => {
-      logError('WebSocket error:', event);
       setIsConnected(false);
       setIsConnecting(false);
       setError('Lỗi kết nối WebSocket');
@@ -263,7 +230,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     // Disconnection handler
     client.onDisconnect = (frame) => {
-      log('Disconnected from WebSocket', frame);
       setIsConnected(false);
       setIsConnecting(false);
       
@@ -278,30 +244,24 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     clientRef.current = client;
     client.activate();
-  }, [config, handleVehicleLocationMessage, log, logError, isConnecting]);
+  }, [config, handleVehicleLocationMessage, logError, isConnecting]);
 
   // Schedule reconnection
   const scheduleReconnect = useCallback(() => {
     clearReconnectTimeout();
     reconnectAttemptsRef.current += 1;
     
-    log(`Scheduling reconnection attempt ${reconnectAttemptsRef.current}/${config.maxReconnectAttempts} in ${config.reconnectInterval}ms`);
-    
     reconnectTimeoutRef.current = setTimeout(() => {
       if (reconnectAttemptsRef.current <= config.maxReconnectAttempts) {
-        log(`Reconnection attempt ${reconnectAttemptsRef.current}`);
         connect();
       } else {
-        logError('Max reconnection attempts reached');
         setError('Không thể kết nối lại sau nhiều lần thử');
       }
     }, config.reconnectInterval);
-  }, [config.maxReconnectAttempts, config.reconnectInterval, connect, log, logError, clearReconnectTimeout]);
+  }, [config.maxReconnectAttempts, config.reconnectInterval, connect, logError, clearReconnectTimeout]);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
-    log('Disconnecting from WebSocket...');
-    
     clearReconnectTimeout();
     reconnectAttemptsRef.current = config.maxReconnectAttempts; // Prevent auto-reconnection
     
@@ -310,7 +270,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       try {
         subscription.unsubscribe();
       } catch (err) {
-        logError('Error unsubscribing:', err);
       }
     });
     subscriptionsRef.current = [];
@@ -323,28 +282,26 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     
     setIsConnected(false);
     setIsConnecting(false);
-    setVehicleLocations([]);
+    // DON'T clear vehicleLocations - keep last known positions for user reference
+    // setVehicleLocations([]);
     setError(null);
-  }, [config.maxReconnectAttempts, log, logError, clearReconnectTimeout]);
+  }, [config.maxReconnectAttempts, logError, clearReconnectTimeout]);
 
   // Manual reconnect
   const reconnect = useCallback(() => {
-    log('Manual reconnect requested');
     reconnectAttemptsRef.current = 0; // Reset attempts
     disconnect();
     setTimeout(() => connect(), 1000); // Wait a bit before reconnecting
-  }, [connect, disconnect, log]);
+  }, [connect, disconnect]);
 
   // Auto-connect on mount if enabled
   useEffect(() => {
     if (config.autoConnect && (config.orderId || config.vehicleId)) {
-      log('Auto-connecting on mount');
       connect();
     }
 
     // Cleanup on unmount
-    return () => {
-      log('Cleaning up WebSocket connection');
+    return () => {  
       disconnect();
     };
   }, [config.autoConnect, config.orderId, config.vehicleId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -352,7 +309,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   // Reconnect when orderId or vehicleId changes
   useEffect(() => {
     if (isConnected && (config.orderId || config.vehicleId)) {
-      log('Configuration changed, reconnecting...');
       reconnect();
     }
   }, [config.orderId, config.vehicleId]); // eslint-disable-line react-hooks/exhaustive-deps

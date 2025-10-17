@@ -30,9 +30,10 @@ interface RouteMapSectionProps {
     };
     journeyInfo?: Partial<JourneyHistory>;
     onMapReady?: (map: any) => void;
+    children?: React.ReactNode;
 }
 
-const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehicleInfo, journeyInfo, onMapReady }) => {
+const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehicleInfo, journeyInfo, onMapReady, children }) => {
     const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
     const [markers, setMarkers] = useState<MapLocation[]>([]);
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -334,7 +335,9 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                             routeSegments={routeSegments}
                             animateRoute={false}
                             getMapInstance={handleMapInstance}
-                        />
+                        >
+                            {children}
+                        </VietMapMap>
                     </div>
                 )}
             </Card>

@@ -233,6 +233,7 @@ const VietMapPage = () => {
     // State để lưu tọa độ đã chọn (từ tìm kiếm hoặc vị trí hiện tại)
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     const markersRef = useRef<maplibregl.Marker[]>([]);
+    const [mapStyle, setMapStyle] = useState<any>(null);
 
     // Route finding states
     const [activeTab, setActiveTab] = useState<string>('search');
@@ -326,6 +327,26 @@ const VietMapPage = () => {
         }
     }, [isCacheEnabled]);
 
+    // Fetch map style from backend
+    useEffect(() => {
+        const fetchMapStyle = async () => {
+            try {
+                console.log('[VietMapPage] Fetching map style from backend...');
+                const style = await vietmapService.getMapStyles();
+                if (style) {
+                    console.log('[VietMapPage] Successfully fetched map style from backend');
+                    setMapStyle(style);
+                } else {
+                    console.error('[VietMapPage] Failed to fetch map style from backend');
+                }
+            } catch (error) {
+                console.error('[VietMapPage] Error fetching map style:', error);
+            }
+        };
+
+        fetchMapStyle();
+    }, []);
+
     // Auto-start preloading and get current location when component mounts
     useEffect(() => {
         // Small delay to ensure the map is loaded first
@@ -340,32 +361,13 @@ const VietMapPage = () => {
 
     useEffect(() => {
         if (map.current) return; // Initialize map only once
+        if (!mapStyle) return; // Wait for style to be fetched
 
         if (mapContainer.current) {
+            console.log('[VietMapPage] Initializing map with backend style');
             map.current = new maplibregl.Map({
                 container: mapContainer.current,
-                style: {
-                    version: 8,
-                    sources: {
-                        raster_vm: {
-                            type: 'raster',
-                            tiles: [
-                                'https://maps.vietmap.vn/maps/tiles/tm/{z}/{x}/{y}@2x.png?apikey=df5d9a3fffec4d07c7e3710bd0caf8181945d446509a3d42'
-                            ],
-                            tileSize: 256,
-                            attribution: '@2025 Vietmap'
-                        }
-                    },
-                    layers: [
-                        {
-                            id: 'layer_raster_vm',
-                            type: 'raster',
-                            source: 'raster_vm',
-                            minzoom: 0,
-                            maxzoom: 20
-                        }
-                    ]
-                },
+                style: mapStyle, // Use style from backend
                 center: [lng, lat],
                 zoom: zoom,
                 maxZoom: 19,
@@ -404,7 +406,7 @@ const VietMapPage = () => {
                 map.current = null;
             }
         };
-    }, []); // Empty dependency array - only run once on mount
+    }, [mapStyle]); // Re-run when mapStyle is fetched
 
     // Get current location and reverse geocode to get address
     const getCurrentLocation = () => {
@@ -431,34 +433,25 @@ const VietMapPage = () => {
                             .setLngLat([longitude, latitude])
                             .addTo(map.current);
 
-                        // Get address from coordinates using Vietmap API Reverse 3.0
+                        // Get address from coordinates using backend API
                         try {
-                            const response = await fetch(
-                                `https://maps.vietmap.vn/api/reverse/v3?apikey=${VIET_MAPS_API_KEY}&lng=${longitude}&lat=${latitude}`
-                            );
+                            const data = await vietmapService.reverseGeocode(latitude, longitude);
+                            if (data && data.length > 0) {
+                                const addressInfo = data[0];
+                                setCurrentAddress(addressInfo.display);
+                                setAddressDetails(addressInfo);
 
-                            if (response.ok) {
-                                const data = await response.json();
-                                if (data && data.length > 0) {
-                                    const addressInfo = data[0];
-                                    setCurrentAddress(addressInfo.display);
-                                    setAddressDetails(addressInfo);
-
-                                    // Nếu đang ở tab tìm đường và chưa có điểm xuất phát, tự động đặt vị trí hiện tại làm điểm xuất phát
-                                    if (activeTab === 'route' && !startPoint) {
-                                        setStartPoint({
-                                            lat: latitude,
-                                            lng: longitude,
-                                            address: addressInfo.display
-                                        });
-                                        setStartSearchQuery(addressInfo.display);
-                                    }
-                                } else {
-                                    setCurrentAddress('Không tìm thấy địa chỉ');
-                                    setAddressDetails(null);
+                                // Nếu đang ở tab tìm đường và chưa có điểm xuất phát, tự động đặt vị trí hiện tại làm điểm xuất phát
+                                if (activeTab === 'route' && !startPoint) {
+                                    setStartPoint({
+                                        lat: latitude,
+                                        lng: longitude,
+                                        address: addressInfo.display
+                                    });
+                                    setStartSearchQuery(addressInfo.display);
                                 }
                             } else {
-                                setCurrentAddress('Không thể lấy thông tin địa chỉ');
+                                setCurrentAddress('Không tìm thấy địa chỉ');
                                 setAddressDetails(null);
                             }
                         } catch (error) {

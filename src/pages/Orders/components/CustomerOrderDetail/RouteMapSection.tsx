@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Typography, Empty, Tag, Descriptions, Tooltip, Divider, Alert } from 'antd';
-import { EnvironmentOutlined, DollarCircleOutlined, InfoCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Card, Typography, Empty, Tag, Divider, Alert } from 'antd';
+import { EnvironmentOutlined, InfoCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import VietMapMap from '../../../../components/common/VietMapMap';
 import type { MapLocation } from '@/models/Map';
 import type { RouteSegment } from '@/models/RoutePoint';
 import type { JourneyHistory, JourneySegment as JourneySegmentModel, TollDetail } from '@/models/JourneyHistory';
 import {
-    parseTollDetails,
     formatJourneyType,
     getJourneyStatusColor,
     formatJourneyStatus,
@@ -25,9 +24,10 @@ interface RouteMapSectionProps {
     journeySegments: JourneySegmentModel[];
     journeyInfo?: Partial<JourneyHistory>;
     onMapReady?: (map: any) => void;
+    children?: React.ReactNode;
 }
 
-const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, journeyInfo, onMapReady }) => {
+const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, journeyInfo, onMapReady, children }) => {
     const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
     const [markers, setMarkers] = useState<MapLocation[]>([]);
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -42,25 +42,52 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
             .format("DD/MM/YYYY HH:mm:ss");
     };
 
-    // Custom function to get map instance
+    // Custom function to get map instance - STABLE VERSION
     const handleMapInstance = (map: any) => {
-        mapRef.current = map;
+        // Map instance received
         
-        // Notify parent component that map is ready
-        if (onMapReady) {
-            onMapReady(map);
+        if (!map) {
+            console.error('[RouteMapSection] Map instance is null');
+            return;
         }
 
-        // Apply closer zoom when map is loaded
-        if (map && markers.length > 1) {
+        mapRef.current = map;
+
+        // Wait for map to be fully loaded before notifying parent
+        if (map.loaded()) {
+            // Map loaded, calling onMapReady
+            if (onMapReady) {
+                onMapReady(map);
+            }
+        } else {
+            // Waiting for map load event
+            map.on('load', () => {
+                // Map load event fired
+                if (onMapReady) {
+                    onMapReady(map);
+                }
+            });
+        }
+
+        // Apply closer zoom when map is loaded - SAFER VERSION
+        if (markers.length > 1) {
             setTimeout(() => {
                 try {
+                    // Double check map still exists
+                    if (!mapRef.current || mapRef.current._removed) {
+                        console.warn('[RouteMapSection] Map was removed, skipping fitBounds');
+                        return;
+                    }
+
                     const validMarkers = markers.filter(marker =>
-                        !isNaN(marker.lng) && !isNaN(marker.lat) &&
-                        isFinite(marker.lng) && isFinite(marker.lat)
+                        marker &&
+                        typeof marker.lat === 'number' && typeof marker.lng === 'number' &&
+                        !isNaN(marker.lat) && !isNaN(marker.lng) &&
+                        isFinite(marker.lat) && isFinite(marker.lng)
                     );
 
-                    // Only fit bounds if we have valid markers
+                    // Valid markers for fitBounds
+
                     if (validMarkers.length > 1) {
                         try {
                             // Initialize bounds with first marker to avoid NaN
@@ -76,8 +103,9 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                                 bounds.extend([marker.lng, marker.lat]);
                             }
 
+                            // Calling fitBounds
                             // Fit map to bounds with generous padding for full route overview
-                            map.fitBounds(bounds, {
+                            mapRef.current.fitBounds(bounds, {
                                 padding: {
                                     top: 100,
                                     bottom: 100,
@@ -88,22 +116,26 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                                 duration: 1000
                             });
                         } catch (err) {
-                            console.error('Error fitting bounds:', err);
+                            console.error('[RouteMapSection] Error fitting bounds:', err);
                             // Fallback: center on first marker
                             const marker = validMarkers[0];
-                            map.setCenter([marker.lng, marker.lat]);
-                            map.setZoom(12);
+                            if (mapRef.current && !mapRef.current._removed) {
+                                mapRef.current.setCenter([marker.lng, marker.lat]);
+                                mapRef.current.setZoom(12);
+                            }
                         }
                     } else if (validMarkers.length === 1) {
                         // If only one valid marker, center the map on it
                         const marker = validMarkers[0];
-                        map.setCenter([marker.lng, marker.lat]);
-                        map.setZoom(12);
+                        if (mapRef.current && !mapRef.current._removed) {
+                            mapRef.current.setCenter([marker.lng, marker.lat]);
+                            mapRef.current.setZoom(12);
+                        }
                     }
                 } catch (error) {
-                    console.error("Error adjusting map zoom:", error);
+                    console.error('[RouteMapSection] Error adjusting map zoom:', error);
                 }
-            }, 300);
+            }, 500); // Increased delay for stability
         }
     };
 
@@ -113,7 +145,7 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
             const newRouteSegments: RouteSegment[] = [];
             let validRouteFound = false;
 
-            journeySegments.forEach((segment, index) => {
+            journeySegments.forEach((segment) => {
                 
                 if (segment.pathCoordinatesJson) {
                     try {
@@ -278,13 +310,15 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                     <div className="h-[500px] rounded-lg overflow-hidden">
                         <VietMapMap
                             mapLocation={mapLocation}
-                            onLocationChange={(location) => setMapLocation(location)}
+                            onLocationChange={(location: any) => setMapLocation(location)}
                             markers={markers}
                             showRouteLines={true}
                             routeSegments={routeSegments}
                             animateRoute={false}
                             getMapInstance={handleMapInstance}
-                        />
+                        >
+                            {children}
+                        </VietMapMap>
                     </div>
                 )}
             </Card>

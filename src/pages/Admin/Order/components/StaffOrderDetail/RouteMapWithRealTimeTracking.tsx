@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Card, Alert } from 'antd';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Alert } from 'antd';
 import { WifiOutlined, DisconnectOutlined, LoadingOutlined } from '@ant-design/icons';
 import RouteMapSection from './RouteMapSection';
 import RealTimeVehicleMarker from '../../../../../components/map/RealTimeVehicleMarker';
@@ -29,6 +29,10 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   console.log('Props:', { orderId, shouldShowRealTimeTracking, journeySegmentsCount: journeySegments?.length });
   
   const [mapInstance, setMapInstance] = useState<any>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [showVehicleList, setShowVehicleList] = useState(true);
+  const mapSectionRef = useRef<HTMLDivElement>(null);
+  const hasFocusedSingleVehicle = useRef(false);
 
   // WebSocket tracking
   const {
@@ -69,11 +73,105 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     setMapInstance(map);
   };
 
-  // Callback khi click vào marker xe
-  const handleVehicleMarkerClick = (vehicle: VehicleLocationMessage) => {
-    console.log('[RouteMapWithRealTimeTracking] Vehicle marker clicked:', vehicle);
+  // Auto-fit bounds to show all vehicles
+  const fitBoundsToVehicles = useCallback(() => {
+    if (!mapInstance || vehicleLocations.length === 0) return;
+
+    const validVehicles = vehicleLocations.filter(v =>
+      !isNaN(v.latitude) && !isNaN(v.longitude) &&
+      isFinite(v.latitude) && isFinite(v.longitude)
+    );
+
+    if (validVehicles.length === 0) return;
+
+    if (validVehicles.length === 1) {
+      // Single vehicle - center on it
+      const vehicle = validVehicles[0];
+      mapInstance.flyTo({
+        center: [vehicle.longitude, vehicle.latitude],
+        zoom: 14,
+        duration: 1000
+      });
+    } else {
+      // Multiple vehicles - fit bounds
+      const bounds = new window.vietmapgl.LngLatBounds();
+      validVehicles.forEach(vehicle => {
+        bounds.extend([vehicle.longitude, vehicle.latitude]);
+      });
+
+      mapInstance.fitBounds(bounds, {
+        padding: { top: 100, bottom: 100, left: 350, right: 100 }, // Extra padding on left for vehicle list
+        maxZoom: 14,
+        duration: 1000
+      });
+    }
+  }, [mapInstance, vehicleLocations]);
+
+  // Auto-fit when vehicles first load
+  useEffect(() => {
+    if (vehicleLocations.length > 0 && mapInstance) {
+      // Delay to ensure map is fully loaded
+      setTimeout(() => fitBoundsToVehicles(), 500);
+    }
+  }, [vehicleLocations.length, mapInstance, fitBoundsToVehicles]);
+
+  // Auto-focus on single vehicle - only ONCE on initial load
+  useEffect(() => {
+    if (vehicleLocations.length === 1 && mapInstance && !selectedVehicleId && !hasFocusedSingleVehicle.current) {
+      const vehicle = vehicleLocations[0];
+      console.log('[RouteMapWithRealTimeTracking] Auto-focusing on single vehicle (first time):', vehicle.vehicleId);
+      mapInstance.flyTo({
+        center: [vehicle.longitude, vehicle.latitude],
+        zoom: 15,
+        duration: 1000
+      });
+      hasFocusedSingleVehicle.current = true;
+    }
     
-    // Center map to vehicle location
+    // Reset flag when vehicle count changes or selection is made
+    if (vehicleLocations.length !== 1 || selectedVehicleId) {
+      hasFocusedSingleVehicle.current = false;
+    }
+  }, [vehicleLocations.length, mapInstance, selectedVehicleId]); // Only depend on LENGTH, not full array
+
+  // Focus on selected vehicle - ONLY when selection changes, not on position updates
+  useEffect(() => {
+    if (selectedVehicleId && mapInstance) {
+      const vehicle = vehicleLocations.find(v => v.vehicleId === selectedVehicleId);
+      if (vehicle) {
+        console.log('[RouteMapWithRealTimeTracking] Focusing on selected vehicle:', selectedVehicleId);
+        mapInstance.flyTo({
+          center: [vehicle.longitude, vehicle.latitude],
+          zoom: 15,
+          duration: 1000
+        });
+      }
+    }
+  }, [selectedVehicleId, mapInstance]); // Remove vehicleLocations dependency!
+
+  // Auto-scroll to map when tracking becomes active
+  useEffect(() => {
+    if (shouldShowRealTimeTracking && isConnected && mapSectionRef.current) {
+      setTimeout(() => {
+        mapSectionRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 300);
+    }
+  }, [shouldShowRealTimeTracking, isConnected]);
+
+  // Callback khi click vào marker xe
+  const handleVehicleMarkerClick = useCallback((vehicle: VehicleLocationMessage) => {
+    console.log('[RouteMapWithRealTimeTracking] Vehicle marker clicked:', vehicle);
+    console.log('Vehicle position:', { lat: vehicle.latitude, lng: vehicle.longitude });
+    console.log('Is valid position?', {
+      latValid: !isNaN(vehicle.latitude) && isFinite(vehicle.latitude),
+      lngValid: !isNaN(vehicle.longitude) && isFinite(vehicle.longitude)
+    });
+    setSelectedVehicleId(vehicle.vehicleId);
+    
+    // Focus on selected vehicle
     if (mapInstance) {
       mapInstance.flyTo({
         center: [vehicle.longitude, vehicle.latitude],
@@ -81,7 +179,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
         duration: 1000
       });
     }
-  };
+  }, [mapInstance]);
 
   // Render connection status
   const renderConnectionStatus = () => {
@@ -166,56 +264,164 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   };
 
   return (
-    <div className="route-map-with-tracking">
+    <div className="route-map-with-tracking" ref={mapSectionRef}>
       {/* Connection status */}
       {renderConnectionStatus()}
 
+      {/* Hiển thị route map */}
       <div className="relative">
-        {/* Live tracking indicator */}
-        {shouldShowRealTimeTracking && (
-          <div className={`absolute bottom-2 right-2 z-[2000] px-3 py-2 rounded-lg shadow-lg ${
-            isConnected ? 'bg-green-100 border border-green-300' : 
-            isConnecting ? 'bg-blue-100 border border-blue-300' : 
-            'bg-red-100 border border-red-300'
-          }`}>
-            <span className={`text-sm font-medium flex items-center ${
-              isConnected ? 'text-green-700' : isConnecting ? 'text-blue-700' : 'text-red-700'
-            }`}>
-              {isConnecting ? (
-                <LoadingOutlined className="mr-1" />
-              ) : isConnected ? (
-                <WifiOutlined className="mr-1" />
-              ) : (
-                <DisconnectOutlined className="mr-1" />
-              )}
-              {isConnecting ? 'Đang kết nối...' : isConnected ? 'Theo dõi trực tiếp' : 'Mất kết nối'}
-            </span>
-          </div>
-        )}
-
-        {/* Hiển thị route map */}
         <RouteMapSection
           journeySegments={journeySegments}
           journeyInfo={journeyInfo}
           onMapReady={handleMapReady}
-        />
+        >
+          {/* Vehicle List Panel - Absolute positioned inside map */}
+          {shouldShowRealTimeTracking && vehicleLocations.length > 0 && (
+            <div className={`absolute top-4 left-4 z-[400] transition-all duration-300 ${
+          showVehicleList ? 'w-72' : 'w-auto'
+        }`}>
+            <div className="bg-white rounded-lg shadow-xl border border-gray-200">
+              {/* Header */}
+              <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+                {showVehicleList ? (
+                  <>
+                    <span className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <span>🚛</span>
+                      <span>Xe đang chạy ({vehicleLocations.length})</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedVehicleId(null);
+                          fitBoundsToVehicles();
+                        }}
+                        className="text-xs px-2 py-1.5 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors whitespace-nowrap h-7 flex items-center"
+                      >
+                        Xem tất cả
+                      </button>
+                      <button
+                        onClick={() => setShowVehicleList(false)}
+                        className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors text-xl"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setShowVehicleList(true)}
+                    className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
+                  >
+                    🚛 {vehicleLocations.length}
+                  </button>
+                )}
+              </div>
 
-        {/* Overlay real-time vehicle markers */}
-        {(() => {
-          const shouldRender = shouldShowRealTimeTracking && mapInstance && vehicleLocations.length > 0;
-          console.log('=== [RouteMapWithRealTimeTracking] MARKER RENDER CHECK ===');
-          console.log('shouldShowRealTimeTracking:', shouldShowRealTimeTracking);
-          console.log('mapInstance exists:', !!mapInstance);
-          console.log('vehicleLocations.length:', vehicleLocations.length);
-          console.log('Will render markers:', shouldRender);
-          
-          if (!shouldRender) {
-            if (!shouldShowRealTimeTracking) console.warn('❌ Tracking disabled');
-            if (!mapInstance) console.warn('❌ Map instance not ready');
-            if (vehicleLocations.length === 0) console.warn('❌ No vehicle locations');
-          }
-          
-          return shouldRender ? (
+              {/* Vehicle List */}
+              {showVehicleList && (
+                <div className="max-h-96 overflow-y-auto p-2 space-y-2">
+                  {vehicleLocations
+                    .filter(v =>
+                      !isNaN(v.latitude) && !isNaN(v.longitude) &&
+                      isFinite(v.latitude) && isFinite(v.longitude)
+                    )
+                    .map((vehicle) => (
+                      <div
+                        key={vehicle.vehicleId}
+                        onClick={() => handleVehicleMarkerClick(vehicle)}
+                        className={`p-2.5 rounded-md cursor-pointer transition-all ${
+                          selectedVehicleId === vehicle.vehicleId
+                            ? 'bg-blue-50 border-2 border-blue-400 shadow-sm'
+                            : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                        }`}
+                      >
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base">🚛</span>
+                            <span className="font-semibold text-sm text-gray-900">
+                              {vehicle.licensePlateNumber}
+                            </span>
+                          </div>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            vehicle.assignmentStatus === 'ACTIVE'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-200 text-gray-600'
+                          }`}>
+                            {vehicle.assignmentStatus}
+                          </span>
+                        </div>
+
+                        {/* Info */}
+                        <div className="space-y-0.5 text-[11px] text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <span>🏭</span>
+                            <span>{vehicle.manufacturer} - {vehicle.vehicleTypeName}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span>📦</span>
+                            <span className="truncate">{vehicle.trackingCode}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span>👤</span>
+                            <span>{vehicle.driver1Name || 'Chưa có'}</span>
+                            {vehicle.driver1Phone && (
+                              <span className="text-gray-400">• {vehicle.driver1Phone}</span>
+                            )}
+                          </div>
+                          {vehicle.driver2Name && (
+                            <div className="flex items-center gap-1">
+                              <span>👥</span>
+                              <span>{vehicle.driver2Name}</span>
+                              {vehicle.driver2Phone && (
+                                <span className="text-gray-400">• {vehicle.driver2Phone}</span>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1 pt-1 border-t border-gray-200">
+                            <span>⏱️</span>
+                            <span>{new Date(vehicle.lastUpdated).toLocaleString('vi-VN')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+          )}
+
+          {/* Live tracking indicator - Absolute position inside map */}
+          {shouldShowRealTimeTracking && (
+            <div className={`absolute bottom-4 right-4 z-[500] px-3 py-2 rounded-lg shadow-lg ${
+              isConnected ? 'bg-green-100 border border-green-300' :
+              isConnecting ? 'bg-blue-100 border border-blue-300' :
+              'bg-yellow-100 border border-yellow-300'
+            }`}>
+              <div className="flex flex-col gap-1">
+                <span className={`text-sm font-medium flex items-center ${
+                  isConnected ? 'text-green-700' : isConnecting ? 'text-blue-700' : 'text-yellow-700'
+                }`}>
+                  {isConnecting ? (
+                    <LoadingOutlined className="mr-1" />
+                  ) : isConnected ? (
+                    <WifiOutlined className="mr-1" />
+                  ) : (
+                    <DisconnectOutlined className="mr-1" />
+                  )}
+                  {isConnecting ? 'Đang kết nối...' : isConnected ? 'Theo dõi trực tiếp' : 'Mất kết nối'}
+                </span>
+                {!isConnected && !isConnecting && vehicleLocations.length > 0 && (
+                  <span className="text-xs text-yellow-600">
+                    📍 Hiển thị vị trí cuối cùng
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Overlay real-time vehicle markers - Always show if we have data */}
+          {shouldShowRealTimeTracking && mapInstance && vehicleLocations.length > 0 && (
             <div className="real-time-vehicles-overlay">
               {vehicleLocations
                 .filter(vehicle =>
@@ -230,32 +436,15 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
                       vehicle={vehicle}
                       map={mapInstance}
                       onMarkerClick={handleVehicleMarkerClick}
+                      isSelected={selectedVehicleId === vehicle.vehicleId}
+                      isHighlighted={!selectedVehicleId || selectedVehicleId === vehicle.vehicleId}
                     />
                   );
                 })}
             </div>
-          ) : null;
-        })()}
+          )}
+        </RouteMapSection>
       </div>
-
-      {/* Debug info (chỉ hiển thị trong development) */}
-      {process.env.NODE_ENV === 'development' && shouldShowRealTimeTracking && (
-        <Card className="mt-4" size="small" title="Debug Info">
-          <pre className="text-xs">
-            {JSON.stringify({
-              isConnected,
-              isConnecting,
-              vehicleCount: vehicleLocations.length,
-              validVehicleCount: vehicleLocations.filter(vehicle =>
-                !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
-                isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
-              ).length,
-              hasMap: !!mapInstance,
-              error: trackingError
-            }, null, 2)}
-          </pre>
-        </Card>
-      )}
     </div>
   );
 };

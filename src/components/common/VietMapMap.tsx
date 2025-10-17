@@ -3,8 +3,6 @@ import { Spin } from 'antd';
 import type { MapLocation } from '@/models/Map';
 import vietmapService from '@/services/map/vietmapService';
 import type { RouteSegment } from '@/models/RoutePoint';
-import type { VietMapAutocompleteResult } from '@/models/VietMap';
-import { parseTollDetails } from '@/models/JourneyHistory';
 
 // Định nghĩa interface cho window để thêm vietmapgl
 declare global {
@@ -20,7 +18,8 @@ interface VietMapMapProps {
     showRouteLines?: boolean;
     routeSegments?: RouteSegment[];
     animateRoute?: boolean;
-    getMapInstance?: (map: any) => void; // Add this prop
+    getMapInstance?: (map: any) => void;
+    children?: React.ReactNode; // Support overlay components
 }
 
 // Khóa cho cache trong localStorage
@@ -119,8 +118,9 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     markers = [],
     showRouteLines = false,
     routeSegments = [],
-    animateRoute = true,
-    getMapInstance
+    animateRoute = false,
+    getMapInstance,
+    children
 }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -160,20 +160,28 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
                         // Kiểm tra xem cache có còn hiệu lực không (chưa quá 1 tuần)
                         if (style && timestamp && (now - timestamp < CACHE_DURATION)) {
-                            console.log('Using cached VietMap style from localStorage');
+                            console.log('[VietMapMap] Using cached VietMap style from localStorage');
+                            console.log('[VietMapMap] Cache age:', Math.floor((now - timestamp) / (1000 * 60 * 60)), 'hours');
                             setMapStyle(style);
                             return;
                         } else {
-                            console.log('Cached VietMap style expired, fetching new data');
+                            console.log('[VietMapMap] Cached VietMap style expired, fetching new data');
+                            // Clear expired cache
+                            localStorage.removeItem(VIETMAP_STYLE_CACHE_KEY);
                         }
                     } catch (parseError) {
-                        console.error('Error parsing cached VietMap style:', parseError);
+                        console.error('[VietMapMap] Error parsing cached VietMap style:', parseError);
+                        // Clear corrupted cache
+                        localStorage.removeItem(VIETMAP_STYLE_CACHE_KEY);
                     }
                 }
 
                 // Nếu không có cache hoặc cache hết hạn, gọi API
+                console.log('[VietMapMap] Fetching map style from backend...');
                 const style = await vietmapService.getMapStyles();
                 if (style) {
+                    console.log('[VietMapMap] Successfully fetched map style from backend');
+                    
                     // Lưu style vào state
                     setMapStyle(style);
 
@@ -182,14 +190,18 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                         style,
                         timestamp: Date.now()
                     };
-                    localStorage.setItem(VIETMAP_STYLE_CACHE_KEY, JSON.stringify(cacheData));
-
-                    console.log('Fetched and cached new VietMap style in localStorage');
+                    try {
+                        localStorage.setItem(VIETMAP_STYLE_CACHE_KEY, JSON.stringify(cacheData));
+                        console.log('[VietMapMap] Cached new VietMap style in localStorage');
+                    } catch (storageError) {
+                        console.error('[VietMapMap] Failed to cache style in localStorage:', storageError);
+                        // Continue anyway, map will still work without cache
+                    }
                 } else {
-                    console.error('Failed to fetch map style from vietmapService');
+                    console.error('[VietMapMap] Failed to fetch map style from backend - style is null');
                 }
             } catch (error) {
-                console.error('Error fetching map style:', error);
+                console.error('[VietMapMap] Error fetching map style:', error);
             }
         };
 
@@ -385,19 +397,37 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 }
             });
 
-            // Nếu không có markers mới, dừng lại
+            // Early return if no markers
             if (!markers || markers.length === 0) {
-                // console.log("No markers to add");
+                console.log('[VietMapMap] No markers provided, skipping');
                 return;
             }
 
-            // console.log(`Adding ${markers.length} new markers`);
+            console.log('[VietMapMap] Processing', markers.length, 'markers');
 
-            // Tạo bounds để fit map
-            const bounds = new window.vietmapgl.LngLatBounds();
+            // Filter out markers with invalid coordinates (exactly like Staff)
+            const validMarkers = markers.filter(marker => {
+                const isValid = marker && 
+                               typeof marker.lat === 'number' && 
+                               typeof marker.lng === 'number' &&
+                               !isNaN(marker.lat) && !isNaN(marker.lng) &&
+                               isFinite(marker.lat) && isFinite(marker.lng);
+                
+                if (!isValid) {
+                    console.warn('[VietMapMap] Invalid marker:', marker);
+                }
+                return isValid;
+            });
 
-            // Thêm markers mới
-            markers.forEach((location, index) => {
+            console.log('[VietMapMap] Valid markers:', validMarkers.length, 'out of', markers.length);
+
+            if (validMarkers.length === 0) {
+                console.warn('[VietMapMap] No valid markers to display');
+                return;
+            }
+
+            // Add markers to map
+            validMarkers.forEach((location, index) => {
                 // Tạo phần tử HTML cho marker
                 const el = document.createElement('div');
                 el.className = 'marker';
@@ -448,17 +478,66 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
                 // Thêm vào mảng markers
                 markersRef.current.push(marker);
-
-                // Mở rộng bounds
-                bounds.extend([location.lng, location.lat]);
             });
 
-            // Fit map to bounds
-            if (markers.length > 1) {
-                mapRef.current.fitBounds(bounds, {
-                    padding: 150, // Tăng padding từ 100 lên 150 để hiển thị rộng hơn
-                    maxZoom: 13
-                });
+            // Fit bounds exactly like Staff version
+            if (validMarkers.length > 1) {
+                setTimeout(() => {
+                    try {
+                        console.log('[VietMapMap] Attempting fitBounds with', validMarkers.length, 'markers');
+                        
+                        // WORKAROUND: Skip fitBounds if causing issues, just center on first marker
+                        const SKIP_FIT_BOUNDS = false; // Set to true if still having issues
+                        
+                        if (SKIP_FIT_BOUNDS) {
+                            console.log('[VietMapMap] Skipping fitBounds, centering on first marker');
+                            const marker = validMarkers[0];
+                            mapRef.current.setCenter([marker.lng, marker.lat]);
+                            mapRef.current.setZoom(12);
+                            return;
+                        }
+
+                        // Initialize bounds with first marker to avoid NaN
+                        const firstMarker = validMarkers[0];
+                        const bounds = new window.vietmapgl.LngLatBounds(
+                            [firstMarker.lng, firstMarker.lat],
+                            [firstMarker.lng, firstMarker.lat]
+                        );
+                        
+                        // Extend bounds with remaining markers
+                        for (let i = 1; i < validMarkers.length; i++) {
+                            const marker = validMarkers[i];
+                            bounds.extend([marker.lng, marker.lat]);
+                        }
+
+                        console.log('[VietMapMap] Bounds ready, calling fitBounds');
+
+                        // Fit map to bounds with generous padding for full route overview
+                        mapRef.current.fitBounds(bounds, {
+                            padding: {
+                                top: 100,
+                                bottom: 100,
+                                left: 100,
+                                right: 100
+                            },
+                            maxZoom: 13, // Lower zoom for better overview
+                            duration: 1000
+                        });
+                        
+                        console.log('[VietMapMap] fitBounds completed successfully');
+                    } catch (err) {
+                        console.error('[VietMapMap] Error fitting bounds:', err);
+                        // Fallback: center on first marker
+                        const marker = validMarkers[0];
+                        mapRef.current.setCenter([marker.lng, marker.lat]);
+                        mapRef.current.setZoom(12);
+                    }
+                }, 300);
+            } else if (validMarkers.length === 1) {
+                // If only one valid marker, center the map on it
+                const marker = validMarkers[0];
+                mapRef.current.setCenter([marker.lng, marker.lat]);
+                mapRef.current.setZoom(12);
             }
         } catch (error) {
             console.error("Error updating markers:", error);
@@ -896,6 +975,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     <Spin tip="Đang tải bản đồ..." />
                 </div>
             )}
+            {/* Render overlay components (vehicle list, indicators, etc.) */}
+            {children}
         </div>
     );
 };

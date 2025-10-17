@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Tabs, Empty, Card, Typography, Tag } from "antd";
 import {
     BoxPlotOutlined,
@@ -16,6 +16,20 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import RouteMapWithRealTimeTracking from "./RouteMapWithRealTimeTracking";
 import { OrderStatusEnum } from "../../../../constants/enums";
+
+// STABLE CONSTANTS - prevent re-renders
+const REAL_TIME_TRACKING_STATUSES = [
+    OrderStatusEnum.PICKING_UP,
+    OrderStatusEnum.ON_DELIVERED,
+    OrderStatusEnum.ONGOING_DELIVERED,
+    OrderStatusEnum.DELIVERED,
+    OrderStatusEnum.IN_TROUBLES,
+    OrderStatusEnum.RESOLVED,
+    OrderStatusEnum.COMPENSATION,
+    OrderStatusEnum.SUCCESSFUL,
+    OrderStatusEnum.RETURNING,
+    OrderStatusEnum.RETURNED
+];
 
 // Configure dayjs to use timezone
 dayjs.extend(utc);
@@ -39,6 +53,13 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
     formatDate,
     getStatusColor,
 }) => {
+    // STABLE CALLBACK - prevent re-renders
+    const handleTrackingActive = useCallback(() => {
+        console.log('[OrderDetailsTab] 🎯 Tracking active!');
+        // Inner tab already defaults to "journey", no need to switch
+        // Just let the scroll happen
+    }, []);
+
     if (!order.orderDetails || order.orderDetails.length === 0) {
         return <Empty description="Chưa có thông tin chi tiết vận chuyển" />;
     }
@@ -339,7 +360,7 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
 
                         {/* Tabs chi tiết */}
                         <Card className="mb-6 shadow-md rounded-xl">
-                            <Tabs defaultActiveKey="orderDetails" type="card">
+                            <Tabs defaultActiveKey="journey" type="card">
                                 {/* Tab danh sách lô hàng */}
                                 <Tabs.TabPane
                                     tab={
@@ -404,62 +425,23 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                 >
                                     {vaGroup.vehicleAssignment.journeyHistories && vaGroup.vehicleAssignment.journeyHistories.length > 0 ? (
                                         <div className="p-2">
-                                            {vaGroup.vehicleAssignment.journeyHistories.map((journey: any, journeyIdx: number) => (
-                                                <div
-                                                    key={journey.id || `journey-${journeyIdx}`}
-                                                    className={journeyIdx > 0 ? "mt-4 pt-4 border-t border-gray-200" : ""}
-                                                >
-                                                    {/* <div className="bg-blue-50 p-3 rounded-lg mb-4">
-                                                        <div className="flex items-center mb-2">
-                                                            <span className="font-medium mr-1">Trạng thái:</span>
-                                                            <Tag
-                                                                color={
-                                                                    journey.status === "COMPLETED"
-                                                                        ? "green"
-                                                                        : journey.status === "IN_PROGRESS"
-                                                                            ? "blue"
-                                                                            : "orange"
-                                                                }
-                                                            >
-                                                                {journey.status}
-                                                            </Tag>
-                                                        </div>
-                                                        <div className="flex items-center mb-2">
-                                                            <span className="font-medium mr-1">Thời gian bắt đầu:</span>
-                                                            <span>{formatDate(journey.createdAt)}</span>
-                                                        </div>
-                                                        <div className="flex items-center mb-2">
-                                                            <span className="font-medium mr-1">Thời gian cập nhật:</span>
-                                                            <span>{formatDate(journey.modifiedAt)}</span>
-                                                        </div>
-                                                        <div className="flex items-center">
-                                                            <span className="font-medium mr-1">Tổng phí đường:</span>
-                                                            <span>{(journey.totalTollFee || 0).toLocaleString('vi-VN')} VNĐ</span>
-                                                        </div>
-                                                    </div> */}
-
-                                                    {/* Display route map if journey has segments */}
-                                                    {journey.journeySegments && journey.journeySegments.length > 0 && (
+                                            {vaGroup.vehicleAssignment.journeyHistories.map((journey: any, journeyIdx: number) => {
+                                                if (!journey.journeySegments || journey.journeySegments.length === 0) {
+                                                    return null;
+                                                }
+                                                
+                                                return (
+                                                    <div key={journey.id || `journey-${journeyIdx}`} className="mb-4">
                                                         <RouteMapWithRealTimeTracking
                                                             journeySegments={journey.journeySegments}
                                                             journeyInfo={journey}
                                                             orderId={order.id}
-                                                            shouldShowRealTimeTracking={[
-                                                                OrderStatusEnum.PICKING_UP,
-                                                                OrderStatusEnum.ON_DELIVERED,
-                                                                OrderStatusEnum.ONGOING_DELIVERED,
-                                                                OrderStatusEnum.DELIVERED,
-                                                                OrderStatusEnum.IN_TROUBLES,
-                                                                OrderStatusEnum.RESOLVED,
-                                                                OrderStatusEnum.COMPENSATION,
-                                                                OrderStatusEnum.SUCCESSFUL,
-                                                                OrderStatusEnum.RETURNING,
-                                                                OrderStatusEnum.RETURNED
-                                                            ].includes(order.status as OrderStatusEnum)}
+                                                            shouldShowRealTimeTracking={REAL_TIME_TRACKING_STATUSES.includes(order.status as OrderStatusEnum)}
+                                                            onTrackingActive={handleTrackingActive}
                                                         />
-                                                    )}
-                                                </div>
-                                            ))}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     ) : (
                                         <Empty description="Không có lịch sử hành trình nào" />
