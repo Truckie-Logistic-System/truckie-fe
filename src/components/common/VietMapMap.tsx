@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Spin } from 'antd';
 import type { MapLocation } from '@/models/Map';
-import vietmapService from '@/services/map/vietmapService';
+import { useVietMapRouting } from '@/hooks/useVietMapRouting';
 import type { RouteSegment } from '@/models/RoutePoint';
 
 // Định nghĩa interface cho window để thêm vietmapgl
@@ -133,6 +133,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     const [mapStyle, setMapStyle] = useState<any>(null);
     const [isAnimating, setIsAnimating] = useState(false);
     const [activePopupIndex, setActivePopupIndex] = useState<number | null>(null);
+    const { getMapStyle, reverseGeocode } = useVietMapRouting();
 
     // Inject CSS cho popup
     useEffect(() => {
@@ -178,7 +179,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
                 // Nếu không có cache hoặc cache hết hạn, gọi API
                 console.log('[VietMapMap] Fetching map style from backend...');
-                const style = await vietmapService.getMapStyles();
+                const result = await getMapStyle();
+                const style = result.success ? result.style : null;
                 if (style) {
                     console.log('[VietMapMap] Successfully fetched map style from backend');
                     
@@ -295,7 +297,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 // console.log(`Map clicked at [${lng}, ${lat}]`);
 
                 // Reverse geocoding để lấy địa chỉ
-                vietmapService.reverseGeocode(lat, lng)
+                reverseGeocode(lat, lng)
                     .then(results => {
                         let address = '';
                         if (results && results.length > 0) {

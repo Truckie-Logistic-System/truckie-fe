@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Card,
   Button,
@@ -17,7 +17,7 @@ import {
   CalendarOutlined,
   InfoCircleOutlined,
 } from "@ant-design/icons";
-import { contractService } from "../../services/contract";
+import { useContractPdfGeneration } from "../../hooks/useContractPdfGeneration";
 import type { Contract } from "../../services/contract/types";
 
 const { Text, Link } = Typography;
@@ -31,25 +31,16 @@ const ContractInfo: React.FC<ContractInfoProps> = ({
   contract,
   onPdfGenerated,
 }) => {
-  const [loadingPdf, setLoadingPdf] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const { loadingPdf, pdfUrl, generatePdf } = useContractPdfGeneration();
 
   const handleGeneratePdf = async () => {
-    setLoadingPdf(true);
-    try {
-      const response = await contractService.generateContractPdf(contract.id);
+    const result = await generatePdf(contract.id);
 
-      if (response.success) {
-        setPdfUrl(response.data.pdfUrl);
-        message.success("Tạo file PDF thành công!");
-        onPdfGenerated?.(response.data.pdfUrl);
-      } else {
-        message.error(response.message || "Không thể tạo file PDF");
-      }
-    } catch (error: any) {
-      message.error(error.message || "Có lỗi xảy ra khi tạo PDF");
-    } finally {
-      setLoadingPdf(false);
+    if (result.success) {
+      message.success("Tạo file PDF thành công!");
+      onPdfGenerated?.(result.pdfUrl!);
+    } else {
+      message.error(result.message || "Không thể tạo file PDF");
     }
   };
 

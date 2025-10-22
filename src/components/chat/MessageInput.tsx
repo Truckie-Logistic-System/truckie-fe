@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import { useChatContext } from '@/context/ChatContext';
 import type { MessageRequest } from '@/models/Chat';
-import chatService from "@/services/chat/chatService";
+import { useChatMessage } from '@/hooks/useChatMessage';
 
 const MessageInput: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
@@ -16,7 +16,8 @@ const MessageInput: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const { activeConversation, sendMessage, connectionStatus } = useChatContext();
+  const { activeConversation, connectionStatus } = useChatContext();
+  const { sendMessage: sendChatMessage, uploadChatImage } = useChatMessage();
   const userId = sessionStorage.getItem('userId');
 
   // ✅ Xử lý khi Ctrl+V dán ảnh
@@ -55,14 +56,18 @@ const MessageInput: React.FC = () => {
       let messageType: 'TEXT' | 'IMAGE' = 'TEXT';
 
       if (file) {
-        const uploadedUrl = await chatService.uploadChatImage({
+        const result = await uploadChatImage({
           file,
           senderId: userId,
           roomId: activeConversation.roomId,
         });
 
-        messageToSend = uploadedUrl;
-        messageType = 'IMAGE';
+        if (result.success && result.url) {
+          messageToSend = result.url;
+          messageType = 'IMAGE';
+        } else {
+          throw new Error(result.error || 'Không thể upload ảnh');
+        }
       }
 
       const messageRequest: MessageRequest = {
@@ -72,7 +77,10 @@ const MessageInput: React.FC = () => {
         type: messageType,
       };
 
-      sendMessage(messageRequest);
+      const result = sendChatMessage(undefined, activeConversation.roomId, messageRequest);
+      if (!result.success) {
+        antdMessage.error(result.message || 'Không thể gửi tin nhắn');
+      }
 
       // Reset
       setInputValue('');
