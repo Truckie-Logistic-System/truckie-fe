@@ -4,7 +4,6 @@ import {
   Descriptions,
   Empty,
   Button,
-  Tag,
   App,
   Modal,
   Form,
@@ -14,12 +13,18 @@ import {
   Checkbox,
   Row,
   Col,
+  Alert,
+  Divider,
+  Statistic,
 } from "antd";
 import {
   FileTextOutlined,
   DownloadOutlined,
   PlusOutlined,
   EditOutlined,
+  InfoCircleOutlined,
+  DollarOutlined,
+  CreditCardOutlined,
 } from "@ant-design/icons";
 import { contractService } from "../../../../services/contract";
 import { StaffContractPreview } from "../../../../components/features/order";
@@ -28,6 +33,8 @@ import httpClient from "../../../../services/api/httpClient";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import dayjs from "dayjs";
+import { ContractStatusTag } from "../../../../components/common/tags";
+import { ContractStatusEnum } from "../../../../constants/enums";
 
 interface StaffContractProps {
   contract?: {
@@ -36,18 +43,20 @@ interface StaffContractProps {
     effectiveDate: string;
     expirationDate: string;
     totalValue: string;
-    supportedValue: string;
+    adjustedValue: string;
     description: string;
     attachFileUrl: string;
     status: string;
     staffName: string;
   };
   orderId?: string; // Add orderId for contract creation
+  depositAmount?: number;
 }
 
 const StaffContractSection: React.FC<StaffContractProps> = ({
   contract,
   orderId,
+  depositAmount,
 }) => {
   const messageApi = App.useApp().message;
   const [contractData, setContractData] = useState<ContractData | null>(null);
@@ -58,6 +67,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== "0");
   const [uploadingContract, setUploadingContract] = useState<boolean>(false);
   const [isEditContentModalOpen, setIsEditContentModalOpen] =
     useState<boolean>(false);
@@ -70,8 +80,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   const [contractCustomization, setContractCustomization] = useState({
     effectiveDate: "",
     expirationDate: "",
-    hasSupportValue: false,
-    supportedValue: 0,
+    hasAdjustedValue: false,
+    adjustedValue: 0,
   });
 
   // Contract content customization
@@ -88,19 +98,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     warrantyTerms: "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định",
     generalTerms: "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.",
   });
-
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, string> = {
-      PENDING: "orange",
-      PROCESSING: "blue",
-      CANCELLED: "red",
-      APPROVED: "green",
-      ACTIVE: "green",
-      EXPIRED: "red",
-      CONTRACT_DRAFT: "orange",
-    };
-    return statusMap[status] || "default";
-  };
 
   const handlePreviewContract = async () => {
     if (!contract?.id) return;
@@ -189,9 +186,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
               .toISOString()
               .split("T")[0]),
-      supportedValue: contractCustomization.hasSupportValue
-        ? contractCustomization.supportedValue
-        : contract.supportedValue || "0",
+      adjustedValue: contractCustomization.hasAdjustedValue
+        ? contractCustomization.adjustedValue
+        : contract.adjustedValue || "0",
       description: contract.description || "Hợp đồng dịch vụ logistics",
     });
 
@@ -403,15 +400,15 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     previewForm.setFieldsValue({
       effectiveDate: dayjs(today),
       expirationDate: dayjs(oneYearLater),
-      hasSupportValue: false,
-      supportedValue: 0,
+      hasAdjustedValue: false,
+      adjustedValue: 0,
     });
 
     setContractCustomization({
       effectiveDate: today.toISOString().split("T")[0],
       expirationDate: oneYearLater.toISOString().split("T")[0],
-      hasSupportValue: false,
-      supportedValue: 0,
+      hasAdjustedValue: false,
+      adjustedValue: 0,
     });
 
     setIsModalOpen(true);
@@ -425,8 +422,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       expirationDate: allValues.expirationDate
         ? allValues.expirationDate.format("YYYY-MM-DD")
         : "",
-      hasSupportValue: allValues.hasSupportValue || false,
-      supportedValue: allValues.supportedValue || 0,
+      hasAdjustedValue: allValues.hasAdjustedValue || false,
+      adjustedValue: allValues.adjustedValue || 0,
     });
   };
 
@@ -584,6 +581,70 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     >
       {contract ? (
         <>
+          {/* Payment Summary */}
+          {depositAmount && (
+            <div className="mb-6">
+              <Alert
+                message="Thông tin thanh toán"
+                description={
+                  <Row gutter={[16, 16]} className="mt-3">
+                    <Col xs={24} sm={12} md={6}>
+                      <Statistic
+                        title="Tổng giá trị đơn hàng"
+                        value={contract.totalValue}
+                        prefix={<DollarOutlined />}
+                        valueStyle={{ color: '#1890ff' }}
+                      />
+                    </Col>
+                    {hasAdjustedValue && (
+                      <Col xs={24} sm={12} md={6}>
+                        <Statistic
+                          title="Giá trị điều chỉnh"
+                          value={contract.adjustedValue}
+                          prefix={<DollarOutlined />}
+                          valueStyle={{ color: '#722ed1' }}
+                        />
+                      </Col>
+                    )}
+                    <Col xs={24} sm={12} md={6}>
+                      <Statistic
+                        title="Số tiền cọc cần thanh toán"
+                        value={depositAmount.toLocaleString('vi-VN')}
+                        suffix="VNĐ"
+                        prefix={<CreditCardOutlined />}
+                        valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
+                      />
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                      <Statistic
+                        title="Số tiền còn lại"
+                        value={(() => {
+                          const adjusted = hasAdjustedValue
+                            ? (typeof contract.adjustedValue === 'string'
+                                ? parseFloat(contract.adjustedValue.replace(/[^0-9.-]+/g, ''))
+                                : Number(contract.adjustedValue) || 0)
+                            : undefined;
+                          const baseValue = adjusted ?? (typeof contract.totalValue === 'string'
+                                ? parseFloat(contract.totalValue.replace(/[^0-9.-]+/g, ''))
+                                : Number(contract.totalValue) || 0);
+                          return (baseValue - depositAmount).toLocaleString('vi-VN');
+                        })()}
+                        suffix="VNĐ"
+                        prefix={<DollarOutlined />}
+                        valueStyle={{ color: '#faad14' }}
+                      />
+                    </Col>
+                  </Row>
+                }
+                type="info"
+                icon={<InfoCircleOutlined />}
+                showIcon
+              />
+            </div>
+          )}
+
+          <Divider orientation="left">Chi tiết hợp đồng</Divider>
+
           <Descriptions bordered column={{ xs: 1, sm: 2, md: 3 }} size="small">
             <Descriptions.Item label="Tên hợp đồng">
               {contract.contractName || "Chưa có thông tin"}
@@ -597,14 +658,14 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             <Descriptions.Item label="Giá trị hợp đồng">
               {contract.totalValue || "Chưa có thông tin"}
             </Descriptions.Item>
-            <Descriptions.Item label="Giá trị hỗ trợ">
-              {contract.supportedValue || "Chưa có thông tin"}
-            </Descriptions.Item>
+            {hasAdjustedValue && (
+              <Descriptions.Item label="Giá trị điều chỉnh">
+                {contract.adjustedValue}
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="Trạng thái">
               {contract.status ? (
-                <Tag color={getStatusColor(contract.status)}>
-                  {contract.status}
-                </Tag>
+                <ContractStatusTag status={contract.status as ContractStatusEnum} />
               ) : (
                 "Chưa có thông tin"
               )}

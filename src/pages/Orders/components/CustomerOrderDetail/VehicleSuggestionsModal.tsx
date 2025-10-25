@@ -93,7 +93,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                         (total, suggestion) => total + suggestion.currentLoad,
                         0
                       )}{" "}
-                      Tấn
+                      {vehicleSuggestions.length > 0 ? vehicleSuggestions[0].currentLoadUnit : ""}
                     </div>
                   </div>
                 </Col>
@@ -123,7 +123,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                         Tổng tải trọng cho xe
                       </div>
                       <div className="font-semibold text-green-600">
-                        {suggestion.currentLoad}t
+                        {suggestion.currentLoad}{suggestion.currentLoadUnit}
                       </div>
                     </div>
                   </Col>

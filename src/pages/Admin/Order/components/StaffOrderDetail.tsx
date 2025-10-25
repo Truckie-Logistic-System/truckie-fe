@@ -333,6 +333,7 @@ const StaffOrderDetail: React.FC = () => {
             contract={contract}
             transactions={transactions}
             orderId={id}
+            depositAmount={order.depositAmount}
           />
         </TabPane>
       </Tabs>

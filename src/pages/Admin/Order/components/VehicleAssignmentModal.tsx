@@ -201,22 +201,31 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     };
 
     const handlePreviousStep = () => {
+        // Quay lại step 0 - KHÔNG submit
         setCurrentStep(0);
     };
 
     const handleRouteComplete = (segments: RouteSegment[], routeInfoData: RouteInfo) => {
         setRouteSegments(segments);
         setRouteInfo(routeInfoData);
-        // Move to seal assignment step
+        
+        // ============================================================
+        // STEP 2: CHỈ CHUYỂN SANG BƯỚC GÁN SEAL - KHÔNG SUBMIT
+        // ============================================================
         setCurrentStep(2);
     };
 
     const handleSealComplete = (assignedSeals: Seal[]) => {
         setSeals(assignedSeals);
+        
+        // ============================================================
+        // STEP 3: ĐÂY LÀ NƠI DUY NHẤT SUBMIT - SAU KHI HOÀN THÀNH GÁN SEAL
+        // ============================================================
         handleSubmitWithRouteAndSeals(routeSegments, routeInfo!, assignedSeals);
     };
 
     const handleSealBack = () => {
+        // Quay lại step 1 (định tuyến) - KHÔNG submit
         setCurrentStep(1);
     };
 
@@ -286,7 +295,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             const values = await form.validateFields();
             setFormValues(values);
 
-            // Move to route planning step
+            // ============================================================
+            // STEP 1: CHỈ CHUYỂN SANG BƯỚC ĐỊNH TUYẾN - KHÔNG SUBMIT
+            // ============================================================
             setCurrentStep(1);
         } catch (error) {
             console.error("Error assigning vehicles:", error);

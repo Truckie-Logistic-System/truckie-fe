@@ -1347,7 +1347,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <Text type="secondary" className="text-sm">Đoạn {segment.segmentOrder || index + 1}</Text>
-                                                <Tag color="blue">{((segment.distance || 0) / 1000).toFixed(1)} km</Tag>
+                                                <Tag color="blue">{(segment.distance || 0).toFixed(1)} km</Tag>
                                             </div>
                                         </div>
 

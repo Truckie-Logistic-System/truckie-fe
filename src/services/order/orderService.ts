@@ -642,6 +642,23 @@ const orderService = {
       throw handleApiError(error, "Không thể thanh toán đặt cọc");
     }
   },
+
+  /**
+   * Pay full amount for a contract
+   * @param contractId Contract ID
+   * @returns Promise with response data
+   */
+  payFullAmount: async (contractId: string): Promise<any> => {
+    try {
+      const response = await httpClient.post(
+        `/transactions/pay-os/${contractId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error paying full amount for contract ${contractId}:`, error);
+      throw handleApiError(error, "Không thể thanh toán toàn bộ");
+    }
+  },
 };
 
 export default orderService;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { AutoComplete, Typography, Spin, Empty, Tag } from "antd";
 import { UserOutlined, PhoneOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import orderService from "@/services/order/orderService";
-import type { RecentReceiverSuggestion } from "@/services/order/types";
+import type { RecentReceiverSuggestion } from "@/models/Order";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
@@ -23,11 +23,14 @@ const ReceiverSuggestions: React.FC<ReceiverSuggestionsProps> = ({ onSelect }) =
             setLoading(true);
             try {
                 const response = await orderService.getRecentReceivers();
-                if (response.success) {
+                if (response.success && response.data && response.data.length > 0) {
                     setSuggestions(response.data);
+                } else {
+                    setSuggestions([]);
                 }
             } catch (error) {
                 console.error("Error fetching suggestions:", error);
+                setSuggestions([]);
             } finally {
                 setLoading(false);
             }
@@ -48,7 +51,7 @@ const ReceiverSuggestions: React.FC<ReceiverSuggestionsProps> = ({ onSelect }) =
         return `${suggestion.receiverName} - ${suggestion.receiverPhone}`;
     };
 
-    const handleSelect = (value: string, option: any) => {
+    const handleSelect = (value: string) => {
         const suggestion = suggestions.find(s => s.orderId === value);
         if (suggestion) {
             const displayText = formatReceiverInfo(suggestion);
@@ -104,8 +107,16 @@ const ReceiverSuggestions: React.FC<ReceiverSuggestionsProps> = ({ onSelect }) =
         displayText: formatReceiverInfo(suggestion)
     });
 
+    // Only render if there are suggestions or still loading
+    if (!loading && suggestions.length === 0) {
+        return null;
+    }
+
     return (
         <div className="mb-4">
+            <Text className="text-gray-500 mb-2 block">
+                Bạn có thể tìm kiếm người nhận gần đây để tự động điền thông tin
+            </Text>
             <AutoComplete
                 ref={autoCompleteRef}
                 className="w-full"

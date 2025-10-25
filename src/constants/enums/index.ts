@@ -2,6 +2,7 @@ export * from './IssueEnum';
 export * from './JourneyHistoryStatusEnum';
 export * from './LicenseClassEnum';
 export * from './OrderStatusEnum';
+export * from './ContractStatusEnum';
 export * from './RoleTypeEnum';
 export * from './TransactionEnum';
 export * from './UserStatusEnum';

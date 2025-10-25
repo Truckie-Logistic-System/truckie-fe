@@ -41,6 +41,7 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
     const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | undefined>(undefined);
+    const [isRouteCompleted, setIsRouteCompleted] = useState<boolean>(false);
     const isEditing = !!initialValues;
 
     const { data: vehiclesData, isLoading: isLoadingVehicles } = useQuery({
@@ -92,17 +93,28 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
                 values.status = VehicleAssignmentStatus.ACTIVE;
             }
 
+            // Lưu lại form values để sử dụng ở step 2
             setFormValues(values);
 
-            // Nếu yêu cầu route hoặc có orderId, chuyển sang bước định tuyến
+            // ============================================================
+            // QUAN TRỌNG: CHỈ SUBMIT Ở STEP CUỐI CÙNG (STEP 2)
+            // ============================================================
+            // Nếu yêu cầu route hoặc có orderId, CHỈ chuyển sang bước 2
+            // KHÔNG ĐƯỢC SUBMIT Ở ĐÂY!
             if ((requireRoute || orderId) && !isEditing) {
-                setCurrentStep(1);
+                setCurrentStep(1); // Chuyển sang step 2
+                setIsRouteCompleted(false); // Đánh dấu chưa hoàn thành route
+                message.info("Vui lòng hoàn thành định tuyến để tạo phân công xe");
+                return; // DỪNG LẠI - KHÔNG SUBMIT
             } else {
-                // Nếu không yêu cầu route và đang chỉnh sửa, submit trực tiếp
+                // Trường hợp đặc biệt: Không yêu cầu route HOẶC đang chỉnh sửa
+                // Chỉ áp dụng cho form không có bước định tuyến
                 if (!requireRoute || isEditing) {
                     await onSubmit(values);
                     if (!isEditing) {
                         form.resetFields();
+                        setFormValues({});
+                        setIsRouteCompleted(false);
                     }
                 } else {
                     // Nếu yêu cầu route nhưng không có orderId, hiển thị thông báo lỗi
@@ -118,8 +130,12 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
         try {
             setRouteSegments(segments);
             setRouteInfo(routeInfoData);
+            setIsRouteCompleted(true);
 
-            // Combine form values with route segments
+            // ============================================================
+            // ĐÂY LÀ NƠI DUY NHẤT SUBMIT KHI CÓ ROUTE (STEP 2)
+            // ============================================================
+            // Kết hợp form values từ step 1 với route segments từ step 2
             const finalValues = {
                 ...formValues,
                 orderId: orderId,
@@ -127,11 +143,17 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
                 routeInfo: routeInfoData
             };
 
+            // Submit tất cả dữ liệu từ cả 2 bước
             await onSubmit(finalValues);
 
+            // Reset form sau khi submit thành công
             if (!isEditing) {
                 form.resetFields();
                 setCurrentStep(0);
+                setFormValues({});
+                setIsRouteCompleted(false);
+                setRouteSegments([]);
+                setRouteInfo(null);
             }
         } catch (error) {
             message.error("Có lỗi xảy ra khi lưu phân công xe");
@@ -139,7 +161,11 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
     };
 
     const handleBack = () => {
+        // Quay lại bước 1 nhưng không reset form values
+        // Chỉ reset trạng thái route completion
         setCurrentStep(0);
+        setIsRouteCompleted(false);
+        // Không reset formValues để giữ lại thông tin đã nhập
     };
 
     // Render basic info step

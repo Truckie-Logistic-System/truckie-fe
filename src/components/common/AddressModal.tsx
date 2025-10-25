@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, App, Spin, Alert, Button, Divider, Space, Row, Col, Typography, Input, Select, Radio } from 'antd';
-import addressService from '../../services/address/addressService';
-import trackasiaService from '../../services/map/trackasiaService';
-import vietmapService from '../../services/map/vietmapService';
+import { useAddressOperations } from '../../hooks/useAddressOperations';
+import { useAddressSearch } from '../../hooks/useAddressSearch';
+import { useVietMapSearch } from '../../hooks/useVietMapSearch';
 import type { Address, AddressCreateDto, AddressUpdateDto } from '../../models/Address';
 import useProvinces from '../../hooks/useProvinces';
 import type { MapLocation } from '../../models/Map';
@@ -13,7 +13,7 @@ import VietMapMap from './VietMapMap';
 import AddressSearch from './AddressSearch';
 import VietMapSearch from './VietMapSearch';
 import AddressForm from './AddressForm';
-import { createCustomFilterOption, processPlaceDetail } from './AddressHelper';
+import { createCustomFilterOption, processPlaceDetail } from '../../utils/addressHelper';
 
 // Định nghĩa interface cho window để thêm trackasia
 declare global {
@@ -47,6 +47,9 @@ const AddressModal: React.FC<AddressModalProps> = ({
 }) => {
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const { createAddress, updateAddress } = useAddressOperations();
+    const { autocomplete: trackAsiaAutocomplete } = useAddressSearch();
+    const { searchPlaces: searchVietMapPlaces, getPlaceDetail: getVietMapPlaceDetail, reverseGeocode: reverseGeocodeVietMap } = useVietMapSearch();
     const [useManualInput, setUseManualInput] = useState(false);
     const [useTrackAsia, setUseTrackAsia] = useState(false); // Default to false now
     const [useVietMap, setUseVietMap] = useState(true); // Default to true
@@ -112,7 +115,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
         // Kiểm tra VietMap API khi modal hiển thị và đang ở chế độ VietMap
         if (visible && useVietMap) {
             try {
-                vietmapService.searchPlaces('test')
+                searchVietMapPlaces('test')
                     .then((results) => {
                         if (!isMounted) return;
                         if (!results || results.length === 0) {
@@ -138,8 +141,8 @@ const AddressModal: React.FC<AddressModalProps> = ({
         // Fallback to TrackAsia if VietMap is not used
         else if (visible && useTrackAsia) {
             try {
-                trackasiaService.autocomplete('test', 1)
-                    .then((results: AutocompleteResult[]) => {
+                trackAsiaAutocomplete('test', 1)
+                    .then((results: any[]) => {
                         if (!isMounted) return;
                         if (results.length === 0) {
                             console.warn('TrackAsia API not working, switching to province API');
@@ -264,11 +267,19 @@ const AddressModal: React.FC<AddressModalProps> = ({
             console.log('Submitting address data:', addressData);
 
             if (mode === 'create') {
-                await addressService.createAddress(addressData as AddressCreateDto);
-                message.success('Thêm địa chỉ thành công');
+                const result = await createAddress(addressData as AddressCreateDto);
+                if (result.success) {
+                    message.success('Thêm địa chỉ thành công');
+                } else {
+                    throw new Error(result.error || 'Không thể tạo địa chỉ');
+                }
             } else if (mode === 'edit' && initialValues) {
-                await addressService.updateAddress(initialValues.id, addressData as AddressUpdateDto);
-                message.success('Cập nhật địa chỉ thành công');
+                const result = await updateAddress(initialValues.id, addressData as AddressUpdateDto);
+                if (result.success) {
+                    message.success('Cập nhật địa chỉ thành công');
+                } else {
+                    throw new Error(result.error || 'Không thể cập nhật địa chỉ');
+                }
             }
 
             onSuccess();
@@ -509,7 +520,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
         console.log('handleVietMapPlaceSelect called with placeId:', placeId);
         try {
             setIsSearchingVietMap(true);
-            const placeDetail = await vietmapService.getPlaceDetail(placeId);
+            const placeDetail = await getVietMapPlaceDetail(placeId);
             setIsSearchingVietMap(false);
 
             if (!placeDetail) {
@@ -589,7 +600,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
 
         // Nếu đang sử dụng VietMap, thực hiện reverse geocoding
         if (useVietMap && location.lat && location.lng) {
-            vietmapService.reverseGeocode(location.lat, location.lng)
+            reverseGeocodeVietMap(location.lat, location.lng)
                 .then(results => {
                     if (results && results.length > 0) {
                         const result = results[0];
@@ -633,7 +644,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
 
         try {
             setIsSearchingVietMap(true);
-            const results = await vietmapService.searchPlaces(searchText);
+            const results = await searchVietMapPlaces(searchText);
             setVietMapAutocompleteResults(results || []);
             setIsSearchingVietMap(false);
         } catch (error) {

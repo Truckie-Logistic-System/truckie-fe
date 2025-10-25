@@ -3,6 +3,7 @@ export interface SuggestAssignVehicle {
   vehicleRuleId: string;
   vehicleRuleName: string;
   currentLoad: number;
+  currentLoadUnit: string;
   assignedDetails: string[];
 }
 
@@ -28,7 +29,7 @@ export interface Contract {
   effectiveDate: string;
   expirationDate: string;
   totalValue: string;
-  supportedValue: string | null;
+  adjustedValue: string | null;
   description: string;
   attachFileUrl: string;
   status: string;

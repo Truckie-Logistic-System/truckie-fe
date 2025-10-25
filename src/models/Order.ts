@@ -301,6 +301,7 @@ export interface CustomerOrder {
 export interface CustomerOrderDetail {
   id: string;
   totalPrice: number;
+  depositAmount?: number;
   notes: string;
   totalQuantity: number;
   orderCode: string;
@@ -317,6 +318,7 @@ export interface CustomerOrderDetail {
   senderCompanyName: string;
   categoryName: string;
   orderDetails: CustomerOrderDetailItem[];
+  vehicleAssignments?: CustomerVehicleAssignment[];  // Moved from orderDetail level
 }
 
 export interface CustomerOrderDetailItem {
@@ -341,7 +343,10 @@ export interface CustomerOrderDetailItem {
     minWidth: number;
     maxWidth: number;
   };
-  vehicleAssignment?: {
+  vehicleAssignmentId?: string;  // Changed from full object to ID reference
+}
+
+export interface CustomerVehicleAssignment {
     id: string;
     vehicle: {
       id: string;
@@ -436,7 +441,7 @@ export interface CustomerContract {
   effectiveDate: string;
   expirationDate: string;
   totalValue: string;
-  supportedValue: string;
+  adjustedValue: string;
   description: string;
   attachFileUrl: string;
   status: string;
@@ -465,6 +470,7 @@ export interface RecentReceiverSuggestion {
 export interface StaffOrderDetail {
   id: string;
   totalPrice: number;
+  depositAmount?: number;
   notes: string;
   totalQuantity: number;
   orderCode: string;
@@ -481,6 +487,7 @@ export interface StaffOrderDetail {
   senderCompanyName: string;
   categoryName: string;
   orderDetails: StaffOrderDetailItem[];
+  vehicleAssignments?: StaffVehicleAssignment[];  // Moved from orderDetail level
 }
 
 export interface StaffOrderDetailItem {
@@ -505,7 +512,10 @@ export interface StaffOrderDetailItem {
     minWidth: number;
     maxWidth: number;
   };
-  vehicleAssignment?: {
+  vehicleAssignmentId?: string;  // Changed from full object to ID reference
+}
+
+export interface StaffVehicleAssignment {
     id: string;
     vehicle: {
       id: string;

@@ -1,6 +1,7 @@
 export { default as StatusBadge } from './StatusBadge';
 export { default as StatusTag } from './StatusTag';
 export { default as OrderStatusTag } from './OrderStatusTag';
+export { default as ContractStatusTag } from './ContractStatusTag';
 export { default as VehicleStatusTag } from './VehicleStatusTag';
 export { default as UserStatusTag } from './UserStatusTag';
 export { default as RoleTypeTag } from './RoleTypeTag';

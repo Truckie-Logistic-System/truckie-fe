@@ -8,7 +8,7 @@ interface ContractPreviewProps {
     contractName?: string;
     effectiveDate?: string;
     expirationDate?: string;
-    supportedValue?: number;
+    adjustedValue?: number;
     description?: string;
   };
 }
@@ -246,7 +246,7 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
           3.1. Tổng giá trị hợp đồng:{" "}
           <strong>
             {formatCurrency(
-              contractData?.supportedValue || order.totalPrice || 0
+              contractData?.adjustedValue || order.totalPrice || 0
             )}
           </strong>
         </p>

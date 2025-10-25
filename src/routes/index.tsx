@@ -2,9 +2,6 @@ import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
 import HomePage from "../pages/Home";
 import { LoginPage, RegisterPage } from "../pages/Auth";
 import { PaymentReturn } from "../pages/Payment";
-import VietMapPage from "../pages/VietMap";
-import OpenMapPage from "../pages/OpenMap";
-import TrackAsiaMapPage from "../pages/TrackAsiaMap";
 import Dashboard from "../pages/Dashboard";
 import AdminDashboard from "../pages/Dashboard/components/AdminDashboard";
 import StaffDashboard from "../pages/Dashboard/components/StaffDashboard";
@@ -435,62 +432,6 @@ const router = createBrowserRouter([
         element: <ProfilePage />,
       },
     ],
-  },
-
-  // Các trang bản đồ - chỉ cho phép customer hoặc người chưa đăng nhập
-  {
-    path: "/maps/vietmap",
-    element: (
-      <PermissionRoute
-        authenticationRequired="any"
-        allowedRoles={["customer"]}
-        roleRedirectPath={(auth) => {
-          // Chuyển hướng dựa trên vai trò
-          if (auth?.user?.role === "admin") return "/admin/dashboard";
-          if (auth?.user?.role === "staff") return "/staff/dashboard";
-          if (auth?.user?.role === "driver") return "/driver/dashboard";
-          return "/"; // Mặc định cho customer
-        }}
-      >
-        <VietMapPage />
-      </PermissionRoute>
-    ),
-  },
-  {
-    path: "/maps/openmap",
-    element: (
-      <PermissionRoute
-        authenticationRequired="any"
-        allowedRoles={["customer"]}
-        roleRedirectPath={(auth) => {
-          // Chuyển hướng dựa trên vai trò
-          if (auth?.user?.role === "admin") return "/admin/dashboard";
-          if (auth?.user?.role === "staff") return "/staff/dashboard";
-          if (auth?.user?.role === "driver") return "/driver/dashboard";
-          return "/"; // Mặc định cho customer
-        }}
-      >
-        <OpenMapPage />
-      </PermissionRoute>
-    ),
-  },
-  {
-    path: "/maps/trackasia",
-    element: (
-      <PermissionRoute
-        authenticationRequired="any"
-        allowedRoles={["customer"]}
-        roleRedirectPath={(auth) => {
-          // Chuyển hướng dựa trên vai trò
-          if (auth?.user?.role === "admin") return "/admin/dashboard";
-          if (auth?.user?.role === "staff") return "/staff/dashboard";
-          if (auth?.user?.role === "driver") return "/driver/dashboard";
-          return "/"; // Mặc định cho customer
-        }}
-      >
-        <TrackAsiaMapPage />
-      </PermissionRoute>
-    ),
   },
 ]);
 

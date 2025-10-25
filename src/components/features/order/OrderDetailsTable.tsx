@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, Table, Button, App } from 'antd';
 import { FileTextOutlined, ClockCircleOutlined, CarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -6,7 +6,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import OrderStatusDisplay from './OrderStatusDisplay';
 import type { OrderDetail, Order } from '../../../models';
-import orderService from '@/services/order/orderService';
+import { useOrderVehicleAssignment } from '@/hooks/useOrderVehicleAssignment';
 
 // Configure dayjs to use timezone
 dayjs.extend(utc);
@@ -28,7 +28,7 @@ const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({
     assigningVehicle = false
 }) => {
     const messageApi = App.useApp().message;
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, assignVehicle } = useOrderVehicleAssignment();
     // Nếu có order, lấy orderDetails từ order
     const detailsData = order?.orderDetails || orderDetails || [];
 
@@ -39,19 +39,16 @@ const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({
             return;
         }
 
-        try {
-            setLoading(true);
-            messageApi.loading('Đang phân công xe...');
-            await orderService.updateVehicleAssignmentForOrderDetail(order.id);
-            messageApi.success('Đã phân công xe thành công');
+        messageApi.loading('Đang phân công xe...');
+        const result = await assignVehicle(order.id);
+        
+        if (result.success) {
+            messageApi.success(result.message || 'Đã phân công xe thành công');
             if (onRefresh) {
                 onRefresh();
             }
-        } catch (error) {
-            messageApi.error('Không thể phân công xe cho đơn hàng');
-            console.error('Error assigning vehicle:', error);
-        } finally {
-            setLoading(false);
+        } else {
+            messageApi.error(result.message || 'Không thể phân công xe cho đơn hàng');
         }
     };
 

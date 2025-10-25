@@ -1,9 +1,11 @@
 import React from "react";
-import { Card, Descriptions, Empty, Tag } from "antd";
+import { Card, Descriptions, Empty } from "antd";
 import { CreditCardOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { TransactionStatusTag } from "../../../../components/common/tags";
+import { TransactionEnum } from "../../../../constants/enums";
 
 // Configure dayjs to use timezone
 dayjs.extend(utc);
@@ -65,18 +67,7 @@ const TransactionSection: React.FC<TransactionProps> = ({ transactions }) => {
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 {transaction.status ? (
-                  <Tag
-                    color={
-                      transaction.status === "SUCCESS" ||
-                      transaction.status === "PAID"
-                        ? "green"
-                        : transaction.status === "PENDING"
-                        ? "orange"
-                        : "red"
-                    }
-                  >
-                    {transaction.status}
-                  </Tag>
+                  <TransactionStatusTag status={transaction.status as TransactionEnum} />
                 ) : (
                   "Chưa có thông tin"
                 )}

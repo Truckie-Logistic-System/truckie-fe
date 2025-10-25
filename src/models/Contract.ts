@@ -3,7 +3,7 @@ export interface Contract {
   contractName: string;
   effectiveDate: string;
   expirationDate: string;
-  supportedValue: number;
+  adjustedValue: number;
   description: string;
   orderId: string;
   staffId: string;
@@ -15,7 +15,7 @@ export interface CreateContractRequest {
   contractName: string;
   effectiveDate: string;
   expirationDate: string;
-  supportedValue: number;
+  adjustedValue: number;
   description: string;
   orderId: string;
   staffId: string;

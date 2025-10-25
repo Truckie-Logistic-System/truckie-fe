@@ -3,32 +3,32 @@ import type { VehicleRule, VehicleRuleRequest, UpdateVehicleRuleRequest, Vehicle
 import type { GetVehicleRulesResponse, GetVehicleRuleResponse, CreateVehicleRuleResponse, UpdateVehicleRuleResponse } from './types';
 
 const getVehicleRules = async (): Promise<VehicleRule[]> => {
-    const response = await httpClient.get('/vehicle-rules');
+    const response = await httpClient.get('/vehicle-type-rules');
     return response.data.data;
 };
 
 const getVehicleRulesFull = async (): Promise<VehicleRule[]> => {
-    const response = await httpClient.get('/vehicle-rules/full');
+    const response = await httpClient.get('/vehicle-type-rules/full');
     return response.data.data;
 };
 
 const getVehicleRule = async (id: string): Promise<VehicleRule> => {
-    const response = await httpClient.get(`/vehicle-rules/${id}`);
+    const response = await httpClient.get(`/vehicle-type-rules/${id}`);
     return response.data.data;
 };
 
 const createVehicleRule = async (vehicleRule: VehicleRuleRequest): Promise<VehicleRule> => {
-    const response = await httpClient.post('/vehicle-rules', vehicleRule);
+    const response = await httpClient.post('/vehicle-type-rules', vehicleRule);
     return response.data.data;
 };
 
 const updateVehicleRule = async (vehicleRule: UpdateVehicleRuleRequest): Promise<VehicleRule> => {
-    const response = await httpClient.put(`/vehicle-rules/${vehicleRule.id}`, vehicleRule);
+    const response = await httpClient.put(`/vehicle-type-rules/${vehicleRule.id}`, vehicleRule);
     return response.data.data;
 };
 
 const deleteVehicleRule = async (id: string): Promise<void> => {
-    await httpClient.delete(`/vehicle-rules/${id}`);
+    await httpClient.delete(`/vehicle-type-rules/${id}`);
 };
 
 // Lấy danh sách khoảng cách

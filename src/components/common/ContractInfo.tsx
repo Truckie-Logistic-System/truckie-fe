@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Card,
   Button,
   Space,
   Typography,
-  Tag,
   Divider,
   message,
   Alert,
@@ -17,8 +16,10 @@ import {
   CalendarOutlined,
   InfoCircleOutlined,
 } from "@ant-design/icons";
-import { contractService } from "../../services/contract";
+import { useContractPdfGeneration } from "../../hooks/useContractPdfGeneration";
 import type { Contract } from "../../services/contract/types";
+import { ContractStatusTag } from "./tags";
+import { ContractStatusEnum } from "../../constants/enums";
 
 const { Text, Link } = Typography;
 
@@ -31,61 +32,22 @@ const ContractInfo: React.FC<ContractInfoProps> = ({
   contract,
   onPdfGenerated,
 }) => {
-  const [loadingPdf, setLoadingPdf] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const { loadingPdf, pdfUrl, generatePdf } = useContractPdfGeneration();
 
   const handleGeneratePdf = async () => {
-    setLoadingPdf(true);
-    try {
-      const response = await contractService.generateContractPdf(contract.id);
+    const result = await generatePdf(contract.id);
 
-      if (response.success) {
-        setPdfUrl(response.data.pdfUrl);
-        message.success("Tạo file PDF thành công!");
-        onPdfGenerated?.(response.data.pdfUrl);
-      } else {
-        message.error(response.message || "Không thể tạo file PDF");
-      }
-    } catch (error: any) {
-      message.error(error.message || "Có lỗi xảy ra khi tạo PDF");
-    } finally {
-      setLoadingPdf(false);
+    if (result.success) {
+      message.success("Tạo file PDF thành công!");
+      onPdfGenerated?.(result.pdfUrl!);
+    } else {
+      message.error(result.message || "Không thể tạo file PDF");
     }
   };
 
   const handleDownloadPdf = () => {
     if (pdfUrl) {
       window.open(pdfUrl, "_blank");
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "CONTRACT_DRAFT":
-        return "orange";
-      case "CONTRACT_ACTIVE":
-        return "green";
-      case "CONTRACT_COMPLETED":
-        return "blue";
-      case "CONTRACT_CANCELLED":
-        return "red";
-      default:
-        return "default";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "CONTRACT_DRAFT":
-        return "Bản nháp";
-      case "CONTRACT_ACTIVE":
-        return "Đang hiệu lực";
-      case "CONTRACT_COMPLETED":
-        return "Hoàn thành";
-      case "CONTRACT_CANCELLED":
-        return "Đã hủy";
-      default:
-        return status;
     }
   };
 
@@ -105,9 +67,7 @@ const ContractInfo: React.FC<ContractInfoProps> = ({
         <Space>
           <FileTextOutlined />
           <span>Thông tin hợp đồng</span>
-          <Tag color={getStatusColor(contract.status)}>
-            {getStatusText(contract.status)}
-          </Tag>
+          <ContractStatusTag status={contract.status as ContractStatusEnum} />
         </Space>
       }
       extra={

@@ -86,6 +86,7 @@ export interface VehicleSuggestion {
   vehicleRuleId: string;
   vehicleRuleName: string;
   currentLoad: number;
+  currentLoadUnit: string;
   assignedDetails: AssignedDetail[];
   packedDetailDetails: PackedDetail[];
 }

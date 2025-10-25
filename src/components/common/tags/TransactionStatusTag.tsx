@@ -7,7 +7,8 @@ import {
     CloseCircleOutlined,
     StopOutlined,
     HistoryOutlined,
-    RollbackOutlined
+    RollbackOutlined,
+    DollarOutlined
 } from '@ant-design/icons';
 
 interface TransactionStatusTagProps {
@@ -27,6 +28,8 @@ const TransactionStatusTag: React.FC<TransactionStatusTagProps> = ({ status, cla
                 return <ClockCircleOutlined />;
             case TransactionEnum.PAID:
                 return <CheckCircleOutlined />;
+            case TransactionEnum.DEPOSITED:
+                return <DollarOutlined />;
             case TransactionEnum.FAILED:
                 return <CloseCircleOutlined />;
             case TransactionEnum.CANCELLED:

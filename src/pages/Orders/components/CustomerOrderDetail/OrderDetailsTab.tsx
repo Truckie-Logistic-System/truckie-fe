@@ -65,7 +65,7 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
     }
 
     // Kiểm tra xem có vehicle assignment không
-    const hasVehicleAssignment = order.orderDetails.some((detail: any) => detail.vehicleAssignment);
+    const hasVehicleAssignment = order.vehicleAssignments && order.vehicleAssignments.length > 0;
 
     // Nếu có vehicle assignment, hiển thị theo vehicle assignment
     if (hasVehicleAssignment) {
@@ -77,16 +77,21 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
 
         const vehicleAssignmentMap = new Map<string, VehicleAssignmentGroup>();
 
+        // Initialize map with vehicle assignments from order level
+        order.vehicleAssignments.forEach((va: any) => {
+            vehicleAssignmentMap.set(va.id, {
+                vehicleAssignment: va,
+                orderDetails: [],
+            });
+        });
+
+        // Group order details by their vehicleAssignmentId
         order.orderDetails.forEach((detail: any) => {
-            if (detail.vehicleAssignment) {
-                const vaId = detail.vehicleAssignment.id;
-                if (!vehicleAssignmentMap.has(vaId)) {
-                    vehicleAssignmentMap.set(vaId, {
-                        vehicleAssignment: detail.vehicleAssignment,
-                        orderDetails: [],
-                    });
+            if (detail.vehicleAssignmentId) {
+                const group = vehicleAssignmentMap.get(detail.vehicleAssignmentId);
+                if (group) {
+                    group.orderDetails.push(detail);
                 }
-                vehicleAssignmentMap.get(vaId)?.orderDetails.push(detail);
             }
         });
 

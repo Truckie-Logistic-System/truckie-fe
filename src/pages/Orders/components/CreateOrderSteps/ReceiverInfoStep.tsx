@@ -38,7 +38,7 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
         // Pass data to parent component for address fields
         onReceiverDetailsLoaded(data);
 
-        message.success("Đã điền thông tin người nhận");
+        // message.success("Đã điền thông tin người nhận");
       }
     } catch (error) {
       message.error("Không thể tải thông tin người nhận");

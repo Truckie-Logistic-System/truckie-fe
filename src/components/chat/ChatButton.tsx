@@ -2,20 +2,19 @@ import React from 'react';
 import { Badge, message } from 'antd';
 import { MessageOutlined } from '@ant-design/icons';
 import { useChatContext } from '@/context/ChatContext';
-import roomService from '@/services/room/roomService';
-import chatService from '@/services/chat/chatService';
-import { mapChatMessageDTOArrayToUI } from '@/utils/chatMapper';
+import { useChatRoom } from '@/hooks/useChatRoom';
 
 const ChatButton: React.FC = () => {
     const {
         toggleChat,
         unreadCount,
-        setUIChatMessages, // New method for UI messages
+        setUIChatMessages,
         initChat,
         connectionStatus
     } = useChatContext();
 
     const userId = sessionStorage.getItem('userId');
+    const { fetchChatMessages } = useChatRoom();
 
     const handleChatClick = async () => {
         if (!userId) {
@@ -26,37 +25,14 @@ const ChatButton: React.FC = () => {
         try {
             message.loading({ content: 'Đang kiểm tra phòng hỗ trợ...', key: 'chat-loading' });
 
-            // Check if user has existing support room
-            const hasRoom = await roomService.isCustomerHasRoomSupported(userId);
+            // Fetch chat messages
+            const result = await fetchChatMessages(userId);
 
-            if (!hasRoom) {
-                // Create new support room
-                const newRoom = await roomService.createRoom({
-                    orderId: undefined,
-                    userId: userId, // Fixed: should be userIds array
-                });
-
-                console.log("✅ Created new support room:", newRoom);
-                message.success({ content: 'Đã tạo phòng hỗ trợ mới!', key: 'chat-loading' });
-
-                // Initialize chat with new room
-                await initChat(userId);
-
-            } else {
-                // Load existing support room messages
-                const chatPage = await chatService.getMessagesSupportedForCustomer(userId, 20);
-
-                // Map API data to UI format
-                const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, userId);
-
-                console.log("✅ Loaded support messages:", uiMessages);
+            if (result.success) {
                 message.success({ content: 'Đã tải tin nhắn hỗ trợ!', key: 'chat-loading' });
-
-                // Set UI messages
-                setUIChatMessages(uiMessages);
-
-                // Also initialize the chat context for WebSocket
                 await initChat(userId);
+            } else {
+                message.error({ content: result.message || 'Không thể tải tin nhắn', key: 'chat-loading' });
             }
 
             // Open chat UI

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Modal,
   Form,
@@ -14,12 +14,8 @@ import {
   CalendarOutlined,
   LoadingOutlined,
 } from "@ant-design/icons";
-import { contractService } from "../../services/contract";
-import type {
-  CreateContractRequest,
-  Contract,
-} from "../../services/contract/types";
-import { formatToVietnamTime } from "../../utils/dateUtils";
+import type { Contract } from "../../services/contract/types";
+import { useContractForm } from "../../hooks/useContractForm";
 import dayjs from "dayjs";
 
 const { TextArea } = Input;
@@ -41,34 +37,18 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({
   onSuccess,
 }) => {
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+  const { loading, submitContract } = useContractForm();
 
   const handleSubmit = async (values: any) => {
-    setLoading(true);
-    try {
-      const contractData: CreateContractRequest = {
-        contractName: values.contractName,
-        effectiveDate: formatToVietnamTime(values.effectiveDate.toDate()),
-        expirationDate: formatToVietnamTime(values.expirationDate.toDate()),
-        description: values.description,
-        attachFileUrl: values.attachFileUrl || "",
-        orderId: orderId,
-      };
+    const result = await submitContract(values, orderId);
 
-      const response = await contractService.createContract(contractData);
-
-      if (response.success) {
-        message.success("Tạo hợp đồng thành công!");
-        form.resetFields();
-        onSuccess(response.data);
-        onCancel();
-      } else {
-        message.error(response.message || "Không thể tạo hợp đồng");
-      }
-    } catch (error: any) {
-      message.error(error.message || "Có lỗi xảy ra khi tạo hợp đồng");
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      message.success("Tạo hợp đồng thành công!");
+      form.resetFields();
+      onSuccess(result.data!);
+      onCancel();
+    } else {
+      message.error(result.message || "Không thể tạo hợp đồng");
     }
   };
 

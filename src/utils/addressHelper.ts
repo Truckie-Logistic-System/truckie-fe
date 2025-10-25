@@ -1,4 +1,4 @@
-import type { PlaceDetailResult } from '../../models/TrackAsia';
+import type { PlaceDetailResult } from '../models/TrackAsia';
 
 // Hàm so sánh tiếng Việt không dấu để cải thiện tìm kiếm
 export const removeVietnameseAccents = (str: string): string => {
@@ -261,4 +261,4 @@ export const processPlaceDetail = (placeDetail: PlaceDetailResult) => {
 
     console.log('Processed place detail result:', result);
     return result;
-}; 
+};

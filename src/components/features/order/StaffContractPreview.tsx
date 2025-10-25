@@ -5,8 +5,8 @@ import { formatCurrency, formatDate } from "../../../utils/formatters";
 interface ContractCustomization {
   effectiveDate: string;
   expirationDate: string;
-  hasSupportValue: boolean;
-  supportedValue: number;
+  hasAdjustedValue: boolean;
+  adjustedValue: number;
 }
 
 interface ContractContent {
@@ -44,8 +44,8 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
     : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString(
         "vi-VN"
       );
-  const supportedValue = customization?.hasSupportValue
-    ? customization.supportedValue
+  const adjustedValue = customization?.hasAdjustedValue
+    ? customization.adjustedValue
     : 0;
 
   // Use content customization if provided, otherwise use defaults
@@ -515,9 +515,9 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             - Phí bảo hiểm: {contractData.contractSettings.insuranceRate}% giá
             trị hàng hóa
           </p>
-          {supportedValue > 0 && (
+          {adjustedValue > 0 && (
             <p style={{ color: "#059669", fontWeight: "bold" }}>
-              - Giá trị trợ giá: {formatCurrency(supportedValue)} (đã bao gồm
+              - Giá trị điều chỉnh: {formatCurrency(adjustedValue)} (đã bao gồm
               trong tổng giá trị hợp đồng)
             </p>
           )}

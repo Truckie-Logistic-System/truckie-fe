@@ -9,7 +9,7 @@ interface ContractAndPaymentTabProps {
     effectiveDate: string;
     expirationDate: string;
     totalValue: string;
-    supportedValue: string;
+    adjustedValue: string;
     description: string;
     attachFileUrl: string;
     status: string;
@@ -25,18 +25,20 @@ interface ContractAndPaymentTabProps {
     paymentDate: string;
   }[];
   orderId?: string; // Add orderId for contract creation
+  depositAmount?: number;
 }
 
 const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
   contract,
   transactions,
   orderId,
+  depositAmount,
 }) => {
   return (
     <div>
       {/* Contract Information */}
       {contract && (
-        <StaffContractSection contract={contract} orderId={orderId} />
+        <StaffContractSection contract={contract} orderId={orderId} depositAmount={depositAmount} />
       )}
 
       {/* Transaction Information */}

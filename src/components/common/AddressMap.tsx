@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import trackasiaService from '../../services/map/trackasiaService';
+import React, { useRef, useEffect } from 'react';
+import { useMapGeocoding } from '../../hooks/useMapGeocoding';
 import type { MapLocation } from '../../models/Map';
 
 // Khai báo global cho trackasiagl
@@ -19,58 +19,31 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markerRef = useRef<any>(null);
-    const [isLocating, setIsLocating] = useState(false);
+    const { isLocating, reverseGeocode, getMapStyle } = useMapGeocoding();
 
     // Hàm lấy vị trí hiện tại của người dùng
-    const getCurrentLocation = () => {
+    const getCurrentLocation = async () => {
         if (!navigator.geolocation) {
             console.log('Geolocation is not supported by your browser');
             return;
         }
 
-        setIsLocating(true);
-
         navigator.geolocation.getCurrentPosition(
-            (position) => {
+            async (position) => {
                 const { latitude, longitude } = position.coords;
 
                 if (mapRef.current && markerRef.current) {
                     updateMapLocation({ lat: latitude, lng: longitude });
 
                     // Reverse geocode để lấy thông tin địa chỉ
-                    trackasiaService.reverseGeocode(`${latitude},${longitude}`)
-                        .then(response => {
-                            if (response && response.results && response.results.length > 0) {
-                                const result = response.results[0];
-                                onLocationChange({
-                                    lat: latitude,
-                                    lng: longitude,
-                                    address: result.formatted_address
-                                });
-                            } else {
-                                onLocationChange({
-                                    lat: latitude,
-                                    lng: longitude,
-                                    address: `${latitude}, ${longitude}`
-                                });
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error reverse geocoding:', error);
-                            onLocationChange({
-                                lat: latitude,
-                                lng: longitude,
-                                address: `${latitude}, ${longitude}`
-                            });
-                        })
-                        .finally(() => {
-                            setIsLocating(false);
-                        });
+                    const result = await reverseGeocode(latitude, longitude);
+                    if (result.success && result.location) {
+                        onLocationChange(result.location);
+                    }
                 }
             },
             (error) => {
                 console.error('Error getting current location:', error);
-                setIsLocating(false);
             },
             { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
@@ -86,7 +59,7 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
                 console.log('Initializing TrackAsia map with trackasiagl from NPM');
                 mapRef.current = new window.trackasiagl.Map({
                     container: mapContainerRef.current,
-                    style: trackasiaService.getMapStyle('streets', false), // Sử dụng URL trực tiếp
+                    style: getMapStyle('streets', false),
                     center: [106.6974, 10.7743], // Trung tâm TPHCM
                     zoom: 12
                 });
@@ -106,20 +79,11 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
                     updateMapLocation(coords);
 
                     // Reverse geocode để lấy thông tin địa chỉ
-                    trackasiaService.reverseGeocode(`${coords.lat},${coords.lng}`)
-                        .then(response => {
-                            if (response && response.results && response.results.length > 0) {
-                                const result = response.results[0];
-                                onLocationChange({
-                                    lat: coords.lat,
-                                    lng: coords.lng,
-                                    address: result.formatted_address
-                                });
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error reverse geocoding:', error);
-                        });
+                    reverseGeocode(coords.lat, coords.lng).then(result => {
+                        if (result.success && result.location) {
+                            onLocationChange(result.location);
+                        }
+                    });
                 });
 
                 // Nếu có vị trí ban đầu, cập nhật marker
@@ -140,7 +104,7 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
                 console.log('Initializing TrackAsia map with CDN version');
                 mapRef.current = new window.trackasia.Map({
                     container: mapContainerRef.current,
-                    style: trackasiaService.getMapStyle('streets', false), // Sử dụng URL trực tiếp
+                    style: getMapStyle('streets', false),
                     center: [106.6974, 10.7743], // Trung tâm TPHCM
                     zoom: 12
                 });
@@ -160,20 +124,11 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
                     updateMapLocation(coords);
 
                     // Reverse geocode để lấy thông tin địa chỉ
-                    trackasiaService.reverseGeocode(`${coords.lat},${coords.lng}`)
-                        .then(response => {
-                            if (response && response.results && response.results.length > 0) {
-                                const result = response.results[0];
-                                onLocationChange({
-                                    lat: coords.lat,
-                                    lng: coords.lng,
-                                    address: result.formatted_address
-                                });
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error reverse geocoding:', error);
-                        });
+                    reverseGeocode(coords.lat, coords.lng).then(result => {
+                        if (result.success && result.location) {
+                            onLocationChange(result.location);
+                        }
+                    });
                 });
 
                 // Nếu có vị trí ban đầu, cập nhật marker

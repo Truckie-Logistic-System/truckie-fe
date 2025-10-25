@@ -123,7 +123,7 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
           <div style="margin-bottom: 4px;">
             <span style="color: #666; font-size: 12px;">📍 Vị trí:</span>
             <div style="margin-left: 16px; margin-top: 2px; font-family: monospace; font-size: 11px; color: #666;">
-              ${vehicle.latitude.toFixed(6)}, ${vehicle.longitude.toFixed(6)}
+              ${vehicle.latitude != null ? vehicle.latitude.toFixed(6) : 'N/A'}, ${vehicle.longitude != null ? vehicle.longitude.toFixed(6) : 'N/A'}
             </div>
           </div>
           <div style="color: #999; font-size: 11px; margin-top: 4px;">
@@ -400,7 +400,7 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
           <div style="margin-bottom: 6px;">
             <span style="color: #666; font-size: 12px;">📍 Vị trí:</span>
             <div style="margin-left: 16px; margin-top: 2px; font-family: monospace; font-size: 11px; color: #666;">
-              ${vehicle.latitude.toFixed(6)}, ${vehicle.longitude.toFixed(6)}
+              ${vehicle.latitude != null ? vehicle.latitude.toFixed(6) : 'N/A'}, ${vehicle.longitude != null ? vehicle.longitude.toFixed(6) : 'N/A'}
             </div>
           </div>
           <div style="color: #999; font-size: 11px; margin-top: 4px;">

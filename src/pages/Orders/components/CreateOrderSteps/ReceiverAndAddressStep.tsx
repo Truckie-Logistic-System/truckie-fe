@@ -131,7 +131,7 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
                 // Pass data to parent component for address fields
                 onReceiverDetailsLoaded(data);
 
-                message.success("Đã điền thông tin người nhận và địa chỉ");
+                // message.success("Đã điền thông tin người nhận và địa chỉ");
             }
         } catch (error) {
             message.error("Không thể tải thông tin người nhận");
@@ -179,10 +179,6 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
     return (
         <>
             <Title level={4}>Thông tin người nhận và địa chỉ</Title>
-
-            <Text className="text-gray-500 mb-4 block">
-                Bạn có thể tìm kiếm người nhận gần đây để tự động điền thông tin
-            </Text>
 
             <ReceiverSuggestions onSelect={handleSuggestionSelect} />
 

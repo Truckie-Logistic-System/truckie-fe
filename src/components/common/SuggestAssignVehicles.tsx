@@ -15,11 +15,8 @@ import {
   LoadingOutlined,
   CheckOutlined,
 } from "@ant-design/icons";
-import { contractService } from "../../services/contract";
-import type {
-  SuggestAssignVehicle,
-  Contract,
-} from "../../services/contract/types";
+import { useSuggestVehicles } from "../../hooks/useSuggestVehicles";
+import type { Contract } from "../../services/contract/types";
 import CreateContractForm from "./CreateContractForm";
 import ContractInfo from "./ContractInfo";
 
@@ -35,27 +32,16 @@ const SuggestAssignVehicles: React.FC<SuggestAssignVehiclesProps> = ({
   orderCode,
 }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [suggestData, setSuggestData] = useState<SuggestAssignVehicle[]>([]);
   const [showCreateContract, setShowCreateContract] = useState(false);
   const [createdContract, setCreatedContract] = useState<Contract | null>(null);
+  const { loading, suggestData, fetchSuggestions } = useSuggestVehicles();
 
   const handleShowSuggestions = async () => {
-    setLoading(true);
-    try {
-      const response = await contractService.getSuggestAssignVehicles(orderId);
-      if (response.success) {
-        setSuggestData(response.data);
-        setIsModalVisible(true);
-      } else {
-        message.error(response.message || "Không thể tải dữ liệu gợi ý");
-      }
-    } catch (error: any) {
-      message.error(
-        error.message || "Có lỗi xảy ra khi tải gợi ý phân phối xe"
-      );
-    } finally {
-      setLoading(false);
+    const result = await fetchSuggestions(orderId);
+    if (result.success) {
+      setIsModalVisible(true);
+    } else {
+      message.error(result.message || "Không thể tải dữ liệu gợi ý");
     }
   };
 
@@ -182,7 +168,7 @@ const SuggestAssignVehicles: React.FC<SuggestAssignVehiclesProps> = ({
                   {suggestData
                     .reduce((sum, item) => sum + item.currentLoad, 0)
                     .toFixed(1)}{" "}
-                  tấn
+                  {suggestData.length > 0 ? suggestData[0].currentLoadUnit : ""}
                 </Tag>
               </Space>
             </Card>
