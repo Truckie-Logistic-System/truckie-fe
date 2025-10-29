@@ -10,7 +10,6 @@ import {
   Input,
   DatePicker,
   InputNumber,
-  Checkbox,
   Row,
   Col,
   Alert,
@@ -21,7 +20,6 @@ import {
   FileTextOutlined,
   DownloadOutlined,
   PlusOutlined,
-  EditOutlined,
   InfoCircleOutlined,
   DollarOutlined,
   CreditCardOutlined,
@@ -32,7 +30,6 @@ import type { ContractData } from "../../../../services/contract/contractTypes";
 import httpClient from "../../../../services/api/httpClient";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import dayjs from "dayjs";
 import { ContractStatusTag } from "../../../../components/common/tags";
 import { ContractStatusEnum } from "../../../../constants/enums";
 
@@ -67,14 +64,12 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
-  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== "0");
+  const hasAdjustedValue = Boolean(
+    contract?.adjustedValue && contract.adjustedValue !== "0"
+  );
   const [uploadingContract, setUploadingContract] = useState<boolean>(false);
-  const [isEditContentModalOpen, setIsEditContentModalOpen] =
-    useState<boolean>(false);
   const [form] = Form.useForm();
   const [uploadForm] = Form.useForm();
-  const [previewForm] = Form.useForm();
-  const [contentForm] = Form.useForm();
 
   // Contract customization state
   const [contractCustomization, setContractCustomization] = useState({
@@ -82,21 +77,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     expirationDate: "",
     hasAdjustedValue: false,
     adjustedValue: 0,
-  });
-
-  // Contract content customization
-  const [contractContent, setContractContent] = useState({
-    companyName: "TRUCKIE LOGISTICS",
-    companyAddress: "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh",
-    companyPhone: "0123 456 789",
-    companyEmail: "contact@truckie.vn",
-    representativeName: "[Tên người đại diện]",
-    representativeTitle: "Giám đốc",
-    serviceDescription:
-      "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B.",
-    paymentMethod: "Chuyển khoản",
-    warrantyTerms: "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định",
-    generalTerms: "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.",
   });
 
   const handlePreviewContract = async () => {
@@ -392,51 +372,19 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       await handlePreviewContract();
     }
 
-    // Initialize form with default values
+    // Initialize contract customization with default values
     const today = new Date();
     const oneYearLater = new Date(today);
     oneYearLater.setFullYear(today.getFullYear() + 1);
 
-    previewForm.setFieldsValue({
-      effectiveDate: dayjs(today),
-      expirationDate: dayjs(oneYearLater),
-      hasAdjustedValue: false,
-      adjustedValue: 0,
-    });
-
     setContractCustomization({
-      effectiveDate: today.toISOString().split("T")[0],
-      expirationDate: oneYearLater.toISOString().split("T")[0],
+      effectiveDate: today.toISOString(),
+      expirationDate: oneYearLater.toISOString(),
       hasAdjustedValue: false,
       adjustedValue: 0,
     });
 
     setIsModalOpen(true);
-  };
-
-  const handlePreviewFormChange = (_changedValues: any, allValues: any) => {
-    setContractCustomization({
-      effectiveDate: allValues.effectiveDate
-        ? allValues.effectiveDate.format("YYYY-MM-DD")
-        : "",
-      expirationDate: allValues.expirationDate
-        ? allValues.expirationDate.format("YYYY-MM-DD")
-        : "",
-      hasAdjustedValue: allValues.hasAdjustedValue || false,
-      adjustedValue: allValues.adjustedValue || 0,
-    });
-  };
-
-  const handleOpenEditContentModal = () => {
-    // Initialize form with current content
-    contentForm.setFieldsValue(contractContent);
-    setIsEditContentModalOpen(true);
-  };
-
-  const handleSaveContractContent = (values: any) => {
-    setContractContent(values);
-    setIsEditContentModalOpen(false);
-    messageApi.success("Đã cập nhật nội dung hợp đồng");
   };
 
   const handleCloseModal = () => {
@@ -593,7 +541,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         title="Tổng giá trị đơn hàng"
                         value={contract.totalValue}
                         prefix={<DollarOutlined />}
-                        valueStyle={{ color: '#1890ff' }}
+                        valueStyle={{ color: "#1890ff" }}
                       />
                     </Col>
                     {hasAdjustedValue && (
@@ -602,36 +550,71 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                           title="Giá trị điều chỉnh"
                           value={contract.adjustedValue}
                           prefix={<DollarOutlined />}
-                          valueStyle={{ color: '#722ed1' }}
+                          valueStyle={{ color: "#722ed1" }}
                         />
                       </Col>
                     )}
                     <Col xs={24} sm={12} md={6}>
                       <Statistic
                         title="Số tiền cọc cần thanh toán"
-                        value={depositAmount.toLocaleString('vi-VN')}
+                        value={depositAmount.toLocaleString("vi-VN")}
                         suffix="VNĐ"
                         prefix={<CreditCardOutlined />}
-                        valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
+                        valueStyle={{ color: "#52c41a", fontWeight: "bold" }}
                       />
                     </Col>
                     <Col xs={24} sm={12} md={6}>
                       <Statistic
                         title="Số tiền còn lại"
                         value={(() => {
-                          const adjusted = hasAdjustedValue
-                            ? (typeof contract.adjustedValue === 'string'
-                                ? parseFloat(contract.adjustedValue.replace(/[^0-9.-]+/g, ''))
-                                : Number(contract.adjustedValue) || 0)
-                            : undefined;
-                          const baseValue = adjusted ?? (typeof contract.totalValue === 'string'
-                                ? parseFloat(contract.totalValue.replace(/[^0-9.-]+/g, ''))
-                                : Number(contract.totalValue) || 0);
-                          return (baseValue - depositAmount).toLocaleString('vi-VN');
+                          let finalValue = 0;
+
+                          // Sử dụng giá điều chỉnh nếu có và khác 0
+                          if (hasAdjustedValue) {
+                            const adjusted =
+                              typeof contract.adjustedValue === "string"
+                                ? parseFloat(
+                                    contract.adjustedValue.replace(
+                                      /[^0-9.-]+/g,
+                                      ""
+                                    )
+                                  )
+                                : Number(contract.adjustedValue) || 0;
+
+                            if (adjusted > 0) {
+                              finalValue = adjusted;
+                            } else {
+                              // Nếu giá điều chỉnh = 0, sử dụng giá gốc
+                              finalValue =
+                                typeof contract.totalValue === "string"
+                                  ? parseFloat(
+                                      contract.totalValue.replace(
+                                        /[^0-9.-]+/g,
+                                        ""
+                                      )
+                                    )
+                                  : Number(contract.totalValue) || 0;
+                            }
+                          } else {
+                            // Không có giá điều chỉnh, sử dụng giá gốc
+                            finalValue =
+                              typeof contract.totalValue === "string"
+                                ? parseFloat(
+                                    contract.totalValue.replace(
+                                      /[^0-9.-]+/g,
+                                      ""
+                                    )
+                                  )
+                                : Number(contract.totalValue) || 0;
+                          }
+
+                          return (finalValue - depositAmount).toLocaleString(
+                            "vi-VN"
+                          );
                         })()}
                         suffix="VNĐ"
                         prefix={<DollarOutlined />}
-                        valueStyle={{ color: '#faad14' }}
+                        valueStyle={{ color: "#faad14" }}
                       />
                     </Col>
                   </Row>
@@ -639,6 +622,238 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 type="info"
                 icon={<InfoCircleOutlined />}
                 showIcon
+              />
+            </div>
+          )}
+
+          {/* Payment Success Notification */}
+          {(contract.status === "CONTRACT_SIGNED" ||
+            contract.status === "DEPOSITED" ||
+            contract.status === "PAID") && (
+            <div className="mb-6">
+              <Alert
+                message={
+                  <div className="flex items-center">
+                    <span className="font-semibold text-lg">
+                      {contract.status === "CONTRACT_SIGNED"
+                        ? "🎉 Hợp đồng đã được ký thành công!"
+                        : contract.status === "DEPOSITED"
+                        ? "✅ Thanh toán đặt cọc thành công!"
+                        : "🎊 Thanh toán hoàn tất thành công!"}
+                    </span>
+                  </div>
+                }
+                description={
+                  <div className="mt-3">
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} sm={8}>
+                        <div className="bg-white p-4 rounded border-l-4 border-l-green-500">
+                          <div className="text-sm text-gray-600 mb-1">
+                            Trạng thái hiện tại
+                          </div>
+                          <div className="font-semibold text-green-600 text-lg">
+                            {contract.status === "CONTRACT_SIGNED"
+                              ? "Đã ký hợp đồng"
+                              : contract.status === "DEPOSITED"
+                              ? "Đã đặt cọc"
+                              : "Đã thanh toán"}
+                          </div>
+                        </div>
+                      </Col>
+                      {depositAmount && (
+                        <Col xs={24} sm={8}>
+                          <div className="bg-white p-4 rounded border-l-4 border-l-blue-500">
+                            <div className="text-sm text-gray-600 mb-1">
+                              {contract.status === "PAID"
+                                ? "Tổng đã thanh toán"
+                                : "Số tiền cọc"}
+                            </div>
+                            <div className="font-semibold text-blue-600 text-lg">
+                              {contract.status === "PAID"
+                                ? (() => {
+                                    let finalValue = 0;
+
+                                    // Sử dụng giá điều chỉnh nếu có và khác 0
+                                    if (hasAdjustedValue) {
+                                      const adjusted =
+                                        typeof contract.adjustedValue ===
+                                        "string"
+                                          ? parseFloat(
+                                              contract.adjustedValue.replace(
+                                                /[^0-9.-]+/g,
+                                                ""
+                                              )
+                                            )
+                                          : Number(contract.adjustedValue) || 0;
+
+                                      if (adjusted > 0) {
+                                        finalValue = adjusted;
+                                      } else {
+                                        finalValue =
+                                          typeof contract.totalValue ===
+                                          "string"
+                                            ? parseFloat(
+                                                contract.totalValue.replace(
+                                                  /[^0-9.-]+/g,
+                                                  ""
+                                                )
+                                              )
+                                            : Number(contract.totalValue) || 0;
+                                      }
+                                    } else {
+                                      finalValue =
+                                        typeof contract.totalValue === "string"
+                                          ? parseFloat(
+                                              contract.totalValue.replace(
+                                                /[^0-9.-]+/g,
+                                                ""
+                                              )
+                                            )
+                                          : Number(contract.totalValue) || 0;
+                                    }
+
+                                    return (
+                                      finalValue.toLocaleString("vi-VN") +
+                                      " VNĐ"
+                                    );
+                                  })()
+                                : depositAmount.toLocaleString("vi-VN") +
+                                  " VNĐ"}
+                            </div>
+                          </div>
+                        </Col>
+                      )}
+                      {contract.status !== "PAID" && depositAmount && (
+                        <Col xs={24} sm={8}>
+                          <div className="bg-white p-4 rounded border-l-4 border-l-orange-500">
+                            <div className="text-sm text-gray-600 mb-1">
+                              Số tiền còn lại
+                            </div>
+                            <div className="font-semibold text-orange-600 text-lg">
+                              {(() => {
+                                let finalValue = 0;
+
+                                // Sử dụng giá điều chỉnh nếu có và khác 0
+                                if (hasAdjustedValue) {
+                                  const adjusted =
+                                    typeof contract.adjustedValue === "string"
+                                      ? parseFloat(
+                                          contract.adjustedValue.replace(
+                                            /[^0-9.-]+/g,
+                                            ""
+                                          )
+                                        )
+                                      : Number(contract.adjustedValue) || 0;
+
+                                  if (adjusted > 0) {
+                                    finalValue = adjusted;
+                                  } else {
+                                    finalValue =
+                                      typeof contract.totalValue === "string"
+                                        ? parseFloat(
+                                            contract.totalValue.replace(
+                                              /[^0-9.-]+/g,
+                                              ""
+                                            )
+                                          )
+                                        : Number(contract.totalValue) || 0;
+                                  }
+                                } else {
+                                  finalValue =
+                                    typeof contract.totalValue === "string"
+                                      ? parseFloat(
+                                          contract.totalValue.replace(
+                                            /[^0-9.-]+/g,
+                                            ""
+                                          )
+                                        )
+                                      : Number(contract.totalValue) || 0;
+                                }
+
+                                return (
+                                  (finalValue - depositAmount).toLocaleString(
+                                    "vi-VN"
+                                  ) + " VNĐ"
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </Col>
+                      )}
+                    </Row>
+
+                    {/* Status specific information */}
+                    {contract.status === "CONTRACT_SIGNED" && depositAmount && (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                              🚀 Bước tiếp theo: Thanh toán đặt cọc
+                            </h4>
+                            <p className="text-gray-600 mb-2">
+                              Để kích hoạt hợp đồng, khách hàng cần thanh toán
+                              số tiền đặt cọc
+                            </p>
+                            <div className="text-sm text-blue-700">
+                              • Số tiền:{" "}
+                              <strong>
+                                {depositAmount.toLocaleString("vi-VN")} VNĐ
+                              </strong>
+                              <br />• Thời hạn: <strong>7 ngày</strong> kể từ
+                              khi ký hợp đồng
+                              <br />• Phương thức: Chuyển khoản ngân hàng hoặc
+                              PayOS
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {contract.status === "DEPOSITED" && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center text-green-800 mb-2">
+                          <span className="text-lg">✅</span>
+                          <span className="font-semibold ml-2">
+                            Thông tin thanh toán đặt cọc
+                          </span>
+                        </div>
+                        <div className="text-sm text-green-700">
+                          • Khách hàng đã thanh toán thành công số tiền đặt cọc
+                          <br />
+                          • Hợp đồng đã được kích hoạt và có hiệu lực
+                          <br />
+                          • Có thể bắt đầu thực hiện dịch vụ theo hợp đồng
+                          <br />• Số tiền còn lại sẽ được thanh toán sau khi
+                          hoàn thành dịch vụ
+                        </div>
+                      </div>
+                    )}
+
+                    {contract.status === "PAID" && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center text-green-800 mb-2">
+                          <span className="text-lg">🎊</span>
+                          <span className="font-semibold ml-2">
+                            Thanh toán hoàn tất
+                          </span>
+                        </div>
+                        <div className="text-sm text-green-700">
+                          • Khách hàng đã thanh toán đầy đủ toàn bộ giá trị hợp
+                          đồng
+                          <br />
+                          • Tất cả dịch vụ đã được hoàn thành theo hợp đồng
+                          <br />
+                          • Hợp đồng đã được thực hiện thành công
+                          <br />• Cảm ơn khách hàng đã tin tưởng và sử dụng dịch
+                          vụ
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                }
+                type="success"
+                showIcon={false}
+                className="border-green-200 bg-green-50"
               />
             </div>
           )}
@@ -665,7 +880,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             )}
             <Descriptions.Item label="Trạng thái">
               {contract.status ? (
-                <ContractStatusTag status={contract.status as ContractStatusEnum} />
+                <ContractStatusTag
+                  status={contract.status as ContractStatusEnum}
+                />
               ) : (
                 "Chưa có thông tin"
               )}
@@ -678,7 +895,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             </Descriptions.Item>
           </Descriptions>
 
-          {/* Staff Contract Preview and Controls for CONTRACT_DRAFT status */}
+          {/* Contract Actions based on Status */}
           {contract.status === "CONTRACT_DRAFT" ? (
             <div className="mt-6">
               <div className="flex gap-4 mb-4">
@@ -714,19 +931,120 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 )}
               </div>
             </div>
+          ) : contract.status === "CONTRACT_SIGNED" && depositAmount ? (
+            <div className="mt-6">
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border-2 border-green-200">
+                <div className="text-center mb-4">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">
+                    💳 Thanh toán đặt cọc
+                  </h3>
+                  <p className="text-gray-600">
+                    Hợp đồng đã được ký thành công. Vui lòng thanh toán đặt cọc
+                    để kích hoạt hợp đồng.
+                  </p>
+                </div>
+
+                <Row gutter={[16, 16]} className="mb-4">
+                  <Col xs={24} sm={8}>
+                    <div className="bg-white p-4 rounded-lg border text-center">
+                      <div className="text-sm text-gray-500">
+                        Số tiền cần thanh toán
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {depositAmount.toLocaleString("vi-VN")} VNĐ
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <div className="bg-white p-4 rounded-lg border text-center">
+                      <div className="text-sm text-gray-500">
+                        Thời hạn thanh toán
+                      </div>
+                      <div className="text-xl font-semibold text-orange-600">
+                        7 ngày
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <div className="bg-white p-4 rounded-lg border text-center">
+                      <div className="text-sm text-gray-500">Phương thức</div>
+                      <div className="text-lg font-medium text-blue-600">
+                        PayOS / Ngân hàng
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+
+                <div className="flex justify-center gap-4">
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<CreditCardOutlined />}
+                    className="bg-green-500 border-green-500 hover:bg-green-600 hover:border-green-600 px-8"
+                    onClick={() => {
+                      // TODO: Implement payment redirect logic
+                      console.log("Redirect to payment for deposit");
+                    }}
+                  >
+                    Thanh toán ngay
+                  </Button>
+                  <Button
+                    type="default"
+                    size="large"
+                    icon={<FileTextOutlined />}
+                    onClick={handleOpenModal}
+                    loading={loadingContractData}
+                  >
+                    Xem hợp đồng
+                  </Button>
+                </div>
+              </div>
+            </div>
           ) : contract.attachFileUrl ? (
-            <div className="mt-4">
-              <Button
-                type="primary"
-                href={contract.attachFileUrl}
-                target="_blank"
-              >
-                Xem file đính kèm
-              </Button>
+            <div className="mt-6">
+              <div className="flex gap-4">
+                <Button
+                  type="primary"
+                  href={contract.attachFileUrl}
+                  target="_blank"
+                  icon={<FileTextOutlined />}
+                  size="large"
+                >
+                  Xem file đính kèm
+                </Button>
+                <Button
+                  type="default"
+                  icon={<DownloadOutlined />}
+                  onClick={handleExportPdf}
+                  size="large"
+                >
+                  Xuất PDF
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="mt-4">
-              <p className="text-gray-500">Chưa có file đính kèm</p>
+            <div className="mt-6">
+              <div className="flex gap-4">
+                <Button
+                  type="default"
+                  icon={<FileTextOutlined />}
+                  onClick={handleOpenModal}
+                  loading={loadingContractData}
+                  size="large"
+                >
+                  Xem hợp đồng
+                </Button>
+                {contractData && (
+                  <Button
+                    type="default"
+                    icon={<DownloadOutlined />}
+                    onClick={handleExportPdf}
+                    size="large"
+                  >
+                    Xuất PDF
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </>
@@ -745,39 +1063,28 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         open={isModalOpen}
         onCancel={handleCloseModal}
         footer={
-          <div className="flex justify-between items-center">
+          <div className="flex justify-end gap-2">
             <Button
-              icon={<EditOutlined />}
-              onClick={handleOpenEditContentModal}
+              icon={<FileTextOutlined />}
+              onClick={handleOpenUploadModal}
+              size="large"
+              type="primary"
+              style={{ background: "#52c41a", borderColor: "#52c41a" }}
+            >
+              Xuất hợp đồng
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleExportPdf}
               size="large"
               type="default"
-              className="border-purple-500 text-purple-500 hover:border-purple-600 hover:text-purple-600"
+              className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
             >
-              Chỉnh sửa nội dung
+              Xuất PDF
             </Button>
-            <div className="flex gap-2">
-              <Button
-                icon={<FileTextOutlined />}
-                onClick={handleOpenUploadModal}
-                size="large"
-                type="primary"
-                style={{ background: "#52c41a", borderColor: "#52c41a" }}
-              >
-                Xuất hợp đồng
-              </Button>
-              <Button
-                icon={<DownloadOutlined />}
-                onClick={handleExportPdf}
-                size="large"
-                type="default"
-                className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
-              >
-                Xuất PDF
-              </Button>
-              <Button onClick={handleCloseModal} size="large">
-                Đóng
-              </Button>
-            </div>
+            <Button onClick={handleCloseModal} size="large">
+              Đóng
+            </Button>
           </div>
         }
         width="95vw"
@@ -790,95 +1097,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           backgroundColor: "#f5f5f5",
         }}
       >
-        {/* Customization Form */}
-        <Card
-          title="⚙️ Điều chỉnh thông tin hợp đồng"
-          className="mb-4"
-          size="small"
-        >
-          <Form
-            form={previewForm}
-            layout="vertical"
-            onValuesChange={handlePreviewFormChange}
-          >
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label="Ngày hiệu lực"
-                  name="effectiveDate"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn ngày hiệu lực" },
-                  ]}
-                >
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="DD/MM/YYYY"
-                    placeholder="Chọn ngày hiệu lực"
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Ngày hết hạn"
-                  name="expirationDate"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn ngày hết hạn" },
-                  ]}
-                >
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="DD/MM/YYYY"
-                    placeholder="Chọn ngày hết hạn"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row>
-              <Col span={24}>
-                <Form.Item name="hasSupportValue" valuePropName="checked">
-                  <Checkbox>
-                    <strong>Có trợ giá</strong>
-                  </Checkbox>
-                </Form.Item>
-              </Col>
-            </Row>
-            <Form.Item
-              noStyle
-              shouldUpdate={(prev, curr) =>
-                prev.hasSupportValue !== curr.hasSupportValue
-              }
-            >
-              {({ getFieldValue }) =>
-                getFieldValue("hasSupportValue") ? (
-                  <Form.Item
-                    label="Giá trị trợ giá"
-                    name="supportedValue"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Vui lòng nhập giá trị trợ giá",
-                      },
-                    ]}
-                  >
-                    <InputNumber
-                      style={{ width: "100%" }}
-                      placeholder="Nhập giá trị trợ giá"
-                      formatter={(value) =>
-                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                      }
-                      parser={(value) =>
-                        Number(value!.replace(/\$\s?|(,*)/g, "")) as any
-                      }
-                      addonAfter="VND"
-                      min={0}
-                    />
-                  </Form.Item>
-                ) : null
-              }
-            </Form.Item>
-          </Form>
-        </Card>
-
         <div
           className="a4-container"
           style={{
@@ -899,7 +1117,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               <StaffContractPreview
                 contractData={contractData}
                 customization={contractCustomization}
-                content={contractContent}
+                onCustomizationChange={setContractCustomization}
               />
             </div>
           ) : (
@@ -1136,183 +1354,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 style={{ background: "#52c41a", borderColor: "#52c41a" }}
               >
                 Xác nhận xuất hợp đồng
-              </Button>
-            </div>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Edit Contract Content Modal */}
-      <Modal
-        title={
-          <div className="flex items-center">
-            <EditOutlined className="mr-2 text-purple-500" />
-            <span>Chỉnh sửa nội dung hợp đồng</span>
-          </div>
-        }
-        open={isEditContentModalOpen}
-        onCancel={() => {
-          setIsEditContentModalOpen(false);
-          contentForm.resetFields();
-        }}
-        width={800}
-        footer={null}
-      >
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-          <p className="text-sm text-yellow-800">
-            <strong>⚠️ Lưu ý:</strong> Chỉ chỉnh sửa các nội dung văn bản tĩnh
-            của hợp đồng. Các thông tin từ database (tên khách hàng, địa chỉ,
-            giá trị đơn hàng...) không thể chỉnh sửa ở đây.
-          </p>
-        </div>
-
-        <Form
-          form={contentForm}
-          layout="vertical"
-          onFinish={handleSaveContractContent}
-        >
-          <h4 className="font-semibold mb-3 text-gray-700">
-            Thông tin Bên A (Công ty)
-          </h4>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Tên công ty"
-                name="companyName"
-                rules={[
-                  { required: true, message: "Vui lòng nhập tên công ty" },
-                ]}
-              >
-                <Input placeholder="Nhập tên công ty" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Số điện thoại"
-                name="companyPhone"
-                rules={[
-                  { required: true, message: "Vui lòng nhập số điện thoại" },
-                ]}
-              >
-                <Input placeholder="Nhập số điện thoại" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item
-            label="Địa chỉ công ty"
-            name="companyAddress"
-            rules={[{ required: true, message: "Vui lòng nhập địa chỉ" }]}
-          >
-            <Input placeholder="Nhập địa chỉ công ty" />
-          </Form.Item>
-
-          <Form.Item
-            label="Email công ty"
-            name="companyEmail"
-            rules={[
-              { required: true, message: "Vui lòng nhập email" },
-              { type: "email", message: "Email không hợp lệ" },
-            ]}
-          >
-            <Input placeholder="Nhập email công ty" />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Người đại diện"
-                name="representativeName"
-                rules={[
-                  {
-                    required: true,
-                    message: "Vui lòng nhập tên người đại diện",
-                  },
-                ]}
-              >
-                <Input placeholder="Nhập tên người đại diện" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Chức vụ"
-                name="representativeTitle"
-                rules={[{ required: true, message: "Vui lòng nhập chức vụ" }]}
-              >
-                <Input placeholder="Nhập chức vụ" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <h4 className="font-semibold mb-3 mt-4 text-gray-700">
-            Nội dung điều khoản
-          </h4>
-
-          <Form.Item
-            label="Mô tả dịch vụ (ĐIỀU 1.2)"
-            name="serviceDescription"
-            rules={[{ required: true, message: "Vui lòng nhập mô tả dịch vụ" }]}
-          >
-            <Input.TextArea rows={3} placeholder="Mô tả dịch vụ cung cấp" />
-          </Form.Item>
-
-          <Form.Item
-            label="Phương thức thanh toán"
-            name="paymentMethod"
-            rules={[
-              {
-                required: true,
-                message: "Vui lòng nhập phương thức thanh toán",
-              },
-            ]}
-          >
-            <Input placeholder="Ví dụ: Chuyển khoản, Tiền mặt..." />
-          </Form.Item>
-
-          <Form.Item
-            label="Điều khoản bảo hiểm (ĐIỀU 5.1)"
-            name="warrantyTerms"
-            rules={[
-              { required: true, message: "Vui lòng nhập điều khoản bảo hiểm" },
-            ]}
-          >
-            <Input.TextArea
-              rows={2}
-              placeholder="Điều khoản về bảo hiểm hàng hóa"
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Điều khoản chung (ĐIỀU 6.4)"
-            name="generalTerms"
-            rules={[
-              { required: true, message: "Vui lòng nhập điều khoản chung" },
-            ]}
-          >
-            <Input.TextArea
-              rows={2}
-              placeholder="Điều khoản về hiệu lực hợp đồng"
-            />
-          </Form.Item>
-
-          <Form.Item className="mb-0">
-            <div className="flex justify-end gap-2">
-              <Button
-                onClick={() => {
-                  setIsEditContentModalOpen(false);
-                  contentForm.resetFields();
-                }}
-              >
-                Hủy
-              </Button>
-              <Button
-                type="primary"
-                htmlType="submit"
-                icon={<EditOutlined />}
-                style={{ background: "#9333ea", borderColor: "#9333ea" }}
-              >
-                Lưu thay đổi
               </Button>
             </div>
           </Form.Item>

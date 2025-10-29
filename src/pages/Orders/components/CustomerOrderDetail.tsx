@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { App, Button, Typography, Skeleton, Empty, Tabs, Card, message } from "antd";
+import {
+  App,
+  Button,
+  Typography,
+  Skeleton,
+  Empty,
+  Tabs,
+  Card,
+  message,
+} from "antd";
 import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
@@ -25,6 +34,8 @@ import OrderDetailsTab from "./CustomerOrderDetail/OrderDetailsTab";
 import ContractSection from "./CustomerOrderDetail/ContractSection";
 import TransactionSection from "./CustomerOrderDetail/TransactionSection";
 import VehicleSuggestionsModal from "./CustomerOrderDetail/VehicleSuggestionsModal";
+import { contractService } from "@/services/contract";
+import type { ContractData } from "@/services/contract/contractTypes";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -52,58 +63,65 @@ const CustomerOrderDetail: React.FC = () => {
   const [hasContract, setHasContract] = useState<boolean>(false);
   const [checkingContract, setCheckingContract] = useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
-  const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(null);
+  const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(
+    null
+  );
+  const [contractData, setContractData] = useState<ContractData | null>(null);
+  const [loadingContractData, setLoadingContractData] =
+    useState<boolean>(false);
 
   // NOTE: Real-time tracking logic is now handled inside RouteMapWithRealTimeTracking
   // to prevent unnecessary re-renders of CustomerOrderDetail parent component
 
   // Handle order status changes via WebSocket
-  const handleOrderStatusChange = useCallback((statusChange: any) => {
-    console.log('[CustomerOrderDetail] 📢 Order status changed:', statusChange);
-    
-    // Check if this status change is for the current order
-    if (id && statusChange.orderId === id) {
-      console.log('[CustomerOrderDetail] ✅ Order ID matched! Scheduling refetch...');
-      
-      // Debounce refetch to avoid spike load and prevent mobile WebSocket disruption
-      // Wait 500ms to let WebSocket broadcasts settle
-      setTimeout(() => {
-        console.log('[CustomerOrderDetail] 🔄 Refetching order details...');
-        fetchOrderDetails(id);
-      }, 500);
-      
-      // Show notification for important status changes
-      if (statusChange.newStatus === 'PICKING_UP' && statusChange.previousStatus === 'FULLY_PAID') {
-        message.success({
-          content: `🚛 ${statusChange.message || 'Tài xế đã bắt đầu lấy hàng!'}`,
-          duration: 5,
-        });
-        playImportantNotificationSound();
-        
-        // Auto-switch to "Chi tiết vận chuyển" tab
+  const handleOrderStatusChange = useCallback(
+    (statusChange: any) => {
+      // Check if this status change is for the current order
+      if (id && statusChange.orderId === id) {
         setTimeout(() => {
-          setActiveMainTab('details');
-        }, 1000);
-      } else if (statusChange.newStatus === 'DELIVERED') {
-        message.success({
-          content: `✅ ${statusChange.message || 'Đơn hàng đã được giao thành công!'}`,
-          duration: 5,
+          fetchOrderDetails(id);
+        }, 500);
+
+        if (
+          statusChange.newStatus === "PICKING_UP" &&
+          statusChange.previousStatus === "FULLY_PAID"
+        ) {
+          message.success({
+            content: `🚛 ${
+              statusChange.message || "Tài xế đã bắt đầu lấy hàng!"
+            }`,
+            duration: 5,
+          });
+          playImportantNotificationSound();
+
+          // Auto-switch to "Chi tiết vận chuyển" tab
+          setTimeout(() => {
+            setActiveMainTab("details");
+          }, 1000);
+        } else if (statusChange.newStatus === "DELIVERED") {
+          message.success({
+            content: `✅ ${
+              statusChange.message || "Đơn hàng đã được giao thành công!"
+            }`,
+            duration: 5,
+          });
+          playImportantNotificationSound();
+        } else if (statusChange.newStatus === "IN_TROUBLES") {
+          message.error({
+            content: `⚠️ ${statusChange.message || "Đơn hàng gặp sự cố!"}`,
+            duration: 8,
+          });
+          playImportantNotificationSound();
+        }
+      } else {
+        console.log("[CustomerOrderDetail] ❌ Order ID did not match:", {
+          statusChangeOrderId: statusChange.orderId,
+          currentOrderId: id,
         });
-        playImportantNotificationSound();
-      } else if (statusChange.newStatus === 'IN_TROUBLES') {
-        message.error({
-          content: `⚠️ ${statusChange.message || 'Đơn hàng gặp sự cố!'}`,
-          duration: 8,
-        });
-        playImportantNotificationSound();
       }
-    } else {
-      console.log('[CustomerOrderDetail] ❌ Order ID did not match:', {
-        statusChangeOrderId: statusChange.orderId,
-        currentOrderId: id
-      });
-    }
-  }, [id]);
+    },
+    [id]
+  );
 
   // Subscribe to order status changes
   useOrderStatusTracking({
@@ -114,8 +132,8 @@ const CustomerOrderDetail: React.FC = () => {
 
   useEffect(() => {
     // Scroll to top when entering order detail page
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
     if (id) {
       fetchOrderDetails(id);
     }
@@ -124,10 +142,13 @@ const CustomerOrderDetail: React.FC = () => {
   // Track order status changes for logging
   useEffect(() => {
     if (orderData?.order?.status) {
-      if (previousOrderStatus && previousOrderStatus !== orderData.order.status) {
-        console.log('[CustomerOrderDetail] Order status changed:', {
+      if (
+        previousOrderStatus &&
+        previousOrderStatus !== orderData.order.status
+      ) {
+        console.log("[CustomerOrderDetail] Order status changed:", {
           from: previousOrderStatus,
-          to: orderData.order.status
+          to: orderData.order.status,
         });
       }
       setPreviousOrderStatus(orderData.order.status);
@@ -139,6 +160,12 @@ const CustomerOrderDetail: React.FC = () => {
     try {
       const data = await orderService.getOrderForCustomerByOrderId(orderId);
       setOrderData(data);
+
+      // Load contract data nếu có contract
+      if (data.contract?.id) {
+        loadContractData(data.contract.id);
+      }
+
       checkContractExists(orderId);
     } catch (error) {
       messageApi.error("Không thể tải thông tin đơn hàng");
@@ -148,11 +175,26 @@ const CustomerOrderDetail: React.FC = () => {
     }
   };
 
+  const loadContractData = async (contractId: string) => {
+    setLoadingContractData(true);
+    try {
+      const response = await contractService.getContractPdfData(contractId);
+      if (response.success) {
+        setContractData(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading contract data:", error);
+    } finally {
+      setLoadingContractData(false);
+    }
+  };
+
   const checkContractExists = async (orderId: string) => {
     setCheckingContract(true);
     try {
       const response = await orderService.checkContractByOrderId(orderId);
-      setHasContract(response.success && response.data !== null);
+      const contractExists = response.success && response.data !== null;
+      setHasContract(contractExists);
     } catch (error) {
       console.error("Error checking contract:", error);
       setHasContract(false);
@@ -190,13 +232,14 @@ const CustomerOrderDetail: React.FC = () => {
         contractName: "N/A",
         effectiveDate: formattedDate,
         expirationDate: formattedDate,
-        supportedValue: 0,
         description: "N/A",
         attachFileUrl: "N/A",
         orderId: id,
       };
 
-      const response = await httpClient.post("/contracts/both", contractData);
+      const response = await contractService.createContractBothRealistic(
+        contractData
+      );
 
       if (response.data.success) {
         messageApi.success(
@@ -342,10 +385,12 @@ const CustomerOrderDetail: React.FC = () => {
           >
             <div>
               {/* Contract Information */}
-              <ContractSection 
-                contract={contract} 
-                orderStatus={order.status} 
+              <ContractSection
+                contract={contract}
+                orderStatus={order.status}
                 depositAmount={order.depositAmount}
+                priceDetails={contractData?.priceDetails}
+                loadingPriceDetails={loadingContractData}
               />
 
               {/* Transaction Information */}

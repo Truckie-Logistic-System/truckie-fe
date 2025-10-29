@@ -26,3 +26,10 @@ export interface CreateContractResponse {
   message: string;
   data?: Contract;
 }
+
+export interface ContractSettingsResponse {
+  id: string;
+  depositPercent: number;
+  expiredDepositDate: number;
+  insuranceRate: number;
+}

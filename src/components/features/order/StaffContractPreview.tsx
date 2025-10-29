@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { DatePicker, InputNumber, Checkbox, message } from "antd";
+import dayjs from "dayjs";
 import type { ContractData } from "../../../services/contract/contractTypes";
 import { formatCurrency, formatDate } from "../../../utils/formatters";
 
@@ -26,27 +28,107 @@ interface StaffContractPreviewProps {
   contractData: ContractData;
   customization?: ContractCustomization;
   content?: ContractContent;
+  onCustomizationChange?: (customization: ContractCustomization) => void;
 }
 
 const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
   contractData,
   customization,
   content,
+  onCustomizationChange,
 }) => {
-  const currentDate = new Date().toLocaleDateString("vi-VN");
+  const currentDate = new Date().toISOString();
+  const oneYearLater = new Date(
+    Date.now() + 365 * 24 * 60 * 60 * 1000
+  ).toISOString();
 
-  // Use customization dates if provided, otherwise use default
-  const effectiveDate = customization?.effectiveDate
-    ? new Date(customization.effectiveDate).toLocaleDateString("vi-VN")
-    : currentDate;
-  const expirationDate = customization?.expirationDate
-    ? new Date(customization.expirationDate).toLocaleDateString("vi-VN")
-    : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString(
-        "vi-VN"
-      );
-  const adjustedValue = customization?.hasAdjustedValue
-    ? customization.adjustedValue
+  // Local state for inline editing
+  const [localCustomization, setLocalCustomization] =
+    useState<ContractCustomization>({
+      effectiveDate: customization?.effectiveDate || currentDate,
+      expirationDate: customization?.expirationDate || oneYearLater,
+      hasAdjustedValue: customization?.hasAdjustedValue || false,
+      adjustedValue: customization?.adjustedValue || 0,
+    });
+
+  // Sync with external customization prop changes
+  useEffect(() => {
+    if (customization) {
+      setLocalCustomization(customization);
+    }
+  }, [customization]);
+
+  // Format dates for display
+  const effectiveDate = new Date(
+    localCustomization.effectiveDate
+  ).toLocaleDateString("vi-VN");
+  const expirationDate = new Date(
+    localCustomization.expirationDate
+  ).toLocaleDateString("vi-VN");
+  const adjustedValue = localCustomization.hasAdjustedValue
+    ? localCustomization.adjustedValue
     : 0;
+
+  // Handle date changes with validation
+  const handleEffectiveDateChange = (date: dayjs.Dayjs | null) => {
+    if (date) {
+      const newEffectiveDate = date.toISOString();
+      const expirationDateObj = new Date(localCustomization.expirationDate);
+
+      // Validate that expiration date is after effective date
+      if (expirationDateObj <= date.toDate()) {
+        message.error("Ngày hết hạn phải sau ngày bắt đầu hiệu lực");
+        return;
+      }
+
+      const updated = {
+        ...localCustomization,
+        effectiveDate: newEffectiveDate,
+      };
+      setLocalCustomization(updated);
+      onCustomizationChange?.(updated);
+    }
+  };
+
+  const handleExpirationDateChange = (date: dayjs.Dayjs | null) => {
+    if (date) {
+      const effectiveDateObj = new Date(localCustomization.effectiveDate);
+
+      // Validate that expiration date is after effective date
+      if (date.toDate() <= effectiveDateObj) {
+        message.error("Ngày hết hạn phải sau ngày bắt đầu hiệu lực");
+        return;
+      }
+
+      const newExpirationDate = date.toISOString();
+      const updated = {
+        ...localCustomization,
+        expirationDate: newExpirationDate,
+      };
+      setLocalCustomization(updated);
+      onCustomizationChange?.(updated);
+    }
+  };
+
+  const handleAdjustedValueChange = (value: number | null) => {
+    const updated = {
+      ...localCustomization,
+      adjustedValue: value || 0,
+      hasAdjustedValue: (value || 0) > 0,
+    };
+    setLocalCustomization(updated);
+    onCustomizationChange?.(updated);
+  };
+
+  const handleHasAdjustedValueChange = (checked: boolean) => {
+    const updated = {
+      ...localCustomization,
+      hasAdjustedValue: checked,
+      adjustedValue: checked ? localCustomization.adjustedValue : 0,
+    };
+    setLocalCustomization(updated);
+    onCustomizationChange?.(updated);
+  };
 
   // Use content customization if provided, otherwise use defaults
   const companyName = content?.companyName || "TRUCKIE LOGISTICS";
@@ -161,6 +243,131 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
         </div>
         <div className="subtitle">Số: {contractData.orderInfo.orderCode}</div>
         <div className="subtitle">Mã hợp đồng: {contractData.contractId}</div>
+      </div>
+
+      {/* Inline Editing Section */}
+      <div
+        style={{
+          backgroundColor: "#f0f9ff",
+          border: "2px solid #3b82f6",
+          borderRadius: "8px",
+          padding: "20px",
+          marginBottom: "30px",
+        }}
+      >
+        <h3
+          style={{
+            color: "#1e40af",
+            marginTop: 0,
+            marginBottom: "16px",
+            fontSize: "16px",
+            fontWeight: "bold",
+          }}
+        >
+          📝 Tùy chỉnh thông tin hợp đồng
+        </h3>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "16px",
+            marginBottom: "16px",
+          }}
+        >
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "600",
+                color: "#1f2937",
+              }}
+            >
+              Ngày bắt đầu hiệu lực:
+            </label>
+            <DatePicker
+              value={dayjs(localCustomization.effectiveDate)}
+              onChange={handleEffectiveDateChange}
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày bắt đầu"
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "600",
+                color: "#1f2937",
+              }}
+            >
+              Ngày hết hạn:
+            </label>
+            <DatePicker
+              value={dayjs(localCustomization.expirationDate)}
+              onChange={handleExpirationDateChange}
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày hết hạn"
+              style={{ width: "100%" }}
+              disabledDate={(current) => {
+                return (
+                  current && current <= dayjs(localCustomization.effectiveDate)
+                );
+              }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            borderTop: "1px solid #bfdbfe",
+            paddingTop: "16px",
+          }}
+        >
+          <div style={{ marginBottom: "8px" }}>
+            <Checkbox
+              checked={localCustomization.hasAdjustedValue}
+              onChange={(e) => handleHasAdjustedValueChange(e.target.checked)}
+              style={{ fontWeight: "600", color: "#1f2937" }}
+            >
+              Áp dụng giá trị điều chỉnh (trợ giá)
+            </Checkbox>
+          </div>
+
+          {localCustomization.hasAdjustedValue && (
+            <div style={{ marginLeft: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  color: "#1f2937",
+                }}
+              >
+                Giá trị điều chỉnh (VNĐ):
+              </label>
+              <InputNumber
+                value={localCustomization.adjustedValue}
+                onChange={handleAdjustedValueChange}
+                min={0}
+                max={contractData.priceDetails.finalTotal}
+                formatter={(value) =>
+                  `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                }
+                parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ""))}
+                style={{ width: "100%" }}
+                placeholder="Nhập giá trị điều chỉnh"
+              />
+              <small
+                style={{ color: "#6b7280", display: "block", marginTop: "4px" }}
+              >
+                Tối đa: {formatCurrency(contractData.priceDetails.finalTotal)}
+              </small>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Contract Basic Info */}

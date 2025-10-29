@@ -7,7 +7,6 @@ import type {
   GeneratePdfResponse,
 } from "./types";
 import type { ContractPdfResponse } from "./contractTypes";
-import { at } from "lodash";
 
 /**
  * Service for handling contract-related API calls
@@ -51,15 +50,32 @@ const contractService = {
     contractData: CreateContractRequest
   ): Promise<CreateContractResponse> => {
     try {
-      const staffId = sessionStorage.getItem("userId") || "unknown";
       const data = {
         ...contractData,
-        attachFileUrl: "string",
-        staffId,
       };
       const response = await httpClient.post<CreateContractResponse>(
         `/contracts/both`,
         data
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error creating contract:", error);
+      throw handleApiError(error, "Không thể tạo hợp đồng");
+    }
+  },
+
+  /**
+   * Create a new contract
+   * @param contractData - The contract data to create
+   * @returns Promise with created contract
+   */
+  createContractBothRealistic: async (
+    contractData: CreateContractRequest
+  ): Promise<CreateContractResponse> => {
+    try {
+      const response = await httpClient.post<CreateContractResponse>(
+        `/contracts/both/for-cus`,
+        contractData
       );
       return response.data;
     } catch (error) {
