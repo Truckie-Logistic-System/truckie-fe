@@ -20,6 +20,10 @@ interface OrderStatusSectionProps {
   checkingContract?: boolean;
   loadingVehicleSuggestions?: boolean;
   onFetchVehicleSuggestions?: () => void;
+  contract?: {
+    totalValue: number;
+    adjustedValue: number;
+  } | null;
 }
 
 const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
@@ -31,12 +35,23 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
   checkingContract,
   loadingVehicleSuggestions,
   onFetchVehicleSuggestions,
+  contract,
 }) => {
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Chưa có thông tin";
     return dayjs(dateString)
       .tz("Asia/Ho_Chi_Minh")
       .format("DD/MM/YYYY HH:mm:ss");
+  };
+
+  // Calculate display price: prioritize contract adjustedValue, then totalValue, then totalPrice
+  const getDisplayPrice = () => {
+    if (contract) {
+      // If contract exists, prioritize adjustedValue, then totalValue
+      return contract.adjustedValue || contract.totalValue;
+    }
+    // Fallback to order totalPrice
+    return totalPrice;
   };
 
   return (
@@ -60,8 +75,8 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
           <div className="text-center px-4 border-l border-gray-200">
             <p className="text-gray-500 text-sm">Tổng tiền</p>
             <p className="font-semibold text-lg text-blue-600">
-              {totalPrice !== null && totalPrice !== undefined
-                ? `${totalPrice.toLocaleString("vi-VN")} VNĐ`
+              {getDisplayPrice() !== null && getDisplayPrice() !== undefined
+                ? `${getDisplayPrice()!.toLocaleString("vi-VN")} VNĐ`
                 : "Chưa có thông tin"}
             </p>
           </div>

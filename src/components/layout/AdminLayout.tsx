@@ -3,6 +3,8 @@ import { Layout } from "antd";
 import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
 import AdminFooter from "./AdminFooter";
+import IssuesWidget from "../issues/IssuesWidget";
+import { useAuth } from "@/context";
 
 const { Content } = Layout;
 
@@ -13,6 +15,10 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { user } = useAuth();
+
+  // Check if user is staff
+  const isStaff = user?.role === 'staff';
 
   // Detect screen size
   React.useEffect(() => {
@@ -55,6 +61,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <AdminFooter />
         </Layout>
       </Layout>
+      
+      {/* Issues Widget - only for staff users */}
+      {isStaff && <IssuesWidget />}
     </Layout>
   );
 };

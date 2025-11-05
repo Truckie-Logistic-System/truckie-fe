@@ -71,4 +71,52 @@ export const convertRouteSegmentsToRouteInfo = (segments: RouteSegment[]): Route
         totalTollCount,
         totalDistance
     };
-}; 
+};
+
+/**
+ * Sắp xếp segments theo thứ tự đúng: Carrier→Pickup→Delivery→Carrier
+ * Dựa vào point names thay vì segmentOrder (vì FE có thể gửi sai thứ tự)
+ * @param segments Danh sách segments cần sắp xếp
+ * @returns Danh sách segments đã sắp xếp và re-assign segmentOrder
+ */
+export const sortAndNormalizeRouteSegments = (segments: RouteSegmentInfo[]): RouteSegmentInfo[] => {
+    if (!segments || segments.length === 0) {
+        return segments;
+    }
+
+    // Sắp xếp dựa vào point names
+    const pointOrder = ["Carrier", "Pickup", "Delivery", "Carrier"];
+    
+    const sortedSegments = [...segments].sort((s1, s2) => {
+        // Tìm vị trí của s1 trong pointOrder
+        let s1Pos = -1;
+        for (let i = 0; i < pointOrder.length - 1; i++) {
+            if (pointOrder[i] === s1.startPointName && pointOrder[i + 1] === s1.endPointName) {
+                s1Pos = i;
+                break;
+            }
+        }
+
+        // Tìm vị trí của s2 trong pointOrder
+        let s2Pos = -1;
+        for (let i = 0; i < pointOrder.length - 1; i++) {
+            if (pointOrder[i] === s2.startPointName && pointOrder[i + 1] === s2.endPointName) {
+                s2Pos = i;
+                break;
+            }
+        }
+
+        // Nếu không tìm được, dùng segmentOrder làm fallback
+        if (s1Pos === -1 || s2Pos === -1) {
+            return (s1.segmentOrder || 0) - (s2.segmentOrder || 0);
+        }
+
+        return s1Pos - s2Pos;
+    });
+
+    // Re-assign segmentOrder để đảm bảo đúng thứ tự
+    return sortedSegments.map((segment, index) => ({
+        ...segment,
+        segmentOrder: index + 1
+    }));
+};

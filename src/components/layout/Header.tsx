@@ -53,8 +53,8 @@ const Header: React.FC = () => {
     if (visible) onClose();
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/");
     if (visible) onClose();
   };

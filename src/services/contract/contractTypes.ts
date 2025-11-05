@@ -147,7 +147,7 @@ export interface PriceDetails {
 }
 
 export interface PriceStep {
-  vehicleRuleName: string;
+  sizeRuleName: string;
   numOfVehicles: number;
   distanceRange: string;
   unitPrice: number;
@@ -157,9 +157,10 @@ export interface PriceStep {
 
 export interface AssignResult {
   vehicleIndex: number;
-  vehicleRuleId: string;
-  vehicleRuleName: string;
+  sizeRuleId: string;
+  sizeRuleName: string;
   currentLoad: number;
+  currentLoadUnit: string;
   assignedDetails: string[];
 }
 

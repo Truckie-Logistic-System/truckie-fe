@@ -9,7 +9,7 @@ interface ContractProps {
     effectiveDate: string;
     expirationDate: string;
     totalValue: string;
-    supportedValue: string;
+    adjustedValue: string;
     description: string;
     attachFileUrl: string;
     status: string;
@@ -232,7 +232,7 @@ const ContractSection: React.FC<ContractProps> = ({ contract, orderId }) => {
         "expirationDate",
         formatDateTime(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000))
       ); // 1 năm sau
-      formData.append("supportedValue", "0");
+      formData.append("adjustedValue", "0");
       formData.append(
         "description",
         contract.description || "Hợp đồng dịch vụ logistics"
@@ -487,7 +487,7 @@ const ContractSection: React.FC<ContractProps> = ({ contract, orderId }) => {
               {contract.totalValue || "Chưa có thông tin"}
             </Descriptions.Item>
             <Descriptions.Item label="Giá trị hỗ trợ">
-              {contract.supportedValue || "Chưa có thông tin"}
+              {contract.adjustedValue || "Chưa có thông tin"}
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
               {contract.status ? (
@@ -512,72 +512,6 @@ const ContractSection: React.FC<ContractProps> = ({ contract, orderId }) => {
           {/* Contract Preview for CONTRACT_DRAFT status */}
           {contract.status === "CONTRACT_DRAFT" ? (
             <div className="mt-6">
-              <div className="flex gap-4 mb-4">
-                <Button
-                  type="default"
-                  icon={<FileTextOutlined />}
-                  onClick={handleOpenModal}
-                  loading={loadingContractData}
-                  size="large"
-                  className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
-                >
-                  Xem hợp đồng (preview)
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<FileTextOutlined />}
-                  onClick={handleTogglePreview}
-                  loading={loadingContractData}
-                  size="large"
-                  className={
-                    isPreviewOpen
-                      ? "bg-red-500 hover:bg-red-600 border-red-500"
-                      : "bg-green-500 hover:bg-green-600 border-green-500"
-                  }
-                >
-                  {isPreviewOpen ? "Đóng chỉnh sửa" : "Chỉnh sửa hợp đồng"}
-                </Button>
-                {contractData && (
-                  <Button
-                    type="default"
-                    icon={<DownloadOutlined />}
-                    onClick={handleExportPdf}
-                    size="large"
-                    className="border-orange-500 text-orange-500 hover:border-orange-600 hover:text-orange-600"
-                  >
-                    Xuất PDF
-                  </Button>
-                )}
-              </div>
-
-              {isPreviewOpen && contractData && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">
-                    Xem trước hợp đồng
-                  </h3>
-                  <div
-                    className="inline-contract-preview"
-                    style={{
-                      width: "794px", // A4 width
-                      minHeight: "1123px", // A4 height
-                      margin: "0 auto",
-                      backgroundColor: "white",
-                      padding: "60px 85px", // A4 margins
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      lineHeight: "1.6",
-                      transform: "scale(0.8)",
-                      transformOrigin: "top center",
-                    }}
-                  >
-                    <StaffContractPreview
-                      contractData={contractData}
-                      onSave={handleSaveContract}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           ) : contract.attachFileUrl ? (
             <div className="mt-4">

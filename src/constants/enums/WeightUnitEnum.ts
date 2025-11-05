@@ -1,8 +1,8 @@
 export enum WeightUnitEnum {
-    TON = 'TON',
-    QUINTAL = 'QUINTAL',
-    DECITON = 'DECITON',
-    KG = 'KG'
+    TON = 'Tấn',
+    QUINTAL = 'Tạ',
+    DECITON = 'Yến',
+    KG = 'Kg'
 }
 
 export const WeightUnitLabels = {

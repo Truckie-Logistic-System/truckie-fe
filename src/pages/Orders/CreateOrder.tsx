@@ -1,14 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Form, Steps, Card, Typography, App, Skeleton } from "antd";
-import orderService from "../../services/order";
-import categoryService from "../../services/category";
-import addressService from "../../services/address";
-import orderSizeService from "../../services/order-size";
+import { useOrderCreation } from "@/hooks";
 import type { OrderCreateRequest } from "../../models/Order";
-import type { Category } from "../../models/Category";
-import type { Address } from "../../models/Address";
-import type { OrderSize } from "../../models/OrderSize";
 import { OrderDetailFormList } from "./components";
 import OrderCreationSuccess from "./components/OrderCreationSuccess";
 import { formatToVietnamTime } from "../../utils/dateUtils";
@@ -25,14 +19,9 @@ const { Title, Text } = Typography;
 export default function CreateOrder() {
   const navigate = useNavigate();
   const { message } = App.useApp();
+  const { addresses, orderSizes, categories, units, loading, error, createOrder } = useOrderCreation();
   const [currentStep, setCurrentStep] = useState(0);
-  const [addresses, setAddresses] = useState<any[]>([]);
-  const [orderSizes, setOrderSizes] = useState<OrderSize[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [units, setUnits] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<any>({
     orderDetailsList: [{ quantity: 1, unit: "Kí" }], // Initialize with one default item
   });
@@ -42,6 +31,17 @@ export default function CreateOrder() {
   } | null>(null);
 
   const [form] = Form.useForm();
+
+  // Function to reset form and state for retry
+  const handleRetry = () => {
+    form.resetFields();
+    setFormValues({
+      orderDetailsList: [{ quantity: 1, unit: units?.[0] || "Kí" }],
+    });
+    setCurrentStep(0);
+    setIsSubmitting(false);
+    setCreatedOrder(null);
+  };
 
   // Cập nhật giá trị form từ state khi component mount
   useEffect(() => {
@@ -55,46 +55,15 @@ export default function CreateOrder() {
     setFormValues((prev: any) => ({ ...prev, ...currentValues }));
   };
 
-  // Fetch data on component mount
+  // Update formValues when units are loaded from hook
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Fetch categories
-        const categoriesResponse = await categoryService.getAllCategories();
-        setCategories(categoriesResponse);
-
-        // Fetch order sizes
-        const orderSizesResponse = await orderSizeService.getAllOrderSizes();
-        setOrderSizes(orderSizesResponse);
-
-        // Fetch units
-        const unitsResponse = await orderService.getUnitsList();
-        setUnits(unitsResponse);
-
-        // Cập nhật unit trong formValues với giá trị từ API
-        if (unitsResponse && unitsResponse.length > 0) {
-          setFormValues((prev: any) => ({
-            ...prev,
-            orderDetailsList: [{ quantity: 1, unit: unitsResponse[0] }], // Always initialize with one item
-          }));
-        }
-
-        // Fetch addresses using the new my-addresses endpoint
-        const addressesResponse = await addressService.getMyAddresses();
-        setAddresses(addressesResponse);
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+    if (units && units.length > 0 && !formValues.orderDetailsList[0]?.unit) {
+      setFormValues((prev: any) => ({
+        ...prev,
+        orderDetailsList: [{ quantity: 1, unit: units[0] }],
+      }));
+    }
+  }, [units]);
 
   // Cập nhật form với giá trị đã lưu khi chuyển step
   useEffect(() => {
@@ -104,13 +73,10 @@ export default function CreateOrder() {
   }, [currentStep, formValues, form]);
 
   // Refresh addresses after creating/updating
+  // Note: Hook will auto-refetch, but keep this for manual refresh if needed
   const refreshAddresses = async () => {
-    try {
-      const addressesResponse = await addressService.getMyAddresses();
-      setAddresses(addressesResponse);
-    } catch (error) {
-      console.error("Error refreshing addresses:", error);
-    }
+    // Hook handles address fetching, no manual refresh needed
+    console.log("Addresses will be refreshed by hook on next render");
   };
 
   // Handle receiver details loaded from suggestion
@@ -260,7 +226,7 @@ export default function CreateOrder() {
       }
 
       // Submit order
-      const response = await orderService.createOrder(orderRequest);
+      const response = await createOrder(orderRequest);
 
       if (response && response.success === true) {
         message.success("Đơn hàng đã được tạo thành công");
@@ -331,7 +297,7 @@ export default function CreateOrder() {
               <Button
                 type="primary"
                 size="large"
-                onClick={() => window.location.reload()}
+                onClick={handleRetry}
                 className="bg-red-500 hover:bg-red-600 border-red-500"
               >
                 Thử lại

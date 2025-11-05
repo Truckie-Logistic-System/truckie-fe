@@ -6,7 +6,7 @@ export const useSuggestVehicles = () => {
   const [loading, setLoading] = useState(false);
   const [suggestData, setSuggestData] = useState<SuggestAssignVehicle[]>([]);
 
-  const fetchSuggestions = async (orderId: string): Promise<{ success: boolean; message?: string }> => {
+  const fetchSuggestions = async (orderId: string): Promise<{ success: boolean; message?: string; data?: SuggestAssignVehicle[] }> => {
     setLoading(true);
     try {
       const response = await contractService.getSuggestAssignVehicles(orderId);
@@ -14,14 +14,17 @@ export const useSuggestVehicles = () => {
         setSuggestData(response.data);
         return {
           success: true,
+          data: response.data,
         };
       } else {
+        setSuggestData([]);
         return {
           success: false,
           message: response.message || 'Không thể tải dữ liệu gợi ý',
         };
       }
     } catch (error: any) {
+      setSuggestData([]);
       return {
         success: false,
         message: error.message || 'Có lỗi xảy ra khi tải gợi ý phân phối xe',

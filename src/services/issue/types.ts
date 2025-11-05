@@ -11,6 +11,9 @@ export interface IssueApiResponse {
     locationLatitude: number | null;
     locationLongitude: number | null;
     status: string;
+    issueCategory?: string; // GENERAL, SEAL_REPLACEMENT, ACCIDENT, etc.
+    reportedAt?: string;
+    resolvedAt?: string;
     vehicleAssignmentEntity?: {
         id: string;
         createdAt: string;
@@ -19,50 +22,33 @@ export interface IssueApiResponse {
         modifiedBy: string;
         description: string;
         status: string;
-        vehicleEntity?: {
+        trackingCode: string;
+        vehicle?: {
             id: string;
             licensePlateNumber: string;
             model?: string;
             manufacturer?: string;
             year?: number;
-            capacity?: number;
-            status: string;
-            currentLatitude?: number;
-            currentLongitude?: number;
-            lastUpdated?: string;
-            vehicleTypeEntity?: {
+            vehicleType?: {
                 id: string;
                 vehicleTypeName: string;
-                description?: string;
             }
         };
         driver1?: {
             id: string;
-            identityNumber?: string;
+            fullName: string;
+            phoneNumber?: string;
             driverLicenseNumber?: string;
-            status: string;
-            user?: {
-                id: string;
-                username: string;
-                fullName: string;
-                email?: string;
-                phoneNumber?: string;
-                status: string;
-            }
+            licenseClass?: string;
+            experienceYears?: string;
         };
         driver2?: {
             id: string;
-            identityNumber?: string;
+            fullName: string;
+            phoneNumber?: string;
             driverLicenseNumber?: string;
-            status: string;
-            user?: {
-                id: string;
-                username: string;
-                fullName: string;
-                email?: string;
-                phoneNumber?: string;
-                status: string;
-            }
+            licenseClass?: string;
+            experienceYears?: string;
         }
     };
     staff?: {
@@ -77,8 +63,33 @@ export interface IssueApiResponse {
         id: string;
         issueTypeName: string;
         description?: string;
+        issueCategory: string;
         isActive: boolean;
     };
+    // Seal replacement specific fields (only for SEAL_REPLACEMENT category)
+    oldSeal?: {
+        id: string;
+        sealCode: string;
+        status: string;
+        sealDate?: string;
+        description?: string;
+        sealAttachedImage?: string;
+        sealRemovalTime?: string;
+        sealRemovalReason?: string;
+    };
+    newSeal?: {
+        id: string;
+        sealCode: string;
+        status: string;
+        sealDate?: string;
+        description?: string;
+        sealAttachedImage?: string;
+        sealRemovalTime?: string;
+        sealRemovalReason?: string;
+    };
+    sealRemovalImage?: string;
+    newSealAttachedImage?: string;
+    newSealConfirmedAt?: string;
 }
 
 export interface IssueCreateDto {

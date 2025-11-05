@@ -63,9 +63,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
                 setUser(userData);
                 setIsLoading(false);
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Authentication check failed:", error);
-                authService.logout();
+
+                // ONLY logout if it's a revoked token error (401/403)
+                // For other errors (network, server error, etc), just stay logged in
+                const errorMessage = error?.message || '';
+                const isRevokedTokenError = errorMessage.includes('401') || errorMessage.includes('403') || errorMessage.includes('hết hạn');
+
+                if (isRevokedTokenError) {
+                    console.warn('[AuthContext] Token revoked, logging out');
+                    authService.logout();
+                } else {
+                    console.warn('[AuthContext] Token refresh failed due to network/server error, keeping user logged in');
+                    // Try to restore user from sessionStorage anyway
+                    const userRole = sessionStorage.getItem("user_role");
+                    const userId = sessionStorage.getItem("userId");
+                    const username = sessionStorage.getItem("username");
+                    const email = sessionStorage.getItem("email");
+
+                    if (userRole && userId && username && email) {
+                        const userData: User = {
+                            id: userId,
+                            username: username,
+                            email: email,
+                            role: userRole as "admin" | "customer" | "staff" | "driver",
+                        };
+                        setUser(userData);
+                    }
+                }
+
                 setIsLoading(false);
             }
         };

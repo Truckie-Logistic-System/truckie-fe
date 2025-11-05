@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Row, Col, Typography, Tag, Divider, Button } from "antd";
+import { Card, Row, Col, Typography, Divider, Button } from "antd";
 import {
     InfoCircleOutlined,
     FileTextOutlined,
@@ -10,8 +10,9 @@ import {
     CarOutlined,
 } from "@ant-design/icons";
 import VehicleInfoSection from "./VehicleInfoSection";
+import OrderDetailStatusTag from "../../../../../components/common/tags/OrderDetailStatusTag";
 import { OrderStatusEnum } from "../../../../../constants/enums";
-import type { StaffOrderDetailItem } from "../../../../../models/Order";
+import type { StaffOrderDetailItem, StaffVehicleAssignment } from "../../../../../models/Order";
 
 const { Text } = Typography;
 
@@ -20,6 +21,7 @@ interface OrderDetailPackageTabProps {
     formatDate: (dateString?: string) => string;
     setVehicleAssignmentModalVisible: (visible: boolean) => void;
     order: any;
+    vehicleAssignments?: StaffVehicleAssignment[];
 }
 
 const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
@@ -27,7 +29,12 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
     formatDate,
     setVehicleAssignmentModalVisible,
     order,
+    vehicleAssignments,
 }) => {
+    // Find the matching vehicle assignment for this order detail
+    const vehicleAssignment = vehicleAssignments?.find(
+        (va) => va.id === detail.vehicleAssignmentId
+    );
     return (
         <Card
             className="mb-6 shadow-md rounded-xl"
@@ -67,23 +74,7 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                                 <Text strong>Trạng thái:</Text>
                             </div>
                             <div className="ml-6">
-                                <Tag
-                                    color={
-                                        detail.status === "PENDING"
-                                            ? "orange"
-                                            : detail.status === "PROCESSING"
-                                                ? "blue"
-                                                : detail.status === "DELIVERED" ||
-                                                    detail.status === "SUCCESSFUL"
-                                                    ? "green"
-                                                    : detail.status === "CANCELLED" ||
-                                                        detail.status === "IN_TROUBLES"
-                                                        ? "red"
-                                                        : "default"
-                                    }
-                                >
-                                    {detail.status}
-                                </Tag>
+                                <OrderDetailStatusTag status={detail.status} />
                             </div>
                         </div>
                         <div className="mb-3">
@@ -207,13 +198,13 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
             {/* Vehicle Assignment Information in a separate row */}
             <Row>
                 <Col xs={24}>
-                    {detail.vehicleAssignment ? (
+                    {vehicleAssignment ? (
                         <Card
                             className="mb-4"
                             size="small"
                         >
                             <VehicleInfoSection
-                                vehicleAssignment={detail.vehicleAssignment}
+                                vehicleAssignment={vehicleAssignment}
                             />
                         </Card>
                     ) : (

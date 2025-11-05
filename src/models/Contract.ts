@@ -27,9 +27,17 @@ export interface CreateContractResponse {
   data?: Contract;
 }
 
-export interface ContractSettingsResponse {
+export interface ContractSettings {
   id: string;
   depositPercent: number;
   expiredDepositDate: number;
   insuranceRate: number;
+  vatRate: number;
+}
+
+export interface ContractSettingsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: ContractSettings[];
 }

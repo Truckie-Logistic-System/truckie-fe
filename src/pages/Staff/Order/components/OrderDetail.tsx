@@ -23,9 +23,11 @@ import {
   InfoCircleOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
+import { useStaffOrderDetail } from "@/hooks";
+import { useOrderStatusTracking } from "@/hooks/useOrderStatusTracking";
+import { createOrderStatusChangeHandler } from "@/utils/orderStatusNotifications";
 import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
-import type { Order } from "@/models/Order";
 import type { CreateContractRequest } from "@/services/contract/types";
 import type { ContractData } from "@/services/contract/contractTypes";
 import { OrderStatusEnum } from "@/constants/enums";
@@ -49,8 +51,9 @@ const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messageApi = App.useApp().message;
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  
+  // Use hook for order data management
+  const { order, priceDetails, loading, refetch } = useStaffOrderDetail();
   const [activeTab, setActiveTab] = useState<string>("info");
   const [assigningVehicle, setAssigningVehicle] = useState<boolean>(false);
   const [contractModalVisible, setContractModalVisible] =
@@ -59,15 +62,15 @@ const OrderDetailPage: React.FC = () => {
     useState<boolean>(false);
   const [contractForm] = Form.useForm();
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
-  const [contractData, setContractData] = useState<ContractData | null>(null);
-  const [loadingContractData, setLoadingContractData] =
-    useState<boolean>(false);
-  // Lấy thông tin đơn hàng khi component mount
+  const [contractData, setContractData] = useState<ContractData | null>(priceDetails || null);
+  const [loadingContractData, setLoadingContractData] = useState<boolean>(false);
+  
+  // Update contractData when priceDetails from hook changes
   useEffect(() => {
-    if (id) {
-      fetchOrderDetails(id);
+    if (priceDetails) {
+      setContractData(priceDetails);
     }
-  }, [id]);
+  }, [priceDetails]);
 
   // Tự động load contract data khi order status là CONTRACT_DRAFT
   useEffect(() => {
@@ -92,19 +95,7 @@ const OrderDetailPage: React.FC = () => {
     }
   }, [order?.status, id, contractData, activeTab, loadingContractData]);
 
-  // Hàm lấy thông tin chi tiết đơn hàng từ API
-  const fetchOrderDetails = async (orderId: string) => {
-    setLoading(true);
-    try {
-      const orderData = await orderService.getOrderById(orderId);
-      setOrder(orderData);
-    } catch (error) {
-      messageApi.error("Không thể tải thông tin đơn hàng");
-      console.error("Error fetching order details:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // fetchOrderDetails is now handled by useStaffOrderDetail hook
 
   // Xử lý khi click nút cập nhật trạng thái
   const handleUpdateStatus = (status: string) => {
@@ -122,7 +113,7 @@ const OrderDetailPage: React.FC = () => {
       await orderService.updateVehicleAssignmentForDetails(id);
       messageApi.success("Đã phân công xe cho đơn hàng thành công");
       // Refresh order details
-      fetchOrderDetails(id);
+      refetch();
     } catch (error) {
       messageApi.error("Không thể phân công xe cho đơn hàng");
       console.error("Error assigning vehicle:", error);
@@ -161,7 +152,7 @@ const OrderDetailPage: React.FC = () => {
       contractName: `Hợp đồng đơn hàng ${order.orderCode}`,
       effectiveDate: dayjs(),
       expirationDate: dayjs().add(1, "year"),
-      supportedValue: order.totalPrice || 0,
+      adjustedValue: order.totalPrice || 0,
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
       orderId: id,
       staffId: "current-staff-id",
@@ -170,10 +161,24 @@ const OrderDetailPage: React.FC = () => {
     setContractModalVisible(true);
   };
 
-  const handleContractSave = (editedData: any) => {
-    console.log("Contract data saved:", editedData);
-    messageApi.success("Đã lưu thay đổi hợp đồng");
-  };
+  
+  // Handle order status changes via WebSocket using standardized utility
+  const handleOrderStatusChange = createOrderStatusChangeHandler({
+    orderId: id,
+    refetch: refetch,
+    messageApi: messageApi,
+    // Use default staff notifications - no custom ones needed
+    onTabSwitch: (tabKey: string) => {
+      // Map tab keys to staff order detail tabs
+      const tabMapping: Record<string, string> = {
+        'contract': 'contract',
+        'detail': 'info',
+        'details': 'info',
+      };
+      const mappedTab = tabMapping[tabKey] || tabKey;
+      setActiveTab(mappedTab);
+    },
+  });
 
   const handleContractSubmit = async (values: any) => {
     setCreatingContract(true);
@@ -374,6 +379,13 @@ const OrderDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  // Subscribe to order status changes
+  useOrderStatusTracking({
+    orderId: id,
+    autoConnect: true,
+    onStatusChange: handleOrderStatusChange,
+  });
 
   return (
     <div>
@@ -665,7 +677,7 @@ const OrderDetailPage: React.FC = () => {
 
           <Form.Item
             label="Giá trị hỗ trợ"
-            name="supportedValue"
+            name="adjustedValue"
             rules={[
               { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
             ]}

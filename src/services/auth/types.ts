@@ -48,7 +48,7 @@ export interface LoginResponseData {
 export type LoginResponse = ApiResponse<LoginResponseData>;
 
 export interface RefreshTokenResponseData {
-    accessToken: string;
+    authToken: string;
 }
 
 export type RefreshTokenResponse = ApiResponse<RefreshTokenResponseData>;

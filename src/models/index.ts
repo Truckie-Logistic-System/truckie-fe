@@ -19,3 +19,4 @@ export * from "./Province";
 export * from "./TrackAsia";
 export * from "./VietMap";
 export * from "./JourneyHistory";
+export * from "./OrderDetailStatus";

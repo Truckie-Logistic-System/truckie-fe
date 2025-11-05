@@ -1,0 +1,47 @@
+/* Vehicle Assignment Section Styling */
+.vehicle-assignment-section {
+    transition: all 0.3s ease;
+}
+
+.vehicle-assignment-section:hover {
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+}
+
+/* Tab styling */
+.vehicle-assignment-section .vehicle-tabs .ant-tabs-tab {
+    border-radius: 6px 6px 0 0;
+    margin-right: 4px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+}
+
+.vehicle-assignment-section .vehicle-tabs .ant-tabs-tab-active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white !important;
+    border-color: #2563eb;
+}
+
+.vehicle-assignment-section .vehicle-tabs .ant-tabs-tab-active .anticon {
+    color: white;
+}
+
+.vehicle-assignment-section .vehicle-tabs .ant-tabs-tab-active span {
+    color: white !important;
+}
+
+/* Divider styling */
+.vehicle-assignment-section .border-t-2 {
+    opacity: 0.5;
+}
+
+/* Info card styling */
+.vehicle-assignment-section .ant-card {
+    border: 1px solid #e5e7eb;
+    background: white;
+}
+
+.vehicle-assignment-section .ant-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}

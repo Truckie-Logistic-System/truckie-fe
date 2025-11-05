@@ -11,7 +11,7 @@ export enum ContractStatusEnum {
 
 export const ContractStatusColors = {
   // Bản nháp
-  [ContractStatusEnum.CONTRACT_DRAFT]: 'bg-gray-300 text-gray-800',
+  [ContractStatusEnum.CONTRACT_DRAFT]: 'bg-blue-500 text-white',
   [ContractStatusEnum.CONTRACT_SIGNED]: 'bg-green-400 text-white',
 
   // Thanh toán
@@ -22,7 +22,7 @@ export const ContractStatusColors = {
   // Hủy/Hết hạn
   [ContractStatusEnum.CANCELLED]: 'bg-red-500 text-white',
   [ContractStatusEnum.EXPIRED]: 'bg-gray-600 text-white',
-  [ContractStatusEnum.REFUNDED]: 'bg-blue-500 text-white'
+  [ContractStatusEnum.REFUNDED]: 'bg-purple-500 text-white'
 };
 
 export const ContractStatusLabels = {
@@ -38,8 +38,8 @@ export const ContractStatusLabels = {
 
 // Màu nền cho status cards (inline style objects)
 export const ContractStatusCardColors = {
-  // Bản nháp - Xám
-  [ContractStatusEnum.CONTRACT_DRAFT]: { backgroundColor: '#f9fafb', borderColor: '#e5e7eb' },
+  // Bản nháp - Xanh dương
+  [ContractStatusEnum.CONTRACT_DRAFT]: { backgroundColor: '#dbeafe', borderColor: '#93c5fd' },
   [ContractStatusEnum.CONTRACT_SIGNED]: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
 
   // Thanh toán - Vàng/Xanh lá
@@ -50,5 +50,5 @@ export const ContractStatusCardColors = {
   // Hủy/Hết hạn - Đỏ/Xám
   [ContractStatusEnum.CANCELLED]: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
   [ContractStatusEnum.EXPIRED]: { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' },
-  [ContractStatusEnum.REFUNDED]: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }
+  [ContractStatusEnum.REFUNDED]: { backgroundColor: '#faf5ff', borderColor: '#e9d5ff' }
 };

@@ -1,8 +1,7 @@
 import React from "react";
 import { Card, Descriptions } from "antd";
 import { InfoCircleOutlined, FileTextOutlined } from "@ant-design/icons";
-import { OrderStatusTag } from "@/components/common/tags";
-import { OrderStatusEnum } from "@/constants/enums";
+import OrderDetailStatusCard from "@/components/common/OrderDetailStatusCard";
 
 interface OrderInfoSectionProps {
     packageDescription?: string;
@@ -73,7 +72,7 @@ const OrderInfoSection: React.FC<OrderInfoSectionProps> = ({
                                     {detail.weightBaseUnit} {detail.unit}
                                 </Descriptions.Item>
                                 <Descriptions.Item label="Trạng thái">
-                                    <OrderStatusTag status={detail.status as OrderStatusEnum} />
+                                    <OrderDetailStatusCard status={detail.status} />
                                 </Descriptions.Item>
                                 <Descriptions.Item label="Mô tả">{detail.description || "Không có mô tả"}</Descriptions.Item>
                             </Descriptions>

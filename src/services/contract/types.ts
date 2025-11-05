@@ -1,10 +1,30 @@
+export interface AssignedDetail {
+  id: string;
+  weight: number;
+  weightBaseUnit: number;
+  unit: string;
+  trackingCode: string;
+}
+
+export interface PackedDetail {
+  orderDetailId: string;
+  x: number;
+  y: number;
+  z: number;
+  length: number;
+  width: number;
+  height: number;
+  orientation: string;
+}
+
 export interface SuggestAssignVehicle {
   vehicleIndex: number;
   vehicleRuleId: string;
   vehicleRuleName: string;
   currentLoad: number;
   currentLoadUnit: string;
-  assignedDetails: string[];
+  assignedDetails: AssignedDetail[];
+  packedDetailDetails?: PackedDetail[];
 }
 
 export interface SuggestAssignVehiclesResponse {
@@ -28,8 +48,8 @@ export interface Contract {
   contractName: string;
   effectiveDate: string;
   expirationDate: string;
-  totalValue: string;
-  adjustedValue: string | null;
+  totalValue: number;
+  adjustedValue: number | null;
   description: string;
   attachFileUrl: string;
   status: string;

@@ -5,9 +5,9 @@ import type {
     RegisterRequest,
     RegisterResponse,
     ChangePasswordRequest,
-    ChangePasswordResponse,
-    RefreshTokenResponse
+    ChangePasswordResponse
 } from './types';
+import type { ApiResponse } from '../api/types';
 import { handleApiError } from '../api/errorHandler';
 
 // In-memory token storage
@@ -20,21 +20,9 @@ let initPromise: Promise<void> | null = null;
 // Khai báo kiểu cho window object
 declare global {
     interface Window {
-        updateTrackAsiaAuthToken?: (token: string | null) => void;
         __AUTH_TOKEN__?: string | null;
     }
 }
-
-// Hàm để cập nhật token cho TrackAsia
-const updateTrackAsiaToken = (token: string | null) => {
-    // Kiểm tra xem window.updateTrackAsiaAuthToken có tồn tại không
-    if (window.updateTrackAsiaAuthToken && typeof window.updateTrackAsiaAuthToken === 'function') {
-        window.updateTrackAsiaAuthToken(token);
-    }
-
-    // Đặt token vào window.__AUTH_TOKEN__ để các thư viện khác có thể truy cập
-    window.__AUTH_TOKEN__ = token;
-};
 
 /**
  * Service for handling authentication API calls
@@ -104,8 +92,8 @@ const authService = {
             // Store auth token in memory
             authToken = response.data.data.authToken;
 
-            // Cập nhật token cho TrackAsia
-            updateTrackAsiaToken(authToken);
+            // Store token in window for external access
+            window.__AUTH_TOKEN__ = authToken;
 
             // Lưu thông tin người dùng vào sessionStorage
             const user = response.data.data.user;
@@ -157,24 +145,23 @@ const authService = {
     refreshToken: async (): Promise<void> => {
         try {
             // Since refresh token is now handled via HttpOnly cookies,
-            const response = await httpClient.post<RefreshTokenResponse>('/auths/token/refresh');
+            // Backend returns only access token in response body
+            const response = await httpClient.post<ApiResponse<{ authToken: string }>>('/auths/token/refresh');
 
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Làm mới token thất bại');
             }
 
             // Update access token in memory
-            const oldToken = authToken;
-            authToken = response.data.data.accessToken;
+            authToken = response.data.data.authToken;
 
-            // Cập nhật token cho TrackAsia
-            updateTrackAsiaToken(authToken);
+            // Store token in window for external access
+            window.__AUTH_TOKEN__ = authToken;
 
-            // Kiểm tra xem token có thực sự thay đổi không
-            if (oldToken === authToken) {
-                throw new Error("Token không thay đổi sau khi refresh");
-            }
-
+            // SECURITY: Refresh token is stored in HttpOnly cookie by backend
+            // Never exposed in JSON response (prevents XSS attacks)
+            console.log('[authService] ✅ Token refreshed successfully');
+            console.log('[authService] 🔐 Refresh token stored in HttpOnly cookie (secure)');
             return;
         } catch (error: any) {
             // Kiểm tra lỗi cụ thể
@@ -182,13 +169,19 @@ const authService = {
                 const statusCode = error.response.status;
                 const errorMessage = error.response.data?.message || 'Làm mới token thất bại';
 
-                // Xử lý trường hợp refresh token hết hạn hoặc không hợp lệ
+                // ONLY logout if refresh token is revoked (401/403)
+                // Don't logout for other errors (network, 500, etc) - user can retry
                 if (statusCode === 401 || statusCode === 403) {
+                    console.error(`[authService] ❌ Refresh token revoked (${statusCode}): ${errorMessage}`);
                     // Đăng xuất người dùng
                     authService.logout();
 
                     // Thêm thông tin chi tiết về lỗi
                     throw new Error(`Phiên đăng nhập hết hạn (${statusCode}): ${errorMessage}`);
+                } else {
+                    // For other errors (network, 500, etc), just throw without logging out
+                    console.warn(`[authService] ⚠️ Token refresh failed (${statusCode}): ${errorMessage}`);
+                    throw new Error(errorMessage);
                 }
             }
 
@@ -217,8 +210,8 @@ const authService = {
             // Clear in-memory token
             authToken = null;
 
-            // Cập nhật token cho TrackAsia (null)
-            updateTrackAsiaToken(null);
+            // Clear token from window
+            window.__AUTH_TOKEN__ = null;
 
             // Xóa thông tin người dùng khỏi sessionStorage
             sessionStorage.removeItem('user_role');

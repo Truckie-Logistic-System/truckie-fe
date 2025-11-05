@@ -11,9 +11,22 @@ dayjs.extend(timezone);
 
 interface OrderStatusCardProps {
     order: Order;
+    contract?: {
+        totalValue: number;
+        adjustedValue: number;
+    } | null;
 }
 
-const OrderStatusCard: React.FC<OrderStatusCardProps> = ({ order }) => {
+const OrderStatusCard: React.FC<OrderStatusCardProps> = ({ order, contract }) => {
+    // Calculate display price: prioritize contract adjustedValue, then totalValue, then order totalPrice
+    const getDisplayPrice = () => {
+        if (contract) {
+            // If contract exists, prioritize adjustedValue, then totalValue
+            return contract.adjustedValue || contract.totalValue;
+        }
+        // Fallback to order totalPrice
+        return order.totalPrice;
+    };
     return (
         <div className="mb-6">
             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
@@ -38,7 +51,7 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({ order }) => {
                         <div className="text-center px-4 border-l border-gray-200">
                             <p className="text-gray-500 text-sm">Tổng tiền</p>
                             <p className="font-semibold text-lg text-blue-600">
-                                {(order.totalPrice !== null && order.totalPrice !== undefined) ? order.totalPrice.toLocaleString('vi-VN') : '0'} VNĐ
+                                {(getDisplayPrice() !== null && getDisplayPrice() !== undefined) ? getDisplayPrice()!.toLocaleString('vi-VN') : '0'} VNĐ
                             </p>
                         </div>
                     </div>

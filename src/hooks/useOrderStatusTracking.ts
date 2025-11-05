@@ -18,6 +18,7 @@ export interface UseOrderStatusTrackingOptions {
   orderId?: string;
   autoConnect?: boolean;
   onStatusChange?: (message: OrderStatusChangeMessage) => void;
+  onRefreshNeeded?: () => void; // Callback to trigger page refresh
 }
 
 export interface UseOrderStatusTrackingReturn {
@@ -29,7 +30,7 @@ export interface UseOrderStatusTrackingReturn {
   disconnect: () => void;
 }
 
-const DEFAULT_OPTIONS: Required<Omit<UseOrderStatusTrackingOptions, 'onStatusChange'>> = {
+const DEFAULT_OPTIONS: Required<Omit<UseOrderStatusTrackingOptions, 'onStatusChange' | 'onRefreshNeeded'>> = {
   orderId: '',
   autoConnect: false,
 };
@@ -50,6 +51,18 @@ export const useOrderStatusTracking = (
   
   const clientRef = useRef<Client | null>(null);
   const subscriptionRef = useRef<any>(null);
+  const reconnectAttemptRef = useRef(0);
+  const maxReconnectAttempts = 5;
+
+  // Store callbacks in refs to avoid dependency issues
+  const onStatusChangeRef = useRef(options.onStatusChange);
+  const onRefreshNeededRef = useRef(options.onRefreshNeeded);
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onStatusChangeRef.current = options.onStatusChange;
+    onRefreshNeededRef.current = options.onRefreshNeeded;
+  }, [options.onStatusChange, options.onRefreshNeeded]);
 
   // Handle incoming status change messages
   const handleStatusChangeMessage = useCallback((message: IMessage) => {
@@ -57,15 +70,22 @@ export const useOrderStatusTracking = (
       const statusChange: OrderStatusChangeMessage = JSON.parse(message.body);
       console.log('[OrderStatusTracking] 📢 Status change received:', statusChange);
       console.log('[OrderStatusTracking] orderId type:', typeof statusChange.orderId, 'value:', statusChange.orderId);
+      console.log('[OrderStatusTracking] Full message body:', message.body);
       
       setLatestStatusChange(statusChange);
       
-      // Call callback if provided
-      if (options.onStatusChange) {
+      // Call onStatusChange callback if provided
+      if (onStatusChangeRef.current) {
         console.log('[OrderStatusTracking] Calling onStatusChange callback...');
-        options.onStatusChange(statusChange);
+        onStatusChangeRef.current(statusChange);
       } else {
         console.log('[OrderStatusTracking] No onStatusChange callback provided');
+      }
+      
+      // Call onRefreshNeeded callback if provided (for automatic page refresh)
+      if (onRefreshNeededRef.current) {
+        console.log('[OrderStatusTracking] 🔄 Triggering page refresh...');
+        onRefreshNeededRef.current();
       }
       
       setError(null);
@@ -73,7 +93,7 @@ export const useOrderStatusTracking = (
       console.error('[OrderStatusTracking] Failed to parse status change message:', err);
       setError('Lỗi khi xử lý thông báo thay đổi trạng thái');
     }
-  }, [options]);
+  }, []);
 
   // Connect to WebSocket
   const connect = useCallback(() => {
@@ -144,6 +164,16 @@ export const useOrderStatusTracking = (
       setIsConnected(false);
       setIsConnecting(false);
       setError(`Lỗi kết nối: ${frame.headers['message'] || 'Unknown error'}`);
+      
+      // Auto-reconnect with exponential backoff
+      if (reconnectAttemptRef.current < maxReconnectAttempts) {
+        reconnectAttemptRef.current++;
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptRef.current - 1), 30000);
+        console.log(`[OrderStatusTracking] 🔄 Attempting reconnect (${reconnectAttemptRef.current}/${maxReconnectAttempts}) in ${delay}ms`);
+        setTimeout(() => {
+          connect();
+        }, delay);
+      }
     };
 
     // WebSocket error handler
@@ -152,6 +182,16 @@ export const useOrderStatusTracking = (
       setIsConnected(false);
       setIsConnecting(false);
       setError('Lỗi kết nối WebSocket');
+      
+      // Auto-reconnect with exponential backoff
+      if (reconnectAttemptRef.current < maxReconnectAttempts) {
+        reconnectAttemptRef.current++;
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptRef.current - 1), 30000);
+        console.log(`[OrderStatusTracking] 🔄 Attempting reconnect (${reconnectAttemptRef.current}/${maxReconnectAttempts}) in ${delay}ms`);
+        setTimeout(() => {
+          connect();
+        }, delay);
+      }
     };
 
     // Disconnection handler
@@ -160,6 +200,9 @@ export const useOrderStatusTracking = (
       setIsConnected(false);
       setIsConnecting(false);
       subscriptionRef.current = null;
+      
+      // Reset reconnect attempts on clean disconnect
+      reconnectAttemptRef.current = 0;
     };
 
     clientRef.current = client;

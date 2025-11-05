@@ -25,7 +25,7 @@ export const OrderStatusColors = {
     [OrderStatusEnum.PROCESSING]: 'bg-blue-400 text-white',
 
     // Hợp đồng
-    [OrderStatusEnum.CONTRACT_DRAFT]: 'bg-gray-300 text-gray-800',
+    [OrderStatusEnum.CONTRACT_DRAFT]: 'bg-blue-500 text-white',
     [OrderStatusEnum.CONTRACT_SIGNED]: 'bg-green-400 text-white',
 
     // Lập kế hoạch và thanh toán
@@ -80,8 +80,8 @@ export const OrderStatusCardColors = {
     [OrderStatusEnum.PENDING]: { backgroundColor: '#fff7ed', borderColor: '#fed7aa' },
     [OrderStatusEnum.PROCESSING]: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
 
-    // Hợp đồng - Xanh lá/Xám
-    [OrderStatusEnum.CONTRACT_DRAFT]: { backgroundColor: '#f9fafb', borderColor: '#e5e7eb' },
+    // Hợp đồng - Xanh dương/Xanh lá
+    [OrderStatusEnum.CONTRACT_DRAFT]: { backgroundColor: '#dbeafe', borderColor: '#93c5fd' },
     [OrderStatusEnum.CONTRACT_SIGNED]: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
 
     // Lập kế hoạch và thanh toán - Tím/Xanh dương

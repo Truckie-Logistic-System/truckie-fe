@@ -150,6 +150,32 @@ export type OrderStatus =
   | "RETURNING"
   | "RETURNED";
 
+/**
+ * Status type for OrderDetail entity
+ * Tracks the status of individual order details within a vehicle assignment (trip)
+ * This allows multiple trips for the same order to have independent status tracking
+ * 
+ * Status flow:
+ * ASSIGNED_TO_DRIVER → PICKING_UP → ON_DELIVERED → ONGOING_DELIVERED → DELIVERED → SUCCESSFUL
+ * 
+ * Alternative flows:
+ * - Any status → IN_TROUBLES → RESOLVED → (resume normal flow)
+ * - Any status → REJECTED (terminal)
+ * - DELIVERED → RETURNING → RETURNED (return flow)
+ */
+export type OrderDetailStatus =
+  | "ASSIGNED_TO_DRIVER" // OrderDetail has been assigned to a vehicle and driver
+  | "PICKING_UP"         // Driver is on the way to pick up the goods
+  | "ON_DELIVERED"       // Driver is transporting the goods
+  | "ONGOING_DELIVERED"  // Driver is near delivery point (within 3km)
+  | "DELIVERED"          // Goods have been delivered to customer
+  | "SUCCESSFUL"         // Trip completed - driver has returned to warehouse
+  | "IN_TROUBLES"        // OrderDetail has issues during delivery
+  | "RESOLVED"           // Issues have been resolved
+  | "REJECTED"           // OrderDetail/Trip has been rejected or cancelled
+  | "RETURNING"          // Goods are being returned to sender
+  | "RETURNED";          // Goods have been returned to sender
+
 export interface OrderRequest {
   notes?: string;
   receiverName: string;
@@ -223,6 +249,46 @@ export const canCancelOrder = (order: Order): boolean => {
     "CONTRACT_DRAFT",
   ];
   return cancellableStatuses.includes(order.status);
+};
+
+/**
+ * Get Vietnamese translation for OrderDetailStatus
+ */
+export const getOrderDetailStatusText = (status: OrderDetailStatus): string => {
+  const statusMap: Record<OrderDetailStatus, string> = {
+    ASSIGNED_TO_DRIVER: "Đã phân công",
+    PICKING_UP: "Đang lấy hàng",
+    ON_DELIVERED: "Đang vận chuyển",
+    ONGOING_DELIVERED: "Sắp đến nơi giao",
+    DELIVERED: "Đã giao hàng",
+    SUCCESSFUL: "Hoàn thành",
+    IN_TROUBLES: "Gặp sự cố",
+    RESOLVED: "Đã giải quyết",
+    REJECTED: "Đã từ chối",
+    RETURNING: "Đang hoàn trả",
+    RETURNED: "Đã hoàn trả",
+  };
+  return statusMap[status] || status;
+};
+
+/**
+ * Get color for OrderDetailStatus badge
+ */
+export const getOrderDetailStatusColor = (status: OrderDetailStatus): string => {
+  const colorMap: Record<OrderDetailStatus, string> = {
+    ASSIGNED_TO_DRIVER: "blue",
+    PICKING_UP: "cyan",
+    ON_DELIVERED: "orange",
+    ONGOING_DELIVERED: "gold",
+    DELIVERED: "green",
+    SUCCESSFUL: "success",
+    IN_TROUBLES: "red",
+    RESOLVED: "lime",
+    REJECTED: "error",
+    RETURNING: "warning",
+    RETURNED: "default",
+  };
+  return colorMap[status] || "default";
 };
 
 export interface Address {
@@ -385,12 +451,16 @@ export interface CustomerVehicleAssignment {
       imageUrls: string[];
     };
     photoCompletions?: string[];
-    orderSeals?: {
+    seals?: {
       id: string;
       description: string;
       sealDate: string;
       status: string;
       sealId: string;
+      sealCode: string;
+      sealAttachedImage: string;
+      sealRemovalTime: string;
+      sealRemovalReason: string;
     }[];
     journeyHistories?: {
       id: string;
@@ -432,7 +502,6 @@ export interface CustomerVehicleAssignment {
       createdAt: string;
       modifiedAt: string;
     }[];
-  };
 }
 
 export interface CustomerContract {
@@ -440,8 +509,8 @@ export interface CustomerContract {
   contractName: string;
   effectiveDate: string;
   expirationDate: string;
-  totalValue: string;
-  adjustedValue: string;
+  totalValue: number;
+  adjustedValue: number;
   description: string;
   attachFileUrl: string;
   status: string;
@@ -482,8 +551,8 @@ export interface StaffOrderDetail {
   status: string;
   deliveryAddress: string;
   pickupAddress: string;
-  senderRepresentativeName: string;
-  senderRepresentativePhone: string;
+  senderName: string;
+  senderPhone: string;
   senderCompanyName: string;
   categoryName: string;
   orderDetails: StaffOrderDetailItem[];
@@ -579,31 +648,28 @@ export interface StaffVehicleAssignment {
       driverId: string;
       vehicleAssignmentId: string;
     }[];
-    cameraTrackings?: {
-      id: string;
-      videoUrl: string;
-      trackingAt: string;
-      status: string;
-      vehicleAssignmentId: string;
-      deviceName: string;
-    }[];
     fuelConsumption?: {
       id: string;
-      odometerReadingAtRefuel: number;
+      odometerReadingAtStart: number;
+      odometerReadingAtEnd: number;
       odometerAtStartUrl: string;
-      odometerAtFinishUrl: string;
       odometerAtEndUrl: string;
+      distanceTraveled: number;
       dateRecorded: string;
       notes: string;
-      fuelTypeName: string;
-      fuelTypeDescription: string;
+      fuelVolume: number;
+      companyInvoiceImageUrl: string;
     };
-    orderSeals?: {
+    seals?: {
       id: string;
       description: string;
       sealDate: string;
       status: string;
       sealId: string;
+      sealCode: string;
+      sealAttachedImage: string;
+      sealRemovalTime: string;
+      sealRemovalReason: string;
     }[];
     journeyHistories?: {
       id: string;
@@ -657,5 +723,104 @@ export interface StaffVehicleAssignment {
       };
       imageUrls: string[];
     }[];
+}
+
+// Additional types from order service
+export interface UnitsListResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: string[];
+}
+
+export interface ReceiverDetailsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: {
+    receiverName: string;
+    receiverPhone: string;
+    receiverIdentity: string;
+    pickupAddressId: string;
+    deliveryAddressId: string;
+    pickupAddress: {
+      id: string;
+      province: string;
+      ward: string;
+      street: string;
+      addressType: boolean;
+      latitude: number;
+      longitude: number;
+      customerId: string;
+    };
+    deliveryAddress: {
+      id: string;
+      province: string;
+      ward: string;
+      street: string;
+      addressType: boolean;
+      latitude: number;
+      longitude: number;
+      customerId: string;
+    };
   };
+}
+
+export interface VehicleSuggestion {
+  vehicleIndex: number;
+  vehicleRuleId: string;
+  vehicleRuleName: string;
+  currentLoad: number;
+  currentLoadUnit: string;
+  assignedDetails: AssignedDetail[];
+  packedDetailDetails: PackedDetail[];
+}
+
+export interface PackedDetail {
+  orderDetailId: string;
+  x: number;
+  y: number;
+  z: number;
+  length: number;
+  width: number;
+  height: number;
+  orientation: string;
+}
+
+export interface AssignedDetail {
+  id: string;
+  weight: number;
+  weightBaseUnit: number;
+  unit: string;
+  trackingCode: string;
+}
+
+export interface VehicleSuggestionsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: VehicleSuggestion[];
+}
+
+export interface BillOfLadingPreviewResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: {
+    fileName: string;
+    base64Content: string;
+    mimeType: string;
+  }[];
+}
+
+export interface BothOptimalAndRealisticVehicleSuggestionsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: BothOptimalAndRealisticVehicle[];
+}
+
+export interface BothOptimalAndRealisticVehicle {
+  optimal: VehicleSuggestion[];
+  realistic: VehicleSuggestion[];
 }

@@ -121,6 +121,38 @@ const contractService = {
       throw handleApiError(error, "Không thể tải dữ liệu hợp đồng");
     }
   },
+
+  /**
+   * Get contracts by order ID
+   * @param orderId - The order ID to get contracts for
+   * @returns Promise with contracts data
+   */
+  getContractsByOrderId: async (orderId: string) => {
+    try {
+      const response = await httpClient.get(`/contracts/order/${orderId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching contracts for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể tải danh sách hợp đồng");
+    }
+  },
+
+  /**
+   * Upload contract file
+   * @param formData - FormData containing contract file
+   * @returns Promise with upload response
+   */
+  uploadContract: async (formData: FormData) => {
+    try {
+      const response = await httpClient.post('/contracts/upload-contract', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error uploading contract:", error);
+      throw handleApiError(error, "Không thể tải lên hợp đồng");
+    }
+  },
 };
 
 export default contractService;

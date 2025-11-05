@@ -12,6 +12,7 @@ import {
     OrderStatusColors,
     OrderStatusCardColors
 } from '@/constants/enums';
+import { OrderDetailStatusMetadata } from '@/models/OrderDetailStatus';
 
 /**
  * Lấy label tiếng Việt cho contract status
@@ -74,4 +75,38 @@ export const getOrderStatusColor = (status: string): string => {
  */
 export const getOrderStatusCardColor = (status: string) => {
     return OrderStatusCardColors[status as OrderStatusEnum] || { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' };
+};
+
+/**
+ * Lấy label tiếng Việt cho order detail status
+ */
+export const getOrderDetailStatusLabel = (status: string): string => {
+    return OrderDetailStatusMetadata[status as keyof typeof OrderDetailStatusMetadata]?.label || status;
+};
+
+/**
+ * Lấy màu CSS class cho order detail status
+ */
+export const getOrderDetailStatusColor = (status: string): string => {
+    return OrderDetailStatusMetadata[status as keyof typeof OrderDetailStatusMetadata]?.color || 'bg-gray-200 text-gray-600';
+};
+
+/**
+ * Lấy màu nền cho order detail status (card style)
+ */
+export const getOrderDetailStatusCardColor = (status: string) => {
+    const metadata = OrderDetailStatusMetadata[status as keyof typeof OrderDetailStatusMetadata];
+    if (!metadata) return { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' };
+    
+    // Extract RGB values from Tailwind classes
+    const colorMap: Record<string, { backgroundColor: string; borderColor: string }> = {
+        'bg-gray-100': { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' },
+        'bg-purple-100': { backgroundColor: '#f3e8ff', borderColor: '#e9d5ff' },
+        'bg-blue-100': { backgroundColor: '#dbeafe', borderColor: '#bfdbfe' },
+        'bg-green-100': { backgroundColor: '#dcfce7', borderColor: '#bbf7d0' },
+        'bg-red-100': { backgroundColor: '#fee2e2', borderColor: '#fecaca' },
+        'bg-orange-100': { backgroundColor: '#ffedd5', borderColor: '#fed7aa' },
+    };
+    
+    return colorMap[metadata.bgColor] || { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' };
 };

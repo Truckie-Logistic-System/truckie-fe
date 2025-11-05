@@ -9,6 +9,7 @@ interface OrderStatusSectionProps {
     status: string;
     createdAt: string;
     totalPrice: number | null;
+    contract?: any;
 }
 
 const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
@@ -16,7 +17,17 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
     status,
     createdAt,
     totalPrice,
+    contract,
 }) => {
+    // Calculate display total from contract if available
+    const displayTotal = contract
+        ? (contract.adjustedValue && parseFloat(contract.adjustedValue) > 0
+            ? parseFloat(contract.adjustedValue)
+            : contract.totalValue
+            ? parseFloat(contract.totalValue)
+            : totalPrice)
+        : totalPrice;
+
     const formatDate = (dateString: string) => {
         return dayjs(dateString).format("DD/MM/YYYY HH:mm:ss");
     };
@@ -53,7 +64,7 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
                     <div className="text-center px-4 border-l border-gray-200">
                         <p className="text-gray-500 text-sm">Tổng tiền</p>
                         <p className="font-semibold text-lg text-blue-600">
-                            {formatCurrency(totalPrice)}
+                            {formatCurrency(displayTotal)}
                         </p>
                     </div>
                 </div>

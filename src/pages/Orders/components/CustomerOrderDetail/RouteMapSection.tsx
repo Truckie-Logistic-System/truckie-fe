@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, Typography, Empty, Tag, Divider, Alert } from 'antd';
-import { EnvironmentOutlined, InfoCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { EnvironmentOutlined, InfoCircleOutlined, ClockCircleOutlined, DollarCircleOutlined } from '@ant-design/icons';
 import VietMapMap from '../../../../components/common/VietMapMap';
 import type { MapLocation } from '@/models/Map';
 import type { RouteSegment } from '@/models/RoutePoint';
 import type { JourneyHistory, JourneySegment as JourneySegmentModel, TollDetail } from '@/models/JourneyHistory';
 import {
+    parseTollDetails,
     formatJourneyType,
     getJourneyStatusColor,
     formatJourneyStatus,
     translatePointName
 } from '@/models/JourneyHistory';
+import { TollInfoCard } from '@/components/features/order';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import timezone from 'dayjs/plugin/timezone';
@@ -187,9 +189,8 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                             });
                         }
 
-                        // Không hiển thị thông tin trạm thu phí cho khách hàng
-                        // Vẫn giữ lại mảng rỗng để đảm bảo cấu trúc dữ liệu không bị thay đổi
-                        const tolls: TollDetail[] = [];
+                        // Parse toll details if available
+                        const tolls = parseTollDetails(segment.tollDetailsJson);
 
                         // Create route segment
                         newRouteSegments.push({
@@ -305,8 +306,8 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
 
                         <Divider className="my-3" />
 
-                        {/* Journey statistics - Không hiển thị thông tin trạm thu phí */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        {/* Journey statistics */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                             <div className="bg-gray-50 p-3 rounded-md flex flex-col">
                                 <span className="text-gray-600 text-sm flex items-center">
                                     <EnvironmentOutlined className="mr-1" /> Tổng quãng đường
@@ -317,10 +318,18 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                             </div>
                             <div className="bg-gray-50 p-3 rounded-md flex flex-col">
                                 <span className="text-gray-600 text-sm flex items-center">
-                                    <ClockCircleOutlined className="mr-1" /> Thời gian dự kiến
+                                    <DollarCircleOutlined className="mr-1" /> Số trạm thu phí
                                 </span>
                                 <span className="text-lg font-semibold text-blue-600">
-                                    {Math.round((journeyInfo.totalDistance || 0) / 40 * 60)} phút
+                                    {journeyInfo.totalTollCount || 0}
+                                </span>
+                            </div>
+                            <div className="bg-gray-50 p-3 rounded-md flex flex-col">
+                                <span className="text-gray-600 text-sm flex items-center">
+                                    <DollarCircleOutlined className="mr-1" /> Tổng phí đường
+                                </span>
+                                <span className="text-lg font-semibold text-blue-600">
+                                    {journeyInfo.totalTollFee ? `${journeyInfo.totalTollFee.toLocaleString('vi-VN')} VND` : '0 VND'}
                                 </span>
                             </div>
                         </div>
@@ -357,11 +366,16 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                 {/* Thông báo hướng dẫn */}
                 <Alert
                     message="Thông tin chi tiết"
-                    description="Thông tin khoảng cách được hiển thị trực tiếp trên bản đồ. Click vào các đoạn đường để xem chi tiết."
+                    description="Thông tin khoảng cách và trạm thu phí được hiển thị trực tiếp trên bản đồ. Click vào các đoạn đường để xem chi tiết."
                     type="info"
                     showIcon
                     className="mb-4"
                 />
+
+                {/* Add TollInfoCard component */}
+                {journeySegments && journeySegments.length > 0 && (
+                    <TollInfoCard journeySegments={journeySegments} />
+                )}
 
                 {!hasValidRoute && (
                     <Empty

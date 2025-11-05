@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { VehicleLocationMessage } from '../../hooks/useVehicleTracking';
+import { getOrderDetailStatusLabel, getOrderDetailStatusCardColor } from '../../utils/statusHelpers';
 
 interface RealTimeVehicleMarkerProps {
   vehicle: VehicleLocationMessage;
@@ -9,13 +10,36 @@ interface RealTimeVehicleMarkerProps {
   isHighlighted?: boolean;
 }
 
+// Helper to convert status to inline styles
+const getStatusInlineStyle = (status: string): string => {
+  const cardColor = getOrderDetailStatusCardColor(status);
+  
+  // Map background colors to text colors
+  const textColorMap: Record<string, string> = {
+    '#f3f4f6': '#374151', // gray
+    '#f3e8ff': '#7c3aed', // purple
+    '#dbeafe': '#0369a1', // blue
+    '#dcfce7': '#166534', // green
+    '#fee2e2': '#991b1b', // red
+    '#ffedd5': '#92400e', // orange
+  };
+  
+  const textCol = textColorMap[cardColor.backgroundColor] || '#374151';
+  return `background: ${cardColor.backgroundColor}; color: ${textCol}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;`;
+};
+
 /**
  * Component để hiển thị marker xe real-time trên bản đồ
  * Sử dụng imperative updates - marker NEVER recreated, only position updated
  */
 
 // Helper function to validate if coordinates are valid and in Vietnam
-const isValidVietnamCoordinates = (lat: number, lng: number): boolean => {
+const isValidVietnamCoordinates = (lat: number | null, lng: number | null): boolean => {
+  // Check for null values
+  if (lat === null || lng === null) {
+    return false;
+  }
+  
   // Check for NaN or Infinity
   if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) {
     return false;
@@ -61,11 +85,11 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
     console.log(`🎯 [${vehicle.vehicleId}] Initializing marker...`);
     
     // Find first valid position to create marker
-    let initialLat = vehicle.latitude;
-    let initialLng = vehicle.longitude;
+    let initialLat: number = vehicle.latitude ?? 10.8231; // Ho Chi Minh City default
+    let initialLng: number = vehicle.longitude ?? 106.6297;
     
     // If initial position is invalid, use default Vietnam center and wait for valid data
-    if (!isValidVietnamCoordinates(initialLat, initialLng)) {
+    if (!isValidVietnamCoordinates(vehicle.latitude, vehicle.longitude)) {
       console.warn(`⚠️ [${vehicle.vehicleId}] Initial position invalid, using Vietnam center temporarily`);
       initialLat = 10.8231; // Ho Chi Minh City
       initialLng = 106.6297;
@@ -80,8 +104,8 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #1890ff; display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 18px;">🚛</span>
           <span>${vehicle.licensePlateNumber}</span>
-          <span style="background: #1890ff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
-            ${vehicle.assignmentStatus}
+          <span style="${getStatusInlineStyle(vehicle.orderDetailStatus)}">
+            ${getOrderDetailStatusLabel(vehicle.orderDetailStatus)}
           </span>
         </div>
         
@@ -127,7 +151,7 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
             </div>
           </div>
           <div style="color: #999; font-size: 11px; margin-top: 4px;">
-            ⏱️ Cập nhật: ${new Date(vehicle.lastUpdated).toLocaleString('vi-VN')}
+            ⏱️ Cập nhật: ${vehicle.lastUpdated ? new Date(vehicle.lastUpdated).toLocaleString('vi-VN') : 'Chưa cập nhật'}
           </div>
         </div>
       </div>
@@ -258,29 +282,32 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
     
     // Only update target if coordinates are valid
     if (isValidVietnamCoordinates(newLat, newLng)) {
+      // At this point, newLat and newLng are guaranteed to be non-null numbers
+      const newLatNum = newLat as number;
+      const newLngNum = newLng as number;
       const lastValidPos = lastValidPositionRef.current;
       
       // Check if position actually changed
       if (lastValidPos) {
-        const latDiff = Math.abs(lastValidPos.lat - newLat);
-        const lngDiff = Math.abs(lastValidPos.lng - newLng);
+        const latDiff = Math.abs(lastValidPos.lat - newLatNum);
+        const lngDiff = Math.abs(lastValidPos.lng - newLngNum);
         
         // Only update if position changed significantly (> 1 meter)
         if (latDiff >= 0.00001 || lngDiff >= 0.00001) {
           // Log significant moves
           if (latDiff > 0.0001 || lngDiff > 0.0001) {
-            console.log(`📍 [${vehicle.vehicleId}] New target: [${lastValidPos.lat.toFixed(6)}, ${lastValidPos.lng.toFixed(6)}] → [${newLat.toFixed(6)}, ${newLng.toFixed(6)}]`);
+            console.log(`📍 [${vehicle.vehicleId}] New target: [${lastValidPos.lat.toFixed(6)}, ${lastValidPos.lng.toFixed(6)}] → [${newLatNum.toFixed(6)}, ${newLngNum.toFixed(6)}]`);
           }
           
           // Set new target position for animation
-          targetPositionRef.current = { lat: newLat, lng: newLng };
+          targetPositionRef.current = { lat: newLatNum, lng: newLngNum };
         }
       } else {
         // First valid position after creation with default center
-        console.log(`✅ [${vehicle.vehicleId}] First valid position received: [${newLat.toFixed(6)}, ${newLng.toFixed(6)}]`);
-        targetPositionRef.current = { lat: newLat, lng: newLng };
-        lastValidPositionRef.current = { lat: newLat, lng: newLng };
-        markerRef.current.setLngLat([newLng, newLat]);
+        console.log(`✅ [${vehicle.vehicleId}] First valid position received: [${newLatNum.toFixed(6)}, ${newLngNum.toFixed(6)}]`);
+        targetPositionRef.current = { lat: newLatNum, lng: newLngNum };
+        lastValidPositionRef.current = { lat: newLatNum, lng: newLngNum };
+        markerRef.current.setLngLat([newLngNum, newLatNum]);
       }
     } else {
       // Invalid coordinates - keep marker at last valid position
@@ -364,8 +391,8 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #1890ff; display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 18px;">🚛</span>
           <span>${vehicle.licensePlateNumber}</span>
-          <span style="background: #1890ff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
-            ${vehicle.assignmentStatus}
+          <span style="${getStatusInlineStyle(vehicle.orderDetailStatus)}">
+            ${getOrderDetailStatusLabel(vehicle.orderDetailStatus)}
           </span>
         </div>
         <div style="border-top: 1px solid #e8e8e8; padding-top: 8px; margin-top: 8px;">
@@ -404,7 +431,7 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
             </div>
           </div>
           <div style="color: #999; font-size: 11px; margin-top: 4px;">
-            ⏱️ Cập nhật: ${new Date(vehicle.lastUpdated).toLocaleString('vi-VN')}
+            ⏱️ Cập nhật: ${vehicle.lastUpdated ? new Date(vehicle.lastUpdated).toLocaleString('vi-VN') : 'Chưa cập nhật'}
           </div>
         </div>
       </div>

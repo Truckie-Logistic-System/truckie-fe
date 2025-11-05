@@ -7,19 +7,23 @@ import authService from '../services/auth/authService';
 // Định nghĩa interface cho dữ liệu vị trí xe
 export interface VehicleLocationMessage {
   vehicleId: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   licensePlateNumber: string;
   manufacturer: string;
   vehicleTypeName: string;
   vehicleAssignmentId: string;
   trackingCode: string;
-  assignmentStatus: string;
+  orderDetailStatus: string;
   driver1Name: string | null;
   driver1Phone: string | null;
   driver2Name: string | null;
   driver2Phone: string | null;
-  lastUpdated: string;
+  lastUpdated: string | null;
+  bearing: number | null;
+  speed: number | null;
+  velocityLat: number | null;
+  velocityLng: number | null;
 }
 
 export interface UseVehicleTrackingOptions {
@@ -105,8 +109,22 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       const locationData: VehicleLocationMessage | VehicleLocationMessage[] = JSON.parse(message.body);
       
       if (Array.isArray(locationData)) {
-        setVehicleLocations(locationData);
-        vehicleLocationsRef.current = locationData;
+        // CRITICAL: Deduplicate vehicles by vehicleId to prevent React key conflicts
+        // This handles edge cases where backend might send duplicates (e.g., multiple order details per vehicle)
+        const uniqueVehicles = locationData.reduce((acc, vehicle) => {
+          // Keep only the first occurrence of each vehicleId
+          if (!acc.some(v => v.vehicleId === vehicle.vehicleId)) {
+            acc.push(vehicle);
+          }
+          return acc;
+        }, [] as VehicleLocationMessage[]);
+        
+        if (uniqueVehicles.length !== locationData.length) {
+          console.warn(`[VehicleTracking] Deduplicated ${locationData.length - uniqueVehicles.length} duplicate vehicle(s)`);
+        }
+        
+        setVehicleLocations(uniqueVehicles);
+        vehicleLocationsRef.current = uniqueVehicles;
       } else {
         setVehicleLocations(prev => {
           const existingIndex = prev.findIndex(v => v.vehicleId === locationData.vehicleId);
@@ -114,9 +132,14 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
             const existing = prev[existingIndex];
             
             // Check if position actually changed to avoid unnecessary updates
+            // Handle null values gracefully
             const positionChanged = 
-              Math.abs(existing.latitude - locationData.latitude) > 0.000001 ||
-              Math.abs(existing.longitude - locationData.longitude) > 0.000001;
+              (existing.latitude === null && locationData.latitude !== null) ||
+              (existing.latitude !== null && locationData.latitude === null) ||
+              (existing.latitude !== null && locationData.latitude !== null && Math.abs(existing.latitude - locationData.latitude) > 0.000001) ||
+              (existing.longitude === null && locationData.longitude !== null) ||
+              (existing.longitude !== null && locationData.longitude === null) ||
+              (existing.longitude !== null && locationData.longitude !== null && Math.abs(existing.longitude - locationData.longitude) > 0.000001);
             
             if (positionChanged || existing.lastUpdated !== locationData.lastUpdated) {
               const updated = [...prev];
@@ -180,7 +203,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     });
 
     // Connection success handler
-    client.onConnect = (_frame) => {
+    client.onConnect = () => {
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
@@ -190,7 +213,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
         // Subscribe to appropriate topic based on configuration
         // PRIORITY: vehicleId over orderId to avoid conflicts
         if (config.vehicleId) {
-          const topicPath = `/topic/vehicle/${config.vehicleId}/location`;
+          const topicPath = `/topic/vehicles/${config.vehicleId}`;
           console.log(`🔗 Subscribing to vehicle location: ${topicPath}`);
           
           const subscription = client.subscribe(
@@ -221,7 +244,13 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
           const subscription = client.subscribe(
             topicPath,
             (message) => {
-              console.log(`📍 Received order vehicles update:`, message.body);
+              console.log(`📍 Received order vehicles update (RAW):`, message.body);
+              try {
+                const parsed = JSON.parse(message.body);
+                console.log(`📍 Received order vehicles update (PARSED):`, parsed);
+              } catch (e) {
+                console.error('Failed to parse message:', e);
+              }
               handleVehicleLocationMessage(message);
             }
           );
@@ -280,7 +309,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     };
 
     // Disconnection handler
-    client.onDisconnect = (frame) => {
+    client.onDisconnect = () => {
       setIsConnected(false);
       setIsConnecting(false);
       

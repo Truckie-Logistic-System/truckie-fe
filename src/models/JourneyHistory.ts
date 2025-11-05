@@ -141,4 +141,35 @@ export const formatSegmentStatus = (status: string): string => {
         default:
             return status;
     }
-}; 
+};
+
+// Helper function to format seal status to Vietnamese
+export const formatSealStatus = (status: string): string => {
+    switch (status) {
+        case 'ACTIVE':
+            return 'Đang hoạt động';
+        case 'IN_USE':
+            return 'Đang sử dụng';
+        case 'REMOVED':
+            return 'Đã gỡ';
+        case 'USED':
+            return 'Đã sử dụng';
+        default:
+            return status;
+    }
+};
+
+// Helper function to get seal status color
+export const getSealStatusColor = (status: string): string => {
+    switch (status) {
+        case 'ACTIVE':
+        case 'IN_USE':
+            return 'green';
+        case 'USED':
+            return 'blue';
+        case 'REMOVED':
+            return 'red';
+        default:
+            return 'default';
+    }
+};

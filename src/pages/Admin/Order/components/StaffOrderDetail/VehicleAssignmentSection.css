@@ -1,0 +1,45 @@
+/* Vehicle Assignment Section Styles */
+.vehicle-assignment-section {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Vehicle tabs styling */
+.vehicle-tabs .ant-tabs-tab {
+    background: white !important;
+    border: 1px solid #d9d9d9 !important;
+    transition: all 0.3s ease;
+}
+
+.vehicle-tabs .ant-tabs-tab:hover {
+    background: #f0f7ff !important;
+    border-color: #1890ff !important;
+}
+
+.vehicle-tabs .ant-tabs-tab-active {
+    background: #1890ff !important;
+    border-color: #1890ff !important;
+}
+
+.vehicle-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: white !important;
+}
+
+/* Detail tabs styling */
+.order-detail-tabs .ant-tabs-tab {
+    transition: all 0.3s ease;
+}
+
+.order-detail-tabs .ant-tabs-tab:hover {
+    background: #f0f7ff;
+}

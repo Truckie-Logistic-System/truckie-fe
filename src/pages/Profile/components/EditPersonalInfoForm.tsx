@@ -3,7 +3,7 @@ import { Form, Input, Button, App, DatePicker, Radio, Upload, message } from 'an
 import { SaveOutlined, UserOutlined, MailOutlined, PhoneOutlined, UploadOutlined } from '@ant-design/icons';
 import type { UserModel } from '@/models/User';
 import type { UserUpdateRequest } from '@/services/user/types';
-import userService from '@/services/user/userService';
+import { useProfileManagement } from '@/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 
@@ -14,6 +14,7 @@ interface EditPersonalInfoFormProps {
 
 const EditPersonalInfoForm: React.FC<EditPersonalInfoFormProps> = ({ userData, onSuccess }) => {
     const [form] = Form.useForm();
+    const { updateProfile } = useProfileManagement();
     const [loading, setLoading] = useState(false);
     const queryClient = useQueryClient();
     const { message } = App.useApp();
@@ -42,7 +43,7 @@ const EditPersonalInfoForm: React.FC<EditPersonalInfoFormProps> = ({ userData, o
                 imageUrl: userData.imageUrl // Keep the existing image URL
             };
 
-            await userService.updateUserProfile(userData.id, updateData);
+            await updateProfile(updateData);
 
             // Refresh cache data
             queryClient.invalidateQueries({ queryKey: ['customerProfile'] });

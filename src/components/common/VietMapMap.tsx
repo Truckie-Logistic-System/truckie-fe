@@ -133,6 +133,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     const [mapStyle, setMapStyle] = useState<any>(null);
     const [isAnimating, setIsAnimating] = useState(false);
     const [activePopupIndex, setActivePopupIndex] = useState<number | null>(null);
+    const [styleFromCache, setStyleFromCache] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
     const { getMapStyle, reverseGeocode } = useVietMapRouting();
 
     // Inject CSS cho popup
@@ -164,6 +166,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             console.log('[VietMapMap] Using cached VietMap style from localStorage');
                             console.log('[VietMapMap] Cache age:', Math.floor((now - timestamp) / (1000 * 60 * 60)), 'hours');
                             setMapStyle(style);
+                            setStyleFromCache(true);
                             return;
                         } else {
                             console.log('[VietMapMap] Cached VietMap style expired, fetching new data');
@@ -186,6 +189,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     
                     // Lưu style vào state
                     setMapStyle(style);
+                    setStyleFromCache(false);
 
                     // Lưu style và timestamp vào localStorage
                     const cacheData = {
@@ -344,6 +348,17 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             });
         } catch (error) {
             console.error('Error initializing VietMap:', error);
+            
+            // Nếu map khởi tạo thất bại và style từ cache, xóa cache và retry
+            if (styleFromCache && retryCount < 1) {
+                console.warn('[VietMapMap] Map initialization failed with cached style, clearing cache and retrying...');
+                localStorage.removeItem(VIETMAP_STYLE_CACHE_KEY);
+                setMapStyle(null);
+                setStyleFromCache(false);
+                setRetryCount(retryCount + 1);
+                return;
+            }
+            
             setLoading(false);
         }
     };
@@ -513,6 +528,17 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                         }
 
                         console.log('[VietMapMap] Bounds ready, calling fitBounds');
+                        
+                        // Validate bounds object before calling fitBounds
+                        if (!bounds || !bounds._sw || !bounds._ne || 
+                            bounds._sw.lng === undefined || bounds._sw.lat === undefined ||
+                            bounds._ne.lng === undefined || bounds._ne.lat === undefined) {
+                            console.warn('[VietMapMap] Invalid bounds object, using fallback');
+                            const marker = validMarkers[0];
+                            mapRef.current.setCenter([marker.lng, marker.lat]);
+                            mapRef.current.setZoom(12);
+                            return;
+                        }
 
                         // Fit map to bounds with generous padding for full route overview
                         mapRef.current.fitBounds(bounds, {
@@ -739,7 +765,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             .setLngLat(popupCoordinates)
             .setHTML(popupContent);
 
-        // Thêm sự kiện khi popup đóng
+        // Thêm sự kiện   khi popup đóng
         popup.on('close', () => {
             if (activePopupIndex === index) {
                 setActivePopupIndex(null);
@@ -825,9 +851,9 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     // Không tự động hiển thị popup khi load map
                     // User sẽ click vào route để xem thông tin
 
-                    // Thêm sự kiện click vào route để hiển thị/ẩn popup
+                    // Thêm sự kiện   click vào route để hiển thị/ẩn popup
                     mapRef.current.on('click', layerId, (e: any) => {
-                        // Ngăn sự kiện lan truyền
+                        // Ngăn sự kiện   lan truyền
                         e.originalEvent.stopPropagation();
 
                         // Đóng tất cả các popup khác

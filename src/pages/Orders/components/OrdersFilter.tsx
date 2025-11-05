@@ -1,15 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Select, DatePicker, Button, Space, Row, Col, Divider } from 'antd';
+import React, { useState } from 'react';
+import { Card, Select, Button, Space, Row, Col, Divider } from 'antd';
 import { FilterOutlined, ReloadOutlined } from '@ant-design/icons';
 import { OrderStatusEnum, OrderStatusLabels } from '@/constants/enums';
-import dayjs from 'dayjs';
-import addressService from '@/services/address/addressService';
-import customerService from '@/services/customer/customerService';
-import { useAuth } from '@/context';
-import type { Address } from '@/models/Address';
+import { useProfileManagement } from '@/hooks';
 
 const { Option } = Select;
-const { RangePicker } = DatePicker;
 
 interface OrdersFilterProps {
     onFilterChange: (filters: {
@@ -25,9 +20,7 @@ const OrdersFilter: React.FC<OrdersFilterProps> = ({ onFilterChange }) => {
     const [quarter, setQuarter] = useState<number | undefined>(undefined);
     const [status, setStatus] = useState<string | undefined>(undefined);
     const [addressId, setAddressId] = useState<string | undefined>(undefined);
-    const [addresses, setAddresses] = useState<Address[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const { user } = useAuth();
+    const { addresses, loading } = useProfileManagement();
 
     // Generate year options (current year and 5 years back)
     const currentYear = new Date().getFullYear();
@@ -93,30 +86,7 @@ const OrdersFilter: React.FC<OrdersFilterProps> = ({ onFilterChange }) => {
         }
     ];
 
-    // Fetch addresses for the current user
-    useEffect(() => {
-        const fetchAddresses = async () => {
-            if (!user?.id) return;
-
-            try {
-                setLoading(true);
-                // First, get the customer ID from the user ID
-                const customerData = await customerService.getCustomerProfile(user.id);
-
-                if (customerData && customerData.id) {
-                    // Then, get addresses for this customer
-                    const addressList = await addressService.getAddressesByCustomerId(customerData.id);
-                    setAddresses(addressList);
-                }
-            } catch (error) {
-                console.error('Error fetching addresses:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchAddresses();
-    }, [user]);
+    // Addresses are automatically loaded by useProfileManagement hook
 
     // Handle filter application
     const applyFilters = () => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Typography, Empty, Tag, Descriptions, Divider, Alert } from 'antd';
+import { Card, Typography, Empty, Tag, Divider, Alert } from 'antd';
 import { EnvironmentOutlined, DollarCircleOutlined, InfoCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import VietMapMap from '../../../../../components/common/VietMapMap';
 import type { MapLocation } from '@/models/Map';
@@ -24,17 +24,13 @@ const { Title } = Typography;
 
 interface RouteMapSectionProps {
     journeySegments: JourneySegmentModel[];
-    vehicleInfo?: {
-        licensePlateNumber?: string;
-        trackingCode?: string;
-    };
     journeyInfo?: Partial<JourneyHistory>;
     onMapReady?: (map: any) => void;
     children?: React.ReactNode;
     mapContainerRef?: React.RefObject<HTMLDivElement | null>; // Ref for map container div
 }
 
-const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehicleInfo, journeyInfo, onMapReady, children, mapContainerRef }) => {
+const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, journeyInfo, onMapReady, children, mapContainerRef }) => {
     const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
     const [markers, setMarkers] = useState<MapLocation[]>([]);
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -49,26 +45,42 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
             .format("DD/MM/YYYY HH:mm:ss");
     };
 
-    // Custom function to get map instance
+    // Custom function to get map instance - STABLE VERSION
     const handleMapInstance = (map: any) => {
-        console.log('=== [RouteMapSection] handleMapInstance CALLED ===');
-        console.log('Map:', map);
-        console.log('onMapReady callback exists:', !!onMapReady);
+        // Map instance received
         
+        if (!map) {
+            console.error('[RouteMapSection] Map instance is null');
+            return;
+        }
+
         mapRef.current = map;
 
-        // Notify parent component that map is ready
-        if (onMapReady) {
-            console.log('=== [RouteMapSection] Calling onMapReady callback ===');
-            onMapReady(map);
+        // Wait for map to be fully loaded before notifying parent
+        if (map.loaded()) {
+            // Map loaded, calling onMapReady
+            if (onMapReady) {
+                onMapReady(map);
+            }
         } else {
-            console.warn('[RouteMapSection] onMapReady callback is not provided!');
+            // Waiting for map load event
+            map.on('load', () => {
+                // Map load event fired
+                if (onMapReady) {
+                    onMapReady(map);
+                }
+            });
         }
 
         // Apply closer zoom when map is loaded - using route path coordinates
-        if (map && routeSegments.length > 0) {
+        if (routeSegments.length > 0) {
             setTimeout(() => {
                 try {
+                    // Double check map still exists
+                    if (!mapRef.current || mapRef.current._removed) {
+                        console.warn('[RouteMapSection] Map was removed, skipping fitBounds');
+                        return;
+                    }
                     // Collect all coordinates from route paths
                     const allCoordinates: [number, number][] = [];
                     
@@ -87,54 +99,43 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                     });
 
                     if (allCoordinates.length > 1) {
-                        try {
-                            // Initialize bounds with first coordinate
-                            const bounds = new window.vietmapgl.LngLatBounds(
-                                allCoordinates[0],
-                                allCoordinates[0]
-                            );
-                            
-                            // Extend bounds with all route coordinates
-                            allCoordinates.forEach(coord => {
-                                bounds.extend(coord);
-                            });
+                        // Initialize bounds with first coordinate
+                        const bounds = new window.vietmapgl.LngLatBounds(
+                            allCoordinates[0],
+                            allCoordinates[0]
+                        );
+                        
+                        // Extend bounds with all route coordinates
+                        allCoordinates.forEach(coord => {
+                            bounds.extend(coord);
+                        });
 
-                            // Fit map to bounds with generous padding for full route overview
-                            map.fitBounds(bounds, {
-                                padding: {
-                                    top: 80,
-                                    bottom: 80,
-                                    left: 80,
-                                    right: 80
-                                },
-                                duration: 1000
-                            });
-                        } catch (err) {
-                            console.error('Error fitting bounds:', err);
-                            // Fallback: center on first coordinate
-                            if (allCoordinates.length > 0) {
-                                map.setCenter(allCoordinates[0]);
-                                map.setZoom(12);
-                            }
-                        }
+                        // Calling fitBounds
+                        // Fit map to bounds with generous padding for full route overview
+                        mapRef.current.fitBounds(bounds, {
+                            padding: {
+                                top: 80,
+                                bottom: 80,
+                                left: 80,
+                                right: 80
+                            },
+                            duration: 1000
+                        });
                     } else if (allCoordinates.length === 1) {
                         // If only one coordinate, center the map on it
-                        map.setCenter(allCoordinates[0]);
-                        map.setZoom(12);
-                    } else {
-                        console.warn('No valid coordinates found for map bounds');
+                        if (mapRef.current && !mapRef.current._removed) {
+                            mapRef.current.setCenter(allCoordinates[0]);
+                            mapRef.current.setZoom(12);
+                        }
                     }
                 } catch (error) {
-                    console.error("Error adjusting map zoom:", error);
+                    console.error('[RouteMapSection] Error adjusting map zoom:', error);
                 }
-            }, 300);
+            }, 500); // Increased delay for stability
         }
     };
 
     useEffect(() => {
-        console.log('=== [RouteMapSection] useEffect - Processing journey segments ===');
-        console.log('journeySegments count:', journeySegments?.length || 0);
-        
         if (journeySegments && journeySegments.length > 0) {
             const newMarkers: MapLocation[] = [];
             const newRouteSegments: RouteSegment[] = [];
@@ -204,11 +205,6 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
             }
 
             // Update state
-            console.log('=== [RouteMapSection] Setting state ===');
-            console.log('Markers:', newMarkers.length);
-            console.log('Route segments:', newRouteSegments.length);
-            console.log('Has valid route:', validRouteFound);
-            
             setMarkers(newMarkers);
             setRouteSegments(newRouteSegments);
             setHasValidRoute(validRouteFound);
@@ -221,6 +217,11 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
 
         const fitBoundsToRoute = () => {
             try {
+                if (mapRef.current._removed) {
+                    console.warn('[RouteMapSection] Map was removed, skipping fitBounds');
+                    return;
+                }
+
                 // Collect all coordinates from route paths
                 const allCoordinates: [number, number][] = [];
                 
@@ -237,9 +238,6 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                         });
                     }
                 });
-
-                console.log('=== [RouteMapSection] Fitting bounds to route ===');
-                console.log('Total coordinates:', allCoordinates.length);
 
                 if (allCoordinates.length > 1) {
                     // Initialize bounds with first coordinate
@@ -263,6 +261,12 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                         },
                         duration: 1000
                     });
+                } else if (allCoordinates.length === 1) {
+                    // If only one coordinate, center the map on it
+                    if (mapRef.current && !mapRef.current._removed) {
+                        mapRef.current.setCenter(allCoordinates[0]);
+                        mapRef.current.setZoom(12);
+                    }
                 }
             } catch (error) {
                 console.error('[RouteMapSection] Error fitting bounds to route:', error);
@@ -297,28 +301,6 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
 
                         <Divider className="my-3" />
 
-                        {/* Vehicle information */}
-                        {vehicleInfo && (vehicleInfo.licensePlateNumber || vehicleInfo.trackingCode) && (
-                            <div className="bg-blue-50 p-3 rounded-md mb-3">
-                                <Descriptions size="small" column={2} className="mb-0">
-                                    {vehicleInfo.licensePlateNumber && (
-                                        <Descriptions.Item
-                                            label={<span className="font-medium">Biển số xe</span>}
-                                        >
-                                            <span className="text-blue-600 font-semibold">{vehicleInfo.licensePlateNumber}</span>
-                                        </Descriptions.Item>
-                                    )}
-                                    {vehicleInfo.trackingCode && (
-                                        <Descriptions.Item
-                                            label={<span className="font-medium">Mã theo dõi</span>}
-                                        >
-                                            <span className="text-blue-600 font-semibold">{vehicleInfo.trackingCode}</span>
-                                        </Descriptions.Item>
-                                    )}
-                                </Descriptions>
-                            </div>
-                        )}
-
                         {/* Journey statistics */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                             <div className="bg-gray-50 p-3 rounded-md flex flex-col">
@@ -348,31 +330,29 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                         </div>
 
                         {/* Journey time information */}
-                        {(journeyInfo.startTime || journeyInfo.endTime || journeyInfo.createdAt) && (
+                        {journeyInfo.endTime && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                                {journeyInfo.endTime && (
-                                    <div className="bg-gray-50 p-3 rounded-md flex flex-col">
-                                        <span className="text-gray-600 text-sm flex items-center">
-                                            <ClockCircleOutlined className="mr-1" /> Thời gian kết thúc
-                                        </span>
-                                        <span className="text-md font-medium">
-                                            {formatDate(journeyInfo.endTime)}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Reason for reroute if available */}
-                        {journeyInfo.reasonForReroute && (
-                            <div className="bg-yellow-50 p-3 rounded-md mb-3">
-                                <div className="flex items-center">
-                                    <InfoCircleOutlined className="mr-2 text-yellow-500" />
-                                    <span className="font-medium mr-1">Lý do định tuyến lại:</span>
-                                    <span>{journeyInfo.reasonForReroute}</span>
+                                <div className="bg-gray-50 p-3 rounded-md flex flex-col">
+                                    <span className="text-gray-600 text-sm flex items-center">
+                                        <ClockCircleOutlined className="mr-1" /> Thời gian kết thúc
+                                    </span>
+                                    <span className="text-md font-medium">
+                                        {formatDate(journeyInfo.endTime)}
+                                    </span>
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Reason for reroute if available */}
+                {journeyInfo && journeyInfo.reasonForReroute && (
+                    <div className="bg-yellow-50 p-3 rounded-md mb-3">
+                        <div className="flex items-center">
+                            <InfoCircleOutlined className="mr-2 text-yellow-500" />
+                            <span className="font-medium mr-1">Lý do định tuyến lại:</span>
+                            <span>{journeyInfo.reasonForReroute}</span>
+                        </div>
                     </div>
                 )}
 
@@ -396,7 +376,7 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                     <div className="h-[500px] rounded-lg overflow-hidden" ref={mapContainerRef}>
                         <VietMapMap
                             mapLocation={mapLocation}
-                            onLocationChange={(location) => setMapLocation(location)}
+                            onLocationChange={(location: any) => setMapLocation(location)}
                             markers={markers}
                             showRouteLines={true}
                             routeSegments={routeSegments}

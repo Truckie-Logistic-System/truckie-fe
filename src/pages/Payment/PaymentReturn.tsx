@@ -8,13 +8,13 @@ import {
   HomeOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
-import httpClient from "../../services/api/httpClient";
+import { usePaymentWebhook } from "@/hooks";
 
 const PaymentReturn: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [webhookCalled, setWebhookCalled] = useState(false);
+  const { webhookCalled, callPayOSWebhook } = usePaymentWebhook();
 
   const code = searchParams.get("code");
   const id = searchParams.get("id");
@@ -29,28 +29,14 @@ const PaymentReturn: React.FC = () => {
       }
 
       try {
-        console.log("Calling PayOS webhook with:", { orderCode, status });
-
-        const response = await httpClient.post("/transactions/pay-os/webhook", {
-          data: {
-            orderCode: Number(orderCode),
-            status: status,
-          },
-        });
-
-        console.log("Webhook response:", response.data);
-        setWebhookCalled(true);
-
-        if (response.data?.success) {
-          console.log("Webhook called SUCCESSFUL");
-        }
+        await callPayOSWebhook(Number(orderCode), status);
       } catch (error) {
         console.error("Error calling webhook:", error);
       }
     };
 
     callWebhook();
-  }, [orderCode, status, webhookCalled]);
+  }, [orderCode, status, webhookCalled, callPayOSWebhook]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

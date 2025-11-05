@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Table, Button, Tabs, Tag, Tooltip, Space, Modal, App, Skeleton, Card, Empty } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import addressService from '../../../services/address/addressService';
+import { useProfileManagement } from '@/hooks';
 import type { Address } from '../../../models/Address';
 import AddressForm from './AddressForm';
 
@@ -12,28 +12,11 @@ interface AddressTabProps {
 }
 
 const AddressTab: React.FC<AddressTabProps> = ({ customerId }) => {
-    const [addresses, setAddresses] = useState<Address[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+    const { addresses, loading, deleteAddress, refetch } = useProfileManagement();
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
     const [currentAddress, setCurrentAddress] = useState<Address | null>(null);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const { message } = App.useApp();
-
-    const fetchAddresses = async () => {
-        try {
-            setLoading(true);
-            const data = await addressService.getMyAddresses();
-            setAddresses(data);
-        } catch (error) {
-            message.error('Không thể tải danh sách địa chỉ');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchAddresses();
-    }, []);
 
     const handleAddAddress = () => {
         setCurrentAddress(null);
@@ -56,9 +39,8 @@ const AddressTab: React.FC<AddressTabProps> = ({ customerId }) => {
             cancelText: 'Hủy',
             onOk: async () => {
                 try {
-                    await addressService.deleteAddress(id);
+                    await deleteAddress(id);
                     message.success('Xóa địa chỉ thành công');
-                    fetchAddresses();
                 } catch (error) {
                     message.error('Không thể xóa địa chỉ');
                 }
@@ -67,7 +49,7 @@ const AddressTab: React.FC<AddressTabProps> = ({ customerId }) => {
     };
 
     const handleSaveAddress = async () => {
-        await fetchAddresses();
+        await refetch();
         setIsModalVisible(false);
     };
 

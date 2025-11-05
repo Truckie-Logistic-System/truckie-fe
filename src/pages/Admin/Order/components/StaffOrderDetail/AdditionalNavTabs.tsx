@@ -16,6 +16,7 @@ import {
     EnvironmentOutlined,
 } from "@ant-design/icons";
 import RouteMapWithRealTimeTracking from "./RouteMapWithRealTimeTracking";
+import OrderDetailStatusTag from "../../../../../components/common/tags/OrderDetailStatusTag";
 import { OrderStatusEnum } from "../../../../../constants/enums";
 import type { StaffOrderDetail, StaffOrderDetailItem } from "../../../../../models/Order";
 import { formatJourneyType, getJourneyStatusColor } from "../../../../../models/JourneyHistory";
@@ -38,6 +39,8 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
     if (!orderData || !orderData.order || orderData.order.status === OrderStatusEnum.ON_PLANNING) {
         return null;
     }
+
+    const vehicleAssignments = orderData.order.vehicleAssignments || [];
 
     return (
         <Card className="mt-4 shadow-md rounded-xl">
@@ -79,23 +82,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                             </div>
                                         </td>
                                         <td className="border border-gray-300 p-2">
-                                            <Tag
-                                                color={
-                                                    detail.status === "PENDING"
-                                                        ? "orange"
-                                                        : detail.status === "PROCESSING"
-                                                            ? "blue"
-                                                            : detail.status === "DELIVERED" ||
-                                                                detail.status === "SUCCESSFUL"
-                                                                ? "green"
-                                                                : detail.status === "CANCELLED" ||
-                                                                    detail.status === "IN_TROUBLES"
-                                                                    ? "red"
-                                                                    : "default"
-                                                }
-                                            >
-                                                {detail.status}
-                                            </Tag>
+                                            <OrderDetailStatusTag status={detail.status} />
                                         </td>
                                         <td className="border border-gray-300 p-2">
                                             <div className="flex items-center">
@@ -125,26 +112,23 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="routemap"
                 >
-                    {orderData.order.orderDetails.some((detail: StaffOrderDetailItem) =>
-                        detail.vehicleAssignment &&
-                        detail.vehicleAssignment.journeyHistories &&
-                        detail.vehicleAssignment.journeyHistories.length > 0 &&
-                        detail.vehicleAssignment.journeyHistories.some(journey =>
+                    {vehicleAssignments.some((va) =>
+                        va.journeyHistories &&
+                        va.journeyHistories.length > 0 &&
+                        va.journeyHistories.some(journey =>
                             journey.journeySegments && journey.journeySegments.length > 0
                         )
                     ) ? (
                         <div>
-                            {orderData.order.orderDetails
-                                .filter((detail: StaffOrderDetailItem) =>
-                                    detail.vehicleAssignment &&
-                                    detail.vehicleAssignment.journeyHistories &&
-                                    detail.vehicleAssignment.journeyHistories.length > 0 &&
-                                    detail.vehicleAssignment.journeyHistories.some(journey =>
+                            {vehicleAssignments
+                                .filter((va) =>
+                                    va.journeyHistories &&
+                                    va.journeyHistories.length > 0 &&
+                                    va.journeyHistories.some(journey =>
                                         journey.journeySegments && journey.journeySegments.length > 0
                                     )
                                 )
-                                .map((detail: StaffOrderDetailItem, idx: number) => {
-                                    const va = detail.vehicleAssignment!;
+                                .map((va, idx: number) => {
                                     return (
                                         <div key={idx} className="mb-6">
                                             {va.journeyHistories!.map((journey: any, journeyIdx: number) => {
@@ -195,20 +179,17 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="journey"
                 >
-                    {orderData.order.orderDetails.some((detail: StaffOrderDetailItem) =>
-                        detail.vehicleAssignment &&
-                        detail.vehicleAssignment.journeyHistories &&
-                        detail.vehicleAssignment.journeyHistories.length > 0
+                    {vehicleAssignments.some((va) =>
+                        va.journeyHistories &&
+                        va.journeyHistories.length > 0
                     ) ? (
                         <div>
-                            {orderData.order.orderDetails
-                                .filter((detail: StaffOrderDetailItem) =>
-                                    detail.vehicleAssignment &&
-                                    detail.vehicleAssignment.journeyHistories &&
-                                    detail.vehicleAssignment.journeyHistories.length > 0
+                            {vehicleAssignments
+                                .filter((va) =>
+                                    va.journeyHistories &&
+                                    va.journeyHistories.length > 0
                                 )
-                                .map((detail: StaffOrderDetailItem, idx: number) => {
-                                    const va = detail.vehicleAssignment!;
+                                .map((va, idx: number) => {
                                     return (
                                         <div key={idx} className="mb-4">
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>
@@ -294,20 +275,17 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="issues"
                 >
-                    {orderData.order.orderDetails.some(detail =>
-                        detail.vehicleAssignment &&
-                        detail.vehicleAssignment.issues &&
-                        detail.vehicleAssignment.issues.length > 0
+                    {vehicleAssignments.some(va =>
+                        va.issues &&
+                        va.issues.length > 0
                     ) ? (
                         <div className="p-2">
-                            {orderData.order.orderDetails
-                                .filter(detail =>
-                                    detail.vehicleAssignment &&
-                                    detail.vehicleAssignment.issues &&
-                                    detail.vehicleAssignment.issues.length > 0
+                            {vehicleAssignments
+                                .filter(va =>
+                                    va.issues &&
+                                    va.issues.length > 0
                                 )
-                                .map((detail, idx) => {
-                                    const va = detail.vehicleAssignment!;
+                                .map((va, idx) => {
                                     return (
                                         <div key={idx} className="mb-4">
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>
@@ -317,7 +295,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                         <InfoCircleOutlined className="text-red-500 mr-2" />
                                                         <span className="font-medium">Mô tả sự cố:</span>
                                                         <span className="ml-2">
-                                                            {issueItem.issue.description}
+                                                            {issueItem.issue.description || "Không có mô tả"}
                                                         </span>
                                                         <Tag
                                                             className="ml-2"
@@ -326,12 +304,12 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                                     ? "orange"
                                                                     : issueItem.issue.status === "PROCESSING"
                                                                         ? "blue"
-                                                                        : issueItem.issue.status === "RESOLVED"
+                                                                    : issueItem.issue.status === "RESOLVED"
                                                                             ? "green"
                                                                             : "red"
                                                             }
                                                         >
-                                                            {issueItem.issue.status}
+                                                            {issueItem.issue.status || "UNKNOWN"}
                                                         </Tag>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -341,7 +319,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                                 Loại sự cố:
                                                             </span>
                                                             <span>
-                                                                {issueItem.issue.issueTypeName}
+                                                                {issueItem.issue.issueTypeName || "Không xác định"}
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center">
@@ -350,7 +328,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                                 Nhân viên xử lý:
                                                             </span>
                                                             <span>
-                                                                {issueItem.issue.staff.name}
+                                                                {issueItem.issue.staff?.name || "Chưa phân công"}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -404,20 +382,17 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="penalties"
                 >
-                    {orderData.order.orderDetails.some(detail =>
-                        detail.vehicleAssignment &&
-                        detail.vehicleAssignment.penalties &&
-                        detail.vehicleAssignment.penalties.length > 0
+                    {vehicleAssignments.some(va =>
+                        va.penalties &&
+                        va.penalties.length > 0
                     ) ? (
                         <div className="p-2">
-                            {orderData.order.orderDetails
-                                .filter(detail =>
-                                    detail.vehicleAssignment &&
-                                    detail.vehicleAssignment.penalties &&
-                                    detail.vehicleAssignment.penalties.length > 0
+                            {vehicleAssignments
+                                .filter(va =>
+                                    va.penalties &&
+                                    va.penalties.length > 0
                                 )
-                                .map((detail, idx) => {
-                                    const va = detail.vehicleAssignment!;
+                                .map((va, idx) => {
                                     return (
                                         <div key={idx} className="mb-4">
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>
@@ -474,20 +449,17 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="seals"
                 >
-                    {orderData.order.orderDetails.some(detail =>
-                        detail.vehicleAssignment &&
-                        detail.vehicleAssignment.orderSeals &&
-                        detail.vehicleAssignment.orderSeals.length > 0
+                    {vehicleAssignments.some(va =>
+                        va.orderSeals &&
+                        va.orderSeals.length > 0
                     ) ? (
                         <div className="p-2">
-                            {orderData.order.orderDetails
-                                .filter(detail =>
-                                    detail.vehicleAssignment &&
-                                    detail.vehicleAssignment.orderSeals &&
-                                    detail.vehicleAssignment.orderSeals.length > 0
+                            {vehicleAssignments
+                                .filter(va =>
+                                    va.orderSeals &&
+                                    va.orderSeals.length > 0
                                 )
-                                .map((detail, idx) => {
-                                    const va = detail.vehicleAssignment!;
+                                .map((va, idx) => {
                                     return (
                                         <div key={idx} className="mb-4">
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>
@@ -540,20 +512,17 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="cameras"
                 >
-                    {orderData.order.orderDetails.some(detail =>
-                        detail.vehicleAssignment &&
-                        detail.vehicleAssignment.cameraTrackings &&
-                        detail.vehicleAssignment.cameraTrackings.length > 0
+                    {vehicleAssignments.some(va =>
+                        va.cameraTrackings &&
+                        va.cameraTrackings.length > 0
                     ) ? (
                         <div className="p-2">
-                            {orderData.order.orderDetails
-                                .filter(detail =>
-                                    detail.vehicleAssignment &&
-                                    detail.vehicleAssignment.cameraTrackings &&
-                                    detail.vehicleAssignment.cameraTrackings.length > 0
+                            {vehicleAssignments
+                                .filter(va =>
+                                    va.cameraTrackings &&
+                                    va.cameraTrackings.length > 0
                                 )
-                                .map((detail, idx) => {
-                                    const va = detail.vehicleAssignment!;
+                                .map((va, idx) => {
                                     return (
                                         <div key={idx} className="mb-4">
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>
@@ -613,18 +582,15 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="fuel"
                 >
-                    {orderData.order.orderDetails.some(detail =>
-                        detail.vehicleAssignment &&
-                        detail.vehicleAssignment.fuelConsumption
+                    {vehicleAssignments.some(va =>
+                        va.fuelConsumption
                     ) ? (
                         <div className="p-2">
-                            {orderData.order.orderDetails
-                                .filter(detail =>
-                                    detail.vehicleAssignment &&
-                                    detail.vehicleAssignment.fuelConsumption
+                            {vehicleAssignments
+                                .filter(va =>
+                                    va.fuelConsumption
                                 )
-                                .map((detail, idx) => {
-                                    const va = detail.vehicleAssignment!;
+                                .map((va, idx) => {
                                     const fuel = va.fuelConsumption!;
                                     return (
                                         <div key={idx} className="mb-4">
@@ -721,20 +687,17 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="photos"
                 >
-                    {orderData.order.orderDetails.some(detail =>
-                        detail.vehicleAssignment &&
-                        detail.vehicleAssignment.photoCompletions &&
-                        detail.vehicleAssignment.photoCompletions.length > 0
+                    {vehicleAssignments.some(va =>
+                        va.photoCompletions &&
+                        va.photoCompletions.length > 0
                     ) ? (
                         <div className="p-2">
-                            {orderData.order.orderDetails
-                                .filter(detail =>
-                                    detail.vehicleAssignment &&
-                                    detail.vehicleAssignment.photoCompletions &&
-                                    detail.vehicleAssignment.photoCompletions.length > 0
+                            {vehicleAssignments
+                                .filter(va =>
+                                    va.photoCompletions &&
+                                    va.photoCompletions.length > 0
                                 )
-                                .map((detail, idx) => {
-                                    const va = detail.vehicleAssignment!;
+                                .map((va, idx) => {
                                     return (
                                         <div key={idx} className="mb-4">
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>

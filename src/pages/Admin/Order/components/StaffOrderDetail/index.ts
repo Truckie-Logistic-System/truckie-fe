@@ -4,3 +4,4 @@ export { default as OrderDetailPackageTab } from './OrderDetailPackageTab';
 export { default as ContractAndPaymentTab } from './ContractAndPaymentTab';
 export { default as AdditionalNavTabs } from './AdditionalNavTabs';
 export { default as RouteMapSection } from './RouteMapSection';
+export { default as VehicleAssignmentSection } from './VehicleAssignmentSection';

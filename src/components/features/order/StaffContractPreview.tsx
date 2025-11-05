@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { DatePicker, InputNumber, Checkbox, message } from "antd";
 import dayjs from "dayjs";
 import type { ContractData } from "../../../services/contract/contractTypes";
-import { formatCurrency, formatDate } from "../../../utils/formatters";
+import type { ContractSettings } from "../../../models/Contract";
+import { formatCurrency } from "../../../utils/formatters";
 
 interface ContractCustomization {
   effectiveDate: string;
@@ -28,6 +29,7 @@ interface StaffContractPreviewProps {
   contractData: ContractData;
   customization?: ContractCustomization;
   content?: ContractContent;
+  contractSettings?: ContractSettings;
   onCustomizationChange?: (customization: ContractCustomization) => void;
 }
 
@@ -35,6 +37,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
   contractData,
   customization,
   content,
+  contractSettings,
   onCustomizationChange,
 }) => {
   const currentDate = new Date().toISOString();
@@ -57,17 +60,6 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
       setLocalCustomization(customization);
     }
   }, [customization]);
-
-  // Format dates for display
-  const effectiveDate = new Date(
-    localCustomization.effectiveDate
-  ).toLocaleDateString("vi-VN");
-  const expirationDate = new Date(
-    localCustomization.expirationDate
-  ).toLocaleDateString("vi-VN");
-  const adjustedValue = localCustomization.hasAdjustedValue
-    ? localCustomization.adjustedValue
-    : 0;
 
   // Handle date changes with validation
   const handleEffectiveDateChange = (date: dayjs.Dayjs | null) => {
@@ -129,31 +121,6 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
     setLocalCustomization(updated);
     onCustomizationChange?.(updated);
   };
-
-  // Use content customization if provided, otherwise use defaults
-  const companyName = content?.companyName || "TRUCKIE LOGISTICS";
-  const companyAddress =
-    content?.companyAddress || "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh";
-  const companyPhone = content?.companyPhone || "0123 456 789";
-  const companyEmail = content?.companyEmail || "contact@truckie.vn";
-  const representativeName =
-    content?.representativeName || "[Tên người đại diện]";
-  const representativeTitle = content?.representativeTitle || "Giám đốc";
-  const serviceDescription =
-    content?.serviceDescription ||
-    "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B.";
-  const paymentMethod = content?.paymentMethod || "Chuyển khoản";
-  const warrantyTerms =
-    content?.warrantyTerms || "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định";
-  const generalTerms =
-    content?.generalTerms ||
-    "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.";
-
-  // Calculate deposit amount
-  const depositAmount =
-    (contractData.priceDetails.finalTotal *
-      contractData.contractSettings.depositPercent) /
-    100;
 
   return (
     <div className="contract-preview bg-white p-8 max-w-4xl mx-auto">
@@ -245,131 +212,6 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
         <div className="subtitle">Mã hợp đồng: {contractData.contractId}</div>
       </div>
 
-      {/* Inline Editing Section */}
-      <div
-        style={{
-          backgroundColor: "#f0f9ff",
-          border: "2px solid #3b82f6",
-          borderRadius: "8px",
-          padding: "20px",
-          marginBottom: "30px",
-        }}
-      >
-        <h3
-          style={{
-            color: "#1e40af",
-            marginTop: 0,
-            marginBottom: "16px",
-            fontSize: "16px",
-            fontWeight: "bold",
-          }}
-        >
-          📝 Tùy chỉnh thông tin hợp đồng
-        </h3>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-            marginBottom: "16px",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontWeight: "600",
-                color: "#1f2937",
-              }}
-            >
-              Ngày bắt đầu hiệu lực:
-            </label>
-            <DatePicker
-              value={dayjs(localCustomization.effectiveDate)}
-              onChange={handleEffectiveDateChange}
-              format="DD/MM/YYYY"
-              placeholder="Chọn ngày bắt đầu"
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontWeight: "600",
-                color: "#1f2937",
-              }}
-            >
-              Ngày hết hạn:
-            </label>
-            <DatePicker
-              value={dayjs(localCustomization.expirationDate)}
-              onChange={handleExpirationDateChange}
-              format="DD/MM/YYYY"
-              placeholder="Chọn ngày hết hạn"
-              style={{ width: "100%" }}
-              disabledDate={(current) => {
-                return (
-                  current && current <= dayjs(localCustomization.effectiveDate)
-                );
-              }}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            borderTop: "1px solid #bfdbfe",
-            paddingTop: "16px",
-          }}
-        >
-          <div style={{ marginBottom: "8px" }}>
-            <Checkbox
-              checked={localCustomization.hasAdjustedValue}
-              onChange={(e) => handleHasAdjustedValueChange(e.target.checked)}
-              style={{ fontWeight: "600", color: "#1f2937" }}
-            >
-              Áp dụng giá trị điều chỉnh (trợ giá)
-            </Checkbox>
-          </div>
-
-          {localCustomization.hasAdjustedValue && (
-            <div style={{ marginLeft: "24px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  color: "#1f2937",
-                }}
-              >
-                Giá trị điều chỉnh (VNĐ):
-              </label>
-              <InputNumber
-                value={localCustomization.adjustedValue}
-                onChange={handleAdjustedValueChange}
-                min={0}
-                max={contractData.priceDetails.finalTotal}
-                formatter={(value) =>
-                  `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                }
-                parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ""))}
-                style={{ width: "100%" }}
-                placeholder="Nhập giá trị điều chỉnh"
-              />
-              <small
-                style={{ color: "#6b7280", display: "block", marginTop: "4px" }}
-              >
-                Tối đa: {formatCurrency(contractData.priceDetails.finalTotal)}
-              </small>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Contract Basic Info */}
       <div className="contract-info">
         <p>
@@ -392,22 +234,22 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           BÊN A: CÔNG TY DỊCH VỤ LOGISTICS (Bên cung cấp dịch vụ)
         </div>
         <p>
-          <strong>Tên công ty:</strong> {companyName}
+          <strong>Tên công ty:</strong> {content?.companyName || "TRUCKIE LOGISTICS"}
         </p>
         <p>
-          <strong>Địa chỉ:</strong> {companyAddress}
+          <strong>Địa chỉ:</strong> {content?.companyAddress || "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh"}
         </p>
         <p>
-          <strong>Điện thoại:</strong> {companyPhone}
+          <strong>Điện thoại:</strong> {content?.companyPhone || "0123 456 789"}
         </p>
         <p>
-          <strong>Email:</strong> {companyEmail}
+          <strong>Email:</strong> {content?.companyEmail || "contact@truckie.vn"}
         </p>
         <p>
-          <strong>Người đại diện:</strong> {representativeName}
+          <strong>Người đại diện:</strong> {content?.representativeName || "[Tên người đại diện]"}
         </p>
         <p>
-          <strong>Chức vụ:</strong> {representativeTitle}
+          <strong>Chức vụ:</strong> {content?.representativeTitle || "Giám đốc"}
         </p>
       </div>
 
@@ -446,7 +288,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           1.1. Bên A đồng ý cung cấp dịch vụ logistics cho Bên B theo các điều
           khoản được quy định trong hợp đồng này.
         </p>
-        <p>1.2. {serviceDescription}</p>
+        <p>1.2. {content?.serviceDescription || "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B."}</p>
       </div>
 
       <div className="terms-section">
@@ -464,7 +306,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           <tbody>
             <tr>
               <td>{contractData.orderInfo.orderCode}</td>
-              <td>{formatDate(contractData.orderInfo.createdAt)}</td>
+              <td>{new Date(contractData.orderInfo.createdAt).toLocaleDateString('vi-VN')}</td>
               <td>{contractData.orderInfo.receiverName}</td>
               <td>{contractData.orderInfo.receiverPhone}</td>
               <td>{contractData.orderInfo.totalQuantity}</td>
@@ -538,7 +380,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
                       </td>
                       <td>
                         {detail.estimatedStartTime
-                          ? formatDate(detail.estimatedStartTime)
+                          ? new Date(detail.estimatedStartTime).toLocaleDateString('vi-VN')
                           : "Chưa xác định"}
                       </td>
                     </tr>
@@ -572,7 +414,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           <tbody>
             {contractData.priceDetails.steps.map((step, index) => (
               <tr key={index}>
-                <td>{step.vehicleRuleName}</td>
+                <td>{step.sizeRuleName}</td>
                 <td>{step.numOfVehicles}</td>
                 <td>{step.distanceRange}</td>
                 <td>{formatCurrency(step.unitPrice)}</td>
@@ -646,12 +488,32 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             }}
           >
             <span>
-              <strong>Phí danh mục thêm:</strong>
+              <strong>Hệ số danh mục:</strong>
             </span>
-            <span>
-              {formatCurrency(contractData.priceDetails.categoryExtraFee)}
-            </span>
+            <span>{contractData.priceDetails.categoryMultiplier}</span>
           </div>
+
+            
+
+          
+
+          {/* VAT as separate row in price table */}
+          {contractSettings?.vatRate && (
+            <div
+              style={{
+                marginBottom: "8px",
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              <span>
+                <strong>VAT {(contractSettings.vatRate * 100).toFixed(1)}%:</strong>
+              </span>
+              <span>
+                {formatCurrency(contractData.priceDetails.finalTotal * contractSettings.vatRate)}
+              </span>
+            </div>
+          )}
 
           <div
             style={{
@@ -661,16 +523,16 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             }}
           >
             <span>
-              <strong>Hệ số danh mục:</strong>
+              <strong>Phí danh mục thêm:</strong>
             </span>
-            <span>{contractData.priceDetails.categoryMultiplier}</span>
+            <span>
+              {formatCurrency(contractData.priceDetails.categoryExtraFee)}
+            </span>
           </div>
 
           <div
             style={{
               marginBottom: "12px",
-              paddingBottom: "12px",
-              borderBottom: "1px dashed #d9d9d9",
               display: "flex",
               justifyContent: "space-between",
             }}
@@ -678,7 +540,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             <span>
               <strong>Giảm giá khuyến mãi:</strong>
             </span>
-            <span style={{ color: "#52c41a", fontWeight: "bold" }}>
+            <span style={{ fontWeight: "bold" }}>
               -{formatCurrency(contractData.priceDetails.promotionDiscount)}
             </span>
           </div>
@@ -687,17 +549,82 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             className="highlight"
             style={{
               padding: "10px",
-              backgroundColor: "#fff2cc",
+              backgroundColor: "#f5f5f5",
+              border: "1px solid #000",
               borderRadius: "4px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
             }}
           >
-            <strong style={{ fontSize: "14px" }}>TỔNG GIÁ TRỊ HỢP ĐỒNG:</strong>
-            <strong style={{ fontSize: "16px", color: "#d4380d" }}>
-              {formatCurrency(contractData.priceDetails.finalTotal)}
+            <strong style={{ fontSize: "14px", color: "#000" }}>
+              TỔNG GIÁ TRỊ HỢP ĐỒNG{contractSettings?.vatRate ? ' (Đã bao gồm VAT)' : ''}:
             </strong>
+            <strong style={{ fontSize: "16px", color: "#000" }}>
+              {formatCurrency(
+                contractSettings?.vatRate 
+                  ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+                  : contractData.priceDetails.finalTotal
+              )}
+            </strong>
+          </div>
+
+          {/* Adjusted Value Input - Right after total contract value */}
+          <div
+            style={{
+              marginTop: "12px",
+              padding: "12px",
+              backgroundColor: "#e6f7ff",
+              border: "2px solid #1890ff",
+              borderRadius: "4px",
+              boxShadow: "0 2px 4px rgba(24, 144, 255, 0.2)",
+            }}
+          >
+            <div style={{ marginBottom: "8px" }}>
+              <Checkbox
+                checked={localCustomization.hasAdjustedValue}
+                onChange={(e) => handleHasAdjustedValueChange(e.target.checked)}
+                style={{ fontWeight: "600", color: "#1890ff" }}
+              >
+                📝 Áp dụng giá trị điều chỉnh (trợ giá)
+              </Checkbox>
+            </div>
+
+            {localCustomization.hasAdjustedValue && (
+              <div style={{ marginLeft: "24px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#1890ff",
+                    fontWeight: "500",
+                  }}
+                >
+                  💰 Giá trị điều chỉnh (VNĐ):
+                </label>
+                <InputNumber
+                  value={localCustomization.adjustedValue}
+                  onChange={handleAdjustedValueChange}
+                  min={0}
+                  max={contractData.priceDetails.finalTotal}
+                  formatter={(value) =>
+                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                  }
+                  parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ""))}
+                  style={{ 
+                    width: "100%",
+                    borderColor: "#1890ff",
+                    boxShadow: "0 0 0 2px rgba(24, 144, 255, 0.2)"
+                  }}
+                  placeholder="Nhập giá trị điều chỉnh"
+                />
+                <small
+                  style={{ color: "#1890ff", display: "block", marginTop: "4px", fontWeight: "500" }}
+                >
+                  📊 Tối đa: {formatCurrency(contractData.priceDetails.finalTotal)}
+                </small>
+              </div>
+            )}
           </div>
         </div>
 
@@ -707,24 +634,37 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           </p>
           <p>
             - Đặt cọc: {contractData.contractSettings.depositPercent}% (
-            {formatCurrency(depositAmount)}) trong vòng{" "}
+            {formatCurrency(
+              ((contractSettings?.vatRate 
+                ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+                : contractData.priceDetails.finalTotal) *
+                contractData.contractSettings.depositPercent) /
+              100
+            )}) trong vòng{" "}
             {contractData.contractSettings.expiredDepositDate} ngày
           </p>
           <p>
             - Thanh toán còn lại:{" "}
             {formatCurrency(
-              contractData.priceDetails.finalTotal - depositAmount
+              (contractSettings?.vatRate 
+                ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+                : contractData.priceDetails.finalTotal) -
+                ((contractSettings?.vatRate 
+                  ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+                  : contractData.priceDetails.finalTotal) *
+                  contractData.contractSettings.depositPercent) /
+                  100
             )}{" "}
             khi hoàn thành dịch vụ
           </p>
-          <p>- Phương thức thanh toán: {paymentMethod}</p>
+          <p>- Phương thức thanh toán: {content?.paymentMethod || "Chuyển khoản"}</p>
           <p>
             - Phí bảo hiểm: {contractData.contractSettings.insuranceRate}% giá
             trị hàng hóa
           </p>
-          {adjustedValue > 0 && (
-            <p style={{ color: "#059669", fontWeight: "bold" }}>
-              - Giá trị điều chỉnh: {formatCurrency(adjustedValue)} (đã bao gồm
+          {localCustomization.hasAdjustedValue && localCustomization.adjustedValue > 0 && (
+            <p style={{ fontWeight: "bold" }}>
+              - Giá trị điều chỉnh: {formatCurrency(localCustomization.adjustedValue)} (đã bao gồm
               trong tổng giá trị hợp đồng)
             </p>
           )}
@@ -732,12 +672,11 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
       </div>
 
       <div className="terms-section">
-        <div className="terms-title">ĐIỀU 4: PHÂN CÔNG XE VÀ TÀI XẾ</div>
+        <div className="terms-title">ĐIỀU 4: PHÂN CÔNG XE</div>
         {contractData.assignResult && contractData.assignResult.length > 0 && (
           <table className="table">
             <thead>
               <tr>
-                <th>Chỉ số xe</th>
                 <th>Loại xe</th>
                 <th>Tải trọng hiện tại</th>
                 <th>Số chi tiết được giao</th>
@@ -746,9 +685,8 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             <tbody>
               {contractData.assignResult.map((assign, index) => (
                 <tr key={index}>
-                  <td>{assign.vehicleIndex}</td>
-                  <td>{assign.vehicleRuleName}</td>
-                  <td>{assign.currentLoad}</td>
+                  <td>{assign.sizeRuleName}</td>
+                  <td>{assign.currentLoad} {assign.currentLoadUnit}</td>
                   <td>{assign.assignedDetails.length}</td>
                 </tr>
               ))}
@@ -767,7 +705,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
         </p>
         <p>- Bảo đảm an toàn hàng hóa trong quá trình vận chuyển</p>
         <p>- Thông báo kịp thời cho Bên B về tình trạng hàng hóa</p>
-        <p>- {warrantyTerms}</p>
+        <p>- {content?.warrantyTerms || "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định"}</p>
 
         <p>
           <strong>5.2. Quyền và nghĩa vụ của Bên B:</strong>
@@ -793,12 +731,76 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           giải quyết bằng thương lượng. Nếu không thỏa thuận được, tranh chấp sẽ
           được giải quyết tại Tòa án có thẩm quyền.
         </p>
-        <p>6.4. {generalTerms}</p>
+        <p>6.4. {content?.generalTerms || "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc."}</p>
         <div>
           <p style={{ marginBottom: "5px" }}>
-            <strong>Thời gian hiệu lực:</strong> Từ ngày {effectiveDate} đến
-            ngày {expirationDate}
+            <strong>Thời gian hiệu lực:</strong>
           </p>
+          <div
+            style={{
+              display: "flex",
+              gap: "16px",
+              alignItems: "center",
+              marginTop: "8px",
+              padding: "12px",
+              backgroundColor: "#e6f7ff",
+              border: "2px solid #1890ff",
+              borderRadius: "4px",
+              boxShadow: "0 2px 4px rgba(24, 144, 255, 0.2)",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "600",
+                  color: "#1890ff",
+                }}
+              >
+                📅 Từ ngày:
+              </label>
+              <DatePicker
+                value={dayjs(localCustomization.effectiveDate)}
+                onChange={handleEffectiveDateChange}
+                format="DD/MM/YYYY"
+                placeholder="Chọn ngày bắt đầu"
+                style={{ 
+                  width: "100%",
+                  borderColor: "#1890ff",
+                  boxShadow: "0 0 0 2px rgba(24, 144, 255, 0.2)"
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "600",
+                  color: "#1890ff",
+                }}
+              >
+                📅 đến ngày:
+              </label>
+              <DatePicker
+                value={dayjs(localCustomization.expirationDate)}
+                onChange={handleExpirationDateChange}
+                format="DD/MM/YYYY"
+                placeholder="Chọn ngày hết hạn"
+                style={{ 
+                  width: "100%",
+                  borderColor: "#1890ff",
+                  boxShadow: "0 0 0 2px rgba(24, 144, 255, 0.2)"
+                }}
+                disabledDate={(current) => {
+                  return (
+                    current && current <= dayjs(localCustomization.effectiveDate)
+                  );
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -809,12 +811,12 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             <strong>BÊN A</strong>
           </p>
           <p>
-            <strong>{companyName}</strong>
+            <strong>{content?.companyName || "TRUCKIE LOGISTICS"}</strong>
           </p>
           <p style={{ marginTop: "60px" }}>________________</p>
-          <p>{representativeName}</p>
+          <p>{content?.representativeName || "[Tên người đại diện]"}</p>
           <p>
-            <em>{representativeTitle}</em>
+            <em>{content?.representativeTitle || "Giám đốc"}</em>
           </p>
         </div>
         <div className="signature-box">
@@ -834,7 +836,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
 
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <p>
-          <em>Hợp đồng được lập tại TP. Hồ Chí Minh, ngày {currentDate}</em>
+          <em>Hợp đồng được lập tại TP. Hồ Chí Minh, ngày {new Date().toLocaleDateString('vi-VN')}</em>
         </p>
       </div>
     </div>

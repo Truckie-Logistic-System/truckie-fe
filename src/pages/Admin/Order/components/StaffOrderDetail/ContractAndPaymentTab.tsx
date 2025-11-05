@@ -8,8 +8,8 @@ interface ContractAndPaymentTabProps {
     contractName: string;
     effectiveDate: string;
     expirationDate: string;
-    totalValue: string;
-    adjustedValue: string;
+    totalValue: number;
+    adjustedValue: number;
     description: string;
     attachFileUrl: string;
     status: string;
@@ -26,6 +26,7 @@ interface ContractAndPaymentTabProps {
   }[];
   orderId?: string; // Add orderId for contract creation
   depositAmount?: number;
+  onRefetch?: () => void; // Callback to refresh parent component data
 }
 
 const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
@@ -33,12 +34,18 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
   transactions,
   orderId,
   depositAmount,
+  onRefetch,
 }) => {
   return (
     <div>
       {/* Contract Information */}
       {contract && (
-        <StaffContractSection contract={contract} orderId={orderId} depositAmount={depositAmount} />
+        <StaffContractSection 
+          contract={contract} 
+          orderId={orderId} 
+          depositAmount={depositAmount} 
+          onRefetch={onRefetch}
+        />
       )}
 
       {/* Transaction Information */}

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Modal, App, Tabs, Timeline, Card, Skeleton, Typography } from 'antd';
-import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, CarOutlined, HistoryOutlined, ToolOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Button, App, Tabs, Card, Skeleton, Typography, Timeline } from 'antd';
+import { ArrowLeftOutlined, CarOutlined, HistoryOutlined, ToolOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import orderService from '@/services/order/orderService';
 import type { Order } from '@/models';
 import dayjs from 'dayjs';
@@ -15,7 +15,6 @@ import {
     VehicleAssignmentCard
 } from '@/components/features/order';
 
-const { confirm } = Modal;
 const { TabPane } = Tabs;
 const { Title } = Typography;
 
@@ -25,17 +24,20 @@ const OrderDetailPage: React.FC = () => {
     const messageApi = App.useApp().message;
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
-    const [activeTab, setActiveTab] = useState<string>("info");
+    const [activeTab, setActiveTab] = useState<string>(() => {
+        // Restore active tab from sessionStorage on initial load
+        return sessionStorage.getItem(`orderDetail_activeTab_${id}`) || "info";
+    });
 
-    // Lấy thông tin đơn hàng khi component mount
+    // Save active tab to sessionStorage whenever it changes
     useEffect(() => {
         if (id) {
-            fetchOrderDetails(id);
+            sessionStorage.setItem(`orderDetail_activeTab_${id}`, activeTab);
         }
-    }, [id]);
+    }, [activeTab, id]);
 
     // Hàm lấy thông tin chi tiết đơn hàng từ API
-    const fetchOrderDetails = async (orderId: string) => {
+    const fetchOrderDetails = useCallback(async (orderId: string) => {
         setLoading(true);
         try {
             const orderData = await orderService.getOrderById(orderId);
@@ -45,38 +47,15 @@ const OrderDetailPage: React.FC = () => {
             console.error('Error fetching order details:', error);
         } finally {
             setLoading(false);
+        };
+    }, [messageApi]);
+
+    // Lấy thông tin đơn hàng khi component mount
+    useEffect(() => {
+        if (id) {
+            fetchOrderDetails(id);
         }
-    };
-
-    // Xử lý khi click nút xóa đơn hàng
-    const handleDelete = () => {
-        if (!id) return;
-
-        confirm({
-            title: 'Xác nhận xóa đơn hàng',
-            icon: <ExclamationCircleOutlined />,
-            content: 'Bạn có chắc chắn muốn xóa đơn hàng này không? Hành động này không thể hoàn tác.',
-            okText: 'Xóa',
-            okType: 'danger',
-            cancelText: 'Hủy',
-            onOk: async () => {
-                try {
-                    await orderService.deleteOrder(id);
-                    messageApi.success('Đơn hàng đã được xóa thành công');
-                    navigate('/admin/orders');
-                } catch (error) {
-                    messageApi.error('Không thể xóa đơn hàng');
-                    console.error('Error deleting order:', error);
-                }
-            },
-        });
-    };
-
-    // Xử lý khi click nút sửa đơn hàng
-    const handleEdit = () => {
-        if (!id) return;
-        navigate(`/admin/orders/${id}/edit`);
-    };
+    }, [id, fetchOrderDetails]);
 
     // Xử lý khi click nút phân công tài xế
     const handleAssignDriver = () => {

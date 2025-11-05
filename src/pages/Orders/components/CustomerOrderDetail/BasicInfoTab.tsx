@@ -8,6 +8,7 @@ const { Title } = Typography;
 
 interface BasicInfoTabProps {
     order: any;
+    contract?: any;
     hasContract: boolean;
     checkingContract: boolean;
     loadingVehicleSuggestions: boolean;
@@ -16,6 +17,7 @@ interface BasicInfoTabProps {
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
     order,
+    contract,
     hasContract,
     checkingContract,
     loadingVehicleSuggestions,
@@ -29,6 +31,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 status={order.status}
                 createdAt={order.createdAt}
                 totalPrice={order.totalPrice}
+                contract={contract}
                 hasContract={hasContract}
                 checkingContract={checkingContract}
                 loadingVehicleSuggestions={loadingVehicleSuggestions}

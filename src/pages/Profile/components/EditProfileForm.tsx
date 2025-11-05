@@ -3,7 +3,7 @@ import { Form, Input, Button, App, Divider, Typography, Row, Col } from 'antd';
 import { SaveOutlined, BankOutlined, UserOutlined, PhoneOutlined, IdcardOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import type { Customer } from '@/models/Customer';
 import type { CustomerUpdateRequest } from '@/services/customer/types';
-import customerService from '@/services/customer/customerService';
+import { useProfileManagement } from '@/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 
 const { Text, Title } = Typography;
@@ -15,6 +15,7 @@ interface EditProfileFormProps {
 
 const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSuccess }) => {
     const [form] = Form.useForm();
+    const { updateProfile } = useProfileManagement();
     const [loading, setLoading] = useState(false);
     const queryClient = useQueryClient();
     const { message } = App.useApp();
@@ -33,7 +34,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSucce
     const handleSubmit = async (values: CustomerUpdateRequest) => {
         try {
             setLoading(true);
-            await customerService.updateCustomerProfile(customerData.id, values);
+            await updateProfile(values);
 
             // Làm mới dữ liệu cache
             queryClient.invalidateQueries({ queryKey: ['customerProfile'] });
