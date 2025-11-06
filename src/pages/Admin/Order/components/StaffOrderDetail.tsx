@@ -39,7 +39,7 @@ const StaffOrderDetail: React.FC = () => {
     StaffOrderDetailResponse["data"] | null
   >(null);
   const [loading, setLoading] = useState<boolean>(true);
-  // Persistence tab state with localStorage
+  // Tab persistence with validation based on order status
   const getInitialTab = () => {
     if (!id) return "basic";
     const savedTab = localStorage.getItem(`staffOrderDetail_${id}_activeTab`);
@@ -171,6 +171,44 @@ const StaffOrderDetail: React.FC = () => {
     autoConnect: true,
     onStatusChange: handleOrderStatusChange,
   });
+
+  // Validate and adjust active tab based on order status
+  const validateActiveTab = useCallback((tabKey: string, orderStatus?: string) => {
+    // If order is not loaded yet, return the tab as-is
+    if (!orderStatus) return tabKey;
+    
+    // Check if live tracking tab should be available
+    const shouldShowLiveTracking = [
+      OrderStatusEnum.PICKING_UP,
+      OrderStatusEnum.ON_DELIVERED,
+      OrderStatusEnum.ONGOING_DELIVERED,
+      OrderStatusEnum.IN_TROUBLES,
+      OrderStatusEnum.RESOLVED,
+      OrderStatusEnum.COMPENSATION,
+      OrderStatusEnum.DELIVERED,
+      OrderStatusEnum.SUCCESSFUL,
+      OrderStatusEnum.RETURNING,
+      OrderStatusEnum.RETURNED
+    ].includes(orderStatus as OrderStatusEnum);
+    
+    // If saved tab is liveTracking but it's not available, fallback to basic
+    if (tabKey === 'liveTracking' && !shouldShowLiveTracking) {
+      console.log('[StaffOrderDetail] 🔄 Tab validation: liveTracking not available, falling back to basic');
+      return 'basic';
+    }
+    
+    return tabKey;
+  }, []);
+
+  // Update active tab when order data changes (for validation)
+  useEffect(() => {
+    if (orderData?.order?.status) {
+      const validatedTab = validateActiveTab(activeMainTab, orderData.order.status);
+      if (validatedTab !== activeMainTab) {
+        setActiveMainTab(validatedTab);
+      }
+    }
+  }, [orderData?.order?.status, activeMainTab, validateActiveTab]);
 
   useEffect(() => {
     // Scroll to top when entering order detail page

@@ -287,24 +287,34 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
   // Focus vehicles before rendering markers to avoid "jumping"
   useEffect(() => {
     if (mapInstance && validVehicles.length > 0 && !hasInitialFocus) {
-      console.log('[OrderLiveTrackingOnly] 🎯 Focusing vehicles before render...');
+      console.log('[OrderLiveTrackingOnly] 🎯 Initial map focus for', validVehicles.length, 'vehicles');
       
-      // Fit bounds to all vehicles first
-      const bounds = new window.vietmapgl.LngLatBounds();
-      validVehicles.forEach((vehicle) => {
-        bounds.extend([vehicle.longitude, vehicle.latitude]);
-      });
-      
-      mapInstance.fitBounds(bounds, {
-        padding: 100,
-        duration: 800,
-        maxZoom: 15
-      });
+      // For single vehicle: focus on the vehicle with higher zoom
+      if (validVehicles.length === 1) {
+        const vehicle = validVehicles[0];
+        mapInstance.flyTo({
+          center: [vehicle.longitude, vehicle.latitude],
+          zoom: 15,
+          duration: 1000
+        });
+      } else {
+        // For multiple vehicles: fit bounds to show all vehicles
+        const bounds = new window.vietmapgl.LngLatBounds();
+        validVehicles.forEach((vehicle) => {
+          bounds.extend([vehicle.longitude, vehicle.latitude]);
+        });
+        
+        mapInstance.fitBounds(bounds, {
+          padding: { top: 100, bottom: 100, left: 350, right: 100 },
+          duration: 1000,
+          maxZoom: 14
+        });
+      }
       
       // Mark that we've done initial focus
       setTimeout(() => {
         setHasInitialFocus(true);
-      }, 900);
+      }, 1100);
     }
   }, [mapInstance, validVehicles.length, hasInitialFocus]);
 
@@ -417,13 +427,13 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     }
   }, [vehicleLocations.length, mapInstance, fitBoundsToVehicles]);
 
-  // Auto-focus on single vehicle - only ONCE (when there's only 1 vehicle)
-  // When there are 2+ vehicles, don't auto-focus - just show all routes
+  // Auto-focus on single vehicle when vehicle count changes to 1
+  // This handles cases where vehicles load one by one
   useEffect(() => {
-    if (vehicleLocations.length === 1 && mapInstance && !selectedVehicleId && !hasFocusedSingleVehicle.current) {
+    if (vehicleLocations.length === 1 && mapInstance && hasInitialFocus && !selectedVehicleId) {
       const vehicle = vehicleLocations[0];
-      if (vehicle.latitude !== null && vehicle.longitude !== null) {
-        console.log('[OrderLiveTrackingOnly] Auto-focusing on single vehicle:', vehicle.vehicleId);
+      if (vehicle.latitude !== null && vehicle.longitude !== null && !hasFocusedSingleVehicle.current) {
+        console.log('[OrderLiveTrackingOnly] 🎯 Auto-focusing on single vehicle:', vehicle.vehicleId);
         mapInstance.flyTo({
           center: [vehicle.longitude, vehicle.latitude],
           zoom: 15,
@@ -433,42 +443,56 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
       }
     }
     
-    // Reset auto-focus flag when:
-    // 1. Vehicle count is not 1 (i.e., 2+ vehicles - don't auto-focus)
-    // 2. User manually selected a vehicle
-    if (vehicleLocations.length !== 1 || selectedVehicleId) {
+    // Reset flag when vehicle count changes
+    if (vehicleLocations.length !== 1) {
       hasFocusedSingleVehicle.current = false;
     }
-  }, [vehicleLocations.length, mapInstance, selectedVehicleId]);
+  }, [vehicleLocations.length, mapInstance, hasInitialFocus, selectedVehicleId]);
 
-  // Focus on selected vehicle ONCE only
-  const hasInitialFocusRef = useRef(false);
-  
+  // Focus on selected vehicle when user selects it
   useEffect(() => {
     if (!selectedVehicleId || !mapInstance) {
-      hasInitialFocusRef.current = false;
       return;
     }
 
     const vehicle = vehicleLocations.find(v => v.vehicleId === selectedVehicleId);
     if (!vehicle || vehicle.latitude === null || vehicle.longitude === null) return;
 
-    if (!hasInitialFocusRef.current) {
-      console.log('[OrderLiveTrackingOnly] Initial focus on selected vehicle');
-      hasInitialFocusRef.current = true;
-      
-      mapInstance.easeTo({
-        center: [vehicle.longitude, vehicle.latitude],
-        zoom: 15,
-        duration: 1000,
-        easing: (t: number) => t * (2 - t)
-      });
+    console.log('[OrderLiveTrackingOnly] 🎯 Focusing on selected vehicle:', selectedVehicleId);
+    
+    mapInstance.flyTo({
+      center: [vehicle.longitude, vehicle.latitude],
+      zoom: 15,
+      duration: 1200,
+      easing: (t: number) => t * (2 - t)
+    });
+  }, [selectedVehicleId, mapInstance, vehicleLocations]);
+
+  // Auto-follow single vehicle when it updates position
+  useEffect(() => {
+    // Only auto-follow when:
+    // 1. Tracking is active and connected
+    // 2. There's exactly one vehicle
+    // 3. No vehicle is manually selected by user
+    // 4. Map is ready and initial focus is done
+    if (!shouldShowRealTimeTracking || !isConnected || !mapInstance || !hasInitialFocus) {
+      return;
     }
 
-    return () => {
-      hasInitialFocusRef.current = false;
-    };
-  }, [selectedVehicleId, mapInstance]);
+    if (vehicleLocations.length === 1 && !selectedVehicleId) {
+      const vehicle = vehicleLocations[0];
+      if (vehicle.latitude !== null && vehicle.longitude !== null) {
+        console.log('[OrderLiveTrackingOnly] 🎯 Auto-following single vehicle update:', vehicle.vehicleId);
+        
+        // Use easeTo for smooth following (less dramatic than flyTo)
+        mapInstance.easeTo({
+          center: [vehicle.longitude, vehicle.latitude],
+          zoom: 15,
+          duration: 800
+        });
+      }
+    }
+  }, [vehicleLocations, shouldShowRealTimeTracking, isConnected, mapInstance, hasInitialFocus, selectedVehicleId]);
 
   // Callback khi click vào marker xe
   const handleVehicleMarkerClick = useCallback((vehicle: VehicleLocationMessage) => {
@@ -476,7 +500,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     setSelectedVehicleId(vehicle.vehicleId);
     
     if (mapInstance && vehicle.latitude !== null && vehicle.longitude !== null) {
-      mapInstance.easeTo({
+      mapInstance.flyTo({
         center: [vehicle.longitude, vehicle.latitude],
         zoom: 15,
         duration: 1200,

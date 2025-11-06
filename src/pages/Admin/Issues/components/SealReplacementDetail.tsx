@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Image, Button, Select, message, Modal, Space, Tag, Alert, Typography, Row, Col, Divider } from 'antd';
+import { Card, Image, Button, Select, message, Space, Tag, Alert, Typography, Row, Col, Divider, App } from 'antd';
 import { 
     CheckCircleOutlined, 
     SwapOutlined, 
@@ -11,14 +11,12 @@ import {
     CameraOutlined,
     SafetyOutlined
 } from '@ant-design/icons';
-import type { Issue, Seal } from '@/models/Issue';
-import issueService from '@/services/issue/issueService';
-import { useAuth } from '@/context/AuthContext';
-import { getSealStatusLabel, getSealStatusColor } from '@/constants/sealConstants';
+import type { Issue, Seal } from '../../../../models/Issue';
+import issueService from '../../../../services/issue/issueService';
+import { useAuth } from '../../../../context/AuthContext';
+import { getSealStatusLabel, getSealStatusColor } from '../../../../constants/sealConstants';
 
 const { Text } = Typography;
-
-const { confirm } = Modal;
 
 interface SealReplacementDetailProps {
     issue: Issue;
@@ -27,6 +25,7 @@ interface SealReplacementDetailProps {
 
 const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, onUpdate }) => {
     const { user } = useAuth();
+    const { modal } = App.useApp();
     const [loading, setLoading] = useState(false);
     const [activeSeals, setActiveSeals] = useState<Seal[]>([]);
     const [selectedSealId, setSelectedSealId] = useState<string | null>(null);
@@ -37,7 +36,9 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
         user,
         userRole: user?.role,
         issueStatus: issue.status,
-        issueId: issue.id
+        issueId: issue.id,
+        issueCategory: issue.issueCategory,
+        shouldRenderForSealReplacement: issue.issueCategory === 'SEAL_REPLACEMENT'
     });
 
     // Auto-fetch active seals when component mounts or issue changes
@@ -69,6 +70,13 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
         try {
             const seals = await issueService.getActiveSeals(issue.vehicleAssignment.id);
             console.log('[SealReplacementDetail] Received seals:', seals);
+            console.log('[SealReplacementDetail] Seal details:', seals.map(s => ({
+                id: s.id,
+                sealCode: s.sealCode,
+                status: s.status,
+                vehicleAssignmentId: s.vehicleAssignment?.id,
+                description: s.description
+            })));
             setActiveSeals(seals);
         } catch (error: any) {
             console.error('[SealReplacementDetail] Error fetching seals:', error);
@@ -89,44 +97,143 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
             console.log('[SealReplacementDetail] ❌ Missing required data');
             console.log('- selectedSealId:', selectedSealId);
             console.log('- user:', user);
+            message.error('Vui lòng chọn seal và đảm bảo bạn đã đăng nhập!');
             return;
         }
 
+        const selectedSeal = activeSeals.find(s => s.id === selectedSealId);
         console.log('[SealReplacementDetail] ✅ All data valid, showing confirm dialog');
+        console.log('[SealReplacementDetail] Selected seal details:', selectedSeal);
         
-        confirm({
-            title: 'Xác nhận gán seal mới',
-            content: `Bạn có chắc muốn gán seal mới cho sự cố này?`,
-            okText: 'Xác nhận',
-            cancelText: 'Hủy',
-            onOk: async () => {
-                console.log('[SealReplacementDetail] 🚀 User confirmed - starting API call');
-                setLoading(true);
-                try {
-                    console.log('[SealReplacementDetail] 📡 Calling issueService.assignNewSeal...');
-                    const updated = await issueService.assignNewSeal(issue.id, selectedSealId, user.id);
-                    console.log('[SealReplacementDetail] ✅ API call successful:', updated);
-                    console.log('[SealReplacementDetail] 🔄 Calling onUpdate...');
-                    onUpdate(updated);
-                    console.log('[SealReplacementDetail] 📢 Showing success message');
-                    message.success('Đã gán seal mới thành công! Tài xế sẽ nhận được thông báo.');
-                } catch (error: any) {
-                    console.error('[SealReplacementDetail] ❌ API call failed:', error);
-                    console.error('[SealReplacementDetail] Error details:', {
-                        message: error.message,
-                        status: error.response?.status,
-                        data: error.response?.data
+        // Validate selected seal status
+        if (!selectedSeal) {
+            console.error('[SealReplacementDetail] ❌ Selected seal not found in activeSeals list');
+            message.error('Seal được chọn không hợp lệ. Vui lòng chọn lại seal.');
+            return;
+        }
+        
+        if (selectedSeal.status !== 'ACTIVE') {
+            console.error('[SealReplacementDetail] ❌ Selected seal status is not ACTIVE:', selectedSeal.status);
+            message.error(`Seal được chọn có trạng thái ${selectedSeal.status}, không phải ACTIVE. Vui lòng chọn seal có trạng thái ACTIVE.`);
+            return;
+        }
+        
+        // Try using modal.confirm from App.useApp()
+        try {
+            modal.confirm({
+                title: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <SwapOutlined style={{ color: '#1890ff', fontSize: 20 }} />
+                        <span style={{ fontSize: 18, fontWeight: 600 }}>Xác nhận gán seal mới</span>
+                    </div>
+                ),
+                content: (
+                    <div style={{ padding: '16px 0' }}>
+                        <p style={{ fontSize: 16, marginBottom: 16, color: '#262626' }}>
+                            Bạn có chắc muốn gán seal mới cho sự cố này?
+                        </p>
+                        <div style={{ 
+                            background: '#f6f8fa', 
+                            padding: 12, 
+                            borderRadius: 8,
+                            border: '1px solid #e8e8e8'
+                        }}>
+                            <div style={{ fontSize: 14, color: '#8c8c8c', marginBottom: 4 }}>
+                                Seal sẽ được gán:
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 500, color: '#1890ff' }}>
+                                {selectedSeal?.sealCode || 'N/A'}
+                            </div>
+                        </div>
+                    </div>
+                ),
+                okText: 'Xác nhận',
+                cancelText: 'Hủy',
+                okButtonProps: {
+                    type: 'primary',
+                    size: 'large',
+                    style: {
+                        borderRadius: 6,
+                        height: 40,
+                        fontWeight: 500
+                    }
+                },
+                cancelButtonProps: {
+                    size: 'large',
+                    style: {
+                        borderRadius: 6,
+                        height: 40,
+                        fontWeight: 500
+                    }
+                },
+                centered: true,
+                width: 480,
+                maskClosable: false,
+                onOk: async () => {
+                    console.log('[SealReplacementDetail] 🚀 User confirmed - starting API call');
+                    console.log('[SealReplacementDetail] 📤 API call data:', {
+                        issueId: issue.id,
+                        sealId: selectedSealId,
+                        userId: user.id,
+                        sealDetails: selectedSeal
                     });
-                    message.error(error.message || 'Không thể gán seal mới');
-                } finally {
-                    console.log('[SealReplacementDetail] 🔄 Resetting loading state');
-                    setLoading(false);
+                    setLoading(true);
+                    try {
+                        console.log('[SealReplacementDetail] 📡 Calling issueService.assignNewSeal...');
+                        const updated = await issueService.assignNewSeal(issue.id, selectedSealId, user.id);
+                        console.log('[SealReplacementDetail] ✅ API call successful:', updated);
+                        console.log('[SealReplacementDetail] 🔄 Calling onUpdate...');
+                        onUpdate(updated);
+                        console.log('[SealReplacementDetail] 📢 Showing success message');
+                        message.success('Đã gán seal mới thành công! Tài xế sẽ nhận được thông báo.');
+                    } catch (error: any) {
+                        console.error('[SealReplacementDetail] ❌ API call failed:', error);
+                        console.error('[SealReplacementDetail] Error details:', {
+                            message: error.message,
+                            status: error.response?.status,
+                            data: error.response?.data
+                        });
+                        message.error(error.message || 'Không thể gán seal mới');
+                    } finally {
+                        console.log('[SealReplacementDetail] 🔄 Resetting loading state');
+                        setLoading(false);
+                    }
+                },
+                onCancel: () => {
+                    console.log('[SealReplacementDetail] ❌ User cancelled the confirmation');
                 }
-            },
-            onCancel: () => {
-                console.log('[SealReplacementDetail] ❌ User cancelled the confirmation');
+            });
+        } catch (error) {
+            console.error('[SealReplacementDetail] ❌ modal.confirm error:', error);
+            // Re-validate before fallback
+            const fallbackSeal = activeSeals.find(s => s.id === selectedSealId);
+            if (!fallbackSeal || fallbackSeal.status !== 'ACTIVE') {
+                console.error('[SealReplacementDetail] ❌ Fallback validation failed - seal not ACTIVE');
+                message.error('Seal được chọn không hợp lệ hoặc không có trạng thái ACTIVE.');
+                return;
             }
-        });
+            
+            // Final fallback - use browser confirm
+            const confirmMessage = `Bạn có chắc muốn gán seal mới cho sự cố này?\n\nSeal sẽ được gán: ${fallbackSeal.sealCode}\nMã sự cố: ${issue.id}`;
+            if (window.confirm(confirmMessage)) {
+                console.log('[SealReplacementDetail] 🚀 User confirmed with window.confirm - starting API call');
+                (async () => {
+                    setLoading(true);
+                    try {
+                        const updated = await issueService.assignNewSeal(issue.id, selectedSealId, user.id);
+                        onUpdate(updated);
+                        message.success('Đã gán seal mới thành công! Tài xế sẽ nhận được thông báo.');
+                    } catch (error: any) {
+                        console.error('[SealReplacementDetail] ❌ API call failed:', error);
+                        message.error(error.message || 'Không thể gán seal mới');
+                    } finally {
+                        setLoading(false);
+                    }
+                })();
+            } else {
+                message.info('Đã hủy gán seal mới');
+            }
+        }
     };
 
     // Render based on issue status
@@ -222,29 +329,20 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
                         </Col>
 
                         <Col xs={24} lg={12}>
-                            {(() => {
-                                console.log('[SealReplacementDetail] Checking user role:', {
-                                    user,
-                                    role: user?.role,
-                                    isStaff: user?.role === 'staff',
-                                    shouldShowCard: user?.role === 'staff'
-                                });
-                                return user?.role === 'staff';
-                            })() && (
-                                <Card 
-                                    title={
-                                        <Space>
-                                            <SwapOutlined style={{ color: '#1890ff' }} />
-                                            <span>Gán seal mới</span>
-                                        </Space>
-                                    }
-                                    bordered={false}
-                                    style={{ 
-                                        height: '100%',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                        borderTop: '3px solid #1890ff'
-                                    }}
-                                >
+                            <Card 
+                                title={
+                                    <Space>
+                                        <SwapOutlined style={{ color: '#1890ff' }} />
+                                        <span>Gán seal mới</span>
+                                    </Space>
+                                }
+                                bordered={false}
+                                style={{ 
+                                    height: '100%',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                    borderTop: '3px solid #1890ff'
+                                }}
+                            >
                                     <Space direction="vertical" size="large" style={{ width: '100%' }}>
                                         <Alert
                                             message="Hướng dẫn"
@@ -259,11 +357,11 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
                                                 <ReloadOutlined spin style={{ fontSize: 24, color: '#1890ff' }} />
                                                 <div style={{ marginTop: 8 }}>Đang tải danh sách seal...</div>
                                             </div>
-                                        ) : activeSeals.length > 0 ? (
+                                        ) : activeSeals.filter(seal => seal.status === 'ACTIVE').length > 0 ? (
                                             <>
                                                 <div>
                                                     <Text strong style={{ marginBottom: 8, display: 'block' }}>
-                                                        Chọn seal mới ({activeSeals.length} seal khả dụng):
+                                                        Chọn seal mới ({activeSeals.filter(seal => seal.status === 'ACTIVE').length} seal khả dụng):
                                                     </Text>
                                                     <Select
                                                         placeholder="Chọn seal mới để thay thế"
@@ -274,7 +372,7 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
                                                         showSearch
                                                         optionFilterProp="children"
                                                     >
-                                                        {activeSeals.map((seal) => (
+                                                        {activeSeals.filter(seal => seal.status === 'ACTIVE').map((seal) => (
                                                             <Select.Option key={seal.id} value={seal.id}>
                                                                 <Space>
                                                                     <SafetyOutlined style={{ color: '#52c41a' }} />
@@ -289,7 +387,10 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
                                                 <Button
                                                     type="primary"
                                                     icon={<SwapOutlined />}
-                                                    onClick={handleAssignNewSeal}
+                                                    onClick={() => {
+                                                        console.log('[SealReplacementDetail] 🖱️ Button clicked directly!');
+                                                        handleAssignNewSeal();
+                                                    }}
                                                     loading={loading}
                                                     disabled={!selectedSealId}
                                                     size="large"
@@ -313,7 +414,6 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
                                         )}
                                     </Space>
                                 </Card>
-                            )}
                         </Col>
                     </Row>
                 </div>

@@ -39,6 +39,9 @@ export interface Seal {
     sealAttachedImage?: string;
     sealRemovalTime?: string;
     sealRemovalReason?: string;
+    vehicleAssignment?: {
+        id: string;
+    };
 }
 
 export interface IssueTypeEntity {

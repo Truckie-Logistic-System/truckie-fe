@@ -43,7 +43,14 @@ const CustomerOrderDetail: React.FC = () => {
     CustomerOrderDetailResponse["data"] | null
   >(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeMainTab, setActiveMainTab] = useState<string>("basic");
+  // Tab persistence with validation based on order status
+  const getInitialTab = () => {
+    if (!id) return "basic";
+    const savedTab = localStorage.getItem(`customerOrderDetail_${id}_activeTab`);
+    return savedTab || "basic";
+  };
+  
+  const [activeMainTab, setActiveMainTab] = useState<string>(getInitialTab());
   const [activeDetailTab, setActiveDetailTab] = useState<string>("0");
   const [vehicleSuggestions, setVehicleSuggestions] = useState<
     VehicleSuggestion[]
@@ -212,6 +219,51 @@ const CustomerOrderDetail: React.FC = () => {
     onRefreshNeeded: handleRefreshNeeded,
   });
 
+  // Validate and adjust active tab based on order status
+  const validateActiveTab = useCallback((tabKey: string, orderStatus?: string) => {
+    // If order is not loaded yet, return the tab as-is
+    if (!orderStatus) return tabKey;
+    
+    // Check if live tracking tab should be available
+    const shouldShowLiveTracking = [
+      OrderStatusEnum.PICKING_UP,
+      OrderStatusEnum.ON_DELIVERED,
+      OrderStatusEnum.ONGOING_DELIVERED,
+      OrderStatusEnum.IN_TROUBLES,
+      OrderStatusEnum.RESOLVED,
+      OrderStatusEnum.COMPENSATION,
+      OrderStatusEnum.DELIVERED,
+      OrderStatusEnum.SUCCESSFUL,
+      OrderStatusEnum.RETURNING,
+      OrderStatusEnum.RETURNED
+    ].includes(orderStatus as OrderStatusEnum);
+    
+    // If saved tab is liveTracking but it's not available, fallback to basic
+    if (tabKey === 'liveTracking' && !shouldShowLiveTracking) {
+      console.log('[CustomerOrderDetail] 🔄 Tab validation: liveTracking not available, falling back to basic');
+      return 'basic';
+    }
+    
+    return tabKey;
+  }, []);
+  
+  // Update active tab when order data changes (for validation)
+  useEffect(() => {
+    if (orderData?.order?.status) {
+      const validatedTab = validateActiveTab(activeMainTab, orderData.order.status);
+      if (validatedTab !== activeMainTab) {
+        setActiveMainTab(validatedTab);
+      }
+    }
+  }, [orderData?.order?.status, activeMainTab, validateActiveTab]);
+  
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    if (id) {
+      localStorage.setItem(`customerOrderDetail_${id}_activeTab`, activeMainTab);
+    }
+  }, [activeMainTab, id]);
+
   useEffect(() => {
     // Scroll to top when entering order detail page
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -259,9 +311,9 @@ const CustomerOrderDetail: React.FC = () => {
     }
   }, [orderData?.order?.status]);
 
-  // Auto scroll to map when activeMainTab changes to liveTracking
+  // Auto scroll to map when activeMainTab changes to liveTracking or when page loads with liveTracking active
   useEffect(() => {
-    if (activeMainTab === 'liveTracking') {
+    if (activeMainTab === 'liveTracking' && !loading && orderData) {
       setTimeout(() => {
         const mapContainer = document.getElementById('customer-live-tracking-map');
         if (mapContainer) {
@@ -270,7 +322,7 @@ const CustomerOrderDetail: React.FC = () => {
         }
       }, 300);
     }
-  }, [activeMainTab]);
+  }, [activeMainTab, loading, orderData]);
 
   // Check if should show Live Tracking tab (status >= PICKING_UP)
   const shouldShowLiveTracking = orderData?.order && [
