@@ -4,38 +4,63 @@ import {
     Card,
     Button,
     Skeleton,
-    Modal,
-    Form,
-    Select,
     message,
     Row,
-    Col
+    Col,
+    App
 } from 'antd';
 import {
-    ArrowLeftOutlined
+    ArrowLeftOutlined,
+    CheckCircleOutlined,
+    ExclamationCircleOutlined
 } from '@ant-design/icons';
 import issueService from '@/services/issue';
-import type { Issue, IssueStatus } from '@/models/Issue';
-import { IssueEnum, IssueStatusLabels } from '@/constants/enums';
-import { enumToSelectOptions } from '@/utils/enumUtils';
+import type { Issue } from '@/models/Issue';
 import SealReplacementDetail from '../../../Admin/Issues/components/SealReplacementDetail';
 import VehicleDriverInfo from './VehicleDriverInfo';
 import IssueInfoCard from './IssueInfoCard';
 import RefundProcessingDetail from './RefundProcessingDetail';
+import PenaltyDetail from './PenaltyDetail';
+import OrderRejectionDetail from './OrderRejectionDetail';
+import issueWebSocket from '@/services/websocket/issueWebSocket';
 
 const IssueDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { modal } = App.useApp();
     const [issue, setIssue] = useState<Issue | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
-    const [updateStatusModalVisible, setUpdateStatusModalVisible] = useState<boolean>(false);
-    const [form] = Form.useForm();
+    const [resolvingPenalty, setResolvingPenalty] = useState<boolean>(false);
 
     // Lấy thông tin sự cố khi component mount
     useEffect(() => {
         if (id) {
             fetchIssueDetails(id);
         }
+    }, [id]);
+
+    // Subscribe to real-time issue updates via WebSocket
+    useEffect(() => {
+        if (!id) return;
+
+        console.log(`📡 [IssueDetail] Subscribing to updates for issue: ${id}`);
+        
+        const unsubscribe = issueWebSocket.subscribeToIssue(id, (updatedIssue) => {
+            console.log('🔔 [IssueDetail] Received real-time update for issue:', updatedIssue.id);
+            console.log('   - Status:', updatedIssue.status);
+            console.log('   - Refreshing issue details...');
+            
+            // Show notification to user
+            message.success('Sự cố đã được cập nhật! Đang tải lại dữ liệu...');
+            
+            // Refresh issue details from API
+            fetchIssueDetails(id);
+        });
+
+        return () => {
+            console.log(`📡 [IssueDetail] Unsubscribing from updates for issue: ${id}`);
+            unsubscribe();
+        };
     }, [id]);
 
     // Hàm lấy thông tin chi tiết sự cố từ API
@@ -49,6 +74,8 @@ const IssueDetail: React.FC = () => {
                 issueCategory: data.issueCategory,
                 orderDetail: data.orderDetail,
                 issueImages: data.issueImages,
+                hasSender: !!data.sender,
+                sender: data.sender,
                 timestamp: new Date().toLocaleTimeString()
             });
             setIssue(data);
@@ -60,32 +87,52 @@ const IssueDetail: React.FC = () => {
         }
     };
 
-    // Mở modal cập nhật trạng thái
-    const showUpdateStatusModal = () => {
-        if (issue) {
-            form.setFieldsValue({ status: issue.status });
-            setUpdateStatusModalVisible(true);
-        }
-    };
-
-    // Xử lý khi submit form cập nhật trạng thái
-    const handleUpdateStatus = async (values: { status: IssueStatus }) => {
-        if (!id || !issue) return;
-
-        try {
-            await issueService.updateIssue(id, { status: values.status });
-            message.success('Cập nhật trạng thái thành công');
-            setUpdateStatusModalVisible(false);
-            fetchIssueDetails(id);
-        } catch (error) {
-            message.error('Không thể cập nhật trạng thái');
-            console.error('Error updating issue status:', error);
-        }
-    };
 
     // Xử lý khi issue được update (cho SealReplacementDetail)
     const handleIssueUpdate = (updatedIssue: Issue) => {
         setIssue(updatedIssue);
+    };
+
+    // Xử lý xác nhận giải quyết penalty issue
+    const handleResolvePenalty = () => {
+        console.log('🔵 handleResolvePenalty called');
+        if (!id || !issue) {
+            console.log('❌ Missing id or issue');
+            return;
+        }
+
+        console.log('✅ Opening confirm modal');
+        modal.confirm({
+            title: 'Xác nhận đã giải quyết',
+            icon: <ExclamationCircleOutlined />,
+            content: 'Bạn đã làm việc với tài xế và giải quyết xong vi phạm giao thông này?',
+            okText: 'Xác nhận',
+            cancelText: 'Hủy',
+            centered: true,
+            okButtonProps: {
+                style: {
+                    backgroundColor: '#52c41a',
+                    borderColor: '#52c41a'
+                }
+            },
+            onOk: async () => {
+                console.log('✅ User confirmed, updating status...');
+                setResolvingPenalty(true);
+                try {
+                    await issueService.updateIssueStatus(id, 'RESOLVED');
+                    message.success('Đã xác nhận giải quyết vi phạm giao thông thành công');
+                    fetchIssueDetails(id);
+                } catch (error) {
+                    message.error('Không thể cập nhật trạng thái');
+                    console.error('Error resolving penalty issue:', error);
+                } finally {
+                    setResolvingPenalty(false);
+                }
+            },
+            onCancel: () => {
+                console.log('❌ User cancelled');
+            }
+        });
     };
 
     if (loading) {
@@ -162,15 +209,38 @@ const IssueDetail: React.FC = () => {
                 >
                     Quay lại danh sách
                 </Button>
-                <div>
-                    <Button
-                        type="primary"
-                        onClick={showUpdateStatusModal}
-                        className="mr-2"
-                    >
-                        Cập nhật trạng thái
-                    </Button>
-                </div>
+                {/* Chỉ hiển thị nút xác nhận giải quyết cho PENALTY issues và status OPEN */}
+                {(issue.issueCategory === 'PENALTY' || issue.issueTypeEntity?.issueCategory === 'PENALTY') && 
+                 issue.status === 'OPEN' && (
+                    <div>
+                        <Button
+                            type="primary"
+                            icon={<CheckCircleOutlined />}
+                            onClick={handleResolvePenalty}
+                            loading={resolvingPenalty}
+                            size="large"
+                            style={{ 
+                                backgroundColor: '#52c41a',
+                                borderColor: '#52c41a',
+                                transition: 'all 0.3s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#73d13d';
+                                e.currentTarget.style.borderColor = '#73d13d';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(82, 196, 26, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#52c41a';
+                                e.currentTarget.style.borderColor = '#52c41a';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}
+                        >
+                            Xác nhận đã giải quyết
+                        </Button>
+                    </div>
+                )}
             </div>
 
             <Row gutter={[16, 16]}>
@@ -205,31 +275,24 @@ const IssueDetail: React.FC = () => {
                         />
                     </Col>
                 )}
-            </Row>
 
-            {/* Modal cập nhật trạng thái */}
-            <Modal
-                title="Cập nhật trạng thái sự cố"
-                open={updateStatusModalVisible}
-                onCancel={() => setUpdateStatusModalVisible(false)}
-                onOk={() => form.submit()}
-                okText="Cập nhật"
-                cancelText="Hủy"
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleUpdateStatus}
-                >
-                    <Form.Item
-                        name="status"
-                        label="Trạng thái"
-                        rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
-                    >
-                        <Select options={enumToSelectOptions(IssueEnum, IssueStatusLabels)} />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                {/* Penalty Detail - Hiển thị khi issue là loại penalty (vi phạm giao thông) */}
+                {(issue.issueCategory === 'PENALTY' || issue.issueTypeEntity?.issueCategory === 'PENALTY') && (
+                    <Col span={24}>
+                        <PenaltyDetail issue={issue} />
+                    </Col>
+                )}
+
+                {/* Order Rejection Detail - Hiển thị khi issue là loại người nhận từ chối */}
+                {(issue.issueCategory === 'ORDER_REJECTION' || issue.issueTypeEntity?.issueCategory === 'ORDER_REJECTION') && (
+                    <Col span={24}>
+                        <OrderRejectionDetail 
+                            issue={issue}
+                            onUpdate={handleIssueUpdate} 
+                        />
+                    </Col>
+                )}
+            </Row>
         </div>
     );
 };

@@ -147,7 +147,7 @@ export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
                                         {group.orderDetails.slice(0, 3).map((detail) => (
                                             <div key={detail.id} className="text-xs text-gray-600 flex justify-between items-center">
                                                 <span className="font-medium text-blue-600">{detail.trackingCode}</span>
-                                                <span className="text-gray-500">{detail.weightBaseUnit} {detail.unit}</span>
+                                                <span className="text-gray-500">{detail.totalWeight} kg</span>
                                             </div>
                                         ))}
                                         {group.orderDetails.length > 3 && (

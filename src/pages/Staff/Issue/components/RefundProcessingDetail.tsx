@@ -14,13 +14,20 @@ import {
     Space,
     Row,
     Col,
-    Divider
+    Divider,
+    Modal,
+    App
 } from 'antd';
 import {
     UploadOutlined,
     CheckCircleOutlined,
     DollarOutlined,
-    InboxOutlined
+    InboxOutlined,
+    ExclamationCircleOutlined,
+    PhoneOutlined,
+    MailOutlined,
+    HomeOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import type { Issue } from '@/models/Issue';
@@ -36,6 +43,7 @@ interface RefundProcessingDetailProps {
 }
 
 const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, orderDetailId, onUpdate }) => {
+    const { modal } = App.useApp();
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [refund, setRefund] = useState<Refund | null>(null);
@@ -108,58 +116,80 @@ const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, 
     };
 
     const handleProcessRefund = async (values: any) => {
-        console.log('📤 [RefundProcessing] Starting refund submission');
-        console.log('   - FileList length:', fileList.length);
-        if (fileList.length > 0) {
-            console.log('   - File[0]:', {
-                name: fileList[0].name,
-                size: fileList[0].size,
-                type: fileList[0].type,
-                hasOriginFileObj: !!fileList[0].originFileObj,
-                originFileObj: fileList[0].originFileObj,
-            });
-        }
-        
-        setLoading(true);
-        try {
-            // Get file from fileList
-            let imageFile: File | undefined;
-            if (fileList.length > 0) {
-                // Try originFileObj first (from beforeUpload), then the file itself
-                imageFile = (fileList[0].originFileObj || fileList[0]) as File;
-                console.log('   - Using image file:', {
-                    name: imageFile.name,
-                    size: imageFile.size,
-                    type: imageFile.type,
-                });
-            }
-            
-            const request: ProcessRefundRequest = {
-                issueId: issue.id,
-                orderDetailId: orderDetailId,
-                refundAmount: values.refundAmount,
-                bankName: values.bankName,
-                accountNumber: values.accountNumber,
-                accountHolderName: values.accountHolderName,
-                transactionCode: values.transactionCode,
-                notes: values.notes,
-                bankTransferImage: imageFile,
-            };
+        // Show confirmation modal
+        modal.confirm({
+            title: 'Xác nhận xử lý đền bù',
+            icon: <ExclamationCircleOutlined />,
+            content: (
+                <div>
+                    <p><strong>Bạn có chắc chắn muốn xử lý đền bù với thông tin sau?</strong></p>
+                    <p>• Số tiền hoàn: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(values.refundAmount)}</strong></p>
+                    <p>• Ngân hàng: <strong>{values.bankName}</strong></p>
+                    <p>• Số tài khoản: <strong>{values.accountNumber}</strong></p>
+                    <p>• Tên tài khoản: <strong>{values.accountHolderName}</strong></p>
+                    <p style={{ marginTop: '12px', color: '#ff4d4f' }}>
+                        <strong>⚠️ Lưu ý:</strong> Sau khi xác nhận, hành động này không thể hoàn tác!
+                    </p>
+                </div>
+            ),
+            okText: 'Xác nhận xử lý',
+            cancelText: 'Hủy',
+            okButtonProps: { danger: true },
+            onOk: async () => {
+                console.log('📤 [RefundProcessing] Starting refund submission');
+                console.log('   - FileList length:', fileList.length);
+                if (fileList.length > 0) {
+                    console.log('   - File[0]:', {
+                        name: fileList[0].name,
+                        size: fileList[0].size,
+                        type: fileList[0].type,
+                        hasOriginFileObj: !!fileList[0].originFileObj,
+                        originFileObj: fileList[0].originFileObj,
+                    });
+                }
+                
+                setLoading(true);
+                try {
+                    // Get file from fileList
+                    let imageFile: File | undefined;
+                    if (fileList.length > 0) {
+                        // Try originFileObj first (from beforeUpload), then the file itself
+                        imageFile = (fileList[0].originFileObj || fileList[0]) as File;
+                        console.log('   - Using image file:', {
+                            name: imageFile.name,
+                            size: imageFile.size,
+                            type: imageFile.type,
+                        });
+                    }
+                    
+                    const request: ProcessRefundRequest = {
+                        issueId: issue.id,
+                        orderDetailId: orderDetailId,
+                        refundAmount: values.refundAmount,
+                        bankName: values.bankName,
+                        accountNumber: values.accountNumber,
+                        accountHolderName: values.accountHolderName,
+                        transactionCode: values.transactionCode,
+                        notes: values.notes,
+                        bankTransferImage: imageFile,
+                    };
 
-            const refundData = await refundService.processRefund(request);
-            message.success('Đã xử lý hoàn tiền thành công!');
-            setRefund(refundData);
-            form.resetFields();
-            setFileList([]);
+                    const refundData = await refundService.processRefund(request);
+                    message.success('Đã xử lý hoàn tiền thành công!');
+                    setRefund(refundData);
+                    form.resetFields();
+                    setFileList([]);
 
-            // Update issue status
-            onUpdate({ ...issue, status: 'RESOLVED' });
-        } catch (error: any) {
-            message.error(error.message || 'Không thể xử lý hoàn tiền');
-            console.error('Error processing refund:', error);
-        } finally {
-            setLoading(false);
-        }
+                    // Update issue status
+                    onUpdate({ ...issue, status: 'RESOLVED' });
+                } catch (error: any) {
+                    message.error(error.message || 'Không thể xử lý hoàn tiền');
+                    console.error('Error processing refund:', error);
+                } finally {
+                    setLoading(false);
+                }
+            },
+        });
     };
 
     if (loadingRefund) {
@@ -275,6 +305,13 @@ const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, 
         );
     }
 
+    // Debug: Log issue data to check sender
+    console.log('[RefundProcessingDetail] Issue data:', {
+        hasSender: !!issue.sender,
+        sender: issue.sender,
+        issueCategory: issue.issueCategory
+    });
+
     // Show refund processing form
     return (
         <Card className="shadow-md">
@@ -282,6 +319,90 @@ const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, 
                 <DollarOutlined className="text-blue-500 text-2xl mr-2" />
                 <Title level={4} className="mb-0">Xử lý hoàn tiền cho hàng hư hại</Title>
             </div>
+
+            {/* Show customer contact information */}
+            {issue.sender && (
+                <div style={{ 
+                    background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                    padding: 16,
+                    borderRadius: 8,
+                    border: '2px solid #64b5f6',
+                    marginBottom: 16
+                }}>
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                        <Space>
+                            <UserOutlined style={{ color: '#1976d2', fontSize: 16 }} />
+                            <Text strong style={{ fontSize: 15, color: '#1976d2' }}>
+                                Thông tin khách hàng (Người gửi)
+                            </Text>
+                        </Space>
+                        <div style={{ marginLeft: 24 }}>
+                            <Row gutter={[16, 8]}>
+                                {issue.sender.companyName && (
+                                    <Col span={12}>
+                                        <Space>
+                                            <HomeOutlined style={{ color: '#1976d2' }} />
+                                            <div>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>Công ty:</Text>
+                                                <br />
+                                                <Text strong>{issue.sender.companyName}</Text>
+                                            </div>
+                                        </Space>
+                                    </Col>
+                                )}
+                                {issue.sender.representativeName && (
+                                    <Col span={12}>
+                                        <Space>
+                                            <UserOutlined style={{ color: '#1976d2' }} />
+                                            <div>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>Người đại diện:</Text>
+                                                <br />
+                                                <Text strong>{issue.sender.representativeName}</Text>
+                                            </div>
+                                        </Space>
+                                    </Col>
+                                )}
+                                {issue.sender.representativePhone && (
+                                    <Col span={12}>
+                                        <Space>
+                                            <PhoneOutlined style={{ color: '#1976d2' }} />
+                                            <div>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>Số điện thoại:</Text>
+                                                <br />
+                                                <Text strong copyable style={{ color: '#1976d2' }}>{issue.sender.representativePhone}</Text>
+                                            </div>
+                                        </Space>
+                                    </Col>
+                                )}
+                                {issue.sender.userResponse?.email && (
+                                    <Col span={12}>
+                                        <Space>
+                                            <MailOutlined style={{ color: '#1976d2' }} />
+                                            <div>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>Email:</Text>
+                                                <br />
+                                                <Text strong copyable style={{ color: '#1976d2' }}>{issue.sender.userResponse.email}</Text>
+                                            </div>
+                                        </Space>
+                                    </Col>
+                                )}
+                                {issue.sender.businessAddress && (
+                                    <Col span={24}>
+                                        <Space align="start">
+                                            <HomeOutlined style={{ color: '#1976d2', marginTop: 4 }} />
+                                            <div>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>Địa chỉ kinh doanh:</Text>
+                                                <br />
+                                                <Text>{issue.sender.businessAddress}</Text>
+                                            </div>
+                                        </Space>
+                                    </Col>
+                                )}
+                            </Row>
+                        </div>
+                    </Space>
+                </div>
+            )}
 
             {/* Show damaged package info */}
             {(issue.orderDetailEntity || issue.orderDetail) && (

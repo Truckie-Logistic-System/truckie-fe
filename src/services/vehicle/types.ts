@@ -10,4 +10,14 @@ export type GetVehicleMaintenancesResponse = ApiResponse<VehicleMaintenance[]>;
 export type GetVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>;
 export type GetVehicleMaintenanceDetailResponse = ApiResponse<VehicleMaintenanceDetail>;
 export type CreateVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>;
-export type UpdateVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>; 
+export type UpdateVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>;
+
+export interface CreateVehicleTypeRequest {
+  vehicleTypeName: string;
+  description: string;
+}
+
+export interface UpdateVehicleTypeRequest {
+  vehicleTypeName?: string;
+  description?: string;
+}

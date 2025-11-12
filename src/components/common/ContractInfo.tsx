@@ -126,7 +126,7 @@ const ContractInfo: React.FC<ContractInfoProps> = ({
             Tổng giá trị:
           </Text>
           <Text className="text-lg font-semibold text-green-600">
-            {contract.totalValue === "0"
+            {contract.totalValue === 0
               ? "Chưa xác định"
               : `${contract.totalValue} VNĐ`}
           </Text>

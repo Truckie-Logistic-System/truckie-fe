@@ -56,6 +56,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
 
   // Filter valid vehicles
   const validVehicles = vehicleLocations.filter(vehicle =>
+    vehicle.latitude != null && vehicle.longitude != null &&
     !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
     isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
   );
@@ -167,6 +168,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     if (!mapInstance || vehicleLocations.length === 0) return;
 
     const validVehicles = vehicleLocations.filter(v =>
+      v.latitude != null && v.longitude != null &&
       !isNaN(v.latitude) && !isNaN(v.longitude) &&
       isFinite(v.latitude) && isFinite(v.longitude)
     );
@@ -292,8 +294,8 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     console.log('[RouteMapWithRealTimeTracking] Vehicle marker clicked:', vehicle);
     console.log('Vehicle position:', { lat: vehicle.latitude, lng: vehicle.longitude });
     console.log('Is valid position?', {
-      latValid: !isNaN(vehicle.latitude) && isFinite(vehicle.latitude),
-      lngValid: !isNaN(vehicle.longitude) && isFinite(vehicle.longitude)
+      latValid: vehicle.latitude != null && !isNaN(vehicle.latitude) && isFinite(vehicle.latitude),
+      lngValid: vehicle.longitude != null && !isNaN(vehicle.longitude) && isFinite(vehicle.longitude)
     });
     setSelectedVehicleId(vehicle.vehicleId);
     
@@ -343,6 +345,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
 
     if (isConnected && vehicleLocations.length > 0) {
       const validVehicleCount = vehicleLocations.filter(vehicle =>
+        vehicle.latitude != null && vehicle.longitude != null &&
         !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
         isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
       ).length;
@@ -467,6 +470,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
                 <div className="max-h-96 overflow-y-auto p-2 space-y-2">
                   {vehicleLocations
                     .filter(v =>
+                      v.latitude != null && v.longitude != null &&
                       !isNaN(v.latitude) && !isNaN(v.longitude) &&
                       isFinite(v.latitude) && isFinite(v.longitude)
                     )
@@ -489,11 +493,11 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
                             </span>
                           </div>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                            vehicle.assignmentStatus === 'ACTIVE'
+                            vehicle.orderDetailStatus === 'ACTIVE'
                               ? 'bg-green-100 text-green-700'
                               : 'bg-gray-200 text-gray-600'
                           }`}>
-                            {vehicle.assignmentStatus}
+                            {vehicle.orderDetailStatus}
                           </span>
                         </div>
 
@@ -523,10 +527,12 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
                               )}
                             </div>
                           )}
-                          <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1 pt-1 border-t border-gray-200">
-                            <span>⏱️</span>
-                            <span>{new Date(vehicle.lastUpdated).toLocaleString('vi-VN')}</span>
-                          </div>
+                          {vehicle.lastUpdated && (
+                            <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1 pt-1 border-t border-gray-200">
+                              <span>⏱️</span>
+                              <span>{new Date(vehicle.lastUpdated).toLocaleString('vi-VN')}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -570,6 +576,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
           <div>
             {vehicleLocations
               .filter(vehicle =>
+                vehicle.latitude != null && vehicle.longitude != null &&
                 !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
                 isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
               )

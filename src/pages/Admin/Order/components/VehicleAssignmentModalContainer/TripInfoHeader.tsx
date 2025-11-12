@@ -36,14 +36,11 @@ export const TripInfoHeader: React.FC<TripInfoHeaderProps> = ({ group, tripIndex
                             <div className="space-y-1 max-h-32 overflow-y-auto">
                                 {group.orderDetails.map((detail, idx) => (
                                     <div key={detail.id} className="text-xs pl-2 border-l-2 border-blue-300">
-                                        <span className="font-medium text-gray-800">
+                                        <span className="text-blue-600 font-medium">
                                             {idx + 1}. {detail.trackingCode}
                                         </span>
-                                        {detail.description && (
-                                            <span className="text-gray-600 ml-2">- {detail.description} </span>
-                                        )}
                                         <span className="font-medium text-gray-800">
-                                            - {detail.weightBaseUnit} {detail.unit}
+                                            - {detail.totalWeight} kg
                                         </span>
                                     </div>
                                 ))}

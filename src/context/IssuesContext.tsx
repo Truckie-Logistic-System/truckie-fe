@@ -5,8 +5,10 @@ import type { IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import type { Issue } from '@/models/Issue';
 import issueService from '@/services/issue/issueService';
-import { message as antdMessage } from 'antd';
+import { message as antdMessage, Modal } from 'antd';
 import { useAuth } from '@/context';
+import { SoundType, playNotificationSound, playMultipleBeeps } from '@/utils/soundUtils';
+import SealConfirmationModal from '@/components/modals/SealConfirmationModal';
 
 interface IssuesContextType {
   issues: Issue[];
@@ -47,11 +49,13 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'>('ALL');
   const [error, setError] = useState<string | null>(null);
   const [newIssueForModal, setNewIssueForModal] = useState<Issue | null>(null);
+  const [sealConfirmationData, setSealConfirmationData] = useState<any>(null);
 
   const { user, isAuthenticated } = useAuth();
   const clientRef = useRef<Client | null>(null);
   const subscriptionNewRef = useRef<any>(null);
   const subscriptionStatusRef = useRef<any>(null);
+  const subscriptionUserMessagesRef = useRef<any>(null);
 
   // Fetch issues from API
   const fetchIssues = useCallback(async () => {
@@ -82,10 +86,10 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     console.log('🆕 New issue received via WebSocket:', msg);
     
     setIssues((prev) => {
-      // Check if issue already exists
-      const exists = prev.some((issue) => issue.id === msg.id);
+      // Check if issue already exists to avoid duplicates
+      const exists = prev.some(issue => issue.id === msg.id);
       if (exists) {
-        console.warn('Issue already exists, skipping:', msg.id);
+        console.log('Issue already exists, skipping duplicate');
         return prev;
       }
       
@@ -93,11 +97,11 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       return [msg, ...prev];
     });
     
+    // Play notification sound for new issue
+    playMultipleBeeps(SoundType.NEW_ISSUE, 2, 300);
+    
     // Show modal for urgent notification
     showNewIssueModal(msg);
-    
-    // Play notification sound (optional)
-    // You can add audio notification here
     
     antdMessage.warning({
       content: `Sự cố mới: ${msg.description}`,
@@ -119,6 +123,63 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       content: `Sự cố ${msg.description.substring(0, 20)}... đã cập nhật`,
       duration: 3,
     });
+  }, []);
+
+  // Handle staff-specific messages from WebSocket
+  const handleStaffMessage = useCallback((messageData: any) => {
+    console.log('📬 [IssuesContext] Handle staff message:', messageData);
+    
+    switch (messageData.type) {
+      case 'SEAL_CONFIRMATION':
+        console.log('🔔 Showing SEAL_CONFIRMATION modal and notification');
+        
+        // Play notification sound for seal confirmation
+        playNotificationSound(SoundType.SEAL_CONFIRMATION, 0.7);
+        
+        // Show antd message first
+        antdMessage.success({
+          content: `✅ Driver ${messageData.driverName} đã gắn seal ${messageData.newSealCode} thành công`,
+          duration: 8,
+        });
+        
+        // Show browser notification if supported
+        if ('Notification' in window) {
+          if (Notification.permission === 'granted') {
+            new Notification('🔐 Xác nhận gắn seal mới', {
+              body: `Driver ${messageData.driverName} đã gắn seal ${messageData.newSealCode}`,
+              icon: '/favicon.ico'
+            });
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                new Notification('🔐 Xác nhận gắn seal mới', {
+                  body: `Driver ${messageData.driverName} đã gắn seal ${messageData.newSealCode}`,
+                  icon: '/favicon.ico'
+                });
+              }
+            });
+          }
+        }
+        
+        // Set data for custom modal component
+        setSealConfirmationData({
+          driverName: messageData.driverName,
+          newSealCode: messageData.newSealCode,
+          oldSealCode: messageData.oldSealCode,
+          timestamp: messageData.timestamp,
+          sealImageUrl: messageData.sealImageUrl,
+          oldSealImage: messageData.oldSealImage,
+          message: messageData.message,
+          journeyCode: messageData.journeyCode,
+          trackingCode: messageData.trackingCode,
+          vehicleAssignmentId: messageData.vehicleAssignmentId,
+          tripInfo: messageData.tripInfo
+        });
+        break;
+        
+      default:
+        console.log('❓ Unknown staff message type:', messageData.type);
+    }
   }, []);
 
   // Connect to WebSocket
@@ -180,7 +241,21 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         }
       );
 
-      console.log('✅ Staff user subscribed to issues topics');
+      // Subscribe to user-specific messages (SEAL_CONFIRMATION, etc.)
+      subscriptionUserMessagesRef.current = client.subscribe(
+        `/topic/staff/${user.id}/messages`,
+        (message: IMessage) => {
+          try {
+            const messageData = JSON.parse(message.body);
+            console.log('📬 Staff received user-specific message:', messageData);
+            handleStaffMessage(messageData);
+          } catch (error) {
+            console.error('Error parsing staff message:', error);
+          }
+        }
+      );
+
+      console.log('✅ Staff user subscribed to issues topics and user messages');
     };
 
     client.onWebSocketError = (event) => {
@@ -204,7 +279,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
 
     client.activate();
     clientRef.current = client;
-  }, [isAuthenticated, user, handleNewIssue, handleIssueStatusChange]);
+  }, [isAuthenticated, user, handleNewIssue, handleIssueStatusChange, handleStaffMessage]);
 
   // Disconnect WebSocket
   const disconnectWebSocket = useCallback(() => {
@@ -218,6 +293,11 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     if (subscriptionStatusRef.current) {
       subscriptionStatusRef.current.unsubscribe();
       subscriptionStatusRef.current = null;
+    }
+
+    if (subscriptionUserMessagesRef.current) {
+      subscriptionUserMessagesRef.current.unsubscribe();
+      subscriptionUserMessagesRef.current = null;
     }
 
     if (clientRef.current) {
@@ -246,6 +326,11 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   // Hide new issue modal
   const hideNewIssueModal = useCallback(() => {
     setNewIssueForModal(null);
+  }, []);
+
+  // Hide seal confirmation modal
+  const hideSealConfirmationModal = useCallback(() => {
+    setSealConfirmationData(null);
   }, []);
 
   // Auto-connect WebSocket on mount for staff users only
@@ -280,7 +365,18 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     newIssueForModal,
   };
 
-  return <IssuesContext.Provider value={value}>{children}</IssuesContext.Provider>;
+  return (
+    <IssuesContext.Provider value={value}>
+      {children}
+      {/* Seal Confirmation Modal */}
+      {sealConfirmationData && (
+        <SealConfirmationModal
+          data={sealConfirmationData}
+          onClose={hideSealConfirmationModal}
+        />
+      )}
+    </IssuesContext.Provider>
+  );
 };
 
 export default IssuesContext;

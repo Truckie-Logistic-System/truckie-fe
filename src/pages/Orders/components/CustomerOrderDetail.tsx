@@ -30,6 +30,7 @@ import OrderLiveTrackingOnly from "./CustomerOrderDetail/OrderLiveTrackingOnly";
 import ContractSection from "./CustomerOrderDetail/ContractSection";
 import TransactionSection from "./CustomerOrderDetail/TransactionSection";
 import VehicleSuggestionsModal from "./CustomerOrderDetail/VehicleSuggestionsModal";
+import ReturnShippingIssuesSection from "./CustomerOrderDetail/ReturnShippingIssuesSection";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -66,6 +67,7 @@ const CustomerOrderDetail: React.FC = () => {
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
   const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState<boolean>(false);
+  const [returnIssuesCount, setReturnIssuesCount] = useState<number>(0);
 
   // NOTE: Real-time tracking logic is now handled inside RouteMapWithRealTimeTracking
   // to prevent unnecessary re-renders of CustomerOrderDetail parent component
@@ -535,6 +537,9 @@ const CustomerOrderDetail: React.FC = () => {
           </Button>
         )}
       </div>
+
+      {/* Return Shipping Issues Section - Show if there are any issues */}
+      {id && <ReturnShippingIssuesSection orderId={id} onIssuesLoaded={setReturnIssuesCount} />}
 
       <Card className="mb-6 shadow-md rounded-xl">
         <Tabs

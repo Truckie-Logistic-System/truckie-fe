@@ -49,7 +49,9 @@ const mapApiResponseToIssue = (apiData: IssueApiResponse): Issue => {
         newSealConfirmedAt: apiData.newSealConfirmedAt,
         // Damage issue fields
         issueImages: apiData.issueImages,
-        orderDetail: apiData.orderDetail
+        orderDetail: apiData.orderDetail,
+        // Customer/Sender information
+        sender: apiData.sender
     };
 };
 
@@ -212,6 +214,26 @@ const issueService = {
         }
     },
 
+    /**
+     * Update issue status directly (for PENALTY and other simple issues)
+     * @param issueId Issue ID
+     * @param status New status (OPEN, IN_PROGRESS, RESOLVED)
+     * @returns Promise with updated issue
+     */
+    updateIssueStatus: async (issueId: string, status: IssueStatus): Promise<Issue> => {
+        try {
+            const response = await httpClient.put<IssueResponse>(
+                `/issues/${issueId}/status`,
+                null,
+                { params: { status } }
+            );
+            return mapApiResponseToIssue(response.data.data);
+        } catch (error: any) {
+            console.error('Error updating issue status:', error);
+            throw new Error(error.response?.data?.message || 'Không thể cập nhật trạng thái sự cố');
+        }
+    },
+
     // ==================== SEAL REPLACEMENT METHODS ====================
 
     /**
@@ -310,6 +332,61 @@ const issueService = {
         } catch (error: any) {
             console.error('Error fetching active seals:', error);
             throw new Error(error.response?.data?.message || 'Không thể tải danh sách seal');
+        }
+    },
+
+    // ===== ORDER_REJECTION flow methods =====
+
+    /**
+     * Calculate return shipping fee for ORDER_REJECTION issue
+     * @param issueId Issue ID
+     * @returns Promise with fee calculation details
+     */
+    calculateReturnShippingFee: async (issueId: string): Promise<any> => {
+        try {
+            const response = await httpClient.get(`/issues/order-rejection/${issueId}/return-fee`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error calculating return shipping fee:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tính cước phí trả hàng');
+        }
+    },
+
+    /**
+     * Get ORDER_REJECTION issue detail
+     * @param issueId Issue ID
+     * @returns Promise with rejection detail
+     */
+    getOrderRejectionDetail: async (issueId: string): Promise<any> => {
+        try {
+            const response = await httpClient.get(`/issues/order-rejection/${issueId}/detail`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error fetching order rejection detail:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tải chi tiết sự cố');
+        }
+    },
+
+    /**
+     * Process ORDER_REJECTION: create transaction and route (Staff)
+     * @param request Process request data
+     * @returns Promise with updated rejection detail
+     */
+    processOrderRejection: async (request: {
+        issueId: string;
+        adjustedReturnFee?: number;
+        routeSegments: any[];
+        totalTollFee: number;
+        totalTollCount: number;
+        totalDistance: number;
+        paymentDeadlineHours: number;
+    }): Promise<any> => {
+        try {
+            const response = await httpClient.post('/issues/order-rejection/process', request);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error processing order rejection:', error);
+            throw new Error(error.response?.data?.message || 'Không thể xử lý sự cố');
         }
     }
 };

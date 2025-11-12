@@ -261,7 +261,7 @@ const IssuesSidebar: React.FC = () => {
                         <UserOutlined className="text-green-600 text-xs" />
                       </div>
                       <Text className="text-gray-600">
-                        <span className="font-semibold text-gray-800">Tài xế:</span> {issue.vehicleAssignment.driver1.user?.fullName || 'N/A'}
+                        <span className="font-semibold text-gray-800">Tài xế:</span> {issue.vehicleAssignment.driver1.fullName || 'N/A'}
                       </Text>
                     </div>
                   )}

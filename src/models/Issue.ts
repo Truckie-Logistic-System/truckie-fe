@@ -24,6 +24,9 @@ export interface Issue {
     orderDetailEntity?: OrderDetailInfo; // The specific package that is damaged
     issueImages?: string[]; // URLs of damage images
     orderDetail?: OrderDetailForIssue; // Order detail info (tracking code, description, weight, unit)
+    
+    // Sender/Customer information (for damage and order rejection issues)
+    sender?: CustomerInfo; // Customer contact information for staff
 }
 
 // Order detail information for issue
@@ -46,7 +49,8 @@ export type IssueCategory =
     | 'DAMAGE'
     | 'MISSING_ITEMS'
     | 'WRONG_ITEMS'
-    | 'ORDER_REJECTION';
+    | 'ORDER_REJECTION'
+    | 'PENALTY';
 
 export interface Seal {
     id: string;
@@ -165,6 +169,22 @@ export interface OrderDetailInfo {
     status?: string;
 }
 
+export interface CustomerInfo {
+    id: string;
+    companyName?: string;
+    representativeName?: string;
+    representativePhone?: string;
+    businessLicenseNumber?: string;
+    businessAddress?: string;
+    status?: string;
+    userResponse?: {
+        id: string;
+        fullName?: string;
+        email?: string;
+        phoneNumber?: string;
+    };
+}
+
 export interface Role {
     id: string;
     roleName: string;
@@ -222,6 +242,10 @@ export const getIssueCategoryLabel = (category: IssueCategory): string => {
             return 'Thời tiết xấu';
         case 'CARGO_ISSUE':
             return 'Vấn đề hàng hóa';
+        case 'DAMAGE':
+            return 'Hàng hóa hư hại';
+        case 'PENALTY':
+            return 'Vi phạm giao thông';
         default:
             return category;
     }
@@ -241,6 +265,10 @@ export const getIssueCategoryColor = (category: IssueCategory): string => {
             return 'cyan';
         case 'CARGO_ISSUE':
             return 'gold';
+        case 'DAMAGE':
+            return 'volcano';
+        case 'PENALTY':
+            return 'magenta';
         default:
             return 'default';
     }

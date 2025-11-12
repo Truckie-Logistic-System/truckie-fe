@@ -449,17 +449,17 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="seals"
                 >
-                    {vehicleAssignments.some(va =>
+                    {vehicleAssignments.some((va: any) =>
                         va.orderSeals &&
                         va.orderSeals.length > 0
                     ) ? (
                         <div className="p-2">
                             {vehicleAssignments
-                                .filter(va =>
+                                .filter((va: any) =>
                                     va.orderSeals &&
                                     va.orderSeals.length > 0
                                 )
-                                .map((va, idx) => {
+                                .map((va: any, idx) => {
                                     return (
                                         <div key={idx} className="mb-4">
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>
@@ -512,17 +512,17 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     }
                     key="cameras"
                 >
-                    {vehicleAssignments.some(va =>
+                    {vehicleAssignments.some((va: any) =>
                         va.cameraTrackings &&
                         va.cameraTrackings.length > 0
                     ) ? (
                         <div className="p-2">
                             {vehicleAssignments
-                                .filter(va =>
+                                .filter((va: any) =>
                                     va.cameraTrackings &&
                                     va.cameraTrackings.length > 0
                                 )
-                                .map((va, idx) => {
+                                .map((va: any, idx) => {
                                     return (
                                         <div key={idx} className="mb-4">
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>
@@ -597,20 +597,20 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                             <h3 className="font-medium mb-2">Chuyến xe #{idx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}</h3>
                                             <div className="bg-blue-50 p-4 rounded-lg mb-4">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                    <div className="flex items-center">
+                                                        <DashboardOutlined className="mr-2 text-gray-500" />
+                                                        <span className="font-medium mr-1">Chỉ số đồng hồ bắt đầu:</span>
+                                                        <span>{fuel.odometerReadingAtStart} km</span>
+                                                    </div>
                                                     <div className="flex items-center">
                                                         <DashboardOutlined className="mr-2 text-gray-500" />
-                                                        <span className="font-medium mr-1">Chỉ số đồng hồ khi nạp:</span>
-                                                        <span>{fuel.odometerReadingAtRefuel} km</span>
+                                                        <span className="font-medium mr-1">Chỉ số đồng hồ kết thúc:</span>
+                                                        <span>{fuel.odometerReadingAtEnd} km</span>
                                                     </div>
                                                     <div className="flex items-center">
                                                         <FireOutlined className="mr-2 text-gray-500" />
-                                                        <span className="font-medium mr-1">Loại nhiên liệu:</span>
-                                                        <span>{fuel.fuelTypeName}</span>
-                                                    </div>
-                                                    <div className="flex items-center">
-                                                        <FileTextOutlined className="mr-2 text-gray-500" />
-                                                        <span className="font-medium mr-1">Mô tả nhiên liệu:</span>
-                                                        <span>{fuel.fuelTypeDescription}</span>
+                                                        <span className="font-medium mr-1">Khối lượng nhiên liệu:</span>
+                                                        <span>{fuel.fuelVolume} lít</span>
                                                     </div>
                                                     <div className="flex items-center">
                                                         <CalendarOutlined className="mr-2 text-gray-500" />
@@ -637,19 +637,6 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                         <Image
                                                             src={fuel.odometerAtStartUrl}
                                                             alt="Odometer at start"
-                                                            className="object-cover rounded"
-                                                        />
-                                                    </div>
-                                                )}
-                                                {fuel.odometerAtFinishUrl && (
-                                                    <div>
-                                                        <div className="flex items-center mb-2">
-                                                            <DashboardOutlined className="mr-2 text-blue-500" />
-                                                            <span className="font-medium">Đồng hồ khi hoàn thành</span>
-                                                        </div>
-                                                        <Image
-                                                            src={fuel.odometerAtFinishUrl}
-                                                            alt="Odometer at finish"
                                                             className="object-cover rounded"
                                                         />
                                                     </div>

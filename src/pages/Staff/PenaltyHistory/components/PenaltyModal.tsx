@@ -168,9 +168,7 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
                     label="Ngày vi phạm"
                     rules={[{ required: true, message: 'Vui lòng chọn ngày vi phạm' }]}
                 >
-                    <DateSelectGroup
-                        placeholder="Chọn ngày vi phạm"
-                    />
+                    <DateSelectGroup />
                 </Form.Item>
 
                 <Form.Item

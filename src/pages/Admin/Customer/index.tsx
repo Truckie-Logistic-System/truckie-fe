@@ -141,6 +141,8 @@ const CustomerPage: React.FC = () => {
                     loading={isLoading}
                     onViewDetails={handleViewDetails}
                     onStatusChange={handleStatusChange}
+                    getStatusColor={getStatusColor}
+                    getStatusText={getStatusText}
                 />
             }
             modalComponent={

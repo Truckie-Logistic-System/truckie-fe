@@ -200,12 +200,29 @@ const IssueModal: React.FC = () => {
 
           {/* Right Column - Issue Images */}
           {((newIssueForModal.issueCategory === 'DAMAGE' && newIssueForModal.issueImages && newIssueForModal.issueImages.length > 0) ||
-            (newIssueForModal.issueCategory === 'SEAL_REPLACEMENT' && newIssueForModal.sealRemovalImage)) && (
-            <div className={`p-2 rounded border ${newIssueForModal.issueCategory === 'DAMAGE' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
+            (newIssueForModal.issueCategory === 'SEAL_REPLACEMENT' && newIssueForModal.sealRemovalImage) ||
+            (newIssueForModal.issueCategory === 'PENALTY' && newIssueForModal.issueImages && newIssueForModal.issueImages.length > 0)) && (
+            <div className={`p-2 rounded border ${
+              newIssueForModal.issueCategory === 'DAMAGE' ? 'bg-red-50 border-red-200' : 
+              newIssueForModal.issueCategory === 'PENALTY' ? 'bg-purple-50 border-purple-200' :
+              'bg-yellow-50 border-yellow-200'
+            }`}>
               <div className="flex items-center gap-1 mb-1">
-                <PictureOutlined style={{ fontSize: '14px', color: newIssueForModal.issueCategory === 'DAMAGE' ? '#ef4444' : '#f59e0b' }} />
-                <Text strong style={{ fontSize: '11px', color: newIssueForModal.issueCategory === 'DAMAGE' ? '#dc2626' : '#d97706' }}>
-                  {newIssueForModal.issueCategory === 'DAMAGE' ? 'Hình hư hại' : 'Hình seal'}
+                <PictureOutlined style={{ 
+                  fontSize: '14px', 
+                  color: newIssueForModal.issueCategory === 'DAMAGE' ? '#ef4444' : 
+                         newIssueForModal.issueCategory === 'PENALTY' ? '#9333ea' : 
+                         '#f59e0b' 
+                }} />
+                <Text strong style={{ 
+                  fontSize: '11px', 
+                  color: newIssueForModal.issueCategory === 'DAMAGE' ? '#dc2626' : 
+                         newIssueForModal.issueCategory === 'PENALTY' ? '#7e22ce' : 
+                         '#d97706' 
+                }}>
+                  {newIssueForModal.issueCategory === 'DAMAGE' ? 'Hình hư hại' : 
+                   newIssueForModal.issueCategory === 'PENALTY' ? 'Biên bản vi phạm' : 
+                   'Hình seal'}
                 </Text>
               </div>
               <Image.PreviewGroup>
@@ -233,6 +250,33 @@ const IssueModal: React.FC = () => {
                           fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
                           onError={(e) => {
                             console.error('Image load error:', imageUrl, e);
+                          }}
+                        />
+                      );
+                    })
+                  ) : newIssueForModal.issueCategory === 'PENALTY' && newIssueForModal.issueImages ? (
+                    newIssueForModal.issueImages.map((imageUrl, index) => {
+                      console.log('Rendering penalty image:', imageUrl);
+                      return (
+                        <Image
+                          key={index}
+                          src={imageUrl}
+                          alt={`Biên bản vi phạm ${index + 1}`}
+                          style={{ 
+                            width: '100%',
+                            height: 'auto',
+                            maxHeight: '250px',
+                            objectFit: 'contain',
+                            borderRadius: '4px',
+                            border: '1px solid #9333ea',
+                            cursor: 'pointer'
+                          }}
+                          preview={{
+                            mask: 'Xem full size',
+                          }}
+                          fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+                          onError={(e) => {
+                            console.error('Penalty image load error:', imageUrl, e);
                           }}
                         />
                       );

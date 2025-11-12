@@ -104,6 +104,22 @@ export interface IssueApiResponse {
         weightBaseUnit: number;
         unit: string;
     };
+    // Customer/Sender information (for damage and order rejection issues)
+    sender?: {
+        id: string;
+        companyName?: string;
+        representativeName?: string;
+        representativePhone?: string;
+        businessLicenseNumber?: string;
+        businessAddress?: string;
+        status?: string;
+        userResponse?: {
+            id: string;
+            fullName?: string;
+            email?: string;
+            phoneNumber?: string;
+        };
+    };
 }
 
 export interface IssueCreateDto {
