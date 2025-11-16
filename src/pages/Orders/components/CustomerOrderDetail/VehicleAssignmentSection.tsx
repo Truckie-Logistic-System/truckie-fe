@@ -387,11 +387,19 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                                     >
                                         {/* Header */}
                                         <div className="flex items-start justify-between mb-3">
-                                            <div>
-                                                <div className="text-xs text-gray-500 font-medium">Mã sự cố</div>
-                                                <div className="text-lg font-bold text-gray-900">
-                                                    {issue.id || "Chưa có"}
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <ExclamationCircleOutlined className="text-xl text-red-600" />
+                                                    <div className="text-base font-semibold text-gray-900">
+                                                        {issue.issueTypeName || 'Sự cố'}
+                                                    </div>
                                                 </div>
+                                                {issue.reportedAt && (
+                                                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                        <ClockCircleOutlined />
+                                                        <span>Báo cáo: {dayjs(issue.reportedAt).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm')}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                             <Tag color={getIssueStatusColor(issue.status)}>
                                                 {getIssueStatusLabel(issue.status)}

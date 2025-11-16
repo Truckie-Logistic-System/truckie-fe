@@ -21,6 +21,10 @@ const PaymentReturn: React.FC = () => {
   const cancel = searchParams.get("cancel");
   const status = searchParams.get("status");
   const orderCode = searchParams.get("orderCode");
+  
+  // Get orderId from URL for navigation to order detail
+  // URL format: ...&orderId=xxx or extract from returnUrl
+  const urlOrderId = searchParams.get("orderId");
 
   useEffect(() => {
     const callWebhook = async () => {
@@ -138,7 +142,14 @@ const PaymentReturn: React.FC = () => {
             <Button
               size="large"
               icon={<FileTextOutlined />}
-              onClick={() => navigate("/orders")}
+              onClick={() => {
+                // Navigate to order detail if orderId exists, otherwise to order list
+                if (urlOrderId) {
+                  navigate(`/orders/${urlOrderId}`);
+                } else {
+                  navigate("/orders");
+                }
+              }}
               key="orders"
             >
               Xem đơn hàng

@@ -54,7 +54,6 @@ export const useOrderStatusTracking = (
   const subscriptionRef = useRef<any>(null);
   const reconnectAttemptRef = useRef(0);
   const lastMessageRef = useRef<OrderStatusChangeMessage | null>(null);
-  const maxReconnectAttempts = 5;
 
   // Store callbacks in refs to avoid dependency issues
   const onStatusChangeRef = useRef(options.onStatusChange);
@@ -196,15 +195,13 @@ export const useOrderStatusTracking = (
       setIsConnecting(false);
       setError(`Lỗi kết nối: ${frame.headers['message'] || 'Unknown error'}`);
       
-      // Auto-reconnect with exponential backoff
-      if (reconnectAttemptRef.current < maxReconnectAttempts) {
-        reconnectAttemptRef.current++;
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptRef.current - 1), 30000);
-        console.log(`[OrderStatusTracking] 🔄 Attempting reconnect (${reconnectAttemptRef.current}/${maxReconnectAttempts}) in ${delay}ms`);
-        setTimeout(() => {
-          connect();
-        }, delay);
-      }
+      // Auto-reconnect with exponential backoff - unlimited retries
+      reconnectAttemptRef.current++;
+      const delay = Math.min(5000 * Math.pow(2, Math.min(reconnectAttemptRef.current - 1, 3)), 30000);
+      console.log(`[OrderStatusTracking] 🔄 Attempting reconnect (attempt #${reconnectAttemptRef.current}) in ${delay}ms`);
+      setTimeout(() => {
+        connect();
+      }, delay);
     };
 
     // WebSocket error handler
@@ -214,15 +211,13 @@ export const useOrderStatusTracking = (
       setIsConnecting(false);
       setError('Lỗi kết nối WebSocket');
       
-      // Auto-reconnect with exponential backoff
-      if (reconnectAttemptRef.current < maxReconnectAttempts) {
-        reconnectAttemptRef.current++;
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptRef.current - 1), 30000);
-        console.log(`[OrderStatusTracking] 🔄 Attempting reconnect (${reconnectAttemptRef.current}/${maxReconnectAttempts}) in ${delay}ms`);
-        setTimeout(() => {
-          connect();
-        }, delay);
-      }
+      // Auto-reconnect with exponential backoff - unlimited retries
+      reconnectAttemptRef.current++;
+      const delay = Math.min(5000 * Math.pow(2, Math.min(reconnectAttemptRef.current - 1, 3)), 30000);
+      console.log(`[OrderStatusTracking] 🔄 Attempting reconnect (attempt #${reconnectAttemptRef.current}) in ${delay}ms`);
+      setTimeout(() => {
+        connect();
+      }, delay);
     };
 
     // Disconnection handler

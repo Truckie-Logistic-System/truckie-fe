@@ -53,7 +53,6 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     orderId: shouldShowRealTimeTracking ? orderId : undefined,
     autoConnect: shouldShowRealTimeTracking,
     reconnectInterval: 5000,
-    maxReconnectAttempts: 5,
   });
 
   // Filter valid vehicles
@@ -306,7 +305,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     if (isConnecting) {
       return (
         <Alert
-          message="Đang kết nối WebSocket..."
+          message="Đang kết nối tới máy chủ..."
           type="info"
           icon={<LoadingOutlined />}
           showIcon

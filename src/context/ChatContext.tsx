@@ -573,13 +573,16 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         webSocketFactory: () => {
           return new SockJS(sockJsUrl);
         },
-        reconnectDelay: 5000,
+        reconnectDelay: 5000, // Auto-reconnect every 5 seconds - unlimited retries
+        heartbeatIncoming: 4000, // Send heartbeat every 4 seconds
+        heartbeatOutgoing: 4000, // Expect heartbeat every 4 seconds
         // debug: (str) => console.log('STOMP Debug:', str),
       });
 
       stompClient.onConnect = (frame) => {
         console.log(`✅ WebSocket connected, subscribing to room: ${roomId}`);
         setConnectionStatus("connected");
+// ...
         
         subscriptionRef.current = stompClient.subscribe(
           `/topic/room/${roomId}`,

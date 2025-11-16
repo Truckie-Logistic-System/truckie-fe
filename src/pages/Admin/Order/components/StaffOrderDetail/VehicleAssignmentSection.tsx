@@ -392,13 +392,19 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                                         >
                                             {/* Header */}
                                             <div className="flex items-start justify-between mb-3">
-                                                <div className="flex items-center">
-                                                    <ExclamationCircleOutlined className="text-xl mr-2 text-red-600" />
-                                                    <div>
-                                                        <div className="font-semibold text-base">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <ExclamationCircleOutlined className="text-xl text-red-600" />
+                                                        <div className="text-base font-semibold text-gray-900">
                                                             {issue.issueTypeName || 'Sự cố'}
                                                         </div>
                                                     </div>
+                                                    {issue.reportedAt && (
+                                                        <div className="flex items-center gap-1 text-xs text-gray-500 ml-7">
+                                                            <ClockCircleOutlined />
+                                                            <span>Báo cáo: {dayjs(issue.reportedAt).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm')}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <Tag color={getIssueStatusColor(issue.status)}>
                                                     {getIssueStatusLabel(issue.status)}

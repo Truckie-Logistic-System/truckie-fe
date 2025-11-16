@@ -54,7 +54,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     orderId: shouldShowRealTimeTracking ? orderId : undefined,
     autoConnect: shouldShowRealTimeTracking,
     reconnectInterval: 5000,
-    maxReconnectAttempts: 5,
   });
 
   // Cache instance để kiểm tra trạng thái vehicle
@@ -531,7 +530,8 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
   const renderConnectionStatus = () => {
     if (!shouldShowRealTimeTracking) return null;
 
-    if (isConnected && vehicleLocations.length > 0) {
+    // Luôn hiển thị connected khi có vehicle locations
+    if (vehicleLocations.length > 0) {
       const validVehicleCount = vehicleLocations.filter((vehicle): vehicle is VehicleLocationMessage & { latitude: number; longitude: number } =>
         vehicle.latitude !== null && vehicle.longitude !== null &&
         !isNaN(vehicle.latitude as number) && !isNaN(vehicle.longitude as number) &&
@@ -547,23 +547,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
             </span>
           }
           type="success"
-          showIcon
-          className="mb-4"
-        />
-      );
-    }
-    
-    if (!isConnected && !isConnecting && vehicleLocations.length > 0) {
-      return (
-        <Alert
-          message={
-            <span>
-              <DisconnectOutlined className="mr-2" />
-              Mất kết nối - Hiển thị vị trí cuối cùng ({vehicleLocations.length} xe)
-            </span>
-          }
-          description="Dữ liệu từ bộ nhớ đệm. Markers không bị mất khi mất kết nối."
-          type="warning"
           showIcon
           className="mb-4"
         />
@@ -611,7 +594,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
       )}
       
       {/* Hiển thị thông báo khi có cached data nhưng đang kết nối */}
-      {isConnecting && vehicleLocations.length > 0 && (
+      {/* {isConnecting && vehicleLocations.length > 0 && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
           <div className="flex items-center space-x-2">
             <LoadingOutlined className="text-green-500" />
@@ -620,7 +603,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
             </span>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Map Container */}
       <div 
@@ -741,9 +724,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
                             <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1 pt-1 border-t border-gray-200">
                               <span>⏱️</span>
                               <span>{vehicle.lastUpdated ? new Date(vehicle.lastUpdated).toLocaleString('vi-VN') : 'Chưa cập nhật'}</span>
-                              {!cacheRef.current.isVehicleOnline(vehicle) && (
-                                <span className="ml-1 text-orange-500 font-medium">(Offline)</span>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -757,35 +737,21 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
 
         {/* Live tracking indicator */}
         <div className={`absolute bottom-4 right-4 z-[500] px-3 py-2 rounded-lg shadow-lg ${
-          isConnected ? 'bg-green-100 border border-green-300' :
+          vehicleLocations.length > 0 ? 'bg-green-100 border border-green-300' :
           isConnecting ? 'bg-blue-100 border border-blue-300' :
           'bg-yellow-100 border border-yellow-300'
         }`}>
           <div className="flex flex-col gap-1">
             <span className={`text-sm font-medium flex items-center ${
-              isConnected ? 'text-green-700' : isConnecting ? 'text-blue-700' : 'text-yellow-700'
+              vehicleLocations.length > 0 ? 'text-green-700' : isConnecting ? 'text-blue-700' : 'text-yellow-700'
             }`}>
-              {isConnecting ? (
+              {isConnecting && vehicleLocations.length === 0 ? (
                 <LoadingOutlined className="mr-1" />
-              ) : isConnected ? (
-                <WifiOutlined className="mr-1" />
               ) : (
-                <DisconnectOutlined className="mr-1" />
+                <WifiOutlined className="mr-1" />
               )}
-              {isConnecting && vehicleLocations.length === 0 ? 'Đang kết nối...' : 
-               isConnecting && vehicleLocations.length > 0 ? 'Kết nối real-time...' :
-               isConnected ? 'Theo dõi trực tiếp' : 'Mất kết nối'}
+              {isConnecting && vehicleLocations.length === 0 ? 'Đang kết nối...' : 'Theo dõi trực tiếp'}
             </span>
-            {!isConnected && !isConnecting && vehicleLocations.length > 0 && (
-              <span className="text-xs text-yellow-600">
-                📍 Hiển thị vị trí cuối cùng ({vehicleLocations.length} xe từ cache)
-              </span>
-            )}
-            {isConnected && vehicleLocations.some(v => !cacheRef.current.isVehicleOnline(v)) && (
-              <span className="text-xs text-orange-600">
-                ⚠️ Một số xe có thể offline
-              </span>
-            )}
           </div>
         </div>
 

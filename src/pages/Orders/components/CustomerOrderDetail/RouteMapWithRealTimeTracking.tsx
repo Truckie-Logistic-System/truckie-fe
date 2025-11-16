@@ -50,7 +50,6 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     orderId: shouldShowRealTimeTracking ? orderId : undefined,
     autoConnect: shouldShowRealTimeTracking,
     reconnectInterval: 5000,
-    maxReconnectAttempts: 5,
   });
 
   // Filter valid vehicles

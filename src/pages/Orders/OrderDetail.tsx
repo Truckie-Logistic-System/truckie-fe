@@ -27,6 +27,7 @@ import {
   OrderSizeCard,
   VehicleAssignmentCard,
 } from "../../components/features/order";
+import OrderStatusBreakdown from "../../components/common/OrderStatusBreakdown";
 
 const { confirm } = Modal;
 
@@ -186,6 +187,18 @@ const OrderDetailPage: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Order Status Card */}
         <OrderStatusCard order={order} />
+
+        {/* Order Status Breakdown - Show detailed breakdown if order has multiple details */}
+        {order && order.orderDetails && order.orderDetails.length > 0 && (
+          <div className="mb-6">
+            <OrderStatusBreakdown 
+              orderDetails={order.orderDetails}
+              currentOrderStatus={order.status}
+              showExplanation={true}
+              showWarning={true}
+            />
+          </div>
+        )}
 
         {/* Order Information Card */}
         <OrderInfoCard order={order} />

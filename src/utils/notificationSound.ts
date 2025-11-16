@@ -2,7 +2,13 @@
  * Utility for playing notification sounds using ZZFX
  * ZZFX - Zuper Zmall Zound Zynth
  */
-import { ZZFX } from 'zzfx';
+// Declare ZZFX - will be available globally if zzfx library is loaded
+declare global {
+  const zzfx: any;
+}
+
+// Use zzfx (lowercase) which is the global function
+const ZZFX = typeof zzfx !== 'undefined' ? zzfx : null;
 
 export enum NotificationSoundType {
   SUCCESS = 'success',
@@ -45,7 +51,13 @@ const soundPresets = {
 /**
  * Play notification sound based on type
  */
-export const playNotificationSound = (type: NotificationSoundType = NotificationSoundType.INFO) => {
+export const playNotificationSound = (type: NotificationSoundType) => {
+  // Skip if ZZFX not available
+  if (!ZZFX) {
+    console.debug('ZZFX not available, skipping sound');
+    return;
+  }
+
   try {
     switch (type) {
       case NotificationSoundType.SUCCESS:

@@ -14,6 +14,7 @@ import {
     OrderSizeCard,
     VehicleAssignmentCard
 } from '@/components/features/order';
+import OrderStatusBreakdown from '@/components/common/OrderStatusBreakdown';
 
 const { TabPane } = Tabs;
 const { Title } = Typography;
@@ -230,6 +231,18 @@ const OrderDetailPage: React.FC = () => {
             <div className="max-w-full">
                 {/* Order Status Card */}
                 <OrderStatusCard order={order} />
+
+                {/* Order Status Breakdown - Show detailed breakdown if order has multiple details */}
+                {order && order.orderDetails && order.orderDetails.length > 0 && (
+                    <div className="mb-6">
+                        <OrderStatusBreakdown 
+                            orderDetails={order.orderDetails}
+                            currentOrderStatus={order.status}
+                            showExplanation={true}
+                            showWarning={true}
+                        />
+                    </div>
+                )}
 
                 {/* Admin Tabs */}
                 <div className="bg-white rounded-xl shadow-md mb-6">

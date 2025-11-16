@@ -1,12 +1,12 @@
-import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Client } from '@stomp/stompjs';
 import type { IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { App } from 'antd';
 import { API_BASE_URL } from '@/config/env';
 import type { Issue } from '@/models/Issue';
 import issueService from '@/services/issue/issueService';
-import { message as antdMessage, Modal } from 'antd';
 import { useAuth } from '@/context';
 import { playNotificationSound, NotificationSoundType } from '@/utils/notificationSound';
 import SealConfirmationModal from '@/components/modals/SealConfirmationModal';
@@ -53,6 +53,10 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const [sealConfirmationData, setSealConfirmationData] = useState<any>(null);
 
   const { user, isAuthenticated } = useAuth();
+  
+  // Get App instance for modal/message/notification
+  const { modal, message, notification } = App.useApp();
+  
   const clientRef = useRef<Client | null>(null);
   const subscriptionNewRef = useRef<any>(null);
   const subscriptionStatusRef = useRef<any>(null);
@@ -77,11 +81,11 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     } catch (err: any) {
       console.error('Error fetching issues:', err);
       setError(err.message || 'Không thể tải danh sách sự cố');
-      antdMessage.error('Không thể tải danh sách sự cố');
+      message.error('Không thể tải danh sách sự cố');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [message]);
 
   // Handle new issue from WebSocket
   const handleNewIssue = useCallback((msg: Issue) => {
@@ -125,11 +129,11 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     console.log('🚨 Showing new issue modal for:', msg.issueCategory);
     showNewIssueModal(msg);
     
-    antdMessage.warning({
-      content: `Sự cố mới: ${msg.description}`,
-      duration: 5,
-    });
-  }, []);
+    // message.warning({
+    //   content: `Sự cố mới: ${msg.description}`,
+    //   duration: 5,
+    // });
+  }, [message]);
 
   // Handle issue status change from WebSocket
   const handleIssueStatusChange = useCallback((msg: Issue) => {
@@ -141,21 +145,25 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       )
     );
     
-    antdMessage.info({
+    message.info({
       content: `Sự cố ${msg.description.substring(0, 20)}... đã cập nhật`,
       duration: 3,
     });
-  }, []);
+  }, [message]);
 
   // Handle return payment success notification
   const handleReturnPaymentSuccess = useCallback((messageData: any) => {
     console.log('💰 [IssuesContext] Return payment success:', messageData);
     
     // Play notification sound for payment success
-    playNotificationSound(NotificationSoundType.PAYMENT_SUCCESS);
+    try {
+      playNotificationSound(NotificationSoundType.PAYMENT_SUCCESS);
+    } catch (error) {
+      console.error('Failed to play notification sound:', error);
+    }
     
     // Show notification modal
-    Modal.success({
+    modal.success({
       title: '✅ Khách hàng đã thanh toán cước trả hàng',
       content: messageData.message,
       okText: 'Đã hiểu',
@@ -163,13 +171,26 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     });
     
     // Show antd message
-    antdMessage.success({
+    message.success({
       content: `💰 ${messageData.message}`,
       duration: 8,
     });
     
+    // Show antd notification (persistent)
+    notification.success({
+      message: '💰 Thanh toán thành công',
+      description: messageData.message,
+      duration: 10,
+      placement: 'topRight',
+    });
+    
     // Refresh issues list to get updated status
     fetchIssues();
+    
+    // Emit event for issue detail page to refetch
+    window.dispatchEvent(new CustomEvent('refetch-issue-detail', {
+      detail: { issueId: messageData.issueId }
+    }));
     
     // Show browser notification if supported
     if ('Notification' in window) {
@@ -203,7 +224,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         playNotificationSound(NotificationSoundType.SEAL_CONFIRM);
         
         // Show antd message first
-        antdMessage.success({
+        message.success({
           content: `✅ Driver ${messageData.driverName} đã gắn seal ${messageData.newSealCode} thành công`,
           duration: 8,
         });
@@ -271,7 +292,9 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       webSocketFactory: () => {
         return new SockJS(sockJsUrl);
       },
-      reconnectDelay: 5000,
+      reconnectDelay: 5000, // Auto-reconnect every 5 seconds - unlimited retries
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
       // debug: (str) => console.log('STOMP Debug:', str),
     });
 

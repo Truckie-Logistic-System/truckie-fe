@@ -188,18 +188,26 @@ const globalCustomPoints: RoutePoint[] = [];
                 console.log('✅ [OrderRejectionDetail] Issue resolved, refetching detail...');
                 message.success('Khách hàng đã thanh toán thành công!');
                 fetchRejectionDetail();
-                
-                // Also update parent component
-                if (onUpdate) {
-                    onUpdate(updatedIssue);
-                }
             }
         });
-
-        // Cleanup subscription on unmount
+        
+        // Listen to global return payment success event from IssuesContext
+        const handleRefetchEvent = (event: any) => {
+            const { issueId } = event.detail || {};
+            console.log('📢 [OrderRejectionDetail] Received refetch event for issueId:', issueId);
+            
+            if (issueId === issue.id) {
+                console.log('✅ [OrderRejectionDetail] Refetching issue detail...');
+                fetchRejectionDetail();
+            }
+        };
+        
+        window.addEventListener('refetch-issue-detail', handleRefetchEvent);
+        
         return () => {
             console.log('📡 [OrderRejectionDetail] Unsubscribing from issue:', issue.id);
             unsubscribe();
+            window.removeEventListener('refetch-issue-detail', handleRefetchEvent);
         };
     }, [issue.id, onUpdate]);
 

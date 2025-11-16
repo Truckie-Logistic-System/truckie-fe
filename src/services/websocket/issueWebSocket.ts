@@ -8,8 +8,7 @@ class IssueWebSocketService {
     private client: Client | null = null;
     private subscribers: Map<string, IssueUpdateCallback[]> = new Map();
     private reconnectAttempts = 0;
-    private maxReconnectAttempts = 5;
-    private reconnectDelay = 3000;
+    private reconnectDelay = 5000; // 5 giây
 
     /**
      * Connect to WebSocket server
@@ -120,37 +119,71 @@ class IssueWebSocketService {
 
     /**
      * Notify all subscribers of an issue update
+     * Supports both specific issue ID subscribers and wildcard subscribers
      */
     private notifySubscribers(issueId: string, issue: any) {
+        console.log(`📤 [IssueWebSocket] Checking subscribers for issue ${issueId}`);
+        console.log(`📋 [IssueWebSocket] Current subscribers:`, Array.from(this.subscribers.keys()));
+        
+        let notifiedCount = 0;
+        
+        // Notify specific issue ID subscribers
         const callbacks = this.subscribers.get(issueId);
-        if (callbacks) {
-            console.log(`📤 [IssueWebSocket] Notifying ${callbacks.length} subscribers for issue ${issueId}`);
+        if (callbacks && callbacks.length > 0) {
+            console.log(`📤 [IssueWebSocket] Notifying ${callbacks.length} specific subscribers for issue ${issueId}`);
             callbacks.forEach(callback => {
                 try {
                     callback(issue);
+                    notifiedCount++;
                 } catch (error) {
                     console.error('❌ [IssueWebSocket] Error in subscriber callback:', error);
                 }
             });
         }
+        
+        // Notify ALL wildcard/global subscribers (those with keys starting with '*')
+        this.subscribers.forEach((wildcardCallbacks, key) => {
+            if (key.startsWith('*') || key.startsWith('order-')) {
+                console.log(`📤 [IssueWebSocket] Notifying ${wildcardCallbacks.length} wildcard subscribers with key ${key}`);
+                wildcardCallbacks.forEach(callback => {
+                    try {
+                        callback(issue);
+                        notifiedCount++;
+                    } catch (error) {
+                        console.error('❌ [IssueWebSocket] Error in wildcard subscriber callback:', error);
+                    }
+                });
+            }
+        });
+        
+        // Fallback event if no one was notified
+        if (notifiedCount === 0) {
+            console.warn(`⚠️ [IssueWebSocket] No subscribers found for issue ${issueId}`);
+            const event = new CustomEvent('issue-update-no-subscriber', {
+                detail: { issueId, issue }
+            });
+            window.dispatchEvent(event);
+        } else {
+            console.log(`✅ [IssueWebSocket] Notified ${notifiedCount} total subscribers`);
+        }
     }
 
     /**
-     * Handle reconnection logic
+     * Handle reconnection logic - unlimited retries
      */
     private handleReconnect() {
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            console.log(`🔄 [IssueWebSocket] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-            
-            setTimeout(() => {
-                this.connect().catch(error => {
-                    console.error('❌ [IssueWebSocket] Reconnection failed:', error);
-                });
-            }, this.reconnectDelay * this.reconnectAttempts);
-        } else {
-            console.error('❌ [IssueWebSocket] Max reconnection attempts reached');
-        }
+        this.reconnectAttempts++;
+        console.log(`🔄 [IssueWebSocket] Attempting to reconnect (attempt #${this.reconnectAttempts})...`);
+        
+        // Exponential backoff with max 30 seconds
+        const delay = Math.min(this.reconnectDelay * Math.min(this.reconnectAttempts, 6), 30000);
+        
+        setTimeout(() => {
+            this.connect().catch(error => {
+                console.error('❌ [IssueWebSocket] Reconnection failed:', error);
+                // Will retry again through onWebSocketClose
+            });
+        }, delay);
     }
 
     /**

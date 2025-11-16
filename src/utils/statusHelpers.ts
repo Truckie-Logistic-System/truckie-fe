@@ -113,13 +113,13 @@ export const getOrderDetailStatusCardColor = (status: string) => {
 
 /**
  * Kiểm tra xem tất cả order details có ở status cuối cùng không
- * Final statuses: COMPENSATION, SUCCESSFUL, RETURNED
+ * Final statuses: COMPENSATION, SUCCESSFUL, RETURNED, CANCELLED
  */
 export const areAllOrderDetailsInFinalStatus = (orderDetails?: Array<{ status: string }>): boolean => {
     if (!orderDetails || orderDetails.length === 0) {
         return false;
     }
     
-    const finalStatuses = ['COMPENSATION', 'SUCCESSFUL', 'RETURNED'];
+    const finalStatuses = ['COMPENSATION', 'SUCCESSFUL', 'RETURNED', 'CANCELLED'];
     return orderDetails.every(detail => finalStatuses.includes(detail.status));
 };

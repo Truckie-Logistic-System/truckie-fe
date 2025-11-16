@@ -32,6 +32,7 @@ import ContractSection from "./CustomerOrderDetail/ContractSection";
 import TransactionSection from "./CustomerOrderDetail/TransactionSection";
 import VehicleSuggestionsModal from "./CustomerOrderDetail/VehicleSuggestionsModal";
 import ReturnShippingIssuesSection from "./CustomerOrderDetail/ReturnShippingIssuesSection";
+import { issueWebSocket } from "../../../services/websocket/issueWebSocket";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -98,12 +99,28 @@ const CustomerOrderDetail: React.FC = () => {
   };
 
   // Fetch order details - must be defined before handleRefreshNeeded
-  const fetchOrderDetails = useCallback(async (orderId: string) => {
+  const fetchOrderDetails = useCallback(async (orderId: string, autoSwitchToReturnIssuesTab: boolean = false) => {
     setLoading(true);
     try {
       const data = await orderService.getOrderForCustomerByOrderId(orderId);
       setOrderData(data);
       checkContractExists(orderId);
+      
+      // Auto-switch to return issues tab if requested and return issues exist
+      if (autoSwitchToReturnIssuesTab) {
+        // Check if there are any ORDER_REJECTION issues in IN_PROGRESS status
+        const hasReturnIssues = data?.order?.vehicleAssignments?.some((va: any) => 
+          va.issues?.some((issue: any) => 
+            issue.issueCategory === 'ORDER_REJECTION' && issue.status === 'IN_PROGRESS'
+          )
+        );
+        
+        if (hasReturnIssues) {
+          console.log('[CustomerOrderDetail] 🔄 Auto-switching to returnIssues tab');
+          setActiveMainTab('returnIssues');
+          messageApi.warning('Có kiện hàng bị yêu cầu trả lại. Vui lòng xem chi tiết và thanh toán cước trả hàng.');
+        }
+      }
     } catch (error) {
       messageApi.error("Không thể tải thông tin đơn hàng");
       console.error("Error fetching order details:", error);
@@ -263,16 +280,13 @@ const CustomerOrderDetail: React.FC = () => {
     console.log('[CustomerOrderDetail] handleRefreshNeeded called (no-op)');
   }, []);
 
-  // Subscribe to order status changes
-  useOrderStatusTracking({
-    orderId: id,
-    autoConnect: true,
-    onStatusChange: handleOrderStatusChange,
-    onRefreshNeeded: handleRefreshNeeded,
-  });
-
   // Validate and adjust active tab based on order status
-  const validateActiveTab = useCallback((tabKey: string, orderStatus?: string, orderDetails?: Array<{ status: string }>) => {
+  const validateActiveTab = useCallback((
+    tabKey: string, 
+    orderStatus?: string, 
+    orderDetails?: Array<{ status: string }>,
+    vehicleAssignments?: any[]
+  ) => {
     // If order is not loaded yet, return the tab as-is
     if (!orderStatus) return tabKey;
     
@@ -291,25 +305,153 @@ const CustomerOrderDetail: React.FC = () => {
     const allDetailsInFinalStatus = areAllOrderDetailsInFinalStatus(orderDetails);
     const shouldShowLiveTracking = isDeliveryStatus && !allDetailsInFinalStatus;
     
-    // If saved tab is liveTracking but it's not available, fallback to basic
-    if (tabKey === 'liveTracking' && !shouldShowLiveTracking) {
-      console.log('[CustomerOrderDetail] 🔄 Tab validation: liveTracking not available, falling back to basic');
-      return 'basic';
+    // Check if return issues tab should be available
+    const returnIssuesCount = 
+      !vehicleAssignments || vehicleAssignments.length === 0 
+        ? 0 
+        : vehicleAssignments.reduce((count: number, va: any) => {
+            const rejectionIssues = va.issues ? va.issues.filter((issue: any) => issue.issueCategory === 'ORDER_REJECTION' && issue.status === 'IN_PROGRESS') : [];
+            return count + rejectionIssues.length;
+          }, 0);
+    const shouldShowReturnIssues = returnIssuesCount > 0;
+    
+    // Validate tab availability and fallback to 'basic' if not available
+    switch (tabKey) {
+      case 'liveTracking':
+        if (!shouldShowLiveTracking) {
+          console.log('[CustomerOrderDetail] 🔄 Tab validation: liveTracking not available, falling back to basic');
+          return 'basic';
+        }
+        break;
+      case 'returnIssues':
+        if (!shouldShowReturnIssues) {
+          console.log('[CustomerOrderDetail] 🔄 Tab validation: returnIssues not available, falling back to basic');
+          return 'basic';
+        }
+        break;
+      // 'basic', 'details', 'contract' tabs are always available
+      case 'basic':
+      case 'details':
+      case 'contract':
+        // These tabs are always available
+        break;
+      default:
+        // Unknown tab, fallback to basic
+        console.log('[CustomerOrderDetail] 🔄 Tab validation: unknown tab, falling back to basic');
+        return 'basic';
     }
     
     return tabKey;
   }, []);
-  
+
+  // Subscribe to order status changes
+  useOrderStatusTracking({
+    orderId: id,
+    autoConnect: true,
+    onStatusChange: handleOrderStatusChange,
+    onRefreshNeeded: handleRefreshNeeded,
+  });
+
+  // Subscribe to ALL issue updates and filter by vehicleAssignmentId
+  // This works even when customer opens page BEFORE driver reports issue
+  useEffect(() => {
+    if (!orderData?.order?.vehicleAssignments || !id) return;
+
+    // Extract all vehicle assignment IDs
+    const vehicleAssignmentIds: string[] = orderData.order.vehicleAssignments.map((va: any) => va.id);
+
+    if (vehicleAssignmentIds.length === 0) return;
+
+    console.log('[CustomerOrderDetail] 📡 Monitoring issues for vehicle assignments:', vehicleAssignmentIds);
+
+    // Connect to issue WebSocket if not connected
+    if (!issueWebSocket.isConnected()) {
+      issueWebSocket.connect().catch(err => {
+        console.error('[CustomerOrderDetail] Failed to connect to issue WebSocket:', err);
+      });
+    }
+
+    // Subscribe to global issue updates with a unique callback ID based on order
+    const callbackId = `order-${id}`;
+    const unsubscribe = issueWebSocket.subscribeToIssue(callbackId, (updatedIssue: any) => {
+      console.log('[CustomerOrderDetail] � Received issue update:', updatedIssue);
+      
+      // Check if this issue belongs to any of our vehicle assignments
+      const issueVehicleAssignmentId = updatedIssue.vehicleAssignmentEntity?.id;
+      const belongsToThisOrder = issueVehicleAssignmentId && vehicleAssignmentIds.includes(issueVehicleAssignmentId);
+      
+      if (belongsToThisOrder && updatedIssue.issueCategory === 'ORDER_REJECTION') {
+        console.log('[CustomerOrderDetail] ✅ ORDER_REJECTION issue belongs to this order, refetching...');
+        setTimeout(() => {
+          fetchOrderDetails(id, true); // Auto-switch to return-issues tab
+        }, 500);
+      } else {
+        console.log('[CustomerOrderDetail] ℹ️ Issue does not belong to this order, ignoring');
+      }
+    });
+    
+    // Listen for fallback event (when no direct subscriber found)
+    const handleFallbackEvent = (event: any) => {
+      const { issueId, issue } = event.detail || {};
+      console.log('[CustomerOrderDetail] 📢 Fallback issue update received:', issueId);
+      
+      // Check if this issue belongs to current order
+      const issueVehicleAssignmentId = issue?.vehicleAssignmentEntity?.id;
+      const belongsToThisOrder = issueVehicleAssignmentId && vehicleAssignmentIds.includes(issueVehicleAssignmentId);
+      
+      if (belongsToThisOrder && issue?.issueCategory === 'ORDER_REJECTION') {
+        console.log('[CustomerOrderDetail] ✅ Fallback - Issue belongs to current order, refetching...');
+        setTimeout(() => {
+          fetchOrderDetails(id, true); // Auto-switch to return-issues tab
+        }, 500);
+      }
+    };
+    
+    window.addEventListener('issue-update-no-subscriber', handleFallbackEvent);
+
+    // Cleanup: unsubscribe when component unmounts or order changes
+    return () => {
+      console.log('[CustomerOrderDetail] 📡 Unsubscribing from issue updates');
+      unsubscribe();
+      window.removeEventListener('issue-update-no-subscriber', handleFallbackEvent);
+    };
+  }, [orderData?.order?.vehicleAssignments, id, fetchOrderDetails]);
+
+  // Validate initial tab when order data is first loaded
+  const hasValidatedInitialTab = useRef<boolean>(false);
+  useEffect(() => {
+    // ... (rest of the code remains the same)
+    if (orderData?.order?.status && !hasValidatedInitialTab.current) {
+      const validatedTab = validateActiveTab(
+        activeMainTab, 
+        orderData.order.status, 
+        orderData.order.orderDetails, 
+        orderData.order.vehicleAssignments
+      );
+      if (validatedTab !== activeMainTab) {
+        console.log('[CustomerOrderDetail] 🔄 Initial tab validation - changing from', activeMainTab, 'to', validatedTab);
+        setActiveMainTab(validatedTab);
+      }
+      hasValidatedInitialTab.current = true;
+    }
+  }, [orderData?.order?.status, orderData?.order?.orderDetails, orderData?.order?.vehicleAssignments, activeMainTab, validateActiveTab]);
+
   // Update active tab when order data changes (for validation)
   useEffect(() => {
-    if (orderData?.order?.status) {
-      const validatedTab = validateActiveTab(activeMainTab, orderData.order.status, orderData.order.orderDetails);
+    if (orderData?.order?.status && hasValidatedInitialTab.current) {
+      const validatedTab = validateActiveTab(
+        activeMainTab, 
+        orderData.order.status, 
+        orderData.order.orderDetails, 
+        orderData.order.vehicleAssignments
+      );
       if (validatedTab !== activeMainTab) {
+        console.log('[CustomerOrderDetail] 🔄 Tab validation - changing from', activeMainTab, 'to', validatedTab);
         setActiveMainTab(validatedTab);
       }
     }
-  }, [orderData?.order?.status, orderData?.order?.orderDetails, activeMainTab, validateActiveTab]);
-  
+  }, [orderData?.order?.status, orderData?.order?.orderDetails, orderData?.order?.vehicleAssignments, activeMainTab, validateActiveTab]);
+
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
     if (id) {

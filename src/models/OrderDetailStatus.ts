@@ -16,8 +16,9 @@ export enum OrderDetailStatusEnum {
   COMPENSATION = 'COMPENSATION',
   RESOLVED = 'RESOLVED',
   REJECTED = 'REJECTED',
-  RETURNING = 'RETURNING',
-  RETURNED = 'RETURNED',
+  RETURNING = 'RETURNING',  // Customer đã thanh toán cước trả hàng, driver đang trả hàng về pickup
+  RETURNED = 'RETURNED',    // Driver đã trả hàng về pickup thành công
+  CANCELLED = 'CANCELLED',  // Customer không thanh toán cước trả hàng, hủy kiện hàng
 }
 
 /**
@@ -115,6 +116,12 @@ export const OrderDetailStatusMetadata: Record<
     color: 'bg-orange-100 text-orange-700',
     bgColor: 'bg-orange-100',
     textColor: 'text-orange-700',
+  },
+  [OrderDetailStatusEnum.CANCELLED]: {
+    label: 'Đã hủy',
+    color: 'bg-red-100 text-red-700',
+    bgColor: 'bg-red-100',
+    textColor: 'text-red-700',
   },
 };
 

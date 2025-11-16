@@ -41,7 +41,6 @@ const OrderLiveTrackingMap: React.FC<OrderLiveTrackingMapProps> = ({
     orderId: shouldShowRealTimeTracking ? orderId : undefined,
     autoConnect: shouldShowRealTimeTracking,
     reconnectInterval: 5000,
-    maxReconnectAttempts: 5,
   });
 
   // Filter valid vehicles
