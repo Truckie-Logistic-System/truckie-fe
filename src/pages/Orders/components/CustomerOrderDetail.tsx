@@ -13,6 +13,7 @@ import {
 import orderService from "../../../services/order/orderService";
 import { contractService } from "../../../services/contract";
 import { useOrderStatusTracking } from "../../../hooks/useOrderStatusTracking";
+import { useOrderDetailStatusTracking } from "../../../hooks/useOrderDetailStatusTracking";
 import { playNotificationSound, NotificationSoundType } from "../../../utils/notificationSound";
 import { areAllOrderDetailsInFinalStatus } from "../../../utils/statusHelpers";
 import { OrderStatusEnum, OrderStatusLabels } from "../../../constants/enums";
@@ -289,6 +290,50 @@ const CustomerOrderDetail: React.FC = () => {
     console.log('[CustomerOrderDetail] handleRefreshNeeded called (no-op)');
   }, []);
 
+  // Handle order detail (package) status changes via WebSocket
+  const handleOrderDetailStatusChange = useCallback((statusChange: any) => {
+    console.log('[CustomerOrderDetail] 📦 Order detail status changed:', statusChange);
+    
+    // Update local state for the specific order detail without full refetch
+    if (orderData) {
+      const updatedOrderData = {
+        ...orderData,
+        order: {
+          ...orderData.order,
+          orderDetails: orderData.order.orderDetails?.map((detail: any) => 
+            detail.id === statusChange.orderDetailId
+              ? { ...detail, status: statusChange.newStatus }
+              : detail
+          ),
+          // Also update vehicle assignments if needed
+          vehicleAssignments: orderData.order.vehicleAssignments?.map((va: any) => ({
+            ...va,
+            orderDetails: va.orderDetails?.map((detail: any) =>
+              detail.id === statusChange.orderDetailId
+                ? { ...detail, status: statusChange.newStatus }
+                : detail
+            )
+          }))
+        }
+      };
+      
+      setOrderData(updatedOrderData);
+      
+      // Show toast notification with package-specific message
+      message.info({
+        content: `📦 ${statusChange.trackingCode}: ${statusChange.message}`,
+        duration: 4,
+      });
+      
+      // Play sound for important statuses
+      if (['DELIVERED', 'RETURNED', 'SUCCESSFUL', 'COMPENSATION'].includes(statusChange.newStatus)) {
+        playNotificationSound(NotificationSoundType.SUCCESS);
+      } else if (['IN_TROUBLES', 'CANCELLED'].includes(statusChange.newStatus)) {
+        playNotificationSound(NotificationSoundType.WARNING);
+      }
+    }
+  }, [orderData]);
+
   // Validate and adjust active tab based on order status
   const validateActiveTab = useCallback((
     tabKey: string, 
@@ -363,6 +408,13 @@ const CustomerOrderDetail: React.FC = () => {
     onRefreshNeeded: handleRefreshNeeded,
   });
 
+  // Subscribe to order detail status changes (individual packages)
+  useOrderDetailStatusTracking({
+    orderId: id,
+    autoConnect: true,
+    onStatusChange: handleOrderDetailStatusChange,
+  });
+
   // Subscribe to ALL issue updates and filter by vehicleAssignmentId
   // This works even when customer opens page BEFORE driver reports issue
   useEffect(() => {
@@ -391,11 +443,22 @@ const CustomerOrderDetail: React.FC = () => {
       const issueVehicleAssignmentId = updatedIssue.vehicleAssignmentEntity?.id;
       const belongsToThisOrder = issueVehicleAssignmentId && vehicleAssignmentIds.includes(issueVehicleAssignmentId);
       
-      if (belongsToThisOrder && updatedIssue.issueCategory === 'ORDER_REJECTION') {
-        console.log('[CustomerOrderDetail] ✅ ORDER_REJECTION issue belongs to this order, refetching...');
+      if (belongsToThisOrder) {
+        console.log('[CustomerOrderDetail] ✅ New issue belongs to this order, refetching to update markers...');
+        
+        // Auto-switch to return-issues tab for ORDER_REJECTION
+        const shouldSwitchToReturnIssues = updatedIssue.issueCategory === 'ORDER_REJECTION';
+        
         setTimeout(() => {
-          fetchOrderDetails(id, true); // Auto-switch to return-issues tab
+          fetchOrderDetails(id, shouldSwitchToReturnIssues);
         }, 500);
+        
+        // Show notification for new issue
+        message.info({
+          content: `📍 Sự cố mới: ${updatedIssue.issueTypeName || 'Có sự cố xảy ra'}`,
+          duration: 5,
+        });
+        playNotificationSound(NotificationSoundType.INFO);
       } else {
         console.log('[CustomerOrderDetail] ℹ️ Issue does not belong to this order, ignoring');
       }

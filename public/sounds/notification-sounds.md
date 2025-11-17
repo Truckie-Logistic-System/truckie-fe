@@ -4,15 +4,15 @@ This project uses **ZZFX** - a tiny JavaScript sound generator library for creat
 
 ## Sound Types
 
-| Type | Description | Use Case | Effect |
-|------|-------------|----------|--------|
-| **SUCCESS** | Bright power-up sound | Order delivered, payment success | Uplifting chime |
-| **INFO** | Soft blip | Status updates, general info | Gentle notification |
-| **WARNING** | Alert siren | Cancellations, warnings | Attention-grabbing |
-| **ERROR** | Explosion/buzz | Errors, troubles | Urgent alert |
-| **PAYMENT_SUCCESS** | Coin collect with shimmer | Payment confirmations | Rewarding chime |
-| **NEW_ISSUE** | Notification bell | New issues, incidents | Clear ping |
-| **SEAL_CONFIRM** | Click feedback | Confirmations, seal updates | Quick click |
+| Type | Description | Use Case | Effect | Frequency |
+|------|-------------|----------|--------|-----------|
+| **SUCCESS** | Ascending powerup with shimmer | Order delivered, actions completed | Uplifting, positive feedback | 261.63Hz (C4) + pitch jump |
+| **INFO** | Soft gentle blip | Status updates, general info | Non-intrusive, subtle | 520Hz (C5) |
+| **WARNING** | Clear double-beep alert | Cancellations, warnings | Attention-grabbing, urgent | 800Hz |
+| **ERROR** | Harsh descending buzz | Errors, troubles | Demanding attention, critical | 400Hz descending |
+| **PAYMENT_SUCCESS** | Rich coin collect | Payment confirmations | Rewarding, satisfying | 987.77Hz (B5) + harmonics |
+| **NEW_ISSUE** | Crisp notification bell | New issues, incidents | Clear, professional | 659.25Hz (E5) |
+| **SEAL_CONFIRM** | Mechanical click | Confirmations, seal updates | Quick, satisfying | 220Hz (A3) |
 
 ## Implementation
 
@@ -38,29 +38,77 @@ https://killedbyapixel.github.io/ZzFX/
 
 ### Sound Characteristics
 
-#### SUCCESS
+#### SUCCESS - Ascending Powerup
 ```javascript
-[1.5,,783,.01,.14,.24,,.63,7.7,3.7,-184,.09,.05]
+[1.2,,261.63,.01,.15,.3,1,1.8,,,150,.05,.01,,,.05]
 ```
-- Frequency: 783Hz (G5 note)
-- Shimmer effect with vibrato
-- Duration: ~400ms
+- Base frequency: 261.63Hz (C4 note - Middle C)
+- Pitch jump: +150 (ascending feel)
+- Shape: Sine wave (1) with curve 1.8
+- Duration: ~460ms (attack 10ms + sustain 150ms + release 300ms)
+- Effect: Positive, uplifting powerup sound
 
-#### PAYMENT_SUCCESS
+#### PAYMENT_SUCCESS - Coin Collect
 ```javascript
-[1.5,,1046.5,.02,.11,.19,1,1.65,,,,,,5]
+[1.8,,987.77,.01,.12,.25,1,2.2,,,300,.05,,,,,,.8]
 ```
-- Frequency: 1046.5Hz (C6 note)
-- Rich harmonic content
-- Rewarding "coin collect" feel
+- Base frequency: 987.77Hz (B5 note)
+- Pitch jump: +300 (strong upward shimmer)
+- Shape: Sine wave with rich harmonics (curve 2.2)
+- Sustain volume: 0.8 (fuller sound)
+- Duration: ~380ms
+- Effect: Rewarding, satisfying coin collection
 
-#### ERROR
+#### ERROR - Descending Buzz
 ```javascript
-[1.3,,77,.03,.08,.15,,.93,,,-302,.08,.16]
+[1.5,,400,.02,.15,.25,,.6,,-50,-200,.05,.1]
 ```
-- Low frequency: 77Hz
-- Harsh distortion
-- Attention-demanding
+- Base frequency: 400Hz (descending from there)
+- Slide: -50 (continuous pitch drop)
+- Pitch jump: -200 (harsh downward sweep)
+- Shape curve: 0.6 (distorted)
+- Duration: ~420ms
+- Effect: Urgent, attention-demanding alert
+
+#### NEW_ISSUE - Notification Bell
+```javascript
+[1.2,,659.25,.01,.15,.35,1,1.5,,,100,.05,,,,,,.6]
+```
+- Base frequency: 659.25Hz (E5 note)
+- Pitch jump: +100 (bell-like ring)
+- Shape: Sine wave with natural decay
+- Sustain volume: 0.6 (natural fade)
+- Duration: ~510ms
+- Effect: Professional notification bell
+
+#### WARNING - Alert Beep
+```javascript
+[1,,800,.01,.08,.15,,.8,,,,,,,,.05,,,.05]
+```
+- Base frequency: 800Hz (clear, attention-getting)
+- Short attack (10ms) and sustain (80ms)
+- Bit crush: 0.05 (slight digital edge)
+- Duration: ~240ms
+- Effect: Clear, urgent warning tone
+
+#### INFO - Gentle Blip
+```javascript
+[.6,.05,520,.01,.08,.12,,,,,,,,,,,,.1]
+```
+- Base frequency: 520Hz (C5 note)
+- Low volume: 0.6 (non-intrusive)
+- Slight randomness: 0.05
+- Very short: ~210ms
+- Effect: Subtle, gentle notification
+
+#### SEAL_CONFIRM - Mechanical Click
+```javascript
+[.8,,220,.01,.03,.08,,,,,,,,,,,,.2]
+```
+- Base frequency: 220Hz (A3 note)
+- Very short: attack 10ms + sustain 30ms + release 80ms = ~120ms
+- Low sustain volume: 0.2 (crisp, not lingering)
+- Effect: Quick, satisfying mechanical click
 
 ## Benefits of ZZFX
 

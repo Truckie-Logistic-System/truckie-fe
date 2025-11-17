@@ -74,8 +74,15 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       // Sort by reportedAt (newest first) - assuming we add reportedAt to Issue model
       const sorted = data.sort((a, b) => {
         // For now, sort by status priority: OPEN > IN_PROGRESS > RESOLVED
-        const statusPriority = { OPEN: 3, IN_PROGRESS: 2, RESOLVED: 1 };
-        return statusPriority[b.status] - statusPriority[a.status];
+        const statusPriority: Record<string, number> = {
+          OPEN: 3,
+          IN_PROGRESS: 2,
+          RESOLVED: 1,
+          PAYMENT_OVERDUE: 4, // Highest priority
+        };
+        const priorityA = statusPriority[a.status] ?? 0;
+        const priorityB = statusPriority[b.status] ?? 0;
+        return priorityB - priorityA;
       });
       
       setIssues(sorted);

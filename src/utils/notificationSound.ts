@@ -22,30 +22,45 @@ export enum NotificationSoundType {
 
 /**
  * ZZFX Sound Presets for different notification types
- * Format: [volume, pitch, attack, sustain, decay, shape, slide, pitch jump, vibrato, etc.]
+ * Format: [volume, randomness, frequency, attack, sustain, release, shape, shapeCurve, 
+ *          slide, deltaSlide, pitchJump, pitchJumpTime, repeatTime, noise, modulation, 
+ *          bitCrush, delay, sustainVolume, decay, tremolo, filter]
  * Generated using ZzFX Sound Designer: https://killedbyapixel.github.io/ZzFX/
+ * 
+ * Reference samples from ZzFX library:
+ * - Game Over: [,,925,.04,.3,.6,1,.3,,6.27,-184,.09,.17]
+ * - Heart: [,,537,.02,.02,.22,1,1.59,-6.98,4.97]
+ * - Piano: [1.5,.8,270,,.1,,1,1.5,,,,,,,,.1,.01]
+ * - Drum: [,,129,.01,,.15,,,,,,,,5]
  */
 const soundPresets = {
-  // Success - Bright power up sound
-  success: [1.5,,783,.01,.14,.24,,.63,7.7,3.7,-184,.09,.05],
+  // Success - Bright ascending powerup sound with shimmer
+  // Tăng dần tần số tạo cảm giác tích cực, thành công
+  success: [1.2,,261.63,.01,.15,.3,1,1.8,,,150,.05,.01,,,.05],
   
-  // Info - Soft blip
-  info: [.5,.1,270,.04,.1,.1,,.3],
+  // Info - Soft gentle blip, non-intrusive
+  // Âm thanh nhẹ nhàng, không gây phiền nhiễu
+  info: [.6,.05,520,.01,.08,.12,,,,,,,,,,,,.1],
   
-  // Warning - Alert siren
-  warning: [1,,600,.01,.05,.3,,1.4,,,,,,.5,,.1,.01],
+  // Warning - Clear double-beep alert pattern
+  // 2 tiếng bíp ngắn rõ ràng để cảnh báo
+  warning: [1,,800,.01,.08,.15,,.8,,,,,,,,.05,,,.05],
   
-  // Error - Explosion/Error buzz
-  error: [1.3,,77,.03,.08,.15,,.93,,,-302,.08,.16],
+  // Error - Harsh descending buzz for urgent attention
+  // Âm thanh giảm dần, khó chịu để thu hút sự chú ý
+  error: [1.5,,400,.02,.15,.25,,.6,,-50,-200,.05,.1],
   
-  // Payment Success - Coin collect with shimmer
-  payment: [1.5,,1046.5,.02,.11,.19,1,1.65,,,,,,5],
+  // Payment Success - Rewarding coin collect with rich harmonics
+  // Âm thanh phần thưởng giống thu thập coin trong game
+  payment: [1.8,,987.77,.01,.12,.25,1,2.2,,,300,.05,,,,,,.8],
   
-  // New Issue - Notification bell
-  issue: [1,,523,.01,.14,.14,,1.4,,,50,.05],
+  // New Issue - Crisp notification bell with decay
+  // Chuông thông báo rõ ràng với độ vang tự nhiên
+  issue: [1.2,,659.25,.01,.15,.35,1,1.5,,,100,.05,,,,,,.6],
   
-  // Seal Confirm - Click with feedback
-  seal: [.7,,150,.01,.01,.1,,,,,,,,,,.1,.01],
+  // Seal Confirm - Satisfying mechanical click
+  // Âm click cơ học ngắn, tạo cảm giác xác nhận rõ ràng
+  seal: [.8,,220,.01,.03,.08,,,,,,,,,,,,.2],
 };
 
 /**

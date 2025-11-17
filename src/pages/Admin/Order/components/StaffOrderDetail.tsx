@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { App, Button, Typography, Skeleton, Empty, Tabs, Space, Card } from "antd";
+import { App, Button, Typography, Skeleton, Empty, Tabs, Space, Card, message } from "antd";
 import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
@@ -25,7 +25,9 @@ import {
 import BillOfLadingPreviewModal from "./StaffOrderDetail/BillOfLadingPreviewModal";
 import OrderLiveTrackingOnly from "./StaffOrderDetail/OrderLiveTrackingOnly";
 import { useOrderStatusTracking } from "../../../../hooks/useOrderStatusTracking";
+import { useOrderDetailStatusTracking } from "../../../../hooks/useOrderDetailStatusTracking";
 import { playNotificationSound, NotificationSoundType } from "../../../../utils/notificationSound";
+import { issueWebSocket } from "../../../../services/websocket/issueWebSocket";
 
 dayjs.extend(timezone);
 
@@ -192,12 +194,120 @@ const StaffOrderDetail: React.FC = () => {
     }
   }, [id, messageApi, orderData]);
 
+  // Handle order detail (package) status changes via WebSocket
+  const handleOrderDetailStatusChange = useCallback((statusChange: any) => {
+    console.log('[StaffOrderDetail] 📦 Order detail status changed:', statusChange);
+    
+    // Update local state for the specific order detail without full refetch
+    if (orderData) {
+      const updatedOrderData = {
+        ...orderData,
+        order: {
+          ...orderData.order,
+          orderDetails: orderData.order.orderDetails?.map((detail: any) => 
+            detail.id === statusChange.orderDetailId
+              ? { ...detail, status: statusChange.newStatus }
+              : detail
+          )
+        }
+      };
+      
+      setOrderData(updatedOrderData);
+      
+      // Show toast notification
+      messageApi.info({
+        content: `📦 ${statusChange.message} (${statusChange.trackingCode})`,
+        duration: 4,
+      });
+    }
+  }, [orderData, messageApi]);
+
   // Subscribe to order status changes
   useOrderStatusTracking({
     orderId: id,
     autoConnect: true,
     onStatusChange: handleOrderStatusChange,
   });
+
+  // Subscribe to order detail status changes (individual packages)
+  useOrderDetailStatusTracking({
+    orderId: id,
+    autoConnect: true,
+    onStatusChange: handleOrderDetailStatusChange,
+  });
+
+  // Subscribe to ALL issue updates and filter by vehicleAssignmentId
+  // This works even when staff opens page BEFORE driver reports issue
+  useEffect(() => {
+    if (!orderData?.order?.vehicleAssignments || !id) return;
+
+    // Extract all vehicle assignment IDs
+    const vehicleAssignmentIds: string[] = orderData.order.vehicleAssignments.map((va: any) => va.id);
+
+    if (vehicleAssignmentIds.length === 0) return;
+
+    console.log('[StaffOrderDetail] 📡 Monitoring issues for vehicle assignments:', vehicleAssignmentIds);
+
+    // Connect to issue WebSocket if not connected
+    if (!issueWebSocket.isConnected()) {
+      issueWebSocket.connect().catch(err => {
+        console.error('[StaffOrderDetail] Failed to connect to issue WebSocket:', err);
+      });
+    }
+
+    // Subscribe to global issue updates with a unique callback ID based on order
+    const callbackId = `order-${id}`;
+    const unsubscribe = issueWebSocket.subscribeToIssue(callbackId, (updatedIssue: any) => {
+      console.log('[StaffOrderDetail] 🔔 Received issue update:', updatedIssue);
+      
+      // Check if this issue belongs to any of our vehicle assignments
+      const issueVehicleAssignmentId = updatedIssue.vehicleAssignmentEntity?.id;
+      const belongsToThisOrder = issueVehicleAssignmentId && vehicleAssignmentIds.includes(issueVehicleAssignmentId);
+      
+      if (belongsToThisOrder) {
+        console.log('[StaffOrderDetail] ✅ New issue belongs to this order, refetching to update markers...');
+        
+        setTimeout(() => {
+          fetchOrderDetails(id);
+        }, 500);
+        
+        // Show notification for new issue
+        message.info({
+          content: `📍 Sự cố mới: ${updatedIssue.issueTypeName || 'Có sự cố xảy ra'}`,
+          duration: 5,
+        });
+        playNotificationSound(NotificationSoundType.INFO);
+      } else {
+        console.log('[StaffOrderDetail] ℹ️ Issue does not belong to this order, ignoring');
+      }
+    });
+    
+    // Listen for fallback event (when no direct subscriber found)
+    const handleFallbackEvent = (event: any) => {
+      const { issueId, issue } = event.detail || {};
+      console.log('[StaffOrderDetail] 📢 Fallback issue update received:', issueId);
+      
+      // Check if this issue belongs to current order
+      const issueVehicleAssignmentId = issue?.vehicleAssignmentEntity?.id;
+      const belongsToThisOrder = issueVehicleAssignmentId && vehicleAssignmentIds.includes(issueVehicleAssignmentId);
+      
+      if (belongsToThisOrder) {
+        console.log('[StaffOrderDetail] ✅ Fallback - Issue belongs to current order, refetching...');
+        setTimeout(() => {
+          fetchOrderDetails(id);
+        }, 500);
+      }
+    };
+    
+    window.addEventListener('issue-update-no-subscriber', handleFallbackEvent);
+
+    // Cleanup: unsubscribe when component unmounts or order changes
+    return () => {
+      console.log('[StaffOrderDetail] 📡 Unsubscribing from issue updates');
+      unsubscribe();
+      window.removeEventListener('issue-update-no-subscriber', handleFallbackEvent);
+    };
+  }, [orderData?.order?.vehicleAssignments, id]);
 
   // Validate and adjust active tab based on order status
   const validateActiveTab = useCallback((tabKey: string, orderStatus?: string, orderDetails?: Array<{ status: string }>) => {

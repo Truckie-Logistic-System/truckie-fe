@@ -523,25 +523,44 @@ const OrderDetailPage: React.FC = () => {
                     <OrderDetailsTable orderDetails={order.orderDetails} />
                   )}
 
-                  {/* Order Size Information */}
-                  {order.orderDetails &&
-                    order.orderDetails.length > 0 &&
-                    order.orderDetails[0].orderSizeId && (
-                      <OrderSizeCard
-                        orderSize={order.orderDetails[0].orderSizeId}
-                      />
-                    )}
+                  {/* Multi-Trip Support: Show ALL trips */}
+                  {order.orderDetails && order.orderDetails.length > 0 && (() => {
+                    // Group orderDetails by vehicleAssignmentId
+                    type OrderDetail = typeof order.orderDetails[0];
+                    const tripGroups = order.orderDetails.reduce((acc: Record<string, OrderDetail[]>, detail: OrderDetail) => {
+                      const vaId = detail.vehicleAssignmentId?.id || 'unassigned';
+                      if (!acc[vaId]) acc[vaId] = [];
+                      acc[vaId].push(detail);
+                      return acc;
+                    }, {});
 
-                  {/* Vehicle Assignment Information */}
-                  {order.orderDetails &&
-                    order.orderDetails.length > 0 &&
-                    order.orderDetails[0].vehicleAssignmentId && (
-                      <VehicleAssignmentCard
-                        vehicleAssignment={
-                          order.orderDetails[0].vehicleAssignmentId
-                        }
-                      />
-                    )}
+                    return (Object.entries(tripGroups) as [string, OrderDetail[]][]).map(([vaId, details], index) => (
+                      <div key={vaId} style={{ marginBottom: '16px' }}>
+                        {Object.keys(tripGroups).length > 1 && (
+                          <h3 style={{ 
+                            color: '#1890ff', 
+                            marginBottom: '12px',
+                            fontSize: '16px',
+                            fontWeight: 600
+                          }}>
+                            🚚 Chuyến xe #{index + 1} ({details.length} kiện hàng)
+                          </h3>
+                        )}
+                        
+                        {/* Order Size for this trip */}
+                        {details[0].orderSizeId && (
+                          <OrderSizeCard orderSize={details[0].orderSizeId} />
+                        )}
+
+                        {/* Vehicle Assignment for this trip */}
+                        {vaId !== 'unassigned' && (
+                          <VehicleAssignmentCard
+                            vehicleAssignment={details[0].vehicleAssignmentId}
+                          />
+                        )}
+                      </div>
+                    ));
+                  })()}
                 </>
               )}
             </TabPane>

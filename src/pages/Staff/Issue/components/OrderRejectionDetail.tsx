@@ -782,7 +782,7 @@ const globalCustomPoints: RoutePoint[] = [];
                     </div>
 
                     {/* Payment deadline with countdown */}
-                    {detailInfo.paymentDeadline && (
+                    {detailInfo.paymentDeadline && detailInfo.returnTransaction?.status !== 'PAID' && (
                         <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-lg p-4">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
