@@ -50,91 +50,113 @@ const RoutePathRenderer: React.FC<RoutePathRendererProps> = ({
           return;
         }
 
-        // Collect all coordinates from journey segments
-        const coordinates: [number, number][] = [];
-
-        journey.journeySegments.forEach((segment: any) => {
-          if (segment.pathCoordinatesJson) {
-            try {
-              const pathCoords = JSON.parse(segment.pathCoordinatesJson);
-              if (Array.isArray(pathCoords)) {
-                pathCoords.forEach((coord: any) => {
-                  const lng = Array.isArray(coord) ? coord[0] : coord.lng;
-                  const lat = Array.isArray(coord) ? coord[1] : coord.lat;
-                  
-                  if (!isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat)) {
-                    coordinates.push([lng, lat]);
-                  }
-                });
-              }
-            } catch (error) {
-              console.warn(`[RoutePathRenderer] Error parsing path coordinates:`, error);
-            }
+        // 🔧 FIX: Render EACH segment separately to avoid straight lines between segments
+        journey.journeySegments.forEach((segment: any, segmentIndex: number) => {
+          if (!segment.pathCoordinatesJson) {
+            return;
           }
-        });
 
-        if (coordinates.length < 2) {
-          return;
-        }
-        // Create source and layer for this journey route
-        const sourceId = `route-source-${vaIndex}-${journeyIndex}`;
-        const layerId = `route-layer-${vaIndex}-${journeyIndex}`;
+          const coordinates: [number, number][] = [];
+          
+          try {
+            const pathCoords = JSON.parse(segment.pathCoordinatesJson);
+            if (Array.isArray(pathCoords)) {
+              pathCoords.forEach((coord: any) => {
+                const lng = Array.isArray(coord) ? coord[0] : coord.lng;
+                const lat = Array.isArray(coord) ? coord[1] : coord.lat;
+                
+                if (!isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat)) {
+                  coordinates.push([lng, lat]);
+                }
+              });
+            }
+          } catch (error) {
+            console.warn(`[RoutePathRenderer] Error parsing path coordinates for segment ${segmentIndex}:`, error);
+            return;
+          }
 
-        try {
-          // Add source if not exists
-          if (!map.getSource(sourceId)) {
-            map.addSource(sourceId, {
-              type: 'geojson',
-              data: {
+          if (coordinates.length < 2) {
+            return;
+          }
+
+          // Create source and layer for THIS segment
+          const sourceId = `route-source-${vaIndex}-${journeyIndex}-seg${segmentIndex}`;
+          const layerId = `route-layer-${vaIndex}-${journeyIndex}-seg${segmentIndex}`;
+
+          try {
+            // Add source if not exists
+            if (!map.getSource(sourceId)) {
+              map.addSource(sourceId, {
+                type: 'geojson',
+                data: {
+                  type: 'Feature',
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                  },
+                  properties: {
+                    segmentOrder: segment.segmentOrder || segmentIndex + 1,
+                    startPoint: segment.startPointName,
+                    endPoint: segment.endPointName
+                  }
+                }
+              });
+            } else {
+              // Update source data if exists
+              map.getSource(sourceId).setData({
                 type: 'Feature',
                 geometry: {
                   type: 'LineString',
                   coordinates: coordinates
                 },
-                properties: {}
-              }
-            });
-          }
-
-          // Add layer if not exists
-          if (!map.getLayer(layerId)) {
-            // Try to find a suitable layer to insert before
-            let beforeLayer = undefined;
-            const layers = map.getStyle().layers;
-            if (layers) {
-              // Find first symbol layer
-              const symbolLayer = layers.find((l: any) => l.type === 'symbol');
-              if (symbolLayer) {
-                beforeLayer = symbolLayer.id;
-              }
+                properties: {
+                  segmentOrder: segment.segmentOrder || segmentIndex + 1,
+                  startPoint: segment.startPointName,
+                  endPoint: segment.endPointName
+                }
+              });
             }
 
-            map.addLayer({
-              id: layerId,
-              type: 'line',
-              source: sourceId,
-              layout: {
-                'line-join': 'round',
-                'line-cap': 'round'
-              },
-              paint: {
-                'line-color': '#1677ff',
-                'line-width': 6,
-                'line-opacity': 0.9
+            // Add layer if not exists
+            if (!map.getLayer(layerId)) {
+              // Try to find a suitable layer to insert before
+              let beforeLayer = undefined;
+              const layers = map.getStyle().layers;
+              if (layers) {
+                // Find first symbol layer
+                const symbolLayer = layers.find((l: any) => l.type === 'symbol');
+                if (symbolLayer) {
+                  beforeLayer = symbolLayer.id;
+                }
               }
-            }, beforeLayer); // Insert before first symbol layer if found
-            
-          } else {
-            // Update paint properties if layer already exists
-            map.setPaintProperty(layerId, 'line-color', '#1677ff');
-            map.setPaintProperty(layerId, 'line-width', 6);
-            map.setPaintProperty(layerId, 'line-opacity', 0.9);
-          }
 
-          createdLayers.push(sourceId, layerId);
-        } catch (error) {
-          console.error(`[RoutePathRenderer] Error rendering route ${vaIndex}-${journeyIndex}:`, error);
-        }
+              map.addLayer({
+                id: layerId,
+                type: 'line',
+                source: sourceId,
+                layout: {
+                  'line-join': 'round',
+                  'line-cap': 'round'
+                },
+                paint: {
+                  'line-color': '#1677ff',
+                  'line-width': 6,
+                  'line-opacity': 0.9
+                }
+              }, beforeLayer); // Insert before first symbol layer if found
+              
+            } else {
+              // Update paint properties if layer already exists
+              map.setPaintProperty(layerId, 'line-color', '#1677ff');
+              map.setPaintProperty(layerId, 'line-width', 6);
+              map.setPaintProperty(layerId, 'line-opacity', 0.9);
+            }
+
+            createdLayers.push(sourceId, layerId);
+          } catch (error) {
+            console.error(`[RoutePathRenderer] Error rendering segment ${segmentIndex}:`, error);
+          }
+        });
       });
     });
 

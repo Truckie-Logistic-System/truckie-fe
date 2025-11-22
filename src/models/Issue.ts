@@ -27,6 +27,10 @@ export interface Issue {
     
     // Sender/Customer information (for damage and order rejection issues)
     sender?: CustomerInfo; // Customer contact information for staff
+    
+    // REROUTE specific fields (only for REROUTE category)
+    affectedSegment?: JourneySegment; // The segment where the issue occurred
+    reroutedJourney?: JourneyHistory; // The new journey after rerouting
 }
 
 // Order detail information for issue
@@ -51,7 +55,8 @@ export type IssueCategory =
     | 'MISSING_ITEMS'
     | 'WRONG_ITEMS'
     | 'ORDER_REJECTION'
-    | 'PENALTY';
+    | 'PENALTY'
+    | 'REROUTE';
 
 export interface Seal {
     id: string;
@@ -187,6 +192,35 @@ export interface CustomerInfo {
     };
 }
 
+// Journey segment for REROUTE issues
+export interface JourneySegment {
+    id: string;
+    segmentOrder: number;
+    startPointName: string;
+    endPointName: string;
+    startLatitude: number;
+    startLongitude: number;
+    endLatitude: number;
+    endLongitude: number;
+    distanceKilometers?: number;
+    pathCoordinatesJson?: string;
+    tollDetailsJson?: string;
+    status?: string;
+    createdAt?: string;
+    modifiedAt?: string;
+}
+
+// Journey history for REROUTE issues
+export interface JourneyHistory {
+    id: string;
+    journeyName: string;
+    journeyType: string;
+    status: string;
+    vehicleAssignmentId?: string;
+    totalDistance?: number;
+    journeySegments?: JourneySegment[];
+}
+
 export interface Role {
     id: string;
     roleName: string;
@@ -252,6 +286,8 @@ export const getIssueCategoryLabel = (category: IssueCategory): string => {
             return 'Hàng hóa hư hại';
         case 'PENALTY':
             return 'Vi phạm giao thông';
+        case 'REROUTE':
+            return 'Tái định tuyến';
         default:
             return category;
     }
@@ -275,6 +311,8 @@ export const getIssueCategoryColor = (category: IssueCategory): string => {
             return 'volcano';
         case 'PENALTY':
             return 'magenta';
+        case 'REROUTE':
+            return 'blue';
         default:
             return 'default';
     }

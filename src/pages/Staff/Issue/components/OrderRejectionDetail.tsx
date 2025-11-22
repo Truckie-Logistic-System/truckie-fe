@@ -99,7 +99,7 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
         segmentOrder: number;
         startPointName: string;
         endPointName: string;
-        distanceMeters: number;
+        distanceKilometers: number;
         [key: string]: any;
     }>>([]);
     const [segments, setSegments] = useState<RouteSegment[]>([]);
@@ -150,7 +150,7 @@ const globalCustomPoints: RoutePoint[] = [];
                     startLongitude: startPoint[0], // lng from [lng, lat]
                     endLatitude: endPoint[1], // lat from [lng, lat]
                     endLongitude: endPoint[0], // lng from [lng, lat]
-                    distanceMeters: seg.distance, // Keep as km (field name is misleading, but system uses km)
+                    distanceKilometers: seg.distance, // Distance in kilometers
                     pathCoordinatesJson: JSON.stringify(path), // Already in [[lng, lat], ...] format
                     tollDetails: seg.tolls || [],
                     estimatedTollFee: estimatedTollFee

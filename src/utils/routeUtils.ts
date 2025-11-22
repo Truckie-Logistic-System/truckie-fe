@@ -25,7 +25,7 @@ export const convertRouteSegmentToRouteSegmentInfo = (
         startLongitude: startPoint[0], // [lng, lat] -> lng
         endLatitude: endPoint[1], // [lng, lat] -> lat
         endLongitude: endPoint[0], // [lng, lat] -> lng
-        distanceMeters: segment.distance, // Sử dụng trường distance mới
+        distanceKilometers: segment.distance, // Distance in kilometers
         pathCoordinates: segment.path,
         estimatedTollFee: totalToll,
         tollDetails: segment.tolls.map(toll => ({
@@ -63,7 +63,7 @@ export const convertRouteSegmentsToRouteInfo = (segments: RouteSegment[]): Route
     const totalTollCount = routeSegments.reduce((sum, segment) => sum + (segment.tollDetails?.length || 0), 0);
 
     // Tính tổng khoảng cách
-    const totalDistance = routeSegments.reduce((sum, segment) => sum + segment.distanceMeters, 0);
+    const totalDistance = routeSegments.reduce((sum, segment) => sum + segment.distanceKilometers, 0);
 
     return {
         segments: routeSegments,

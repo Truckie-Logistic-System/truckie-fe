@@ -26,7 +26,7 @@ export interface JourneySegment {
     startLongitude: number;
     endLatitude: number;
     endLongitude: number;
-    distanceMeters: number;
+    distanceKilometers: number;
     pathCoordinatesJson: string;
     tollDetailsJson: string | null;
     status: string;

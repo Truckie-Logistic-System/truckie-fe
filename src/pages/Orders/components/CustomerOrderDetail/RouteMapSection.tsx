@@ -179,7 +179,7 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                             !isNaN(segment.endLatitude) && !isNaN(segment.endLongitude) &&
                             isFinite(segment.endLatitude) && isFinite(segment.endLongitude)) {
                             const translatedEndName = translatePointName(segment.endPointName || '');
-                            const distance = segment.distanceMeters.toFixed(1);
+                            const distance = segment.distanceKilometers.toFixed(1);
                             newMarkers.push({
                                 lat: segment.endLatitude,
                                 lng: segment.endLongitude,
@@ -197,10 +197,10 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                         newRouteSegments.push({
                             segmentOrder: segment.segmentOrder || 0,
                             startName: translatePointName(segment.startPointName || 'Điểm đầu'),
-                            endName: `${translatePointName(segment.endPointName || 'Điểm cuối')} (${segment.distanceMeters.toFixed(1)} km)`,
+                            endName: `${translatePointName(segment.endPointName || 'Điểm cuối')} (${segment.distanceKilometers.toFixed(1)} km)`,
                             path: pathCoordinates,
                             tolls: tolls,
-                            distance: segment.distanceMeters || 0, // Đã là km, không cần chia 1000
+                            distance: segment.distanceKilometers || 0,
                             rawResponse: {},
                         });
 

@@ -485,7 +485,7 @@ export interface CustomerVehicleAssignment {
         startLongitude: number;
         endLatitude: number;
         endLongitude: number;
-        distanceMeters: number;
+        distanceKilometers: number;
         pathCoordinatesJson: string;
         tollDetailsJson: string | null;
         status: string;
@@ -700,7 +700,7 @@ export interface StaffVehicleAssignment {
         startLongitude: number;
         endLatitude: number;
         endLongitude: number;
-        distanceMeters: number;
+        distanceKilometers: number;
         pathCoordinatesJson: string;
         tollDetailsJson: string | null;
         status: string;

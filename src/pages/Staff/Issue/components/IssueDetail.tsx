@@ -22,6 +22,7 @@ import IssueInfoCard from './IssueInfoCard';
 import RefundProcessingDetail from './RefundProcessingDetail';
 import PenaltyDetail from './PenaltyDetail';
 import OrderRejectionDetail from './OrderRejectionDetail';
+import RerouteDetail from './RerouteDetail';
 import issueWebSocket from '@/services/websocket/issueWebSocket';
 
 const IssueDetail: React.FC = () => {
@@ -63,6 +64,7 @@ const IssueDetail: React.FC = () => {
             const data = await issueService.getIssueById(issueId);
             
             setIssue(data);
+            console.log(data);
         } catch (error) {
             message.error('Không thể tải thông tin sự cố');
             console.error('Error fetching issue details:', error);
@@ -262,9 +264,19 @@ const IssueDetail: React.FC = () => {
                         />
                     </Col>
                 )}
+
+                {/* Reroute Detail - Hiển thị khi issue là loại tái định tuyến */}
+                {(issue.issueCategory === 'REROUTE' || issue.issueTypeEntity?.issueCategory === 'REROUTE') && (
+                    <Col span={24}>
+                        <RerouteDetail 
+                            issue={issue}
+                            onUpdate={handleIssueUpdate} 
+                        />
+                    </Col>
+                )}
             </Row>
         </div>
     );
 };
 
-export default IssueDetail; 
+export default IssueDetail;

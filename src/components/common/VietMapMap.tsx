@@ -19,6 +19,7 @@ interface VietMapMapProps {
     routeSegments?: RouteSegment[];
     animateRoute?: boolean;
     getMapInstance?: (map: any) => void;
+    onMapClick?: (location: MapLocation) => void; // Callback when map is clicked
     children?: React.ReactNode; // Support overlay components
 }
 
@@ -120,6 +121,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     routeSegments = [],
     animateRoute = false,
     getMapInstance,
+    onMapClick,
     children
 }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -305,13 +307,20 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
                         // 
 
-                        // Không cần cập nhật marker chính, chỉ gửi vị trí mới
                         const newLocation: MapLocation = {
                             lat: lat,
                             lng: lng,
                             address: address
                         };
-                        onLocationChange(newLocation);
+                        
+                        // If onMapClick is provided (e.g., RerouteDetail), only call it
+                        // This prevents resetting markers when adding waypoints
+                        if (onMapClick) {
+                            onMapClick(newLocation);
+                        } else {
+                            // Otherwise, call onLocationChange (default behavior for IssueDetail)
+                            onLocationChange(newLocation);
+                        }
                     })
                     .catch(error => {
                         console.error('Error in reverse geocoding:', error);
@@ -321,7 +330,13 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             lng: lng,
                             address: ''
                         };
-                        onLocationChange(newLocation);
+                        
+                        // If onMapClick is provided (e.g., RerouteDetail), only call it
+                        if (onMapClick) {
+                            onMapClick(newLocation);
+                        } else {
+                            onLocationChange(newLocation);
+                        }
                     });
             });
 
@@ -385,28 +400,29 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             // Xóa tất cả markers cũ khỏi map
             markersToRemove.forEach(marker => {
                 if (marker) {
-                    // 
                     marker.remove();
                 }
             });
 
-            // Xóa trực tiếp tất cả các phần tử DOM có class 'marker'
+            // Xóa trực tiếp tất cả các phần tử DOM có class 'marker' ONLY trong container này
             const mapContainer = mapRef.current.getContainer();
             if (mapContainer) {
+                // Clean up .marker elements within THIS map container
                 const markerElements = mapContainer.querySelectorAll('.marker');
                 markerElements.forEach((el: Element) => {
                     if (el && el.parentNode) {
                         el.parentNode.removeChild(el);
                     }
                 });
+                
+                // Clean up vietmap marker elements within THIS map container only
+                const vietmapMarkers = mapContainer.querySelectorAll('.mapboxgl-marker, .vietmapgl-marker');
+                vietmapMarkers.forEach((el: Element) => {
+                    if (el && el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
             }
-
-            // Xóa trực tiếp các phần tử marker từ DOM
-            document.querySelectorAll('.mapboxgl-marker, .vietmapgl-marker').forEach((el: Element) => {
-                if (el && el.parentNode) {
-                    el.parentNode.removeChild(el);
-                }
-            });
 
             // Early return if no markers
             if (!markers || markers.length === 0) {
@@ -465,6 +481,10 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     if (location.issueCategory) {
                         // Set icon and color based on issueCategory
                         switch(location.issueCategory) {
+                            case 'REROUTE':
+                                icon = '🚧'; // Construction/roadblock
+                                color = '#ff7a45'; // Orange-red
+                                break;
                             case 'ORDER_REJECTION':
                                 icon = '📦'; // Package
                                 color = '#ff4d4f'; // Red
@@ -856,7 +876,18 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                         }
                     });
 
-                    // Thêm layer
+                    // Thêm layer với custom styling support
+                    const layerPaint: any = {
+                        'line-color': getRouteColor(segment, index),
+                        'line-width': (segment as any).lineWidth || 6,
+                        'line-opacity': (segment as any).lineOpacity || 0.8
+                    };
+                    
+                    // Add dashed line if specified
+                    if ((segment as any).lineDasharray) {
+                        layerPaint['line-dasharray'] = (segment as any).lineDasharray;
+                    }
+                    
                     mapRef.current.addLayer({
                         id: layerId,
                         type: 'line',
@@ -865,11 +896,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             'line-join': 'round',
                             'line-cap': 'round'
                         },
-                        paint: {
-                            'line-color': getRouteColor(segment, index),
-                            'line-width': 6,
-                            'line-opacity': 0.8
-                        }
+                        paint: layerPaint
                     });
 
                     // Lưu ID để dọn dẹp sau này
@@ -884,7 +911,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
                     // Thêm sự kiện   click vào route để hiển thị/ẩn popup
                     mapRef.current.on('click', layerId, (e: any) => {
-                        // Ngăn sự kiện   lan truyền
+                        // ALWAYS stop propagation when clicking route lines
+                        // This prevents adding waypoints when clicking lines (user should click empty area)
                         e.originalEvent.stopPropagation();
 
                         // Đóng tất cả các popup khác
@@ -960,7 +988,19 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     }
                 });
 
-                // Tạo layer mới
+                // Tạo layer mới với custom styling support
+                const currentSegment = routeSegments[segmentIndex];
+                const animLayerPaint: any = {
+                    'line-color': getRouteColor(currentSegment, segmentIndex),
+                    'line-width': (currentSegment as any).lineWidth || 6,
+                    'line-opacity': (currentSegment as any).lineOpacity || 0.8
+                };
+                
+                // Add dashed line if specified
+                if ((currentSegment as any).lineDasharray) {
+                    animLayerPaint['line-dasharray'] = (currentSegment as any).lineDasharray;
+                }
+                
                 mapRef.current.addLayer({
                     id: layerId,
                     type: 'line',
@@ -969,11 +1009,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                         'line-join': 'round',
                         'line-cap': 'round'
                     },
-                    paint: {
-                        'line-color': getRouteColor(routeSegments[segmentIndex], segmentIndex),
-                        'line-width': 6,
-                        'line-opacity': 0.8
-                    }
+                    paint: animLayerPaint
                 });
 
                 // Lưu ID để dọn dẹp sau này

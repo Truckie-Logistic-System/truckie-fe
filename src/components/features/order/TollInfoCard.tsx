@@ -13,7 +13,7 @@ interface TollInfoCardProps {
         startPointName: string;
         endPointName: string;
         tollDetailsJson: string | null;
-        distanceMeters: number;
+        distanceKilometers: number;
         status: string;
         createdAt: string;
         modifiedAt: string;
@@ -31,7 +31,7 @@ const TollInfoCard: React.FC<TollInfoCardProps> = ({ journeySegments }) => {
                 segmentOrder: segment.segmentOrder,
                 startPointName: segment.startPointName,
                 endPointName: segment.endPointName,
-                distanceKm: segment.distanceMeters, // Đã là km, không cần chia 1000
+                distanceKm: segment.distanceKilometers,
                 status: segment.status,
                 createdAt: segment.createdAt,
                 modifiedAt: segment.modifiedAt,

@@ -51,7 +51,10 @@ const mapApiResponseToIssue = (apiData: IssueApiResponse): Issue => {
         issueImages: apiData.issueImages,
         orderDetail: apiData.orderDetail,
         // Customer/Sender information
-        sender: apiData.sender
+        sender: apiData.sender,
+        // REROUTE specific fields
+        affectedSegment: apiData.affectedSegment,
+        reroutedJourney: apiData.reroutedJourney
     };
 };
 
@@ -380,6 +383,43 @@ const issueService = {
         } catch (error: any) {
             console.error('Error processing order rejection:', error);
             throw new Error(error.response?.data?.message || 'Không thể xử lý sự cố');
+        }
+    },
+
+    // ===== REROUTE flow methods =====
+
+    /**
+     * Get REROUTE issue detail
+     * @param issueId Issue ID
+     * @returns Promise with reroute detail
+     */
+    getRerouteDetail: async (issueId: string): Promise<any> => {
+        try {
+            const response = await httpClient.get(`/issues/reroute/${issueId}/detail`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error fetching reroute detail:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tải chi tiết sự cố tái định tuyến');
+        }
+    },
+
+    /**
+     * Process REROUTE issue: create new journey with rerouted segments
+     * @param request Process request data
+     * @returns Promise with updated reroute detail
+     */
+    processReroute: async (request: {
+        issueId: string;
+        newRouteSegments: any[];
+        totalTollFee: number;
+        totalTollCount: number;
+    }): Promise<any> => {
+        try {
+            const response = await httpClient.post('/issues/reroute/process', request);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error processing reroute:', error);
+            throw new Error(error.response?.data?.message || 'Không thể xử lý tái định tuyến');
         }
     }
 };
