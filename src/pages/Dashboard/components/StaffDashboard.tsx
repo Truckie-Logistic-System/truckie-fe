@@ -159,7 +159,6 @@ const StaffDashboard: React.FC = () => {
                     <Card
                         title="Nhiệm vụ cần xử lý"
                         className="shadow-sm"
-                        extra={<a href="#">Xem tất cả</a>}
                     >
                         <List
                             itemLayout="horizontal"
@@ -192,7 +191,6 @@ const StaffDashboard: React.FC = () => {
                     <Card
                         title="Vận chuyển gần đây"
                         className="shadow-sm"
-                        extra={<a href="#">Xem tất cả</a>}
                     >
                         <List
                             itemLayout="vertical"

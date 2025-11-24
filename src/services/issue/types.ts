@@ -120,6 +120,44 @@ export interface IssueApiResponse {
             phoneNumber?: string;
         };
     };
+    // REROUTE specific fields (only for REROUTE category)
+    affectedSegment?: {
+        id: string;
+        segmentOrder: number;
+        startPointName: string;
+        endPointName: string;
+        startLatitude: number;
+        startLongitude: number;
+        endLatitude: number;
+        endLongitude: number;
+        distanceKilometers?: number;
+        pathCoordinatesJson?: string;
+        tollDetailsJson?: string;
+        status?: string;
+        createdAt?: string;
+        modifiedAt?: string;
+    };
+    reroutedJourney?: {
+        id: string;
+        journeyName: string;
+        journeyType: string;
+        status: string;
+        vehicleAssignmentId?: string;
+        totalDistance?: number;
+        journeySegments?: Array<{
+            id: string;
+            segmentOrder: number;
+            startPointName: string;
+            endPointName: string;
+            startLatitude: number;
+            startLongitude: number;
+            endLatitude: number;
+            endLongitude: number;
+            distanceKilometers?: number;
+            pathCoordinatesJson?: string;
+            status?: string;
+        }>;
+    };
 }
 
 export interface IssueCreateDto {
@@ -134,4 +172,87 @@ export interface IssueUpdateDto {
     description?: string;
     status?: string;
     staffId?: string;
+}
+
+// REROUTE issue specific types
+export interface RerouteDetailResponse {
+    issueId: string;
+    status: string;
+    description: string;
+    reportedAt: string;
+    resolvedAt?: string;
+    locationLatitude?: number;
+    locationLongitude?: number;
+    affectedSegment: {
+        id: string;
+        segmentOrder: number;
+        startPointName: string;
+        endPointName: string;
+        startLatitude: number;
+        startLongitude: number;
+        endLatitude: number;
+        endLongitude: number;
+        distanceKilometers: number;
+        status: string;
+        pathCoordinatesJson?: string;
+    };
+    vehicleAssignment: {
+        id: string;
+        trackingCode: string;
+        status: string;
+        vehicle: {
+            id: string;
+            licensePlateNumber: string;
+            model?: string;
+        };
+        driver1: {
+            id: string;
+            fullName: string;
+            phoneNumber?: string;
+        };
+    };
+    activeJourney: {
+        id: string;
+        journeyName: string;
+        journeyType: string;
+        status: string;
+        segments: Array<{
+            id: string;
+            segmentOrder: number;
+            startPointName: string;
+            endPointName: string;
+            startLatitude: number;
+            startLongitude: number;
+            endLatitude: number;
+            endLongitude: number;
+            distanceKilometers: number;
+            pathCoordinatesJson?: string;
+        }>;
+    };
+    reroutedJourney?: {
+        id: string;
+        journeyName: string;
+        journeyType: string;
+        status: string;
+    };
+    issueImages?: string[];
+}
+
+export interface ProcessRerouteRequest {
+    issueId: string;
+    newRouteSegments: Array<{
+        segmentOrder: number;
+        startPointName: string;
+        endPointName: string;
+        startLatitude: number;
+        startLongitude: number;
+        endLatitude: number;
+        endLongitude: number;
+        distanceKilometers: number;
+        estimatedTollFee?: number;
+        pathCoordinatesJson?: string;
+        tollDetailsJson?: string;
+    }>;
+    totalTollFee: number;
+    totalTollCount: number;
 } 

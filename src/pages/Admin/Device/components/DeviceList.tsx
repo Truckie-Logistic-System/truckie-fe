@@ -79,8 +79,6 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
         try {
             setLoading(true);
             const response = await deviceService.getDevices();
-            console.log('Device response:', response);
-
             // Check if the response has the expected structure
             if (response && response.data) {
                 // Make sure response.data is an array
@@ -101,8 +99,6 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
     const fetchDeviceTypes = async () => {
         try {
             const response = await deviceService.getDeviceTypes();
-            console.log('Device types response:', response);
-
             // Check if the response has the expected structure
             if (response && response.data) {
                 // Make sure response.data is an array

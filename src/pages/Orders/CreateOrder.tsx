@@ -3,9 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button, Form, Steps, Card, Typography, App, Skeleton } from "antd";
 import { useOrderCreation } from "@/hooks";
 import type { OrderCreateRequest } from "../../models/Order";
-import { OrderDetailFormList } from "./components";
+import { OrderDetailFormList, StipulationModal } from "./components";
 import OrderCreationSuccess from "./components/OrderCreationSuccess";
 import { formatToVietnamTime } from "../../utils/dateUtils";
+import { calculateTotalWeight, convertWeightToTons } from "../../utils/weightUtils";
 import dayjs from "dayjs";
 import {
   ReceiverAndAddressStep,
@@ -29,6 +30,7 @@ export default function CreateOrder() {
     id: string;
     orderCode: string;
   } | null>(null);
+  const [showStipulationModal, setShowStipulationModal] = useState(false);
 
   const [form] = Form.useForm();
 
@@ -45,7 +47,6 @@ export default function CreateOrder() {
 
   // Cập nhật giá trị form từ state khi component mount
   useEffect(() => {
-    console.log("Setting form values from state:", formValues);
     form.setFieldsValue(formValues);
   }, [form, formValues]);
 
@@ -76,7 +77,6 @@ export default function CreateOrder() {
   // Note: Hook will auto-refetch, but keep this for manual refresh if needed
   const refreshAddresses = async () => {
     // Hook handles address fetching, no manual refresh needed
-    console.log("Addresses will be refreshed by hook on next render");
   };
 
   // Handle receiver details loaded from suggestion
@@ -101,7 +101,7 @@ export default function CreateOrder() {
         const orderDetailsList = currentValues.orderDetailsList || [];
         if (orderDetailsList.length === 0) {
           message.error(
-            "Vui lòng thêm ít nhất một lô hàng trước khi tiếp tục!"
+            "Vui lòng thêm ít nhất một kiện hàng trước khi tiếp tục!"
           );
           return;
         }
@@ -120,11 +120,31 @@ export default function CreateOrder() {
     setCurrentStep(currentStep - 1);
   };
 
+  const handleSubmitClick = () => {
+    // Show stipulation modal before actual submit
+    setShowStipulationModal(true);
+  };
+
   const handleSubmit = async () => {
+    setShowStipulationModal(false);
     setIsSubmitting(true);
     try {
+      // Validate all form fields first
+      await form.validateFields();
+      
+      // Additional validation for total weight
       const currentFormValues = form.getFieldsValue(true);
-      console.log("Current form values:", currentFormValues);
+      const orderDetails = currentFormValues.orderDetailsList || [];
+      
+      // Use utility function for consistent total weight calculation
+      const totalWeight = calculateTotalWeight(orderDetails);
+
+      if (totalWeight < 0.01 || totalWeight > 50) {
+        message.error(`Tổng khối lượng đơn hàng phải từ 0.01 đến 50 tấn. Hiện tại: ${totalWeight.toFixed(2)} tấn`);
+        setIsSubmitting(false);
+        return;
+      }
+
       let formattedEstimateStartTime;
       if (currentFormValues.estimateStartTime) {
         if (currentFormValues.estimateStartTime._isAMomentObject || dayjs.isDayjs(currentFormValues.estimateStartTime)) {
@@ -151,7 +171,7 @@ export default function CreateOrder() {
         : [];
 
       if (orderDetailsList.length === 0) {
-        throw new Error("Vui lòng thêm ít nhất một lô hàng");
+        throw new Error("Vui lòng thêm ít nhất một kiện hàng");
       }
 
       // Kiểm tra các trường bắt buộc trong orderDetailsList
@@ -165,7 +185,7 @@ export default function CreateOrder() {
 
       if (invalidDetails.length > 0) {
         throw new Error(
-          "Một số lô hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước, mô tả và số lượng."
+          "Một số kiện hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước, mô tả và số lượng."
         );
       }
 
@@ -173,11 +193,17 @@ export default function CreateOrder() {
       const expandedOrderDetailsList: any[] = [];
       orderDetailsList.forEach((detail: any) => {
         const quantity = detail.quantity || 1;
+        const weight = detail.weight || 0;
+        const unit = detail.unit || "Tấn";
+        
+        // Use utility function for consistent conversion
+        const weightInTons = convertWeightToTons(weight, unit);
+        
         // Tạo nhiều bản copy của item dựa trên quantity
         for (let i = 0; i < quantity; i++) {
           expandedOrderDetailsList.push({
-            weight: detail.weightBaseUnit || detail.weight,
-            unit: detail.unit || "kg",
+            weight: weightInTons, // Send converted weight in tons
+            unit: "Tấn", // Always send as tons to backend
             description: detail.description || "",
             orderSizeId: detail.orderSizeId,
           });
@@ -209,8 +235,6 @@ export default function CreateOrder() {
       };
 
       // Log để debug
-      console.log("Order request:", orderRequest);
-
       // Kiểm tra dữ liệu trước khi gửi
       if (
         !orderRequest.orderRequest.receiverName ||
@@ -313,9 +337,10 @@ export default function CreateOrder() {
         return (
           <OrderDetailFormList
             name="orderDetailsList"
-            label="Danh sách lô hàng"
+            label="Danh sách kiện hàng"
             orderSizes={orderSizes}
             units={units}
+            form={form}
           />
         );
       case 1:
@@ -331,8 +356,6 @@ export default function CreateOrder() {
         // Lấy lại giá trị form mới nhất trước khi hiển thị trang tóm tắt
         const currentFormValues = form.getFieldsValue(true);
         const updatedFormValues = { ...formValues, ...currentFormValues };
-        console.log("Summary step - Updated form values:", updatedFormValues);
-
         return (
           <OrderSummaryStep
             formValues={updatedFormValues}
@@ -372,8 +395,8 @@ export default function CreateOrder() {
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6">
             <Steps current={currentStep} className="mb-0">
               <Step
-                title="Thông tin lô hàng"
-                description="Nhập thông tin lô hàng"
+                title="Thông tin kiện hàng"
+                description="Nhập thông tin kiện hàng"
               />
               <Step
                 title="Thông tin vận chuyển"
@@ -405,13 +428,20 @@ export default function CreateOrder() {
                   totalSteps={3}
                   onPrev={prev}
                   onNext={next}
-                  onSubmit={handleSubmit}
+                  onSubmit={handleSubmitClick}
                   isSubmitting={isSubmitting}
                 />
               )}
             </Form>
           </div>
         </Card>
+
+        {/* Stipulation Modal */}
+        <StipulationModal
+          visible={showStipulationModal}
+          onAccept={handleSubmit}
+          onCancel={() => setShowStipulationModal(false)}
+        />
       </div>
     </div>
   );

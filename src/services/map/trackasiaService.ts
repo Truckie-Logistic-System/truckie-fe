@@ -48,7 +48,6 @@ const cacheMapStyle = (styleType: string, styleData: any): void => {
             data: styleData
         };
         sessionStorage.setItem(`trackasia_style_${styleType}`, JSON.stringify(cacheItem));
-        console.log(`Cached map style "${styleType}" to sessionStorage`);
     } catch (error) {
         console.error('Error caching map style:', error);
     }
@@ -64,12 +63,9 @@ const getCachedMapStyle = (styleType: string): any | null => {
 
         // Kiểm tra xem cache có hết hạn chưa
         if (isCacheExpired(timestamp)) {
-            console.log(`Cached map style "${styleType}" has expired`);
             sessionStorage.removeItem(`trackasia_style_${styleType}`);
             return null;
         }
-
-        console.log(`Using cached map style "${styleType}" from sessionStorage`);
         return data;
     } catch (error) {
         console.error('Error retrieving cached map style:', error);
@@ -106,15 +102,11 @@ const trackasiaService = {
         // Kiểm tra xem thư viện đã được tải chưa
         if (!window.trackasiagl && !window.trackasia) {
             console.error('TrackAsia library not found');
-            console.log('window.trackasiagl:', typeof window.trackasiagl);
-            console.log('window.trackasia:', typeof window.trackasia);
             return null;
         }
 
         // Ưu tiên sử dụng trackasiagl từ NPM
         const mapLib = window.trackasiagl || window.trackasia;
-        console.log('Using TrackAsia library:', window.trackasiagl ? 'NPM version' : 'CDN version');
-
         const defaultCenter = { lat: 10.769034, lng: 106.694945 }; // TPHCM
         const center = options.center || defaultCenter;
         const zoom = options.zoom || 9;
@@ -164,19 +156,14 @@ const trackasiaService = {
         bounds?: string,
         location?: string
     ): Promise<AutocompleteResult[]> => {
-        console.log('trackasiaService.autocomplete called with:', { input, size, bounds, location });
-
         try {
             // Hủy request cũ nếu đang có request đang chạy
             if (currentSearchController) {
-                console.log('Aborting previous autocomplete request');
                 currentSearchController.abort();
             }
 
             // Tạo controller mới cho request này
             currentSearchController = new AbortController();
-
-            console.log('Sending request to /trackasia/autocomplete with input:', input);
             const response = await httpClient.get<AutocompleteResponse>('/trackasia/autocomplete', {
                 params: {
                     input,
@@ -186,14 +173,10 @@ const trackasiaService = {
                 },
                 signal: currentSearchController.signal
             });
-
-            console.log('Autocomplete API response:', response);
-
             // Xóa controller sau khi request hoàn thành
             currentSearchController = null;
 
             if (response.data && response.data.status === 'OK') {
-                console.log('Autocomplete results found:', response.data.predictions);
                 return response.data.predictions || [];
             }
 
@@ -222,20 +205,13 @@ const trackasiaService = {
      * @returns Chi tiết địa điểm
      */
     getPlaceDetail: async (place_id: string): Promise<PlaceDetailResult | null> => {
-        console.log('trackasiaService.getPlaceDetail called with place_id:', place_id);
-
         try {
-            console.log(`Trying endpoint /trackasia/place/details with place_id:`, place_id);
             const response = await httpClient.get<PlaceDetailResponse>('/trackasia/place/details', {
                 params: {
                     place_id
                 }
             });
-
-            console.log(`Response from /trackasia/place/details:`, response);
-
             if (response.data && response.data.status === 'OK') {
-                console.log('Place detail found:', response.data.result);
                 return response.data.result;
             }
 

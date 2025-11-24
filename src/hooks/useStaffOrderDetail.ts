@@ -28,8 +28,6 @@ export const useStaffOrderDetail = () => {
       setError(null);
       
       const orderData = await orderService.getOrderForStaffByOrderId(id);
-      console.log('[useStaffOrderDetail] Received order data:', orderData);
-      console.log('[useStaffOrderDetail] Order details:', orderData?.order?.orderDetails);
       setOrder(orderData);
 
       // Fetch contract if exists
@@ -53,7 +51,6 @@ export const useStaffOrderDetail = () => {
           }
         }
       } catch (contractError) {
-        console.log('[useStaffOrderDetail] No contract found');
       }
     } catch (err: any) {
       console.error('[useStaffOrderDetail] Error fetching order detail:', err);

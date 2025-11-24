@@ -45,7 +45,13 @@ const ChatWindow: React.FC = () => {
     }
 
     return (
-        <div className="fixed bottom-20 right-4 w-96 h-[500px] bg-white border rounded-lg shadow-xl z-40 flex flex-col">
+        <div className="fixed bg-white border rounded-lg shadow-xl flex flex-col" style={{
+            bottom: '1rem',
+            right: 'calc(1rem + 80px)', 
+            width: '400px',
+            height: '600px',
+            zIndex: 998
+        }}>
             {/* Header */}
             <div className="p-4 border-b bg-blue-500 text-white rounded-t-lg flex justify-between items-center flex-shrink-0">
                 <h3 className="font-semibold">Hỗ trợ khách hàng</h3>

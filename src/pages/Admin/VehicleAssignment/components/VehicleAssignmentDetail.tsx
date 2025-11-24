@@ -52,11 +52,11 @@ const VehicleAssignmentDetail: React.FC<VehicleAssignmentDetailProps> = ({
     const getStatusColor = (status: string) => {
         switch (status) {
             case VehicleAssignmentStatus.ACTIVE:
-                return "success";
+                return "processing";
             case VehicleAssignmentStatus.INACTIVE:
-                return "error";
-            case VehicleAssignmentStatus.PENDING:
-                return "warning";
+                return "default";
+            case VehicleAssignmentStatus.COMPLETED:
+                return "success";
             default:
                 return "default";
         }
@@ -65,11 +65,11 @@ const VehicleAssignmentDetail: React.FC<VehicleAssignmentDetailProps> = ({
     const getStatusText = (status: string) => {
         switch (status) {
             case VehicleAssignmentStatus.ACTIVE:
-                return "Hoạt động";
+                return "Đang hoạt động";
             case VehicleAssignmentStatus.INACTIVE:
                 return "Không hoạt động";
-            case VehicleAssignmentStatus.PENDING:
-                return "Chờ xử lý";
+            case VehicleAssignmentStatus.COMPLETED:
+                return "Hoàn thành";
             default:
                 return status;
         }
@@ -81,8 +81,8 @@ const VehicleAssignmentDetail: React.FC<VehicleAssignmentDetailProps> = ({
                 return <CheckCircleOutlined />;
             case VehicleAssignmentStatus.INACTIVE:
                 return <CloseCircleOutlined />;
-            case VehicleAssignmentStatus.PENDING:
-                return <ClockCircleOutlined />;
+            case VehicleAssignmentStatus.COMPLETED:
+                return <CheckCircleOutlined />;
             default:
                 return <InfoCircleOutlined />;
         }

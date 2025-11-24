@@ -32,7 +32,6 @@ const AddressForm: React.FC<AddressFormProps> = ({
     // Force re-render when form values change
     useEffect(() => {
         const values = form.getFieldsValue();
-        console.log('AddressForm received form values:', values);
     }, [form]);
 
     return (

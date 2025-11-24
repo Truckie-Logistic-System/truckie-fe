@@ -13,7 +13,7 @@ export * from "./Driver";
 export * from "./Customer";
 export * from "./Device";
 export * from "./Vehicle";
-export * from "./VehicleRule";
+export * from "./SizeRule";
 export * from "./Contract";
 export * from "./Province";
 export * from "./TrackAsia";

@@ -27,7 +27,7 @@ export interface ReturnShippingIssue {
   adjustedFee?: number;
   finalFee?: number;
   
-  // Transaction
+  // Transaction (deprecated - use transactions array)
   returnTransaction?: {
     id: string;
     amount: number;
@@ -38,6 +38,18 @@ export interface ReturnShippingIssue {
     gatewayOrderCode?: number;
     paymentDate?: string;
   };
+  
+  // All transactions (includes PENDING, FAILED, PAID)
+  transactions?: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    currencyCode: string;
+    paymentProvider: string;
+    gatewayResponse?: string;
+    gatewayOrderCode?: number;
+    paymentDate?: string;
+  }>;
   
   // Payment deadline
   paymentDeadline?: string;
@@ -50,7 +62,10 @@ export interface ReturnShippingIssue {
     unit?: string;
   }>;
   
-  // Return delivery images
+  // Issue images (photos when driver confirms return delivery)
+  issueImages?: string[];
+  
+  // Return delivery images (deprecated - use issueImages)
   returnDeliveryImages?: string[];
 }
 
@@ -101,7 +116,7 @@ const customerIssueService = {
   
   /**
    * Create payment link for return shipping fee
-   * Uses existing transaction service to create PayOS payment link
+   * Calls backend to create transaction and get PayOS payment link
    * @param issueId Issue ID
    * @returns Promise with payment link response
    */
@@ -112,32 +127,38 @@ const customerIssueService = {
     qrCode?: string;
   }> => {
     try {
-      // Find transaction from issue
-      const issueDetail = await customerIssueService.getReturnShippingIssueDetail(issueId);
+      // Call backend to create payment transaction via PayOS controller (like deposit)
+      // Backend will handle getting contract ID and amount from issue
+      const response = await httpClient.post(
+        `/transactions/pay-os/issue/${issueId}/return-payment`,
+        {}
+      );
       
-      if (!issueDetail.returnTransaction) {
-        throw new Error('Chưa có giao dịch thanh toán cho sự cố này');
+      const transactionData = response.data.data;
+      
+      // Parse gateway response to get checkout URL
+      let checkoutUrl = '';
+      let qrCode = '';
+      
+      if (transactionData.gatewayResponse) {
+        try {
+          const gatewayData = JSON.parse(transactionData.gatewayResponse);
+          checkoutUrl = gatewayData.checkoutUrl || gatewayData.paymentLinkUrl || '';
+          qrCode = gatewayData.qrCode || '';
+        } catch (parseError) {
+          console.error('Error parsing gatewayResponse:', parseError);
+        }
       }
-      
-      const transactionId = issueDetail.returnTransaction.id;
-      
-      // Get payment link from gateway response
-      const gatewayResponse = issueDetail.returnTransaction.gatewayResponse;
-      if (!gatewayResponse) {
-        throw new Error('Không tìm thấy thông tin thanh toán');
-      }
-      
-      const paymentData = JSON.parse(gatewayResponse);
       
       return {
-        transactionId: transactionId,
-        amount: issueDetail.returnTransaction.amount,
-        checkoutUrl: paymentData.checkoutUrl || paymentData.paymentLinkUrl,
-        qrCode: paymentData.qrCode,
+        transactionId: transactionData.id,
+        amount: transactionData.amount,
+        checkoutUrl: checkoutUrl,
+        qrCode: qrCode,
       };
     } catch (error: any) {
       console.error('Error creating return payment link:', error);
-      throw new Error(error.message || 'Không thể tạo link thanh toán');
+      throw new Error(error.response?.data?.message || error.message || 'Không thể tạo link thanh toán');
     }
   },
   

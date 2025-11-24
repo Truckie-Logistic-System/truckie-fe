@@ -46,7 +46,7 @@ export interface UpdateVehicleAssignmentRequest {
 export enum VehicleAssignmentStatus {
     ACTIVE = "ACTIVE",
     INACTIVE = "INACTIVE",
-    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
 }
 
 // VehicleMaintenance đã được di chuyển sang file VehicleMaintenance.ts

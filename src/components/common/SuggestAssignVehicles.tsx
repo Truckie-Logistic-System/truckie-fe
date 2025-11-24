@@ -72,8 +72,8 @@ const SuggestAssignVehicles: React.FC<SuggestAssignVehiclesProps> = ({
     },
     {
       title: "Loại xe",
-      dataIndex: "vehicleRuleName",
-      key: "vehicleRuleName",
+      dataIndex: "sizeRuleName",
+      key: "sizeRuleName",
       render: (name: string) => <Text strong>{name.replace(/_/g, " ")}</Text>,
     },
     {
@@ -176,7 +176,7 @@ const SuggestAssignVehicles: React.FC<SuggestAssignVehiclesProps> = ({
             <Table
               columns={columns}
               dataSource={suggestData}
-              rowKey="vehicleRuleId"
+              rowKey="sizeRuleId"
               pagination={false}
               size="small"
               scroll={{ y: 400 }}

@@ -24,7 +24,6 @@ const defaultOptions: NotificationOptions = {
  * @returns MessageType
  */
 export const showSuccess = (content: string, options?: NotificationOptions): MessageType => {
-    console.log('Showing success message:', content);
     const mergedOptions = { ...defaultOptions, ...options };
     return message.success(content, mergedOptions.duration);
 };
@@ -36,7 +35,6 @@ export const showSuccess = (content: string, options?: NotificationOptions): Mes
  * @returns MessageType
  */
 export const showError = (content: string, options?: NotificationOptions): MessageType => {
-    console.log('Showing error message:', content);
     const mergedOptions = { ...defaultOptions, ...options };
     return message.error(content, mergedOptions.duration);
 };
@@ -48,7 +46,6 @@ export const showError = (content: string, options?: NotificationOptions): Messa
  * @returns MessageType
  */
 export const showWarning = (content: string, options?: NotificationOptions): MessageType => {
-    console.log('Showing warning message:', content);
     const mergedOptions = { ...defaultOptions, ...options };
     return message.warning(content, mergedOptions.duration);
 };
@@ -60,7 +57,6 @@ export const showWarning = (content: string, options?: NotificationOptions): Mes
  * @returns MessageType
  */
 export const showInfo = (content: string, options?: NotificationOptions): MessageType => {
-    console.log('Showing info message:', content);
     const mergedOptions = { ...defaultOptions, ...options };
     return message.info(content, mergedOptions.duration);
 };
@@ -72,7 +68,6 @@ export const showInfo = (content: string, options?: NotificationOptions): Messag
  * @returns MessageType
  */
 export const showLoading = (content: string, options?: NotificationOptions): MessageType => {
-    console.log('Showing loading message:', content);
     const mergedOptions = { ...defaultOptions, ...options };
     return message.loading(content, mergedOptions.duration);
 };

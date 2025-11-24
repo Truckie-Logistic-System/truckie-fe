@@ -8,7 +8,6 @@ interface OrderStatusSectionProps {
     orderCode: string;
     status: string;
     createdAt: string;
-    totalPrice: number | null;
     contract?: any;
 }
 
@@ -16,17 +15,16 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
     orderCode,
     status,
     createdAt,
-    totalPrice,
     contract,
 }) => {
-    // Calculate display total from contract if available
+    // Calculate display total from contract
     const displayTotal = contract
         ? (contract.adjustedValue && parseFloat(contract.adjustedValue) > 0
             ? parseFloat(contract.adjustedValue)
             : contract.totalValue
             ? parseFloat(contract.totalValue)
-            : totalPrice)
-        : totalPrice;
+            : null)
+        : null;
 
     const formatDate = (dateString: string) => {
         return dayjs(dateString).format("DD/MM/YYYY HH:mm:ss");

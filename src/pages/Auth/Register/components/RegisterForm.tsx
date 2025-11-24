@@ -26,7 +26,7 @@ interface RegisterFormProps {
 const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) => {
     const handleGoogleSignup = () => {
         // Implement Google signup logic here
-        console.log('Đăng ký với Google được nhấp');
+
     };
 
     const validatePassword = (_: any, value: string) => {
@@ -343,7 +343,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                     ]}
                 >
                     <Checkbox disabled={loading}>
-                        Tôi đã đọc và đồng ý với <a href="#">điều khoản dịch vụ</a> và <a href="#">chính sách bảo mật</a>
+                        Tôi đã đọc và đồng ý với <span className="text-blue-600">điều khoản dịch vụ</span> và <span className="text-blue-600">chính sách bảo mật</span>
                     </Checkbox>
                 </Form.Item>
 

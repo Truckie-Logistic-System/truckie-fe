@@ -1,6 +1,7 @@
 export enum OrderStatusEnum {
     PENDING = 'PENDING',
     PROCESSING = 'PROCESSING',
+    CANCELLED = 'CANCELLED',
     CONTRACT_DRAFT = 'CONTRACT_DRAFT',
     CONTRACT_SIGNED = 'CONTRACT_SIGNED',
     ON_PLANNING = 'ON_PLANNING',
@@ -23,6 +24,7 @@ export const OrderStatusColors = {
     // Khởi tạo
     [OrderStatusEnum.PENDING]: 'bg-gray-400 text-white',
     [OrderStatusEnum.PROCESSING]: 'bg-blue-400 text-white',
+    [OrderStatusEnum.CANCELLED]: 'bg-red-400 text-white',
 
     // Hợp đồng
     [OrderStatusEnum.CONTRACT_DRAFT]: 'bg-blue-500 text-white',
@@ -56,6 +58,7 @@ export const OrderStatusColors = {
 export const OrderStatusLabels = {
     [OrderStatusEnum.PENDING]: 'Chờ xử lý',
     [OrderStatusEnum.PROCESSING]: 'Đang xử lý',
+    [OrderStatusEnum.CANCELLED]: 'Đã hủy',
     [OrderStatusEnum.CONTRACT_DRAFT]: 'Bản nháp hợp đồng',
     [OrderStatusEnum.CONTRACT_SIGNED]: 'Hợp đồng đã ký',
     [OrderStatusEnum.ON_PLANNING]: 'Đang lập kế hoạch',
@@ -79,6 +82,7 @@ export const OrderStatusCardColors = {
     // Khởi tạo - Vàng/Cam
     [OrderStatusEnum.PENDING]: { backgroundColor: '#fff7ed', borderColor: '#fed7aa' },
     [OrderStatusEnum.PROCESSING]: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+    [OrderStatusEnum.CANCELLED]: { backgroundColor: '#fee2e2', borderColor: '#fca5a5' },
 
     // Hợp đồng - Xanh dương/Xanh lá
     [OrderStatusEnum.CONTRACT_DRAFT]: { backgroundColor: '#dbeafe', borderColor: '#93c5fd' },

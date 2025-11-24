@@ -77,21 +77,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
         isValidData,
         isLoading
     } = useProvinces(visible && !useTrackAsia && !useVietMap);
-
-    console.log('AddressModal render:', {
-        visible,
-        useTrackAsia,
-        useVietMap,
-        selectedPlace: selectedPlace?.name,
-        selectedVietMapPlace: selectedVietMapPlace?.name,
-        provinces: provinces?.length,
-        wards: wards?.length,
-        isLoadingProvinces,
-        isProvincesError,
-        isValidData,
-        selectedProvince: selectedProvince?.name
-    });
-
     // Nếu TrackAsia không hoạt động và dữ liệu không hợp lệ hoặc không có wards, chuyển sang nhập thủ công
     useEffect(() => {
         // Chỉ xử lý khi modal hiển thị và không sử dụng TrackAsia hoặc VietMap
@@ -102,7 +87,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
             const shouldUseManualInput = !isValidData || wards.length === 0;
 
             if (shouldUseManualInput && !useManualInput) {
-                console.log('Data is invalid or no wards available, switching to manual input');
                 setUseManualInput(true);
             }
         }
@@ -123,7 +107,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
                             setUseVietMap(false);
                             setUseTrackAsia(true);
                         } else {
-                            console.log('VietMap API is working');
                         }
                     })
                     .catch((error: Error) => {
@@ -148,7 +131,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
                             console.warn('TrackAsia API not working, switching to province API');
                             setUseTrackAsia(false);
                         } else {
-                            console.log('TrackAsia API is working');
                         }
                     })
                     .catch((error: Error) => {
@@ -167,8 +149,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
 
     useEffect(() => {
         if (!visible) return;
-
-        console.log('Modal is visible, resetting form');
         form.resetFields();
         setSelectedPlace(null);
         setSelectedVietMapPlace(null);
@@ -182,8 +162,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
         }
 
         if (initialValues && mode === 'edit') {
-            console.log('Setting initial values for edit mode:', initialValues);
-
             // Sử dụng setTimeout để tránh Maximum update depth exceeded
             setTimeout(() => {
                 form.setFieldsValue({
@@ -209,10 +187,8 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     const wardName = initialValues.ward;
                     const matchingWard = findWard(wardName);
                     if (matchingWard) {
-                        console.log(`Found matching ward for "${wardName}":`, matchingWard);
                         form.setFieldsValue({ ward: matchingWard.code });
                     } else {
-                        console.log(`Ward "${wardName}" not found in the list, switching to manual input`);
                         setUseManualInput(true);
                         form.setFieldsValue({ ward: wardName });
                     }
@@ -263,9 +239,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
                 addressData.latitude = mapLocation.lat;
                 addressData.longitude = mapLocation.lng;
             }
-
-            console.log('Submitting address data:', addressData);
-
             if (mode === 'create') {
                 const result = await createAddress(addressData as AddressCreateDto);
                 if (result.success) {
@@ -349,7 +322,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
 
     // Xử lý khi chọn địa điểm từ TrackAsia
     const handlePlaceSelect = (place: PlaceDetailResult) => {
-        console.log('handlePlaceSelect called with place:', place);
         setSelectedPlace(place);
 
         // Xử lý dữ liệu từ place
@@ -424,9 +396,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
                 latitude: place.geometry?.location.lat,
                 longitude: place.geometry?.location.lng
             };
-
-            console.log('Setting form values:', formValues);
-
             // Reset form trước khi set lại giá trị
             form.resetFields();
 
@@ -440,15 +409,14 @@ const AddressModal: React.FC<AddressModalProps> = ({
                             value: value,
                             touched: true
                         }]);
-                        console.log(`Set field ${key} to:`, value);
                     }
                 });
 
-                console.log('Form values after setting fields:', form.getFieldsValue());
+                
             }, 0);
 
             // Log để debug
-            console.log('Form values after place selection:', form.getFieldsValue());
+            
         } catch (error) {
             console.error('Error processing place details:', error);
 
@@ -487,9 +455,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     latitude: place.geometry.location.lat,
                     longitude: place.geometry.location.lng
                 };
-
-                console.log('Setting fallback form values:', formValues);
-
                 // Reset form trước khi set lại giá trị
                 form.resetFields();
 
@@ -503,21 +468,19 @@ const AddressModal: React.FC<AddressModalProps> = ({
                                 value: value,
                                 touched: true
                             }]);
-                            console.log(`Set field ${key} to:`, value);
                         }
                     });
 
-                    console.log('Fallback form values after setting fields:', form.getFieldsValue());
+                    
                 }, 0);
 
-                console.log('Fallback form values after place selection:', form.getFieldsValue());
+                
             }
         }
     };
 
     // Xử lý khi chọn địa điểm từ VietMap
     const handleVietMapPlaceSelect = async (placeId: string) => {
-        console.log('handleVietMapPlaceSelect called with placeId:', placeId);
         try {
             setIsSearchingVietMap(true);
             const placeDetail = await getVietMapPlaceDetail(placeId);
@@ -561,9 +524,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
                     latitude: placeDetail.lat,
                     longitude: placeDetail.lng
                 };
-
-                console.log('Setting form values:', formValues);
-
                 // Reset form trước khi set lại giá trị
                 form.resetFields();
 
@@ -577,14 +537,13 @@ const AddressModal: React.FC<AddressModalProps> = ({
                                 value: value,
                                 touched: true
                             }]);
-                            console.log(`Set field ${key} to:`, value);
                         }
                     });
 
-                    console.log('Form values after setting fields:', form.getFieldsValue());
+                    
                 }, 0);
 
-                console.log('Form values after place selection:', form.getFieldsValue());
+                
             } catch (error) {
                 console.error('Error processing place details:', error);
             }

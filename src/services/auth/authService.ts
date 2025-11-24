@@ -66,8 +66,6 @@ const authService = {
                         sessionStorage.setItem('userId', userId);
                         if (username) sessionStorage.setItem('username', username);
                         if (email) sessionStorage.setItem('email', email);
-                        
-                        console.log('[authService] Restored user data from localStorage after server restart');
                     }
                 }
 
@@ -75,7 +73,6 @@ const authService = {
                 if (userRole && userId) {
                     try {
                         await authService.refreshToken();
-                        console.log('Authentication restored after page refresh');
                     } catch (error) {
                         console.error('Failed to restore authentication:', error);
                         // Clear user data if refresh token fails
@@ -113,7 +110,7 @@ const authService = {
             // Store token in window for external access
             window.__AUTH_TOKEN__ = authToken;
 
-            console.log('[authService] ✅ Login successful, token stored:', authToken ? authToken.substring(0, 20) + '...' : 'NULL');
+            
 
             // Lưu thông tin người dùng vào sessionStorage
             const user = response.data.data.user;
@@ -174,13 +171,6 @@ const authService = {
             // Since refresh token is now handled via HttpOnly cookies,
             // Backend returns only access token in response body
             const response = await httpClient.post<ApiResponse<{ authToken: string }>>('/auths/token/refresh');
-
-            console.log('[authService] 🔍 Refresh token response:', {
-                success: response.data.success,
-                hasData: !!response.data.data,
-                hasAuthToken: !!response.data.data?.authToken
-            });
-
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Làm mới token thất bại');
             }
@@ -197,9 +187,8 @@ const authService = {
 
             // SECURITY: Refresh token is stored in HttpOnly cookie by backend
             // Never exposed in JSON response (prevents XSS attacks)
-            console.log('[authService] ✅ Token refreshed successfully');
-            console.log('[authService] 🔑 New token stored:', authToken ? authToken.substring(0, 20) + '...' : 'NULL/UNDEFINED');
-            console.log('[authService] 🔐 Refresh token stored in HttpOnly cookie (secure)');
+            
+            
             return;
         } catch (error: any) {
             // Kiểm tra lỗi cụ thể
@@ -298,17 +287,7 @@ const authService = {
      */
     changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
         try {
-            console.log('Sending change password request:', {
-                ...data,
-                oldPassword: '***',
-                newPassword: '***',
-                confirmNewPassword: '***'
-            });
-
             const response = await httpClient.put<ChangePasswordResponse>('/auths/change-password', data);
-
-            console.log('Change password response:', response.data);
-
             if (!response.data.success) {
                 console.error('Change password failed with message:', response.data.message);
                 throw new Error(response.data.message || 'Đổi mật khẩu thất bại');
@@ -335,7 +314,7 @@ const authService = {
      * @returns Current token or null
      */
     debugGetToken: (): string | null => {
-        console.log('[authService] 🔍 Current token in memory:', authToken ? authToken.substring(0, 20) + '...' : 'NULL');
+        
         return authToken;
     }
 };

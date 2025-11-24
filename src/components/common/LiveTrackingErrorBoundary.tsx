@@ -66,12 +66,12 @@ class LiveTrackingErrorBoundary extends Component<Props, State> {
     // Clear localStorage cache that might be corrupted
     try {
       localStorage.removeItem('vietmap_style_cache');
-      console.log('[LiveTrackingErrorBoundary] Cleared map style cache');
+      localStorage.removeItem('mapbox-gl-style-cache');
     } catch (e) {
       console.warn('[LiveTrackingErrorBoundary] Failed to clear cache:', e);
     }
 
-    // Reset error state
+    // Reset error state - this will remount the component without full page reload
     this.setState({
       hasError: false,
       error: null,
@@ -80,6 +80,9 @@ class LiveTrackingErrorBoundary extends Component<Props, State> {
   };
 
   handleReload = () => {
+    // NOTE: Full page reload is kept as last resort option for critical errors
+    // that cannot be recovered by component remount alone.
+    // This maintains user choice while preferring the SPA-friendly "Thử lại" button.
     window.location.reload();
   };
 

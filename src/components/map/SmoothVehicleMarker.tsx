@@ -53,7 +53,7 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
       ${!isOnline ? 'filter: grayscale(0.3);' : ''}
     `;
     el.innerHTML = '🚛';
-    el.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
+    // el.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
 
     el.addEventListener('click', () => {
       if (onMarkerClick) {
@@ -73,8 +73,6 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
       .addTo(map);
 
     markerRef.current = marker;
-    console.log(`🚛 [VEHICLE] Created marker for vehicle ${vehicle.vehicleId}`);
-
     return () => {
       if (markerRef.current) {
         markerRef.current.remove();
@@ -91,7 +89,6 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
     const currentPos = markerRef.current.getLngLat();
     if (currentPos.lat === 0 && currentPos.lng === 0) {
       markerRef.current.setLngLat([vehicle.longitude, vehicle.latitude]);
-      console.log(`🚛 [VEHICLE] Set initial position for ${vehicle.vehicleId}`);
     }
   }, [vehicle.vehicleId]);
 
@@ -127,7 +124,7 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
     // Jump directly to new position without animation
     // This prevents the "jumping" effect when camera pans/zooms
     markerRef.current.setLngLat([vehicle.longitude, vehicle.latitude]);
-    console.log(`📍 [VEHICLE] Updated position for ${vehicle.vehicleId} to [${vehicle.latitude.toFixed(6)}, ${vehicle.longitude.toFixed(6)}]`);
+    
 
     lastUpdateTimeRef.current = now;
   }, [vehicle.latitude, vehicle.longitude, vehicle.vehicleId]);
@@ -152,7 +149,7 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
       element.style.opacity = isHighlighted ? '1' : (isOnline ? '0.8' : '0.6');
       element.style.borderWidth = isSelected ? '4px' : '3px';
       element.style.filter = !isOnline && !isSelected ? 'grayscale(0.3)' : 'none';
-      element.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
+      // element.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
     }
   }, [isSelected, isHighlighted, vehicle.lastUpdated, vehicle.licensePlateNumber, showOfflineStatus]);
 

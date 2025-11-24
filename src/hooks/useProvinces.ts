@@ -22,9 +22,9 @@ const useProvinces = (enabled = true) => {
     } = useQuery({
         queryKey: ['provinces'],
         queryFn: async () => {
-            console.log('useProvinces hook: Calling provinces API...');
+
             const result = await provinceService.getProvinces();
-            console.log('useProvinces hook: Provinces API result:', result);
+
             return result;
         },
         staleTime: 24 * 60 * 60 * 1000, // 24 hours
@@ -36,12 +36,11 @@ const useProvinces = (enabled = true) => {
 
     // Process provinces data when it's available
     useEffect(() => {
-        console.log('useProvinces hook: Provinces data changed:', provinces);
+
         if (provinces.length > 0) {
             try {
                 // Find Ho Chi Minh City and set as default
                 const hcmc = provinceService.findHoChiMinhCity(provinces);
-                console.log('useProvinces hook: HCMC found:', hcmc);
 
                 if (hcmc) {
                     setSelectedProvince(hcmc);
@@ -52,7 +51,7 @@ const useProvinces = (enabled = true) => {
                     // Kiểm tra xem wards có tồn tại và là mảng không
                     if (hcmc.wards && Array.isArray(hcmc.wards)) {
                         allWards.push(...hcmc.wards);
-                        console.log(`useProvinces hook: Found ${allWards.length} wards in HCMC`);
+
                     } else {
                         console.warn('HCMC has no wards or wards is not an array');
                     }
@@ -67,7 +66,7 @@ const useProvinces = (enabled = true) => {
 
     // Clear cache and refetch
     const invalidateAndRefetch = () => {
-        console.log('useProvinces hook: Invalidating cache and refetching...');
+
         queryClient.invalidateQueries({ queryKey: ['provinces'] });
         refetch();
     };

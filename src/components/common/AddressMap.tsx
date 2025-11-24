@@ -24,7 +24,6 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
     // Hàm lấy vị trí hiện tại của người dùng
     const getCurrentLocation = async () => {
         if (!navigator.geolocation) {
-            console.log('Geolocation is not supported by your browser');
             return;
         }
 
@@ -56,7 +55,6 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
         try {
             // Ưu tiên sử dụng trackasiagl từ import
             if (window.trackasiagl) {
-                console.log('Initializing TrackAsia map with trackasiagl from NPM');
                 mapRef.current = new window.trackasiagl.Map({
                     container: mapContainerRef.current,
                     style: getMapStyle('streets', false),
@@ -101,7 +99,6 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
             }
             // Fallback to CDN version
             else if (window.trackasia) {
-                console.log('Initializing TrackAsia map with CDN version');
                 mapRef.current = new window.trackasia.Map({
                     container: mapContainerRef.current,
                     style: getMapStyle('streets', false),
@@ -145,8 +142,6 @@ const AddressMap: React.FC<AddressMapProps> = ({ mapLocation, onLocationChange }
                 }
             } else {
                 console.error('TrackAsia library not found');
-                console.log('window.trackasiagl:', typeof window.trackasiagl);
-                console.log('window.trackasia:', typeof window.trackasia);
             }
         } catch (error) {
             console.error('Error initializing map:', error);

@@ -7,6 +7,7 @@ export interface MapLocation {
     placeId?: string;
     type?: 'carrier' | 'pickup' | 'delivery' | 'stopover';
     id?: string; // Unique identifier for each marker
+    issueCategory?: string; // Issue category for issue markers
 }
 
 export interface MapBounds {

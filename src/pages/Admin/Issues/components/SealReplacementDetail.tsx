@@ -32,51 +32,22 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
     const [loadingSeals, setLoadingSeals] = useState(false);
 
     // Debug log
-    console.log('[SealReplacementDetail] Component rendered:', {
-        user,
-        userRole: user?.role,
-        issueStatus: issue.status,
-        issueId: issue.id,
-        issueCategory: issue.issueCategory,
-        shouldRenderForSealReplacement: issue.issueCategory === 'SEAL_REPLACEMENT'
-    });
-
     // Auto-fetch active seals when component mounts or issue changes
     useEffect(() => {
-        console.log('[SealReplacementDetail] useEffect triggered:', {
-            status: issue.status,
-            vehicleAssignmentId: issue.vehicleAssignment?.id,
-            shouldFetch: issue.status === 'OPEN' && !!issue.vehicleAssignment?.id
-        });
-        
         if (issue.status === 'OPEN' && issue.vehicleAssignment?.id) {
-            console.log('[SealReplacementDetail] Calling fetchActiveSeals...');
             fetchActiveSeals();
         }
     }, [issue.id, issue.status]);
 
     // Fetch active seals for selection
     const fetchActiveSeals = async () => {
-        console.log('[SealReplacementDetail] fetchActiveSeals called');
-        console.log('[SealReplacementDetail] vehicleAssignment:', issue.vehicleAssignment);
-        
         if (!issue.vehicleAssignment?.id) {
-            console.log('[SealReplacementDetail] No vehicleAssignment.id, returning');
             return;
         }
-
-        console.log('[SealReplacementDetail] Fetching active seals for vehicleAssignment:', issue.vehicleAssignment.id);
         setLoadingSeals(true);
         try {
             const seals = await issueService.getActiveSeals(issue.vehicleAssignment.id);
-            console.log('[SealReplacementDetail] Received seals:', seals);
-            console.log('[SealReplacementDetail] Seal details:', seals.map(s => ({
-                id: s.id,
-                sealCode: s.sealCode,
-                status: s.status,
-                vehicleAssignmentId: s.vehicleAssignment?.id,
-                description: s.description
-            })));
+            
             setActiveSeals(seals);
         } catch (error: any) {
             console.error('[SealReplacementDetail] Error fetching seals:', error);
@@ -88,23 +59,12 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
 
     // Handle assign new seal (Staff only)
     const handleAssignNewSeal = () => {
-        console.log('[SealReplacementDetail] 🖱️ Button clicked - handleAssignNewSeal');
-        console.log('[SealReplacementDetail] Selected seal ID:', selectedSealId);
-        console.log('[SealReplacementDetail] User:', user);
-        console.log('[SealReplacementDetail] Issue ID:', issue.id);
-        
         if (!selectedSealId || !user) {
-            console.log('[SealReplacementDetail] ❌ Missing required data');
-            console.log('- selectedSealId:', selectedSealId);
-            console.log('- user:', user);
             message.error('Vui lòng chọn seal và đảm bảo bạn đã đăng nhập!');
             return;
         }
 
         const selectedSeal = activeSeals.find(s => s.id === selectedSealId);
-        console.log('[SealReplacementDetail] ✅ All data valid, showing confirm dialog');
-        console.log('[SealReplacementDetail] Selected seal details:', selectedSeal);
-        
         // Validate selected seal status
         if (!selectedSeal) {
             console.error('[SealReplacementDetail] ❌ Selected seal not found in activeSeals list');
@@ -170,21 +130,10 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
                 width: 480,
                 maskClosable: false,
                 onOk: async () => {
-                    console.log('[SealReplacementDetail] 🚀 User confirmed - starting API call');
-                    console.log('[SealReplacementDetail] 📤 API call data:', {
-                        issueId: issue.id,
-                        sealId: selectedSealId,
-                        userId: user.id,
-                        sealDetails: selectedSeal
-                    });
                     setLoading(true);
                     try {
-                        console.log('[SealReplacementDetail] 📡 Calling issueService.assignNewSeal...');
                         const updated = await issueService.assignNewSeal(issue.id, selectedSealId, user.id);
-                        console.log('[SealReplacementDetail] ✅ API call successful:', updated);
-                        console.log('[SealReplacementDetail] 🔄 Calling onUpdate...');
                         onUpdate(updated);
-                        console.log('[SealReplacementDetail] 📢 Showing success message');
                         message.success('Đã gán seal mới thành công! Tài xế sẽ nhận được thông báo.');
                     } catch (error: any) {
                         console.error('[SealReplacementDetail] ❌ API call failed:', error);
@@ -195,12 +144,10 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
                         });
                         message.error(error.message || 'Không thể gán seal mới');
                     } finally {
-                        console.log('[SealReplacementDetail] 🔄 Resetting loading state');
                         setLoading(false);
                     }
                 },
                 onCancel: () => {
-                    console.log('[SealReplacementDetail] ❌ User cancelled the confirmation');
                 }
             });
         } catch (error) {
@@ -216,7 +163,6 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
             // Final fallback - use browser confirm
             const confirmMessage = `Bạn có chắc muốn gán seal mới cho sự cố này?\n\nSeal sẽ được gán: ${fallbackSeal.sealCode}\nMã sự cố: ${issue.id}`;
             if (window.confirm(confirmMessage)) {
-                console.log('[SealReplacementDetail] 🚀 User confirmed with window.confirm - starting API call');
                 (async () => {
                     setLoading(true);
                     try {
@@ -388,7 +334,6 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
                                                     type="primary"
                                                     icon={<SwapOutlined />}
                                                     onClick={() => {
-                                                        console.log('[SealReplacementDetail] 🖱️ Button clicked directly!');
                                                         handleAssignNewSeal();
                                                     }}
                                                     loading={loading}

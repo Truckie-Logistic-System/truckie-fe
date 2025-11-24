@@ -127,6 +127,18 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     description: "",
   });
 
+  // Wrapper function to handle customization changes
+  const handleCustomizationChange = (customization: any) => {
+    setContractCustomization({
+      effectiveDate: customization.effectiveDate || "",
+      expirationDate: customization.expirationDate || "",
+      hasAdjustedValue: customization.hasAdjustedValue || false,
+      adjustedValue: customization.adjustedValue || 0,
+      contractName: customization.contractName || "",
+      description: customization.description || "",
+    });
+  };
+
   const { refetch: refetchContracts } = useRefreshContracts(orderId);
   const {
     creatingContract,
@@ -139,14 +151,10 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
   const handlePreviewContract = async () => {
     if (!contract?.id) return;
-
-    console.log("handlePreviewContract called with contractId:", contract.id);
     try {
       const response = await getContractPdfData(contract.id);
-      console.log("Contract PDF data response:", response);
       if (response.success) {
         setContractData(response.data);
-        console.log("Contract data set SUCCESSFUL");
       } else {
         messageApi.error(response.message);
         console.error("Contract service returned error:", response.message);
@@ -178,8 +186,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         attachFileUrl: values.attachFileUrl || "",
         orderId: orderId, // Using the orderId prop
       };
-
-      console.log("Creating contract with data:", contractData);
       const response = await createContractForCustomer(contractData);
 
       if (response.success) {
@@ -284,9 +290,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           useCORS: true,
           allowTaint: true,
           background: "#ffffff",
-          scale: 2,
           logging: false,
-        });
+        } as any);
 
         const pdf = new jsPDF({
           orientation: "portrait",
@@ -400,8 +405,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       formData.append("description", values.description as string);
 
       const uploadResponse = await uploadContract(formData);
-      console.log("Upload response:", uploadResponse);
-
       // Handle response safely
       if (
         uploadResponse &&
@@ -993,7 +996,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 customization={contractCustomization}
                 contractSettings={contractSettings ?? undefined}
                 stipulationSettings={stipulationSettings ?? undefined}
-                onCustomizationChange={setContractCustomization}
+                onCustomizationChange={handleCustomizationChange}
               />
             </div>
           ) : (

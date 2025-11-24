@@ -62,7 +62,7 @@ export const vehicleAssignmentService = {
 
     getGroupedSuggestionsForOrderDetails: async (orderId: string) => {
         try {
-            console.log("Getting grouped suggestions for order ID:", orderId);
+
             const response = await httpClient.get<ApiResponse<GroupedVehicleAssignmentSuggestionData>>(
                 `/vehicle-assignments/${orderId}/grouped-suggestions`
             );

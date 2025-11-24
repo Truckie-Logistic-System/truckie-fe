@@ -2,63 +2,63 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, App, Modal, Card, Input, Typography, Tabs } from 'antd';
 import { PlusOutlined, DollarOutlined, ReloadOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
-import type { VehicleRule, VehicleRuleCategory, VehicleRuleType } from '../../../models';
-import vehicleRuleService from '../../../services/vehicle-rule/vehicleRuleService';
-import VehicleRuleTable from './components/VehicleRuleTable';
-import VehicleRuleForm from './components/VehicleRuleForm';
-import PricePreviewModal from './components/PricePreviewModal';
+import type { SizeRule, SizeRuleCategory, SizeRuleType } from '../../../models';
+import sizeRuleService from '../../../services/size-rule/sizeRuleService';
+import SizeRuleTable from './components/SizeRuleTable';
+import SizeRuleForm from './components/SizeRuleForm';
+import SizeRulePricePreviewModal from './components/SizeRulePricePreviewModal';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
-// Mở rộng vehicleRuleService với các phương thức cần thiết
-const extendedVehicleRuleService = {
-    ...vehicleRuleService,
-    getCategories: async (): Promise<VehicleRuleCategory[]> => {
+// Mở rộng sizeRuleService với các phương thức cần thiết
+const extendedSizeRuleService = {
+    ...sizeRuleService,
+    getCategories: async (): Promise<SizeRuleCategory[]> => {
         // Giả lập API call, thay thế bằng API thực tế khi có
         return [];
     },
-    getVehicleTypes: async (): Promise<VehicleRuleType[]> => {
+    getVehicleTypes: async (): Promise<SizeRuleType[]> => {
         // Giả lập API call, thay thế bằng API thực tế khi có
         return [];
     }
 };
 
-const VehicleRulePage: React.FC = () => {
+const SizeRulePage: React.FC = () => {
     const { message, modal } = App.useApp();
     const queryClient = useQueryClient();
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [isPreviewVisible, setIsPreviewVisible] = useState(false);
-    const [editingRule, setEditingRule] = useState<VehicleRule | null>(null);
+    const [editingRule, setEditingRule] = useState<SizeRule | null>(null);
     const [searchText, setSearchText] = useState('');
     const [activeTab, setActiveTab] = useState<string>('all');
 
     const {
-        data: vehicleRules = [],
+        data: sizeRules = [],
         isLoading,
         isError,
         refetch,
         isFetching
     } = useQuery({
-        queryKey: ['vehicleRules'],
-        queryFn: () => vehicleRuleService.getVehicleRulesFull(),
+        queryKey: ['sizeRules'],
+        queryFn: () => sizeRuleService.getSizeRulesFull(),
     });
 
     const { data: categories = [] } = useQuery({
-        queryKey: ['vehicleRuleCategories'],
-        queryFn: () => extendedVehicleRuleService.getCategories(),
+        queryKey: ['sizeRuleCategories'],
+        queryFn: () => extendedSizeRuleService.getCategories(),
     });
 
     const { data: vehicleTypes = [] } = useQuery({
-        queryKey: ['vehicleRuleTypes'],
-        queryFn: () => extendedVehicleRuleService.getVehicleTypes(),
+        queryKey: ['sizeRuleTypes'],
+        queryFn: () => extendedSizeRuleService.getVehicleTypes(),
     });
 
     const createMutation = useMutation({
-        mutationFn: vehicleRuleService.createVehicleRule,
+        mutationFn: sizeRuleService.createSizeRule,
         onSuccess: () => {
             message.success('Tạo quy tắc mới thành công');
-            queryClient.invalidateQueries({ queryKey: ['vehicleRules'] });
+            queryClient.invalidateQueries({ queryKey: ['sizeRules'] });
             setIsFormVisible(false);
         },
         onError: (error) => {
@@ -67,10 +67,10 @@ const VehicleRulePage: React.FC = () => {
     });
 
     const updateMutation = useMutation({
-        mutationFn: vehicleRuleService.updateVehicleRule,
+        mutationFn: sizeRuleService.updateSizeRule,
         onSuccess: () => {
             message.success('Cập nhật quy tắc thành công');
-            queryClient.invalidateQueries({ queryKey: ['vehicleRules'] });
+            queryClient.invalidateQueries({ queryKey: ['sizeRules'] });
             setIsFormVisible(false);
             setEditingRule(null);
         },
@@ -80,10 +80,10 @@ const VehicleRulePage: React.FC = () => {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: vehicleRuleService.deleteVehicleRule,
+        mutationFn: sizeRuleService.deleteSizeRule,
         onSuccess: () => {
             message.success('Xóa quy tắc thành công');
-            queryClient.invalidateQueries({ queryKey: ['vehicleRules'] });
+            queryClient.invalidateQueries({ queryKey: ['sizeRules'] });
         },
         onError: (error) => {
             message.error('Không thể xóa quy tắc: ' + (error as Error).message);
@@ -95,8 +95,8 @@ const VehicleRulePage: React.FC = () => {
         setIsFormVisible(true);
     };
 
-    const handleEditClick = (vehicleRule: VehicleRule) => {
-        setEditingRule(vehicleRule);
+    const handleEditClick = (sizeRule: SizeRule) => {
+        setEditingRule(sizeRule);
         setIsFormVisible(true);
     };
 
@@ -124,7 +124,7 @@ const VehicleRulePage: React.FC = () => {
     // Lấy danh sách các loại hàng duy nhất từ dữ liệu
     const getUniqueCategories = () => {
         const uniqueCategories = new Map();
-        vehicleRules.forEach(rule => {
+        sizeRules.forEach(rule => {
             if (!uniqueCategories.has(rule.category.id)) {
                 uniqueCategories.set(rule.category.id, {
                     id: rule.category.id,
@@ -149,7 +149,7 @@ const VehicleRulePage: React.FC = () => {
     const uniqueCategories = getUniqueCategories();
 
     // Lọc dữ liệu theo tab và tìm kiếm
-    const filteredVehicleRules = vehicleRules.filter(rule => {
+    const filteredSizeRules = sizeRules.filter(rule => {
         // Lọc theo tab loại hàng
         if (activeTab !== 'all' && rule.category.id !== activeTab) {
             return false;
@@ -160,7 +160,7 @@ const VehicleRulePage: React.FC = () => {
 
         const searchLower = searchText.toLowerCase();
         return (
-            rule.vehicleRuleName.toLowerCase().includes(searchLower) ||
+            rule.sizeRuleName.toLowerCase().includes(searchLower) ||
             rule.vehicleTypeEntity.vehicleTypeName.toLowerCase().includes(searchLower) ||
             rule.category.categoryName.toLowerCase().includes(searchLower)
         );
@@ -238,8 +238,8 @@ const VehicleRulePage: React.FC = () => {
                         ))}
                     </Tabs>
 
-                    <VehicleRuleTable
-                        vehicleRules={filteredVehicleRules}
+                    <SizeRuleTable
+                        sizeRules={filteredSizeRules}
                         loading={isLoading}
                         onEdit={handleEditClick}
                         onDelete={handleDeleteClick}
@@ -257,20 +257,20 @@ const VehicleRulePage: React.FC = () => {
                 style={{ top: 20 }}
                 destroyOnClose
             >
-                <VehicleRuleForm
+                <SizeRuleForm
                     initialValues={editingRule || undefined}
-                    categories={categories as VehicleRuleCategory[]}
-                    vehicleTypes={vehicleTypes as VehicleRuleType[]}
+                    categories={categories as SizeRuleCategory[]}
+                    vehicleTypes={vehicleTypes as SizeRuleType[]}
                     onSubmit={handleFormSubmit}
                     onCancel={handleFormCancel}
                     loading={createMutation.isPending || updateMutation.isPending}
                 />
             </Modal>
 
-            <PricePreviewModal
+            <SizeRulePricePreviewModal
                 visible={isPreviewVisible}
                 onClose={() => setIsPreviewVisible(false)}
-                vehicleRules={vehicleRules}
+                sizeRules={sizeRules}
                 loading={isLoading}
             />
         </div>
@@ -287,4 +287,4 @@ const getCategoryColor = (category: string): string => {
     }
 };
 
-export default VehicleRulePage; 
+export default SizeRulePage;

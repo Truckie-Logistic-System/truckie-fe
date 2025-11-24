@@ -14,24 +14,16 @@ export const useAddressSearch = () => {
       setSearchOptions([]);
       return;
     }
-
-    console.log('Searching places with query:', query);
     setIsSearching(true);
     try {
-      console.log('Calling autocomplete API with query:', query, 'bounds:', HCMC_BOUNDS);
       const results = await trackasiaService.autocomplete(query, 5, HCMC_BOUNDS);
-      console.log('Autocomplete API results:', results);
-
       if (results.length === 0) {
-        console.log('No results found for query:', query);
         setSearchOptions([{
           value: 'no-results',
           label: 'Không tìm thấy kết quả'
         }]);
       } else {
-        console.log('Found', results.length, 'results for query:', query);
         setSearchOptions(results.map(result => {
-          console.log('Result item:', result);
           return {
             value: result.place_id,
             label: result.description || result.name
@@ -60,15 +52,10 @@ export const useAddressSearch = () => {
     if (!placeId || placeId === 'no-results' || placeId === 'error') {
       return { success: false, error: 'Invalid place ID' };
     }
-
-    console.log('Selected place ID:', placeId);
     setIsSearching(true);
 
     try {
-      console.log('Calling getPlaceDetail API with place_id:', placeId);
       const placeDetail = await trackasiaService.getPlaceDetail(placeId);
-      console.log('Place detail API response:', placeDetail);
-
       if (placeDetail && placeDetail.geometry && placeDetail.geometry.location) {
         return { success: true, place: placeDetail };
       } else {

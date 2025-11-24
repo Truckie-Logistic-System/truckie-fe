@@ -48,7 +48,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                 <TabPane
                     tab={
                         <span>
-                            <BoxPlotOutlined /> Danh sách lô hàng
+                            <BoxPlotOutlined /> Danh sách kiện hàng
                         </span>
                     }
                     key="packageList"
@@ -156,6 +156,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                             journeyInfo={journey}
                                                             orderId={orderData.order.id}
                                                             shouldShowRealTimeTracking={shouldShowRealTimeTracking}
+                                                            issues={va.issues}
                                                         />
                                                     </div>
                                                 );
@@ -295,21 +296,21 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                         <InfoCircleOutlined className="text-red-500 mr-2" />
                                                         <span className="font-medium">Mô tả sự cố:</span>
                                                         <span className="ml-2">
-                                                            {issueItem.issue.description || "Không có mô tả"}
+                                                            {issueItem.description || "Không có mô tả"}
                                                         </span>
                                                         <Tag
                                                             className="ml-2"
                                                             color={
-                                                                issueItem.issue.status === "PENDING"
+                                                                issueItem.status === "PENDING"
                                                                     ? "orange"
-                                                                    : issueItem.issue.status === "PROCESSING"
+                                                                    : issueItem.status === "IN_PROGRESS"
                                                                         ? "blue"
-                                                                    : issueItem.issue.status === "RESOLVED"
+                                                                    : issueItem.status === "RESOLVED"
                                                                             ? "green"
                                                                             : "red"
                                                             }
                                                         >
-                                                            {issueItem.issue.status || "UNKNOWN"}
+                                                            {issueItem.status || "UNKNOWN"}
                                                         </Tag>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -319,7 +320,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                                 Loại sự cố:
                                                             </span>
                                                             <span>
-                                                                {issueItem.issue.issueTypeName || "Không xác định"}
+                                                                {issueItem.issueTypeName || "Không xác định"}
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center">
@@ -328,20 +329,20 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                                 Nhân viên xử lý:
                                                             </span>
                                                             <span>
-                                                                {issueItem.issue.staff?.name || "Chưa phân công"}
+                                                                {issueItem.staff?.name || "Chưa phân công"}
                                                             </span>
                                                         </div>
                                                     </div>
 
-                                                    {issueItem.imageUrls &&
-                                                        issueItem.imageUrls.length > 0 ? (
+                                                    {issueItem.issueImages &&
+                                                        issueItem.issueImages.length > 0 ? (
                                                         <div className="mt-4">
                                                             <div className="flex items-center mb-2">
                                                                 <CameraOutlined className="mr-2 text-blue-500" />
                                                                 <span className="font-medium">Hình ảnh:</span>
                                                             </div>
                                                             <div className="flex flex-wrap gap-2">
-                                                                {issueItem.imageUrls.map(
+                                                                {issueItem.issueImages.map(
                                                                     (url: string, imgIdx: number) => (
                                                                         <Image
                                                                             key={imgIdx}

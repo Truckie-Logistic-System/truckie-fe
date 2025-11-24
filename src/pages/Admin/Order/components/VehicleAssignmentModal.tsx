@@ -651,7 +651,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 tab={
                     <span className="px-1 text-xs">
                         <FileTextOutlined className="mr-1" /> Chuyến #{groupIndex + 1}
-                        <Tag color="blue" className="ml-1 text-xs">{detailCount} lô hàng</Tag>
+                        <Tag color="blue" className="ml-1 text-xs">{detailCount} kiện hàng</Tag>
                     </span>
                 }
                 key={groupIndex.toString()}
@@ -663,14 +663,14 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     </div>
                     <div className="text-xs text-gray-600">
                         <InfoCircleOutlined className="mr-1" />
-                        <span className="font-medium">Số lô hàng:</span> {detailCount}
+                        <span className="font-medium">Số kiện hàng:</span> {detailCount}
                     </div>
                 </div>
 
                 {/* List of order details in this group */}
                 {group.orderDetails && group.orderDetails.length > 0 && (
                     <div className="bg-blue-50 p-2 mb-3 rounded-lg border border-blue-200">
-                        <div className="text-xs font-medium text-blue-700 mb-1">Các lô hàng trong nhóm này:</div>
+                        <div className="text-xs font-medium text-blue-700 mb-1">Các kiện hàng trong nhóm này:</div>
                         {group.orderDetails.map((detail, idx) => (
                             <div key={detail.id} className="text-xs mb-2 pl-2 border-l-2 border-blue-300">
                                 <span className="font-medium">{idx + 1}. {detail.trackingCode}</span>

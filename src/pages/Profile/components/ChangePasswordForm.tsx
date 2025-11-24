@@ -28,8 +28,6 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ username, onSuc
                 duration: 5,
                 className: 'custom-message-success'
             });
-            console.log('Password change success, showing message:', successMessage);
-
             form.resetFields();
             if (onSuccess) {
                 // Đợi một chút để người dùng thấy thông báo trước khi đóng modal
@@ -48,7 +46,6 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ username, onSuc
                 duration: 5,
                 className: 'custom-message-error'
             });
-            console.log('Password change error, showing message:', errorMsg);
         },
         onSettled: () => {
             setLoading(false);
@@ -65,8 +62,6 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ username, onSuc
             newPassword: values.newPassword,
             confirmNewPassword: values.confirmNewPassword
         };
-
-        console.log('Submitting password change:', { ...data, oldPassword: '***', newPassword: '***', confirmNewPassword: '***' });
         changePassword(data);
     };
 

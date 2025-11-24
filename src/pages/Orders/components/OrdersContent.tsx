@@ -251,7 +251,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
     { value: "DELIVERED", label: "Đã giao" },
     { value: "SUCCESSFUL", label: "Thành công" },
     { value: "IN_TROUBLES", label: "Gặp sự cố" },
-    { value: "RETURNED", label: "Đã hoàn trả" },
+    { value: "RETURNED", label: "Đã trả hàng" },
   ];
 
 

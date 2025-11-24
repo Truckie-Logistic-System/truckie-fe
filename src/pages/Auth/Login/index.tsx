@@ -77,7 +77,7 @@ const LoginPage: React.FC = () => {
 
   const handleGoogleLogin = () => {
     // Implement Google login logic here
-    console.log("Đăng nhập với Google được nhấp");
+
   };
 
   return (

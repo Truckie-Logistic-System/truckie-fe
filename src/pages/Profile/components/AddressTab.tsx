@@ -69,11 +69,15 @@ const AddressTab: React.FC<AddressTabProps> = ({ customerId }) => {
             title: 'Loại địa chỉ',
             dataIndex: 'addressType',
             key: 'addressType',
-            render: (addressType: boolean) => (
-                addressType ?
-                    <Tag color="blue">Địa chỉ gửi hàng</Tag> :
-                    <Tag color="green">Địa chỉ nhận hàng</Tag>
-            ),
+            render: (addressType: boolean | null) => {
+                if (addressType === true) {
+                    return <Tag color="blue">🏭 Địa chỉ lấy hàng</Tag>;
+                } else if (addressType === false) {
+                    return <Tag color="green">🏠 Địa chỉ nhận hàng</Tag>;
+                } else {
+                    return <Tag color="orange">📍 Chưa phân loại</Tag>;
+                }
+            },
         },
         {
             title: 'Thao tác',
@@ -102,6 +106,7 @@ const AddressTab: React.FC<AddressTabProps> = ({ customerId }) => {
 
     const pickupAddresses = addresses.filter(address => address.addressType === true);
     const deliveryAddresses = addresses.filter(address => address.addressType === false);
+    const unclassifiedAddresses = addresses.filter(address => address.addressType === null);
 
     if (loading) {
         return (
@@ -149,7 +154,7 @@ const AddressTab: React.FC<AddressTabProps> = ({ customerId }) => {
                         />
                     )}
                 </TabPane>
-                <TabPane tab={`Địa chỉ gửi hàng (${pickupAddresses.length})`} key="pickup">
+                <TabPane tab={`🏭 Địa chỉ lấy hàng (${pickupAddresses.length})`} key="pickup">
                     {pickupAddresses.length > 0 ? (
                         <Table
                             dataSource={pickupAddresses}
@@ -159,12 +164,12 @@ const AddressTab: React.FC<AddressTabProps> = ({ customerId }) => {
                         />
                     ) : (
                         <Empty
-                            description="Chưa có địa chỉ gửi hàng nào"
+                            description="Chưa có địa chỉ lấy hàng nào"
                             image={Empty.PRESENTED_IMAGE_SIMPLE}
                         />
                     )}
                 </TabPane>
-                <TabPane tab={`Địa chỉ nhận hàng (${deliveryAddresses.length})`} key="delivery">
+                <TabPane tab={`🏠 Địa chỉ nhận hàng (${deliveryAddresses.length})`} key="delivery">
                     {deliveryAddresses.length > 0 ? (
                         <Table
                             dataSource={deliveryAddresses}
@@ -179,6 +184,16 @@ const AddressTab: React.FC<AddressTabProps> = ({ customerId }) => {
                         />
                     )}
                 </TabPane>
+                {unclassifiedAddresses.length > 0 && (
+                    <TabPane tab={`📍 Chưa phân loại (${unclassifiedAddresses.length})`} key="unclassified">
+                        <Table
+                            dataSource={unclassifiedAddresses}
+                            columns={columns}
+                            rowKey="id"
+                            pagination={{ pageSize: 5 }}
+                        />
+                    </TabPane>
+                )}
             </Tabs>
 
             <AddressForm

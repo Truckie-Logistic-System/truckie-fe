@@ -1,20 +1,17 @@
 export enum VehicleAssignmentStatusEnum {
-    ASSIGNED = 'ASSIGNED',
-    AVAILABLE = 'AVAILABLE',
-    IN_TRIP = 'IN_TRIP',
+    ACTIVE = 'ACTIVE',
+    INACTIVE = 'INACTIVE',
     COMPLETED = 'COMPLETED'
 }
 
 export const VehicleAssignmentStatusColors = {
-    [VehicleAssignmentStatusEnum.ASSIGNED]: 'bg-blue-500 text-white',
-    [VehicleAssignmentStatusEnum.AVAILABLE]: 'bg-green-500 text-white',
-    [VehicleAssignmentStatusEnum.IN_TRIP]: 'bg-yellow-500 text-white',
-    [VehicleAssignmentStatusEnum.COMPLETED]: 'bg-gray-500 text-white'
+    [VehicleAssignmentStatusEnum.ACTIVE]: 'bg-blue-500 text-white',
+    [VehicleAssignmentStatusEnum.INACTIVE]: 'bg-gray-400 text-white',
+    [VehicleAssignmentStatusEnum.COMPLETED]: 'bg-green-600 text-white'
 };
 
 export const VehicleAssignmentStatusLabels = {
-    [VehicleAssignmentStatusEnum.ASSIGNED]: 'Đã phân công',
-    [VehicleAssignmentStatusEnum.AVAILABLE]: 'Khả dụng',
-    [VehicleAssignmentStatusEnum.IN_TRIP]: 'Đang trong chuyến',
+    [VehicleAssignmentStatusEnum.ACTIVE]: 'Đang hoạt động',
+    [VehicleAssignmentStatusEnum.INACTIVE]: 'Không hoạt động',
     [VehicleAssignmentStatusEnum.COMPLETED]: 'Hoàn thành'
-}; 
+};

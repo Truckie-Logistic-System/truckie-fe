@@ -27,7 +27,6 @@ class MapCache {
       containerId,
       lastUsed: Date.now()
     });
-    console.log(`[MapCache] Cached map for key: ${key}`);
   }
 
   /**
@@ -42,13 +41,11 @@ class MapCache {
     // Check if cache item is still valid
     if (Date.now() - item.lastUsed > this.maxAge) {
       this.cache.delete(key);
-      console.log(`[MapCache] Removed expired map for key: ${key}`);
       return null;
     }
 
     // Update last used time
     item.lastUsed = Date.now();
-    console.log(`[MapCache] Retrieved cached map for key: ${key}`);
     return item.mapInstance;
   }
 
@@ -67,7 +64,6 @@ class MapCache {
         console.warn(`[MapCache] Error removing map instance:`, error);
       }
       this.cache.delete(key);
-      console.log(`[MapCache] Removed map for key: ${key}`);
     }
   }
 
@@ -78,7 +74,6 @@ class MapCache {
     const now = Date.now();
     for (const [key, item] of this.cache.entries()) {
       if (now - item.lastUsed > this.maxAge) {
-        console.log(`[MapCache] Auto-cleaning expired map for key: ${key}`);
         this.remove(key);
       }
     }
@@ -91,7 +86,6 @@ class MapCache {
     for (const key of this.cache.keys()) {
       this.remove(key);
     }
-    console.log('[MapCache] Cleared all maps');
   }
 
   /**

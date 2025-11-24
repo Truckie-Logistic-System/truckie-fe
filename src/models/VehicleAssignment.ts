@@ -109,7 +109,7 @@ export interface RouteSegmentInfo {
     startLongitude: number;
     endLatitude: number;
     endLongitude: number;
-    distanceMeters: number;
+    distanceKilometers: number;
     pathCoordinates: number[][];
     estimatedTollFee: number;
     tollDetails?: RouteToll[]; // Thêm chi tiết trạm thu phí

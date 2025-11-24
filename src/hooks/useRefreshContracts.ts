@@ -19,12 +19,9 @@ export const useRefreshContracts = (
     }
 
     try {
-      console.log('[useRefreshContracts] Fetching contracts for order:', orderId);
-      
       const response = await contractService.getContractsByOrderId(orderId);
       
       if (response?.data?.success) {
-        console.log('[useRefreshContracts] ✅ Contracts refreshed');
         onSuccess?.(response.data.data);
         return response.data.data;
       } else {

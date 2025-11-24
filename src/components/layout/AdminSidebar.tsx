@@ -134,6 +134,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           label: <Link to="/admin/categories">Danh mục</Link>,
         },
         {
+          key: "/admin/stipulation-settings",
+          icon: <FileTextOutlined />,
+          label: <Link to="/admin/stipulation-settings">Điều khoản</Link>,
+        },
+        {
           key: "/admin/settings",
           icon: <SettingOutlined />,
           label: <Link to="/admin/settings">Cài đặt</Link>,

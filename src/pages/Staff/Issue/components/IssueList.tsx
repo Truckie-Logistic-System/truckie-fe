@@ -81,9 +81,9 @@ const IssueList: React.FC = () => {
         const pendingIssues = issues.filter(issue => issue.status === IssueEnum.OPEN).length;
         const inProgressIssues = issues.filter(issue => issue.status === IssueEnum.IN_PROGRESS).length;
         const resolvedIssues = issues.filter(issue => issue.status === IssueEnum.RESOLVED).length;
-        const cancelledIssues = 0; // Không còn trạng thái này trong enum mới
+        const overdueIssues = issues.filter(issue => issue.status === IssueEnum.PAYMENT_OVERDUE).length;
 
-        return { pendingIssues, inProgressIssues, resolvedIssues, cancelledIssues };
+        return { pendingIssues, inProgressIssues, resolvedIssues, overdueIssues };
     };
 
     const stats = getIssueStats();
@@ -145,16 +145,16 @@ const IssueList: React.FC = () => {
             <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-center">
                     <div>
-                        <Text className="text-gray-600 block">Đã hủy</Text>
+                        <Text className="text-gray-600 block">Quá hạn thanh toán</Text>
                         {loading ? (
                             <Skeleton.Input style={{ width: 60 }} active size="small" />
                         ) : (
-                            <Title level={3} className="m-0 text-red-700">{stats.cancelledIssues}</Title>
+                            <Title level={3} className="m-0 text-red-700">{stats.overdueIssues}</Title>
                         )}
                     </div>
-                    <Badge count={loading ? 0 : stats.cancelledIssues} color="red" showZero>
+                    <Badge count={loading ? 0 : stats.overdueIssues} color="red" showZero>
                         <div className="bg-red-200 p-2 rounded-full">
-                            <ExclamationCircleOutlined className="text-3xl text-red-600" />
+                            <ClockCircleOutlined className="text-3xl text-red-600" />
                         </div>
                     </Badge>
                 </div>
@@ -283,6 +283,7 @@ const IssueList: React.FC = () => {
                                 <Option value={IssueEnum.OPEN}>Chờ xử lý</Option>
                                 <Option value={IssueEnum.IN_PROGRESS}>Đang xử lý</Option>
                                 <Option value={IssueEnum.RESOLVED}>Đã giải quyết</Option>
+                                <Option value={IssueEnum.PAYMENT_OVERDUE}>Quá hạn thanh toán</Option>
                             </Select>
                         </div>
                     </div>

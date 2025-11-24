@@ -4,7 +4,11 @@ import { MessageOutlined } from '@ant-design/icons';
 import { useChatContext } from '@/context/ChatContext';
 import { useChatRoom } from '@/hooks/useChatRoom';
 
-const ChatButton: React.FC = () => {
+interface ChatButtonProps {
+    onOpen?: () => void;
+}
+
+const ChatButton: React.FC<ChatButtonProps> = ({ onOpen }) => {
     const {
         toggleChat,
         unreadCount,
@@ -35,6 +39,9 @@ const ChatButton: React.FC = () => {
                 message.error({ content: result.message || 'Không thể tải tin nhắn', key: 'chat-loading' });
             }
 
+            // Notify parent to close other chat
+            onOpen?.();
+
             // Open chat UI
             toggleChat();
 
@@ -48,7 +55,7 @@ const ChatButton: React.FC = () => {
     };
 
     return (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed bottom-4 right-4" style={{ zIndex: 998 }}>
             <Badge count={unreadCount} overflowCount={99}>
                 <div
                     onClick={handleChatClick}

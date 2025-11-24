@@ -13,7 +13,8 @@ import {
     Form,
     Select,
     Space,
-    Typography
+    Typography,
+    Statistic
 } from 'antd';
 import {
     DollarOutlined,
@@ -25,7 +26,8 @@ import {
     ClockCircleOutlined,
     ExclamationCircleOutlined,
     WarningOutlined,
-    InfoCircleOutlined
+    InfoCircleOutlined,
+    CreditCardOutlined
 } from '@ant-design/icons';
 import type { Issue } from '@/models/Issue';
 import { TransactionStatusTag } from '@/components/common/tags';
@@ -37,6 +39,7 @@ import type { MapLocation } from '@/models/Map';
 import type { RouteSegment, RoutePoint, SuggestRouteRequest, RouteInfoFromAPI } from '@/models/RoutePoint';
 import routeService from '@/services/route';
 import ReturnRoutePlanning from './ReturnRoutePlanning';
+import { issueWebSocket } from '@/services/websocket/issueWebSocket';
 
 const { Title } = Typography;
 
@@ -89,13 +92,14 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
     const [detailInfo, setDetailInfo] = useState<OrderRejectionInfo | null>(null);
     const [adjustedFee, setAdjustedFee] = useState<number | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [isDeadlineExpired, setIsDeadlineExpired] = useState(false); // Track if deadline has expired
     const [routingModalVisible, setRoutingModalVisible] = useState(false);
     const [routingLoading, setRoutingLoading] = useState(false);
     const [routeSegments, setRouteSegments] = useState<Array<{
         segmentOrder: number;
         startPointName: string;
         endPointName: string;
-        distanceMeters: number;
+        distanceKilometers: number;
         [key: string]: any;
     }>>([]);
     const [segments, setSegments] = useState<RouteSegment[]>([]);
@@ -131,18 +135,23 @@ const globalCustomPoints: RoutePoint[] = [];
             setRouteSegments(segments.map((seg: any, idx: number) => {
                 // Calculate estimated toll fee for this segment
                 const estimatedTollFee = seg.tolls?.reduce((sum: number, toll: any) => 
-                    sum + (toll.price || 0), 0) || 0;
+                    sum + (toll.amount || toll.price || 0), 0) || 0;
+
+                // Extract start/end coordinates from path array
+                const path = seg.path || [];
+                const startPoint = path.length > 0 ? path[0] : [0, 0]; // [lng, lat]
+                const endPoint = path.length > 0 ? path[path.length - 1] : [0, 0]; // [lng, lat]
 
                 return {
                     segmentOrder: idx + 1,
                     startPointName: seg.startName,
                     endPointName: seg.endName,
-                    startLatitude: seg.startLat,
-                    startLongitude: seg.startLng,
-                    endLatitude: seg.endLat,
-                    endLongitude: seg.endLng,
-                    distanceMeters: Math.round(seg.distance * 1000),
-                    pathCoordinatesJson: JSON.stringify(seg.path || []),
+                    startLatitude: startPoint[1], // lat from [lng, lat]
+                    startLongitude: startPoint[0], // lng from [lng, lat]
+                    endLatitude: endPoint[1], // lat from [lng, lat]
+                    endLongitude: endPoint[0], // lng from [lng, lat]
+                    distanceKilometers: seg.distance, // Distance in kilometers
+                    pathCoordinatesJson: JSON.stringify(path), // Already in [[lng, lat], ...] format
                     tollDetails: seg.tolls || [],
                     estimatedTollFee: estimatedTollFee
                 };
@@ -170,11 +179,40 @@ const globalCustomPoints: RoutePoint[] = [];
         fetchRejectionDetail();
     }, [issue.id]);
 
+    // Subscribe to WebSocket notifications for this issue
+    useEffect(() => {
+        if (!issue?.id) return;
+        // Subscribe to issue updates via WebSocket
+        const unsubscribe = issueWebSocket.subscribeToIssue(issue.id, (updatedIssue) => {
+            // Check if transaction status changed to PAID (customer paid successfully)
+            const transactionPaid = updatedIssue.transaction?.status === 'PAID';
+            
+            // If transaction paid OR issue resolved, refetch detail
+            if (transactionPaid || updatedIssue.status === 'RESOLVED') {
+                message.success('Khách hàng đã thanh toán thành công!');
+                fetchRejectionDetail();
+            }
+        });
+        
+        // Listen to global return payment success event from IssuesContext
+        const handleRefetchEvent = (event: any) => {
+            const { issueId } = event.detail || {};
+            if (issueId === issue.id) {
+                fetchRejectionDetail();
+            }
+        };
+        
+        window.addEventListener('refetch-issue-detail', handleRefetchEvent);
+        
+        return () => {
+            unsubscribe();
+            window.removeEventListener('refetch-issue-detail', handleRefetchEvent);
+        };
+    }, [issue.id, onUpdate]);
+
     const fetchFeeCalculation = async (actualDistanceKm?: number) => {
         try {
-            console.log("💰 Calculating return fee...");
             if (actualDistanceKm) {
-                console.log("📏 Using actual route distance:", actualDistanceKm, "km");
             }
             
             // Use real API only - no mock data
@@ -190,7 +228,7 @@ const globalCustomPoints: RoutePoint[] = [];
             // message.success('Đã tính toán cước phí trả hàng');
         } catch (error) {
             console.error('Error fetching fee calculation:', error);
-            message.error('Không thể tính cước phí trả hàng');
+            // message.error('Không thể tính cước phí trả hàng');
         }
     };
 
@@ -210,18 +248,11 @@ const globalCustomPoints: RoutePoint[] = [];
 
     // Generate route from points
     const generateRouteFromPoints = async (basePoints: RoutePoint[], customPts: RoutePoint[]) => {
-        console.log("🔄 generateRouteFromPoints called with:", {
-            basePoints: basePoints.length,
-            customPts: customPts.length
-        });
-        
         if (basePoints.length < 2) {
             console.error("❌ Not enough points:", basePoints.length);
             message.error('Cần ít nhất 2 điểm để tạo tuyến đường');
             return;
         }
-
-        console.log("🚀 Starting route generation...");
         setIsGeneratingRoute(true);
         setIsAnimatingRoute(true);
 
@@ -251,57 +282,36 @@ const globalCustomPoints: RoutePoint[] = [];
                 pointTypes: uniquePointTypes,
                 vehicleTypeId: null // Use null instead of invalid UUID
             };
-
-            console.log("📡 ROUTE GEN - Request data:", requestData);
-
             // Call API to get suggested route
-            console.log("📞 Calling route service...");
-            
             // Try route service first, but use fallback for now
             let routeSuccess = false;
             try {
                 const response = await routeService.suggestRoute(requestData);
-                console.log("📨 Route service response:", response);
-
                 if (response && response.segments) {
-                    console.log("✅ Got segments from API:", response.segments.length);
                     // Process segments cho VietMapMap
                     const processedSegments = response.segments.map(segment => ({
                         ...segment,
                         tolls: segment.tolls || [],
                         distance: segment.distance || 0
                     }));
-                    
-                    console.log("🗺️ Setting segments for VietMapMap:", processedSegments);
                     setSegments(processedSegments); // For VietMapMap
                     
-                    // Process segments cho UI list
-                    const uiSegments = response.segments.map((segment, index) => ({
-                        segmentOrder: index + 1,
-                        startPointName: segment.startName,
-                        endPointName: segment.endName,
-                        distanceMeters: segment.distance * 1000 // Convert to meters
-                    }));
-                    
-                    console.log("📋 Setting UI segments:", uiSegments);
-                    setRouteSegments(uiSegments);
+                    // Note: routeSegments will be set by handleRouteGenerated callback
+                    // which properly transforms segments with all required fields
                     // message.success(`Tạo tuyến đường thành công với ${response.segments.length} đoạn`);
                     routeSuccess = true;
                     
                     // Calculate return fee AFTER route is created successfully
                     // Get actual distance of segment 1 (Delivery → Pickup) from route
                     const deliveryToPickupDistance = response.segments.length > 0 ? response.segments[0].distance : 0;
-                    console.log("✅ Route created, calculating return fee with actual distance:", deliveryToPickupDistance, "km");
                     setTimeout(() => {
                         fetchFeeCalculation(deliveryToPickupDistance);
                     }, 500);
                 }
             } catch (apiError) {
-                console.log("⚠️ Route API failed, using fallback:", apiError);
             }
 
             if (!routeSuccess) {
-                console.log("❌ Route API failed, no fallback available");
                 message.error('Không thể tạo tuyến đường. Vui lòng thử lại.');
                 setSegments([]);
                 setRouteSegments([]);
@@ -324,20 +334,13 @@ const globalCustomPoints: RoutePoint[] = [];
         setRoutingLoading(true);
         try {
             // Get real route points from API - tương tự RoutePlanningStep
-            console.log("🔍 Fetching return route points for issue:", issue.id);
-            
             const response = await routeService.getIssuePoints(issue.id);
-            console.log("📡 Return route points response:", response);
-
             // Truy cập đúng cấu trúc response - API trả về trực tiếp points
             const points = response.points || [];
             if (points.length === 0) {
                 message.error('Không tìm thấy điểm đường đi cho lộ trình trả hàng');
                 return;
             }
-
-            console.log("✅ Got full journey route points:", points.length);
-            
             // Convert API response to RoutePoint format (full 5 points for journey history)
             const fullJourneyPoints: RoutePoint[] = points.map(point => ({
                 addressId: point.addressId || '',
@@ -350,10 +353,6 @@ const globalCustomPoints: RoutePoint[] = [];
 
             // Return route uses last 3 points: Delivery → Pickup (Return) → Carrier (Return)
             const returnRoutePoints = fullJourneyPoints.slice(2);
-            
-            console.log("📍 Full journey points:", fullJourneyPoints.length);
-            console.log("📍 Return route points for display:", returnRoutePoints.length);
-
             // Save full journey points for submission later
             setFullJourneyPoints(fullJourneyPoints);
             
@@ -372,16 +371,11 @@ const globalCustomPoints: RoutePoint[] = [];
                     lng: firstPoint.lng
                 });
             }
-            
-            console.log("🚀 Opening modal with return points:", returnRoutePoints.length);
-            console.log("🗺️ Created markers:", allMarkers.length);
-            
             setRoutingModalVisible(true);
             
             // Generate route after modal opens - with return points
             if (returnRoutePoints.length >= 2) {
                 setTimeout(() => {
-                    console.log("⏰ Starting route generation with return points...");
                     generateRouteFromPoints(returnRoutePoints, []);
                 }, 500);
             }
@@ -400,7 +394,6 @@ const globalCustomPoints: RoutePoint[] = [];
         }
 
         // Simply open modal - let ReturnRoutePlanning handle everything
-        console.log("🚪 Opening return routing modal for issue:", issue.id);
         setRoutingModalVisible(true);
     };
 
@@ -489,6 +482,7 @@ const globalCustomPoints: RoutePoint[] = [];
         setProcessing(true);
         setRoutingLoading(true);
         try {
+            // Log request data for debugging
             // Create journey history + transaction
             await issueService.processOrderRejection({
                 issueId: issue.id,
@@ -497,7 +491,6 @@ const globalCustomPoints: RoutePoint[] = [];
                 totalTollFee: 0,
                 totalTollCount: 0,
                 totalDistance: feeInfo.distanceKm,
-                paymentDeadlineHours: 24,
             });
 
             message.success('Đã tạo lộ trình trả hàng và giao dịch thanh toán thành công');
@@ -518,6 +511,12 @@ const globalCustomPoints: RoutePoint[] = [];
             setProcessing(false);
             setRoutingLoading(false);
         }
+    };
+
+    // Check if payment deadline has passed
+    const isDeadlinePassed = (deadline: string | undefined): boolean => {
+        if (!deadline) return false;
+        return new Date(deadline).getTime() < Date.now();
     };
 
     const formatCurrency = (amount: number) => {
@@ -683,14 +682,125 @@ const globalCustomPoints: RoutePoint[] = [];
                 </>
             )} */}
 
-            {/* Transaction Status - Improved UI */}
-            {detailInfo?.returnTransaction && (
+            {/* Return Shipping Fee Information - Show after staff processes */}
+            {issue.status === 'IN_PROGRESS' && detailInfo?.finalFee && (
                 <Card 
                     className="mb-4"
                     title={
                         <div className="flex items-center">
                             <DollarOutlined className="mr-2 text-blue-500" />
-                            <span>Trạng thái giao dịch</span>
+                            <span>Thông tin cước phí trả hàng</span>
+                        </div>
+                    }
+                    bordered
+                >
+                    {/* Fee Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {/* Calculated Fee */}
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <div className="text-xs text-blue-600 mb-1 font-semibold">Giá cước tính toán</div>
+                            <div className="text-lg font-bold text-blue-700">
+                                {formatCurrency(detailInfo.calculatedFee || 0)}
+                            </div>
+                            {detailInfo.adjustedFee && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                    Giá điều chỉnh: {formatCurrency(detailInfo.adjustedFee)}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Final Fee */}
+                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <div className="text-xs text-green-600 mb-1 font-semibold">Giá cuối cùng</div>
+                            <div className="text-xl font-bold text-green-700">
+                                {formatCurrency(detailInfo.finalFee)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                                Khách hàng cần thanh toán
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Payment deadline with countdown */}
+                    {detailInfo.paymentDeadline && detailInfo.returnTransaction?.status !== 'PAID' && (
+                        <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <ClockCircleOutlined className="text-orange-600 text-xl" />
+                                    <span className="font-semibold text-gray-700">Thời gian còn lại</span>
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Hết hạn: {new Date(detailInfo.paymentDeadline).toLocaleString('vi-VN', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric'
+                                    })}
+                                </div>
+                            </div>
+                            <div className="flex justify-center">
+                                {isDeadlinePassed(detailInfo.paymentDeadline) ? (
+                                    <div className="text-center">
+                                        <div className="text-6xl font-bold text-red-600 mb-2">
+                                            Hết hạn
+                                        </div>
+                                        <div className="text-sm text-red-500">
+                                            ❌ Đã quá thời gian thanh toán
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Statistic.Countdown
+                                        value={new Date(detailInfo.paymentDeadline).getTime()}
+                                        format="mm:ss"
+                                        valueStyle={{
+                                            fontSize: '48px',
+                                            fontWeight: 'bold',
+                                            background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
+                                            WebkitBackgroundClip: 'text',
+                                            WebkitTextFillColor: 'transparent',
+                                            fontFamily: 'monospace'
+                                        }}
+                                        suffix={
+                                            <span className="text-sm text-gray-500 ml-2">phút:giây</span>
+                                        }
+                                        onFinish={() => {
+                                            // When countdown reaches 0, refetch issue detail to update UI
+                                            setIsDeadlineExpired(true);
+                                            message.warning({
+                                                content: 'Hết thời gian thanh toán! Đang cập nhật trạng thái...',
+                                                duration: 5
+                                            });
+                                            // Refetch after a short delay to allow backend to process
+                                            setTimeout(() => {
+                                                fetchRejectionDetail();
+                                            }, 2000);
+                                        }}
+                                    />
+                                )}
+                            </div>
+                            <div className="text-center mt-2 text-sm text-gray-600">
+                                {isDeadlinePassed(detailInfo.paymentDeadline) ? (
+                                    <span className="text-red-600 font-semibold">
+                                        ⏰ Đã quá hạn! Liên hệ khách hàng hoặc xử lý theo quy trình.
+                                    </span>
+                                ) : (
+                                    '⚠️ Driver đang chờ! Vui lòng nhắc khách hàng thanh toán ngay nếu cần.'
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </Card>
+            )}
+
+            {/* Transaction Status - Show when customer creates payment */}
+            {detailInfo?.returnTransaction && (
+                <Card 
+                    className="mb-4"
+                    title={
+                        <div className="flex items-center">
+                            <CreditCardOutlined className="mr-2 text-green-500" />
+                            <span>Trạng thái giao dịch thanh toán</span>
                         </div>
                     }
                     bordered
@@ -723,29 +833,15 @@ const globalCustomPoints: RoutePoint[] = [];
                         </div>
                     </div>
 
-                    {/* Payment deadline */}
-                    {detailInfo.paymentDeadline && (
+                    {/* {detailInfo.returnTransaction.status === 'PAID' && (
                         <Alert
-                            icon={<ClockCircleOutlined />}
-                            message={
-                                <div className="flex items-center justify-between">
-                                    <span className="font-semibold">Hạn thanh toán</span>
-                                    <span className="text-base font-bold">
-                                        {new Date(detailInfo.paymentDeadline).toLocaleString('vi-VN', {
-                                            year: 'numeric',
-                                            month: '2-digit',
-                                            day: '2-digit',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}
-                                    </span>
-                                </div>
-                            }
-                            type="warning"
+                            icon={<CheckCircleOutlined />}
+                            message="Đã thanh toán thành công"
+                            description="Lộ trình đã được kích hoạt và tài xế đang tiến hành trả hàng."
+                            type="success"
                             showIcon
-                            className="mb-0"
                         />
-                    )}
+                    )} */}
                 </Card>
             )}
 
@@ -764,42 +860,129 @@ const globalCustomPoints: RoutePoint[] = [];
                 </div>
             )}
 
-            {/* {issue.status === 'IN_PROGRESS' && (
+            {/* Waiting for Payment Alert */}
+            {issue.status === 'IN_PROGRESS' && !detailInfo?.returnTransaction && (
                 <Alert
                     icon={<InfoCircleOutlined />}
                     message={
-                        <div className="font-semibold">Đang chờ khách hàng thanh toán</div>
+                        <div className="font-semibold text-lg">✅ Đã hoàn tất xử lý! Đang chờ khách hàng thanh toán</div>
                     }
                     description={
                         <div className="space-y-2">
-                            <p>Khi khách hàng thanh toán thành công, hệ thống sẽ tự động kích hoạt lộ trình trả hàng cho tài xế.</p>
-                            <div className="bg-blue-50 p-3 rounded border border-blue-200 mt-2">
-                                <div className="text-sm font-semibold text-blue-800 mb-2">📍 Khách hàng sẽ thấy giao dịch ở đâu?</div>
-                                <div className="text-sm text-gray-700 space-y-1">
-                                    <div>• <strong>Trang Đơn hàng</strong> → Chi tiết đơn hàng → Tab "Vấn đề trả hàng"</div>
-                                    <div>• Nhấn nút <strong>"Thanh toán cước trả hàng"</strong> để mở modal thanh toán</div>
-                                    <div>• Khách hàng sẽ được chuyển đến cổng thanh toán VNPay</div>
-                                    <div>• Sau khi thanh toán thành công, trạng thái tự động cập nhật</div>
-                                </div>
+                            <p className="text-base">
+                                Yêu cầu thanh toán cước trả hàng <strong>{formatCurrency(detailInfo?.finalFee || 0)}</strong> đã được gửi tới khách hàng.
+                            </p>
+                            <p className="text-sm text-gray-600">
+                                Khách hàng sẽ thấy thông báo trong trang <strong>Chi tiết đơn hàng</strong> và có thể thanh toán ngay. 
+                                Sau khi thanh toán thành công, tài xế sẽ tự động nhận được lộ trình trả hàng.
+                            </p>
+                            <Divider className="my-3" />
+                            <div className="bg-yellow-50 p-2 rounded text-sm">
+                                <strong>💡 Gợi ý:</strong> Nếu cần thiết, bạn có thể gọi điện nhắc nhở khách hàng thanh toán qua số điện thoại bên trên. 
+                                Hạn thanh toán là <strong>30 phút</strong> kể từ bây giờ.
                             </div>
                         </div>
                     }
-                    type="info"
+                    type="success"
                     showIcon
+                    className="mb-4"
                 />
-            )} */}
+            )}
+
+            {/* Payment in progress */}
+            {issue.status === 'IN_PROGRESS' && detailInfo?.returnTransaction?.status === 'PENDING' && (
+                <Alert
+                    icon={<ClockCircleOutlined />}
+                    message={
+                        <div className="font-semibold">⏳ Khách hàng đã tạo giao dịch, đang chờ thanh toán</div>
+                    }
+                    description={
+                        <div>
+                            <p>Khách hàng đã ấn nút thanh toán và tạo giao dịch. Đang chờ hoàn tất thanh toán trên PayOS.</p>
+                            <p className="mt-2 text-sm text-gray-600">Trạng thái sẽ tự động cập nhật khi thanh toán thành công.</p>
+                        </div>
+                    }
+                    type="warning"
+                    showIcon
+                    className="mb-4"
+                />
+            )}
+
+            {/* Payment Overdue Alert */}
+            {issue.status === 'PAYMENT_OVERDUE' && (
+                <Alert
+                    icon={<WarningOutlined />}
+                    message={
+                        <div className="font-semibold text-lg">⚠️ Quá hạn thanh toán</div>
+                    }
+                    description={
+                        <div className="space-y-2">
+                            <p className="text-base">
+                                Khách hàng đã quá thời gian thanh toán cước phí trả hàng <strong>{formatCurrency(detailInfo?.finalFee || 0)}</strong>.
+                            </p>
+                            {/* <p className="text-sm text-gray-700">
+                                🚨 <strong>Hành động cần thực hiện:</strong>
+                            </p>
+                            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1 ml-4">
+                                <li>Liên hệ khách hàng qua số điện thoại bên trên để xác nhận</li>
+                                <li>Nếu khách hàng từ chối thanh toán: Hàng sẽ bị bỏ lại và quay về lộ trình ban đầu</li>
+                                <li>Nếu khách hàng đồng ý thanh toán: Liên hệ quản lý để tạo giao dịch mới</li>
+                            </ul> */}
+                            <Divider className="my-3" />
+                            <div className="bg-red-50 p-3 rounded border border-red-200">
+                                <p className="text-sm text-red-700 mb-2">
+                                    <strong>⏰ Thời gian quá hạn:</strong> {detailInfo?.paymentDeadline ? new Date(detailInfo.paymentDeadline).toLocaleString('vi-VN') : 'N/A'}
+                                </p>
+                                {/* <p className="text-sm text-gray-600">
+                                    Vui lòng xử lý sự cố này sớm nhất để tránh ảnh hưởng đến lịch trình giao hàng.
+                                </p> */}
+                            </div>
+                        </div>
+                    }
+                    type="error"
+                    showIcon
+                    className="mb-4"
+                />
+            )}
 
             {issue.status === 'RESOLVED' && (
                 <>
-                    <Alert
-                        message="Đã hoàn tất"
-                        description="Khách hàng đã thanh toán và tài xế đã trả hàng về điểm lấy hàng."
-                        type="success"
-                        showIcon
-                    />
+                    {/* Case 1: Customer paid successfully */}
+                    {detailInfo?.returnTransaction?.status === 'PAID' ? (
+                        <Alert
+                            message="Đã hoàn tất"
+                            description="Khách hàng đã thanh toán và tài xế sẽ tiến hành trả hàng về điểm lấy hàng."
+                            type="success"
+                            showIcon
+                        />
+                    ) : (
+                        /* Case 2: Payment timeout - customer didn't pay */
+                        <Alert
+                            icon={<WarningOutlined />}
+                            message={
+                                <div className="font-semibold text-lg">⏰ Đã xử lý xong - Khách hàng không thanh toán</div>
+                            }
+                            description={
+                                <div className="space-y-2">
+                                    <p className="text-base">
+                                        Khách hàng đã quá thời gian thanh toán cước phí trả hàng. Kiện hàng đã được hủy và tài xế tiếp tục lộ trình ban đầu.
+                                    </p>
+                                    <Divider className="my-3" />
+                                    <div className="bg-orange-50 p-3 rounded border border-orange-200">
+                                        <p className="text-sm text-orange-700">
+                                            <strong>📦 Trạng thái kiện hàng:</strong> Đã hủy do không thanh toán cước trả hàng
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                            type="warning"
+                            showIcon
+                            className="mb-4"
+                        />
+                    )}
                     
-                    {/* Return Delivery Images */}
-                    {detailInfo?.returnDeliveryImages && detailInfo.returnDeliveryImages.length > 0 && (
+                    {/* Return Delivery Images - Only show if customer paid */}
+                    {detailInfo?.returnTransaction?.status === 'PAID' && detailInfo?.returnDeliveryImages && detailInfo.returnDeliveryImages.length > 0 && (
                         <div className="mt-4">
                             <h3 className="text-lg font-semibold mb-3">Ảnh xác nhận trả hàng</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

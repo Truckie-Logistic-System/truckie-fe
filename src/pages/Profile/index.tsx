@@ -35,7 +35,6 @@ const ProfilePage = () => {
             const result = isOwnProfile
                 ? await customerService.getMyProfile()
                 : await customerService.getCustomerProfile(currentUserId);
-            console.log('API Response:', result);
             return result;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

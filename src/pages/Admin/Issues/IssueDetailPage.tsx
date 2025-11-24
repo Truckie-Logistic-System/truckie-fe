@@ -52,9 +52,6 @@ const IssueDetailPage: React.FC = () => {
     setError(null);
     try {
       const data = await issueService.getIssueById(id);
-      console.log('[IssueDetailPage] 📊 Fetched issue data:', data);
-      console.log('[IssueDetailPage] 🏷️ Issue category:', data.issueCategory);
-      console.log('[IssueDetailPage] 🔍 Is SEAL_REPLACEMENT?', data.issueCategory === 'SEAL_REPLACEMENT');
       setIssue(data);
     } catch (err: any) {
       console.error('Error fetching issue:', err);
@@ -256,9 +253,6 @@ const IssueDetailPage: React.FC = () => {
 
       {/* Seal Replacement Details - Only show for SEAL_REPLACEMENT category */}
       {(() => {
-        console.log('[IssueDetailPage] 🔍 Checking seal replacement render condition');
-        console.log('[IssueDetailPage] issue.issueCategory:', issue.issueCategory);
-        console.log('[IssueDetailPage] Should render?', issue.issueCategory === 'SEAL_REPLACEMENT');
         return issue.issueCategory === 'SEAL_REPLACEMENT' ? (
           <div className="mb-4">
             <SealReplacementDetail issue={issue} onUpdate={setIssue} />

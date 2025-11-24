@@ -1,8 +1,9 @@
 import React from "react";
-import { Form, Input, Button, InputNumber, Select, Card, Row, Col } from "antd";
+import { Form, Input, Button, InputNumber, Select, Card, Row, Col, Alert, Progress } from "antd";
 import type { FormInstance } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { OrderSize } from "../../../models/OrderSize";
+import { convertWeightToTons, getWeightValidation, getWeightRangeLabel, calculateTotalWeight, type WeightUnit } from "../../../utils/weightUtils";
 
 interface OrderDetailFormListProps {
   name?: string;
@@ -14,31 +15,59 @@ interface OrderDetailFormListProps {
 
 const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   name = "orderDetailsList",
-  label = "Danh sách lô hàng",
+  label = "Danh sách kiện hàng",
   orderSizes,
   units = [], // Empty default array, will be populated from API
+  form,
 }) => {
+  // Watch all order details to calculate total weight in real-time
+  const orderDetails = Form.useWatch(name, form) || [];
+  
+  // Calculate total weight using utility function
+  const totalWeight = calculateTotalWeight(orderDetails);
+
+  // Validation states
+  const isUnderMin = totalWeight < 0.01;
+  const isOverMax = totalWeight > 50;
+  const isValid = totalWeight >= 0.01 && totalWeight <= 50;
+
   // Convert units array to the format needed for Select component
+  console.log('[DEBUG] Available units in OrderDetailFormList:', units);
   const weightUnits = units.map((unit) => ({
     value: unit,
     label: unit === "Kí" ? "Kilogram" : unit,
   }));
 
   return (
-    <Form.Item label={label}>
+    <Form.Item label={
+      <span>
+        {label}
+        <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
+          (Tổng khối lượng: 0.01 - 50 tấn)
+        </span>
+      </span>
+    }>
       <Form.List
         name={name}
         initialValue={[
-          { quantity: 1, unit: units.length > 0 ? units[0] : "Kí" },
-        ]} // Use first unit from API if available
+          { quantity: 1, unit: "Tấn" },
+        ]} // Default to Tấn
       >
         {(fields, { add, remove }) => (
           <>
-            {fields.map(({ key, name: fieldName, ...restField }, index) => (
+            {fields.map(({ key, name: fieldName, ...restField }, index) => {
+              // Access unit from orderDetails array instead of calling useWatch inside map
+              const currentUnit = orderDetails[index]?.unit || "Tấn";
+              
+              // Use utility function for validation
+              const weightValidation = getWeightValidation(currentUnit as WeightUnit);
+              const weightRangeLabel = getWeightRangeLabel(currentUnit as WeightUnit);
+
+              return (
               <Card
                 key={key}
                 size="small"
-                title={`Lô hàng ${index + 1}`}
+                title={`Kiện hàng ${index + 1}`}
                 extra={
                   fields.length > 1 && (
                     <Button
@@ -116,7 +145,14 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                         <Form.Item
                           {...restField}
                           name={[fieldName, "weight"]}
-                          label="Trọng lượng"
+                          label={
+                            <span>
+                              Trọng lượng
+                              <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
+                                ({weightRangeLabel})
+                              </span>
+                            </span>
+                          }
                           rules={[
                             {
                               required: true,
@@ -124,18 +160,19 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                             },
                             {
                               type: "number",
-                              min: 0.1,
-                              message: "Trọng lượng phải lớn hơn 0",
+                              min: weightValidation.min,
+                              max: weightValidation.max,
+                              message: weightValidation.message,
                             },
                           ]}
                           style={{ marginBottom: 16 }}
                         >
                           <InputNumber
-                            min={0.1}
-                            max={10000}
-                            step={0.1}
-                            precision={2}
-                            placeholder="Nhập trọng lượng"
+                            min={weightValidation.min}
+                            max={weightValidation.max}
+                            step={weightValidation.step}
+                            precision={weightValidation.precision}
+                            placeholder={weightValidation.placeholder}
                             style={{ width: "100%" }}
                           />
                         </Form.Item>
@@ -151,7 +188,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                               message: "Vui lòng chọn đơn vị!",
                             },
                           ]}
-                          initialValue={units.length > 0 ? units[0] : "Kí"}
+                          initialValue={units.length > 0 ? units[0] : "Tấn"}
                           style={{ marginBottom: 16 }}
                         >
                           <Select placeholder="Chọn đơn vị">
@@ -173,34 +210,87 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                       {...restField}
                       name={[fieldName, "description"]}
                       label="Mô tả chi tiết"
-                      rules={[
-                        { required: true, message: "Vui lòng nhập mô tả!" },
-                      ]}
-                      style={{ marginBottom: 0 }}
+                      style={{ marginBottom: 16 }}
                     >
                       <Input.TextArea
-                        rows={5}
-                        placeholder="Mô tả chi tiết gói hàng này (ví dụ: 100x50x30 cm, đồ điện tử)"
+                        placeholder="Nhập mô tả chi tiết về kiện hàng (ví dụ: hàng dễ vỡ, hàng điện tử, quần áo...)"
+                        rows={4}
+                        style={{ width: "100%" }}
                       />
                     </Form.Item>
                   </Col>
                 </Row>
               </Card>
-            ))}
+              );
+            })}
 
             <Form.Item style={{ marginBottom: 0 }}>
               <Button
                 type="dashed"
                 onClick={() =>
-                  add({ quantity: 1, unit: units.length > 0 ? units[0] : "Kí" })
+                  add({ quantity: 1, unit: "Tấn" })
                 }
                 block
                 icon={<PlusOutlined />}
                 size="large"
               >
-                Thêm lô hàng mới
+                Thêm kiện hàng mới
               </Button>
             </Form.Item>
+
+            {/* Total Weight Validation Component */}
+            <Card 
+              size="small" 
+              style={{ 
+                marginTop: 16, 
+                border: isValid ? '1px solid #d9d9d9' : '1px solid #ff4d4f',
+                backgroundColor: isValid ? '#fafafa' : '#fff2f0'
+              }}
+            >
+              <div style={{ marginBottom: 12 }}>
+                <Row align="middle" justify="space-between">
+                  <Col>
+                    <span style={{ fontWeight: 600, fontSize: '14px' }}>
+                      📊 Tổng khối lượng: <span style={{ color: isValid ? '#52c41a' : '#ff4d4f' }}>
+                        {totalWeight.toFixed(2)} / 50.00 tấn
+                      </span>
+                    </span>
+                  </Col>
+                  <Col>
+                    {!isValid && (
+                      <span style={{ color: '#ff4d4f', fontSize: '12px' }}>
+                        {isUnderMin ? '⚠️ Tối thiểu 0.01 tấn' : '⚠️ Tối đa 50 tấn'}
+                      </span>
+                    )}
+                  </Col>
+                </Row>
+              </div>
+              
+              {/* Progress Bar */}
+              <Progress 
+                percent={Math.min((totalWeight / 50) * 100, 100)} 
+                status={isOverMax ? 'exception' : isValid ? 'success' : 'active'}
+                strokeWidth={8}
+                showInfo={false}
+                style={{ marginBottom: 12 }}
+              />
+
+              {/* Helpful Information */}
+              <Alert
+                message="Lưu ý quan trọng"
+                description={
+                  <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                    <div>• Mỗi kiện hàng: 0.01 - 10 tấn</div>
+                    <div>• Tổng đơn hàng: 0.01 - 50 tấn</div>
+                    <div>• Nếu khối lượng &gt; 10 tấn, hệ thống sẽ tự động phân bổ nhiều xe</div>
+                    <div>• Khối lượng tối đa mỗi xe: 10 tấn (giới hạn vận tải)</div>
+                  </div>
+                }
+                type="info"
+                icon={<InfoCircleOutlined />}
+                style={{ fontSize: '12px' }}
+              />
+            </Card>
           </>
         )}
       </Form.List>

@@ -28,7 +28,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     useEffect(() => {
         // Listen for logout events from httpClient
         const unsubscribe = onHttpClientLogout(() => {
-            console.log('[AuthContext] Received logout event from httpClient');
             setUser(null);
         });
 
@@ -69,7 +68,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         sessionStorage.setItem("userId", userId);
                         if (username) sessionStorage.setItem("username", username);
                         if (email) sessionStorage.setItem("email", email);
-                        console.log('[AuthContext] Restored session from localStorage after server restart');
                     }
                 }
 

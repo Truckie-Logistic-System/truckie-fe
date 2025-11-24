@@ -2,17 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Form, Input, Select, DatePicker, Button, Row, Col, InputNumber, Divider, App, Typography, Card, Tooltip, Table, Space } from 'antd';
 import { SaveOutlined, CloseOutlined, PlusOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { VehicleRule, VehicleRuleRequest, UpdateVehicleRuleRequest, VehicleRuleCategory, VehicleRuleType, BasingPrice, DistanceRule } from '../../../../models';
+import type { SizeRule, SizeRuleRequest, UpdateSizeRuleRequest, SizeRuleCategory, SizeRuleType, BasingPrice, DistanceRule } from '../../../../models';
 
 const { Text, Title } = Typography;
 
-interface VehicleRuleFormProps {
-    initialValues?: VehicleRule;
-    onSubmit: (values: VehicleRuleRequest | UpdateVehicleRuleRequest) => void;
+interface SizeRuleFormProps {
+    initialValues?: SizeRule;
+    onSubmit: (values: SizeRuleRequest | UpdateSizeRuleRequest) => void;
     onCancel: () => void;
     loading: boolean;
-    categories: VehicleRuleCategory[];
-    vehicleTypes: VehicleRuleType[];
+    categories: SizeRuleCategory[];
+    vehicleTypes: SizeRuleType[];
 }
 
 interface BasingPriceFormItem {
@@ -22,7 +22,7 @@ interface BasingPriceFormItem {
     basePrice: string;
 }
 
-const VehicleRuleForm: React.FC<VehicleRuleFormProps> = ({
+const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
     initialValues,
     onSubmit,
     onCancel,
@@ -62,7 +62,7 @@ const VehicleRuleForm: React.FC<VehicleRuleFormProps> = ({
         try {
             const values = await form.validateFields();
 
-            const formattedValues: VehicleRuleRequest = {
+            const formattedValues: SizeRuleRequest = {
                 ...values,
                 effectiveFrom: values.effectiveFrom ? values.effectiveFrom.format('YYYY-MM-DDTHH:mm:ss') : dayjs().format('YYYY-MM-DDTHH:mm:ss'),
                 effectiveTo: values.effectiveTo ? values.effectiveTo.format('YYYY-MM-DDTHH:mm:ss') : null,
@@ -79,7 +79,7 @@ const VehicleRuleForm: React.FC<VehicleRuleFormProps> = ({
             };
 
             if (isEditing && initialValues) {
-                const updateValues: UpdateVehicleRuleRequest = {
+                const updateValues: UpdateSizeRuleRequest = {
                     ...formattedValues,
                     id: initialValues.id
                 };
@@ -201,7 +201,7 @@ const VehicleRuleForm: React.FC<VehicleRuleFormProps> = ({
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
-                                name="vehicleRuleName"
+                                name="sizeRuleName"
                                 label="Tên quy tắc"
                                 rules={[{ required: true, message: 'Vui lòng nhập tên quy tắc' }]}
                             >
@@ -448,4 +448,4 @@ const VehicleRuleForm: React.FC<VehicleRuleFormProps> = ({
     );
 };
 
-export default VehicleRuleForm; 
+export default SizeRuleForm; 

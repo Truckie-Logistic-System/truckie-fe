@@ -5,12 +5,19 @@ import ChatWindow from './ChatWindow';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const ChatWidget: React.FC = () => {
+interface ChatWidgetProps {
+    onOpen?: () => void;
+}
+
+const ChatWidget: React.FC<ChatWidgetProps> = ({ onOpen }) => {
     const { isOpen } = useChatContext();
 
     return (
         <>
-            {isOpen ? <ChatWindow /> : <ChatButton />}
+            {/* Button always visible */}
+            <ChatButton onOpen={onOpen} />
+            {/* Window only when open */}
+            {isOpen && <ChatWindow />}
             <ToastContainer
                 position="bottom-left"
                 autoClose={5000}
@@ -26,4 +33,4 @@ const ChatWidget: React.FC = () => {
     );
 };
 
-export default ChatWidget; 
+export default ChatWidget;

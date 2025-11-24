@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { playImportantNotificationSound } from './notificationSound';
+import { playNotificationSound, NotificationSoundType } from './notificationSound';
 import type { OrderStatusChangeMessage } from '../hooks/useOrderStatusTracking';
 
 /**
@@ -29,12 +29,9 @@ export const createOrderStatusChangeHandler = (
   return useCallback((statusChange: OrderStatusChangeMessage) => {
     // Check if this status change is for the current order
     if (orderId && statusChange.orderId === orderId) {
-      console.log('[OrderStatusNotifications] 📢 Status change received:', statusChange);
-      
       // Debounce refetch to avoid spike load and prevent mobile WebSocket disruption
       // Wait 500ms to let WebSocket broadcasts settle
       setTimeout(() => {
-        console.log('[OrderStatusNotifications] 🔄 Refetching order details...');
         refetch();
         
         // Handle tab switching after data is refetched
@@ -57,10 +54,6 @@ export const createOrderStatusChangeHandler = (
         handleDefaultNotification(statusChange, messageApi);
       }
     } else {
-      console.log('[OrderStatusNotifications] ❌ Order ID did not match:', {
-        statusChangeOrderId: statusChange.orderId,
-        currentOrderId: orderId,
-      });
     }
   }, [orderId, refetch, messageApi, onStatusChange, customNotifications, onTabSwitch]);
 };
@@ -83,7 +76,6 @@ const handleTabSwitching = (statusChange: OrderStatusChangeMessage, onTabSwitch:
 
   const targetTab = tabSwitchingRules[statusChange.newStatus];
   if (targetTab) {
-    console.log(`[OrderStatusNotifications] 🔄 Switching to tab: ${targetTab} due to status change: ${statusChange.newStatus}`);
     setTimeout(() => {
       onTabSwitch(targetTab);
     }, 600); // Small delay after refetch completes
@@ -103,7 +95,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
           content: `🚛 ${statusChange.message || 'Tài xế đã bắt đầu lấy hàng!'}`,
           duration: 5,
         });
-        playImportantNotificationSound();
+        playNotificationSound(NotificationSoundType.SUCCESS);
       }
       break;
       
@@ -112,7 +104,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `✅ ${statusChange.message || 'Đơn hàng đã được giao thành công!'}`,
         duration: 5,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.SUCCESS);
       break;
       
     case 'IN_TROUBLES':
@@ -120,7 +112,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `⚠️ ${statusChange.message || 'Đơn hàng gặp sự cố!'}`,
         duration: 8,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.ERROR);
       break;
       
     case 'ASSIGNED_TO_DRIVER':
@@ -128,7 +120,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `🚗 ${statusChange.message || 'Đơn hàng đã được phân công cho tài xế!'}`,
         duration: 5,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.INFO);
       break;
       
     case 'FULLY_PAID':
@@ -136,7 +128,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `💰 ${statusChange.message || 'Đơn hàng đã được thanh toán đầy đủ!'}`,
         duration: 5,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.PAYMENT_SUCCESS);
       break;
       
     case 'CANCELLED':
@@ -144,7 +136,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `❌ ${statusChange.message || 'Đơn hàng đã bị hủy!'}`,
         duration: 5,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.WARNING);
       break;
       
     default:

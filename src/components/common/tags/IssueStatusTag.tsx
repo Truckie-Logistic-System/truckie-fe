@@ -4,7 +4,8 @@ import { IssueEnum, IssueStatusColors, IssueStatusLabels } from '../../../consta
 import {
     ExclamationCircleOutlined,
     SyncOutlined,
-    CheckCircleOutlined
+    CheckCircleOutlined,
+    CloseCircleOutlined
 } from '@ant-design/icons';
 
 interface IssueStatusTagProps {
@@ -26,6 +27,8 @@ const IssueStatusTag: React.FC<IssueStatusTagProps> = ({ status, className, size
                 return <SyncOutlined spin />;
             case IssueEnum.RESOLVED:
                 return <CheckCircleOutlined />;
+            case IssueEnum.PAYMENT_OVERDUE:
+                return <CloseCircleOutlined />;
             default:
                 return null;
         }

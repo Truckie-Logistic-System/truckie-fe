@@ -24,15 +24,15 @@ export const TripInfoHeader: React.FC<TripInfoHeaderProps> = ({ group, tripIndex
                             <span className="text-gray-700">{group.groupingReason || "Không có thông tin"}</span>
                         </div>
                         <div>
-                            <span className="font-medium">Số lô hàng:</span>{" "}
-                            <span className="text-gray-700">{detailCount} lô hàng</span>
+                            <span className="font-medium">Số kiện hàng:</span>{" "}
+                            <span className="text-gray-700">{detailCount} kiện hàng</span>
                         </div>
                     </div>
 
                     {/* List of order details */}
                     {group.orderDetails && group.orderDetails.length > 0 && (
                         <div className="mt-3 bg-white p-3 rounded-md border border-blue-200">
-                            <div className="text-xs font-medium text-blue-700 mb-2">Các lô hàng trong nhóm này:</div>
+                            <div className="text-xs font-medium text-blue-700 mb-2">Các kiện hàng trong nhóm này:</div>
                             <div className="space-y-1 max-h-32 overflow-y-auto">
                                 {group.orderDetails.map((detail, idx) => (
                                     <div key={detail.id} className="text-xs pl-2 border-l-2 border-blue-300">

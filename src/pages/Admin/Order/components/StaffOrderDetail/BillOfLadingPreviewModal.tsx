@@ -46,8 +46,6 @@ const PdfViewer: React.FC<{
                 // Tạo URL từ Blob
                 const url = URL.createObjectURL(blob);
                 setBlobUrl(url);
-
-                console.log("Created Blob URL:", url);
             } catch (error) {
                 console.error("Error creating Blob URL:", error);
             }
@@ -551,7 +549,6 @@ const BillOfLadingPreviewModal: React.FC<BillOfLadingPreviewModalProps> = ({
         <script>
           window.onload = function() {
             // Đảm bảo tất cả các tài liệu đã được tải
-            console.log("Documents loaded, preparing to print...");
             setTimeout(function() {
               // Uncomment to automatically print
               // window.print();
@@ -589,12 +586,8 @@ const BillOfLadingPreviewModal: React.FC<BillOfLadingPreviewModalProps> = ({
         }
 
         // Debug: Log document information
-        console.log("Documents received:", documents);
         documents.forEach((doc, index) => {
-            console.log(`Document ${index} - Filename: ${doc.fileName}`);
-            console.log(`Document ${index} - MimeType: ${doc.mimeType}`);
-            console.log(`Document ${index} - Content length: ${doc.base64Content?.length || 0}`);
-            console.log(`Document ${index} - Content starts with: ${doc.base64Content?.substring(0, 50)}...`);
+            
         });
 
         // Kiểm tra xem có file PDF nào không

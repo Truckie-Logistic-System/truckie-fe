@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Tabs, Empty, Card, Tag } from "antd";
+import React, { useState, useEffect } from "react";
+import { Tabs, Empty, Card, Tag, Image, Descriptions, Row, Col } from "antd";
 import {
     BoxPlotOutlined,
     CarOutlined,
@@ -10,17 +10,59 @@ import {
     PhoneOutlined,
     TagOutlined,
     EnvironmentOutlined,
+    ExclamationCircleOutlined,
+    ClockCircleOutlined,
+    DollarOutlined,
+    WarningOutlined,
+    InboxOutlined,
 } from "@ant-design/icons";
+import MapPreview from '@/pages/Staff/Issue/components/MapPreview';
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import RouteMapSection from "./RouteMapSection";
 import OrderDetailStatusCard from "../../../../components/common/OrderDetailStatusCard";
-import { formatSealStatus, getSealStatusColor } from "../../../../models/JourneyHistory";
-import "./VehicleAssignmentSection.css";
+import type { StaffVehicleAssignment } from '@/models/Order';
+import { getIssueStatusLabel, getIssueStatusColor, getSealStatusLabel, getSealStatusColor } from '@/constants/enums';
+import vietmapService from '@/services/vietmap/vietmapService';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
+// Component to display issue location with reverse geocoding
+const IssueLocationDisplay: React.FC<{ latitude: number; longitude: number }> = ({ latitude, longitude }) => {
+    const [address, setAddress] = useState<string>('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchAddress = async () => {
+            try {
+                const results = await vietmapService.reverseGeocode(latitude, longitude);
+                if (results && results.length > 0) {
+                    setAddress(results[0].display || results[0].address || '');
+                }
+            } catch (error) {
+                console.error('Error fetching address:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAddress();
+    }, [latitude, longitude]);
+
+    return (
+        <div className="mb-3 p-2 bg-white rounded">
+            <div className="text-sm text-gray-600 font-medium mb-1 flex items-center">
+                <EnvironmentOutlined className="mr-1 text-red-500" />
+                Vị trí sự cố:
+            </div>
+            <div className="text-sm">
+                {loading ? 'Đang tải địa chỉ...' : (address || `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`)}
+            </div>
+        </div>
+    );
+};
 
 interface VehicleAssignmentSectionProps {
     vehicleAssignments: any[];
@@ -291,20 +333,32 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                     >
                         {va.journeyHistories && va.journeyHistories.length > 0 ? (
                             <div className="p-2">
-                                {va.journeyHistories.map((journey: any, journeyIdx: number) => {
-                                    if (!journey.journeySegments || journey.journeySegments.length === 0) {
-                                        return null;
+                                {(() => {
+                                    // Chỉ hiển thị ACTIVE journey history mới nhất
+                                    const activeJourneys = va.journeyHistories
+                                        .filter((j: any) => j.status === 'ACTIVE')
+                                        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                                    
+                                    if (activeJourneys.length === 0) {
+                                        return <Empty description="Không có lộ trình đang hoạt động" />;
+                                    }
+                                    
+                                    const activeJourney = activeJourneys[0];
+                                    
+                                    if (!activeJourney.journeySegments || activeJourney.journeySegments.length === 0) {
+                                        return <Empty description="Không có thông tin lộ trình" />;
                                     }
 
                                     return (
-                                        <div key={journey.id || `journey-${journeyIdx}`} className="mb-4">
+                                        <div>
                                             <RouteMapSection
-                                                journeySegments={journey.journeySegments}
-                                                journeyInfo={journey}
+                                                journeySegments={activeJourney.journeySegments}
+                                                journeyInfo={activeJourney}
+                                                issues={va.issues}
                                             />
                                         </div>
                                     );
-                                })}
+                                })()}
                             </div>
                         ) : (
                             <Empty description="Không có lịch sử hành trình nào" />
@@ -315,72 +369,336 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                     <Tabs.TabPane
                         tab={
                             <span>
-                                <ToolOutlined /> Sự cố
+                                <ToolOutlined /> Sự cố {va.issues && va.issues.length > 0 && (
+                                    <Tag color="red" className="ml-1">{va.issues.filter((issue: any) => issue.issueCategory !== 'PENALTY').length}</Tag>
+                                )}
                             </span>
                         }
                         key="issues"
                     >
-                        {va.issues && va.issues.length > 0 ? (
-                            <div className="p-2">
-                                {va.issues.map((issueItem: any, issueIdx: number) => (
-                                    <div key={issueIdx} className="bg-red-50 p-4 rounded-lg mb-3">
-                                        <div className="flex items-center mb-3">
-                                            <span className="font-medium">Mô tả sự cố:</span>
-                                            <span className="ml-2">{issueItem.issue.description}</span>
-                                            <Tag
-                                                className="ml-2"
-                                                color={getStatusColor(issueItem.issue.status)}
-                                            >
-                                                {issueItem.issue.status}
+                        {va.issues && va.issues.filter((issue: any) => issue.issueCategory !== 'PENALTY').length > 0 ? (
+                            <div className="space-y-4">
+                                {va.issues.filter((issue: any) => issue.issueCategory !== 'PENALTY').map((issue: any, issueIdx: number) => {
+                                    const isOrderRejection = issue.issueCategory === 'ORDER_REJECTION';
+                                    const isSealReplacement = issue.issueCategory === 'SEAL_REPLACEMENT';
+                                    const isDamage = issue.issueCategory === 'DAMAGE';
+
+                                return (
+                                    <Card
+                                        key={issue.id || issueIdx}
+                                        className={`shadow-md border-l-4 ${
+                                            isOrderRejection ? 'border-l-red-500 bg-red-50' :
+                                            isSealReplacement ? 'border-l-yellow-500 bg-yellow-50' :
+                                            isDamage ? 'border-l-orange-500 bg-orange-50' :
+                                            'border-l-blue-500 bg-blue-50'
+                                        }`}
+                                        size="small"
+                                    >
+                                        {/* Header */}
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <ExclamationCircleOutlined className="text-xl text-red-600" />
+                                                    <div className="text-base font-semibold text-gray-900">
+                                                        {issue.issueTypeName || 'Sự cố'}
+                                                    </div>
+                                                </div>
+                                                {issue.reportedAt && (
+                                                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                        <ClockCircleOutlined />
+                                                        <span>Báo cáo: {dayjs(issue.reportedAt).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm')}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <Tag color={getIssueStatusColor(issue.status)}>
+                                                {getIssueStatusLabel(issue.status)}
                                             </Tag>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            {issueItem.issue.issueTypeName && (
-                                                <div className="flex items-center">
-                                                    <span className="font-medium mr-1">Loại sự cố:</span>
-                                                    <span>{issueItem.issue.issueTypeName}</span>
-                                                </div>
-                                            )}
-                                            {issueItem.issue.staff && (
-                                                <>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium mr-1">Nhân viên xử lý:</span>
-                                                        <span>{issueItem.issue.staff.name}</span>
-                                                    </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium mr-1">Liên hệ:</span>
-                                                        <span>{issueItem.issue.staff.phone}</span>
-                                                    </div>
-                                                </>
-                                            )}
+
+                                        {/* Description */}
+                                        <div className="mb-3 p-2 bg-white rounded">
+                                            <div className="text-sm text-gray-600 font-medium mb-1">Mô tả:</div>
+                                            <div className="text-sm">{issue.description || 'Không có mô tả'}</div>
                                         </div>
 
-                                        {issueItem.imageUrls && issueItem.imageUrls.length > 0 ? (
-                                            <div className="mt-4">
-                                                <div className="flex items-center mb-2">
-                                                    <span className="font-medium">Hình ảnh:</span>
+                                        {/* Location with Reverse Geocoding */}
+                                        {(issue.locationLatitude && issue.locationLongitude) && (
+                                            <IssueLocationDisplay 
+                                                latitude={issue.locationLatitude} 
+                                                longitude={issue.locationLongitude}
+                                            />
+                                        )}
+
+                                        {/* Staff info - Only show when staff is assigned */}
+                                        {issue.staff && issue.staff.fullName && (
+                                            <div className="mb-3 p-2 bg-white rounded">
+                                                <div className="text-sm text-gray-600 font-medium mb-1">Nhân viên xử lý:</div>
+                                                <div className="flex items-center gap-4">
+                                                    <span><UserOutlined className="mr-1" />{issue.staff.fullName}</span>
+                                                    {issue.staff.phoneNumber && (
+                                                        <span><PhoneOutlined className="mr-1" />{issue.staff.phoneNumber}</span>
+                                                    )}
                                                 </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {issueItem.imageUrls.map((url: string, idx: number) => (
-                                                        <img
+                                            </div>
+                                        )}
+
+                                        {/* ORDER_REJECTION specific info */}
+                                        {isOrderRejection && (
+                                            <div className="mb-3 p-3 bg-white rounded border border-red-200">
+                                                <div className="text-sm font-semibold text-red-600 mb-2 flex items-center">
+                                                    <DollarOutlined className="mr-2" />
+                                                    Thông tin phí trả hàng
+                                                </div>
+                                                <Descriptions size="small" column={1} bordered>
+                                                    {issue.paymentDeadline && (
+                                                        <Descriptions.Item label={<span><ClockCircleOutlined className="mr-1" />Hạn thanh toán</span>}>
+                                                            <span className="text-red-600 font-medium">
+                                                                {dayjs(issue.paymentDeadline).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm')}
+                                                            </span>
+                                                        </Descriptions.Item>
+                                                    )}
+                                                    {issue.calculatedFee && (
+                                                        <Descriptions.Item label="Phí tính toán">
+                                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(issue.calculatedFee)}
+                                                        </Descriptions.Item>
+                                                    )}
+                                                    {issue.adjustedFee !== null && issue.adjustedFee !== undefined && (
+                                                        <Descriptions.Item label="Phí điều chỉnh">
+                                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(issue.adjustedFee)}
+                                                        </Descriptions.Item>
+                                                    )}
+                                                    {issue.finalFee && (
+                                                        <Descriptions.Item label={<span className="font-semibold">Phí cuối cùng</span>}>
+                                                            <span className="font-bold text-red-600">
+                                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(issue.finalFee)}
+                                                            </span>
+                                                        </Descriptions.Item>
+                                                    )}
+                                                </Descriptions>
+                                                {issue.affectedOrderDetails && issue.affectedOrderDetails.length > 0 && (
+                                                    <div className="mt-3">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <InboxOutlined className="text-lg text-red-600" />
+                                                            <span className="text-sm font-semibold text-red-700">
+                                                                Kiện hàng bị ảnh hưởng ({issue.affectedOrderDetails.length} kiện)
+                                                            </span>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {issue.affectedOrderDetails.map((pkg: any, idx: number) => (
+                                                                <Card
+                                                                    key={idx}
+                                                                    size="small"
+                                                                    className="shadow-sm hover:shadow-md transition-shadow"
+                                                                    style={{ 
+                                                                        borderLeft: '4px solid #ff4d4f',
+                                                                        background: 'linear-gradient(to right, #fff1f0 0%, #ffffff 10%)'
+                                                                    }}
+                                                                >
+                                                                    <Row gutter={[16, 8]} align="middle">
+                                                                        <Col span={24}>
+                                                                            <div className="flex items-center justify-between">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Tag color="red" className="text-xs font-semibold px-2 py-0.5">
+                                                                                        #{idx + 1}
+                                                                                    </Tag>
+                                                                                    <Tag color="error" className="text-xs font-mono">
+                                                                                        {pkg.trackingCode || 'N/A'}
+                                                                                    </Tag>
+                                                                                </div>
+                                                                                <div className="text-right">
+                                                                                    <span className="font-bold text-red-700 text-base">
+                                                                                        {pkg.weightBaseUnit?.toFixed(2) || '0.00'}
+                                                                                    </span>
+                                                                                    <span className="text-sm text-gray-600 ml-1">
+                                                                                        {pkg.unit || 'kg'}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </Col>
+                                                                        
+                                                                        {pkg.description && (
+                                                                            <Col span={24}>
+                                                                                <div className="pl-2 border-l-2 border-red-200">
+                                                                                    <span className="text-xs text-gray-500 font-semibold">Mô tả:</span>
+                                                                                    <p className="text-sm text-gray-700 mb-0 mt-0.5">
+                                                                                        {pkg.description}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </Col>
+                                                                        )}
+                                                                    </Row>
+                                                                </Card>
+                                                            ))}
+                                                        </div>
+                                                        
+                                                        {/* Total Weight */}
+                                                        <Card 
+                                                            size="small" 
+                                                            className="mt-2 bg-red-50 border-red-300"
+                                                            style={{ borderLeft: '4px solid #ff4d4f' }}
+                                                        >
+                                                            <Row justify="space-between" align="middle">
+                                                                <Col>
+                                                                    <span className="text-sm font-bold text-red-800">
+                                                                        Tổng trọng lượng:
+                                                                    </span>
+                                                                </Col>
+                                                                <Col>
+                                                                    <span className="text-lg font-bold text-red-700">
+                                                                        {issue.affectedOrderDetails.reduce((sum: number, pkg: any) => 
+                                                                            sum + (pkg.weightBaseUnit || 0), 0
+                                                                        ).toFixed(2)} kg
+                                                                    </span>
+                                                                </Col>
+                                                            </Row>
+                                                        </Card>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* SEAL_REPLACEMENT specific info */}
+                                        {isSealReplacement && (
+                                            <div className="mb-3 p-3 bg-white rounded border border-yellow-200">
+                                                <div className="text-sm font-semibold text-yellow-700 mb-2 flex items-center">
+                                                    <WarningOutlined className="mr-2" />
+                                                    Thông tin thay thế niêm phong
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {issue.oldSeal && (
+                                                        <div className="p-2 bg-gray-50 rounded">
+                                                            <div className="text-xs text-gray-600 font-medium mb-1">Niêm phong cũ:</div>
+                                                            <div className="font-semibold">{issue.oldSeal.sealCode}</div>
+                                                            <Tag color="red" className="mt-1">Đã gỡ</Tag>
+                                                        </div>
+                                                    )}
+                                                    {issue.newSeal && (
+                                                        <div className="p-2 bg-green-50 rounded">
+                                                            <div className="text-xs text-gray-600 font-medium mb-1">Niêm phong mới:</div>
+                                                            <div className="font-semibold">{issue.newSeal.sealCode}</div>
+                                                            <Tag color={getSealStatusColor(issue.newSeal.status)} className="mt-1">{getSealStatusLabel(issue.newSeal.status)}</Tag>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {(issue.sealRemovalImage || issue.newSealAttachedImage) && (
+                                                    <div className="mt-3">
+                                                        <div className="text-xs text-gray-600 font-medium mb-2">Hình ảnh niêm phong:</div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <Image.PreviewGroup>
+                                                                {issue.sealRemovalImage && (
+                                                                    <div>
+                                                                        <div className="text-xs text-gray-500 mb-1">Gỡ niêm phong cũ:</div>
+                                                                        <Image 
+                                                                            src={issue.sealRemovalImage} 
+                                                                            alt="Seal removal" 
+                                                                            className="rounded" 
+                                                                            width="100%" 
+                                                                            style={{maxHeight: '300px', objectFit: 'contain'}} 
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                                {issue.newSealAttachedImage && (
+                                                                    <div>
+                                                                        <div className="text-xs text-gray-500 mb-1">Gắn niêm phong mới:</div>
+                                                                        <Image 
+                                                                            src={issue.newSealAttachedImage} 
+                                                                            alt="New seal attached" 
+                                                                            className="rounded" 
+                                                                            width="100%" 
+                                                                            style={{maxHeight: '300px', objectFit: 'contain'}} 
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </Image.PreviewGroup>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* DAMAGE specific info */}
+                                        {isDamage && issue.affectedOrderDetails && issue.affectedOrderDetails.length > 0 && (
+                                            <div className="mb-3 p-3 bg-white rounded border border-orange-200">
+                                                <div className="text-sm font-semibold text-orange-700 mb-2 flex items-center">
+                                                    <InboxOutlined className="mr-2" />
+                                                    Kiện hàng bị hư hại ({issue.affectedOrderDetails.length} kiện)
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {issue.affectedOrderDetails.map((pkg: any, idx: number) => (
+                                                        <Card
                                                             key={idx}
-                                                            src={url}
-                                                            alt={`Issue image ${idx + 1}`}
-                                                            width={100}
-                                                            height={100}
-                                                            className="object-cover rounded"
-                                                        />
+                                                            size="small"
+                                                            className="shadow-sm hover:shadow-md transition-shadow"
+                                                            style={{ 
+                                                                borderLeft: '4px solid #ff8c00',
+                                                                background: 'linear-gradient(to right, #fff7ed 0%, #ffffff 10%)'
+                                                            }}
+                                                        >
+                                                            <Row gutter={[16, 8]} align="middle">
+                                                                <Col span={24}>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Tag color="orange" className="text-xs font-semibold px-2 py-0.5">
+                                                                                #{idx + 1}
+                                                                            </Tag>
+                                                                            <Tag color="warning" className="text-xs font-mono">
+                                                                                {pkg.trackingCode || 'N/A'}
+                                                                            </Tag>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <span className="font-bold text-orange-700 text-base">
+                                                                                {pkg.weightBaseUnit?.toFixed(2) || '0.00'}
+                                                                            </span>
+                                                                            <span className="text-sm text-gray-600 ml-1">
+                                                                                {pkg.unit || 'kg'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </Col>
+                                                                
+                                                                {pkg.description && (
+                                                                    <Col span={24}>
+                                                                        <div className="pl-2 border-l-2 border-orange-200">
+                                                                            <span className="text-xs text-gray-500 font-semibold">Mô tả:</span>
+                                                                            <p className="text-sm text-gray-700 mb-0 mt-0.5">
+                                                                                {pkg.description}
+                                                                            </p>
+                                                                        </div>
+                                                                    </Col>
+                                                                )}
+                                                            </Row>
+                                                        </Card>
                                                     ))}
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <div className="mt-4 text-gray-500">
-                                                <span>Chưa có hình ảnh</span>
+                                        )}
+
+                                        {/* Issue images - for all issue types */}
+                                        {issue.issueImages && issue.issueImages.length > 0 && (
+                                            <div className="mb-3 p-2 bg-white rounded">
+                                                <div className="text-sm text-gray-600 font-medium mb-2">
+                                                    {isOrderRejection ? 'Ảnh xác nhận trả hàng:' : 'Hình ảnh sự cố:'}
+                                                </div>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                    <Image.PreviewGroup>
+                                                        {issue.issueImages.map((url: string, idx: number) => (
+                                                            <Image
+                                                                key={idx}
+                                                                src={url}
+                                                                alt={isOrderRejection ? `Ảnh xác nhận trả hàng ${idx + 1}` : `Issue image ${idx + 1}`}
+                                                                className="rounded"
+                                                                width="100%"
+                                                                style={{maxHeight: '200px', objectFit: 'cover'}}
+                                                            />
+                                                        ))}
+                                                    </Image.PreviewGroup>
+                                                </div>
                                             </div>
                                         )}
-                                    </div>
-                                ))}
-                            </div>
+                                    </Card>
+                                );
+                            })}
+                        </div>
                         ) : (
                             <Empty description="Không có sự cố nào được ghi nhận" />
                         )}
@@ -406,7 +724,7 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                                                     <p className="text-base font-bold text-blue-600">{seal.sealCode || seal.sealId}</p>
                                                 </div>
                                                 <Tag color={getSealStatusColor(seal.status)} className="ml-2">
-                                                    {formatSealStatus(seal.status)}
+                                                    {getSealStatusLabel(seal.status)}
                                                 </Tag>
                                             </div>
 

@@ -91,8 +91,7 @@ const VehiclePage: React.FC = () => {
     useEffect(() => {
         // Chỉ tắt loading khi cả hai API đều hoàn thành (không còn trong trạng thái loading)
         if (!isFetching && !typesLoading) {
-            console.log('Both APIs completed, setting loading to false');
-            console.log('Vehicles:', vehicles.length, 'VehicleTypes:', vehicleTypes.length);
+
             setLoading(false);
         }
     }, [isFetching, typesLoading]);

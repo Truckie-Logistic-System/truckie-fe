@@ -26,7 +26,6 @@ const ReturnPaymentModal: React.FC<ReturnPaymentModalProps> = ({
   onPaymentSuccess
 }) => {
   const [loading, setLoading] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
 
   // Format currency
@@ -37,38 +36,34 @@ const ReturnPaymentModal: React.FC<ReturnPaymentModalProps> = ({
     }).format(amount);
   };
 
-  // Calculate if deadline is close (< 2 hours)
+  // Calculate if deadline is close (< 10 minutes)
   const isDeadlineClose = () => {
     if (!issue.paymentDeadline) return false;
     const deadline = dayjs(issue.paymentDeadline);
     const now = dayjs();
-    const hoursLeft = deadline.diff(now, 'hour');
-    return hoursLeft < 2;
+    const minutesLeft = deadline.diff(now, 'minute');
+    return minutesLeft < 10;
   };
 
-  // Handle payment - Extract checkoutUrl from existing transaction (same pattern as deposit/full payment)
+  // Handle payment - Create transaction and redirect to PayOS (same pattern as deposit/full payment)
   const handlePayment = async () => {
-    if (!issue.returnTransaction) {
-      message.error('Không tìm thấy thông tin giao dịch');
+    if (!issue.finalFee || !issue.customerInfo) {
+      message.error('Không tìm thấy thông tin thanh toán');
       return;
     }
 
     setLoading(true);
     try {
-      // Parse gatewayResponse to get checkoutUrl (already created by backend)
-      let checkoutUrl = null;
-      if (issue.returnTransaction.gatewayResponse) {
-        try {
-          const gatewayData = JSON.parse(issue.returnTransaction.gatewayResponse);
-          checkoutUrl = gatewayData.checkoutUrl;
-          
-          // Extract QR code if available
-          if (gatewayData.qrCode) {
-            setQrCode(gatewayData.qrCode);
-          }
-        } catch (parseError) {
-          console.error('Error parsing gatewayResponse:', parseError);
-        }
+      // Call API to create transaction (similar to deposit flow)
+      // Need to get contractId from issue's order
+      const response = await customerIssueService.createReturnPaymentLink(issue.issueId);
+      
+      // Parse the response to get checkoutUrl
+      const checkoutUrl = response.checkoutUrl;
+      
+      // Extract QR code if available
+      if (response.qrCode) {
+        setQrCode(response.qrCode);
       }
 
       // If we have a checkout URL, redirect to it
@@ -82,48 +77,13 @@ const ReturnPaymentModal: React.FC<ReturnPaymentModalProps> = ({
       // Note: Payment status will be updated via webhook
       
     } catch (error: any) {
-      message.error(error.message || 'Không thể mở trang thanh toán');
+      message.error(error.message || 'Không thể tạo link thanh toán');
       console.error('Payment error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle reject payment
-  const handleReject = async () => {
-    Modal.confirm({
-      title: 'Xác nhận từ chối thanh toán',
-      content: (
-        <div>
-          <p>Bạn có chắc chắn muốn từ chối thanh toán cước trả hàng?</p>
-          <Alert
-            message="Lưu ý"
-            description="Nếu từ chối, các kiện hàng bị từ chối sẽ được hủy và không được trả về cho bạn."
-            type="warning"
-            showIcon
-            className="mt-3"
-          />
-        </div>
-      ),
-      okText: 'Xác nhận từ chối',
-      cancelText: 'Hủy',
-      okType: 'danger',
-      onOk: async () => {
-        setRejecting(true);
-        try {
-          await customerIssueService.rejectReturnPayment(issue.issueId);
-          message.success('Đã từ chối thanh toán. Các kiện hàng sẽ được hủy.');
-          onClose();
-          if (onPaymentSuccess) onPaymentSuccess(); // Trigger refresh
-        } catch (error: any) {
-          message.error(error.message || 'Không thể từ chối thanh toán');
-          console.error('Reject error:', error);
-        } finally {
-          setRejecting(false);
-        }
-      },
-    });
-  };
 
   // Reset state when modal closes
   useEffect(() => {
@@ -154,6 +114,17 @@ const ReturnPaymentModal: React.FC<ReturnPaymentModalProps> = ({
             <TransactionStatusTag status={issue.returnTransaction.status as TransactionEnum} />
           </div>
         </div>
+      )}
+
+      {/* Show pending payment message if no transaction yet */}
+      {!issue.returnTransaction && (
+        <Alert
+          message="Chưa có giao dịch thanh toán"
+          description="Nhấn nút 'Thanh toán ngay' để tạo giao dịch và thanh toán cước trả hàng."
+          type="info"
+          showIcon
+          className="mb-4"
+        />
       )}
 
       {/* Affected Packages */}
@@ -241,25 +212,20 @@ const ReturnPaymentModal: React.FC<ReturnPaymentModalProps> = ({
       )}
 
       {/* Action Buttons */}
-      {issue.returnTransaction?.status === 'PENDING' && (
-        <div className="flex gap-3 justify-end">
-          <Button
-            danger
-            onClick={handleReject}
-            loading={rejecting}
-            disabled={loading}
-          >
-            Từ chối thanh toán
-          </Button>
+      {(!issue.returnTransaction || issue.returnTransaction?.status === 'PENDING') && (
+        <div className="flex justify-end">
           <Button
             type="primary"
             icon={<DollarOutlined />}
             onClick={handlePayment}
             loading={loading}
-            disabled={rejecting}
             size="large"
+            block
+            danger
+            style={{ height: '48px' }}
+            className="font-semibold"
           >
-            Thanh toán ngay
+            Thanh toán ngay qua PayOS
           </Button>
         </div>
       )}
@@ -280,15 +246,20 @@ const ReturnPaymentModal: React.FC<ReturnPaymentModalProps> = ({
       )}
 
       {/* Help Text */}
-      <div className="mt-4 text-sm text-gray-500">
-        <p>💡 <strong>Lưu ý:</strong></p>
-        <ul className="list-disc ml-6 mt-2 space-y-1">
-          <li>Phí trả hàng được tính dựa trên trọng lượng và khoảng cách vận chuyển</li>
-          <li>Sau khi thanh toán, tài xế sẽ nhận được thông báo và tiến hành trả hàng</li>
-          <li>Nếu không thanh toán trong thời hạn, các kiện hàng sẽ bị hủy</li>
-          <li>Bạn có thể theo dõi quá trình trả hàng trong chi tiết đơn hàng</li>
-        </ul>
-      </div>
+      <Alert
+        message="💡 Lưu ý quan trọng"
+        description={
+          <ul className="list-disc ml-4 mt-2 space-y-1">
+            <li>Phí trả hàng được tính dựa trên trọng lượng và khoảng cách vận chuyển</li>
+            <li>Sau khi thanh toán, tài xế sẽ nhận được thông báo và tiến hành trả hàng</li>
+            <li><strong>Nếu không thanh toán trong thời hạn, các kiện hàng sẽ tự động bị hủy</strong></li>
+            <li>Bạn có thể theo dõi quá trình trả hàng trong chi tiết đơn hàng</li>
+          </ul>
+        }
+        type="info"
+        showIcon
+        className="mt-4"
+      />
     </Modal>
   );
 };

@@ -51,7 +51,10 @@ const mapApiResponseToIssue = (apiData: IssueApiResponse): Issue => {
         issueImages: apiData.issueImages,
         orderDetail: apiData.orderDetail,
         // Customer/Sender information
-        sender: apiData.sender
+        sender: apiData.sender,
+        // REROUTE specific fields
+        affectedSegment: apiData.affectedSegment,
+        reroutedJourney: apiData.reroutedJourney
     };
 };
 
@@ -98,9 +101,7 @@ const issueService = {
     getIssueById: async (id: string): Promise<Issue> => {
         try {
             const response = await httpClient.get<IssueResponse>(`/issues/${id}`);
-            console.log('🔍 [issueService] Raw API response:', response.data.data);
             const mappedIssue = mapApiResponseToIssue(response.data.data);
-            console.log('🔍 [issueService] Mapped issue:', mappedIssue);
             return mappedIssue;
         } catch (error: any) {
             console.error(`Error fetching issue ${id}:`, error);
@@ -267,26 +268,13 @@ const issueService = {
      * @returns Promise with updated issue
      */
     assignNewSeal: async (issueId: string, newSealId: string, staffId: string): Promise<Issue> => {
-        console.log('[issueService] 🚀 assignNewSeal called with:', {
-            issueId,
-            newSealId,
-            staffId
-        });
-        
         try {
-            console.log('[issueService] 📡 Making PUT request to /issues/seal-replacement/assign');
             const response = await httpClient.put<IssueResponse>('/issues/seal-replacement/assign', {
                 issueId,
                 newSealId,
                 staffId
             });
-            
-            console.log('[issueService] ✅ API response received:', response);
-            console.log('[issueService] 📊 Response data:', response.data);
-            
             const mappedIssue = mapApiResponseToIssue(response.data.data);
-            console.log('[issueService] 🔄 Mapped issue:', mappedIssue);
-            
             return mappedIssue;
         } catch (error: any) {
             console.error('[issueService] ❌ Error assigning new seal:', error);
@@ -344,17 +332,13 @@ const issueService = {
      */
     calculateReturnShippingFee: async (issueId: string, distanceKm?: number): Promise<any> => {
         try {
-            console.log('🔍 calculateReturnShippingFee called with:', { issueId, distanceKm });
-            
             let url = `/issues/order-rejection/${issueId}/return-fee`;
             
             // Use new endpoint with distance if provided
             if (distanceKm && distanceKm > 0) {
                 url = `/issues/order-rejection/${issueId}/return-fee-with-distance?distanceKm=${distanceKm}`;
-                console.log('✅ Using distance endpoint:', url);
             } else {
-                console.log('❌ Using fallback endpoint (no distance):', url);
-                console.log('❌ Distance value:', distanceKm, 'Type:', typeof distanceKm);
+                
             }
             
             const response = await httpClient.get(url);
@@ -381,7 +365,7 @@ const issueService = {
     },
 
     /**
-     * Process ORDER_REJECTION: create transaction and route (Staff)
+     * Process ORDER_REJECTION issue: create journey and notify customer for payment
      * @param request Process request data
      * @returns Promise with updated rejection detail
      */
@@ -392,7 +376,6 @@ const issueService = {
         totalTollFee: number;
         totalTollCount: number;
         totalDistance: number;
-        paymentDeadlineHours: number;
     }): Promise<any> => {
         try {
             const response = await httpClient.post('/issues/order-rejection/process', request);
@@ -400,6 +383,58 @@ const issueService = {
         } catch (error: any) {
             console.error('Error processing order rejection:', error);
             throw new Error(error.response?.data?.message || 'Không thể xử lý sự cố');
+        }
+    },
+
+    // ===== REROUTE flow methods =====
+
+    /**
+     * Get REROUTE issue detail
+     * @param issueId Issue ID
+     * @returns Promise with reroute detail
+     */
+    getRerouteDetail: async (issueId: string): Promise<any> => {
+        try {
+            const response = await httpClient.get(`/issues/reroute/${issueId}/detail`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error fetching reroute detail:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tải chi tiết sự cố tái định tuyến');
+        }
+    },
+
+    /**
+     * Process REROUTE issue: create new journey with rerouted segments
+     * @param request Process request data
+     * @returns Promise with updated reroute detail
+     */
+    processReroute: async (request: {
+        issueId: string;
+        newRouteSegments: any[];
+        totalTollFee: number;
+        totalTollCount: number;
+    }): Promise<any> => {
+        try {
+            const response = await httpClient.post('/issues/reroute/process', request);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error processing reroute:', error);
+            throw new Error(error.response?.data?.message || 'Không thể xử lý tái định tuyến');
+        }
+    },
+    
+    /**
+     * Get suggested alternative routes for reroute issue using Vietmap Route V3 API
+     * @param issueId Issue ID
+     * @returns Promise with suggested routes from Vietmap
+     */
+    getSuggestedRoutesForReroute: async (issueId: string): Promise<any> => {
+        try {
+            const response = await httpClient.get(`/issues/reroute/${issueId}/suggested-routes`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error fetching suggested routes:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tải các đề xuất lộ trình');
         }
     }
 };

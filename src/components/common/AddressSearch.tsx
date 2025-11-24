@@ -47,8 +47,6 @@ const AddressSearch: React.FC<AddressSearchProps> = ({ onPlaceSelect, initialVal
         if (!placeId || placeId === 'no-results' || placeId === 'error') {
             return;
         }
-
-        console.log('Selected place ID:', placeId);
         setSelectedPlaceId(placeId);
 
         const result = await getPlaceDetail(placeId);
@@ -78,12 +76,7 @@ const AddressSearch: React.FC<AddressSearchProps> = ({ onPlaceSelect, initialVal
             else {
                 displayValue = searchValue;
             }
-
-            console.log('Setting search value to:', displayValue);
             setSearchValue(displayValue);
-
-            console.log('Calling onPlaceSelect with:', placeDetail);
-
             // Gọi onPlaceSelect với timeout để đảm bảo UI được cập nhật trước
             setTimeout(() => {
                 onPlaceSelect(placeDetail);

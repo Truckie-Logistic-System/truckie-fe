@@ -65,7 +65,6 @@ const StaffChatWindow: React.FC = () => {
   // Cleanup WebSocket when unmounted
   useEffect(() => {
     return () => {
-      console.log("🧹 StaffChatWindow unmounted");
     };
   }, []);
 
@@ -81,7 +80,6 @@ const StaffChatWindow: React.FC = () => {
 
   const handleRoomClick = (room: SupportRoom) => {
     if (activeConversation?.roomId === room.roomId) {
-      console.log("⚠️ Already viewing this room");
       return;
     }
     if (room.type === "SUPPORT") {

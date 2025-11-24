@@ -36,11 +36,7 @@ class VehicleLocationCache {
       });
       
       this.saveToStorage();
-      console.log(`📍 [VehicleCache] Updated location for vehicle ${vehicleId}:`, {
-        lat: this.cache.get(vehicleId)?.latitude,
-        lng: this.cache.get(vehicleId)?.longitude,
-        fromCache: !this.isValidLocation(location)
-      });
+      
     }
   }
 
@@ -161,8 +157,6 @@ class VehicleLocationCache {
               }
             }
           });
-          
-          console.log(`📍 [VehicleCache] Loaded ${this.cache.size} vehicles from localStorage`);
         }
       }
     } catch (error) {

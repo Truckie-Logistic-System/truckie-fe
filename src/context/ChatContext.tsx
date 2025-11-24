@@ -196,11 +196,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   const joinRoom = async (roomId: string) => {
     if (!user) return;
 
-    console.log("🔵 joinRoom() called with roomId:", roomId, "and user:", user);
+    
 
     try {
       const success = await roomService.joinRoom(roomId, user.id);
-      console.log("🟢 joinRoom() => roomService.joinRoom result:", success);
+      
 
       if (success) {
         setSupportRooms((prev) =>
@@ -208,23 +208,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
             room.roomId === roomId ? { ...room, type: "SUPPORTED" } : room
           )
         );
-        console.log("🟢 Updated supportRooms type -> SUPPORTED");
-
         connectWebSocket(user.id, roomId);
-        console.log("🟢 WebSocket connected (or connecting...)");
+        
 
         setIsOpen(true);
         setIsMinimized(false);
 
         const chatPage = await chatService.getMessages(roomId, 20);
-        console.log("🟢 chatService.getMessages result:", chatPage);
-
         const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
-        console.log("🟢 Mapped UI messages:", uiMessages);
-
         setUIChatMessages(uiMessages);
-        console.log("🟢 setUIChatMessages done");
-
         const roomInfo = {
           id: roomId,
           roomId: roomId,
@@ -237,7 +229,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
           unreadCount: 0,
         };
         setActiveConversation(roomInfo);
-        console.log("🟢 setActiveConversation done:", roomInfo);
       }
     } catch (error) {
       console.error("❌ joinRoom() error:", error);
@@ -326,7 +317,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
   const handleNewMessage = useCallback(
     (msg: ChatMessageDTO, roomId: string) => {
-      console.log("💬 New incoming message:", msg.id, msg.content, "in room:", roomId);
       const currentUserId = sessionStorage.getItem("userId") || "";
 
       setConversations((prev) =>
@@ -352,7 +342,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
       if (activeConversation?.roomId === roomId) {
         setActiveConversation((prev) => {
-          console.log("🧩 Prev active messages:", prev?.messages.map(m => m.id));
+          
 
           const updated = prev
             ? {
@@ -366,9 +356,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
               lastMessageTime: timestampToMillis(msg.createAt).toString(),
             }
             : null;
-
-          console.log("✅ Added new message:", msg.id, msg.content);
-          console.log("🆕 New active messages:", updated?.messages.map(m => m.id));
+          
 
           return updated;
         });
@@ -505,11 +493,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   // ✅ FIX: Improved WebSocket connection logic
   const connectWebSocket = useCallback(
     (userId: string, roomId: string) => {
-      console.log("🔌 connectWebSocket called:", { userId, roomId, currentRoom: currentRoomIdRef.current });
-
       // If switching rooms, unsubscribe from old room
       if (currentRoomIdRef.current && currentRoomIdRef.current !== roomId) {
-        console.log("🔄 Switching room, unsubscribe from:", currentRoomIdRef.current);
         if (subscriptionRef.current) {
           subscriptionRef.current.unsubscribe();
           subscriptionRef.current = null;
@@ -522,14 +507,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         currentRoomIdRef.current === roomId &&
         subscriptionRef.current
       ) {
-        console.log("✅ Already connected and subscribed to this room, skip reconnect.");
         return;
       }
 
       // If client exists and connected, just subscribe to new room
       if (stompClientRef.current?.connected) {
-        console.log("🔗 WebSocket connected, subscribing to room:", roomId);
-        
         subscriptionRef.current = stompClientRef.current.subscribe(
           `/topic/room/${roomId}`,
           (message: IMessage) => {
@@ -548,8 +530,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
                   nanos: (Date.now() % 1000) * 1000000,
                 };
               }
-              
-              console.log("📨 Parsed WebSocket message:", msg.id, msg.content);
               handleNewMessage(msg, roomId);
             } catch (error) {
               console.error("Error parsing WebSocket message:", error);
@@ -566,20 +546,19 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       setConnectionStatus("connecting");
 
       const sockJsUrl = `${API_BASE_URL}/chat-browser`;
-
-      console.log('🆕 Creating new WebSocket connection via SockJS:', sockJsUrl);
-
       const stompClient = new Client({
         webSocketFactory: () => {
           return new SockJS(sockJsUrl);
         },
-        reconnectDelay: 5000,
-        // debug: (str) => console.log('STOMP Debug:', str),
+        reconnectDelay: 5000, // Auto-reconnect every 5 seconds - unlimited retries
+        heartbeatIncoming: 4000, // Send heartbeat every 4 seconds
+        heartbeatOutgoing: 4000, // Expect heartbeat every 4 seconds
+        // debug: (str) => ,
       });
 
       stompClient.onConnect = (frame) => {
-        console.log(`✅ WebSocket connected, subscribing to room: ${roomId}`);
         setConnectionStatus("connected");
+// ...
         
         subscriptionRef.current = stompClient.subscribe(
           `/topic/room/${roomId}`,
@@ -599,8 +578,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
                   nanos: (Date.now() % 1000) * 1000000,
                 };
               }
-              
-              console.log("📨 Parsed WebSocket message:", msg.id, msg.content);
               handleNewMessage(msg, roomId);
             } catch (error) {
               console.error("Error parsing WebSocket message:", error);
@@ -630,8 +607,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
   // ✅ FIX: Improved disconnect logic
   const disconnectWebSocket = useCallback(() => {
-    console.log("🔌 Disconnecting WebSocket...");
-    
     if (subscriptionRef.current) {
       subscriptionRef.current.unsubscribe();
       subscriptionRef.current = null;
@@ -640,7 +615,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     if (stompClientRef.current) {
       try {
         stompClientRef.current.deactivate();
-        console.log("✅ WebSocket disconnected");
       } catch (error) {
         console.error("Error disconnecting WebSocket:", error);
       } finally {
@@ -697,7 +671,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
             body: JSON.stringify(request),
             headers: {},
           });
-          console.log("✅ Message sent via WebSocket");
         } catch (error) {
           console.error("Failed to send message via WebSocket:", error);
         }

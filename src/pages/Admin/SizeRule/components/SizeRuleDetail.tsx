@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Tag, Table, Typography, Row, Col, Card, Tooltip, Button, Form, InputNumber, App, Select } from 'antd';
-import type { VehicleRule, BasingPrice, DistanceRule } from '../../../../models';
+import type { SizeRule, BasingPrice, DistanceRule } from '../../../../models';
 import { formatDate } from '../../../../utils/dateUtils';
 import { InfoCircleOutlined, DollarOutlined, CarOutlined, CalendarOutlined, TagOutlined, EditOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
 import { CommonStatusTag } from '../../../../components/common/tags';
 import { CommonStatusEnum } from '../../../../constants/enums';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import vehicleRuleService from '../../../../services/vehicle-rule/vehicleRuleService';
+import sizeRuleService from '../../../../services/size-rule/sizeRuleService';
 
 const { Title, Text } = Typography;
 
-interface VehicleRuleDetailProps {
+interface SizeRuleDetailProps {
     visible: boolean;
-    vehicleRule: VehicleRule;
+    sizeRule: SizeRule;
     onClose: () => void;
 }
 
@@ -21,9 +21,9 @@ interface EditablePriceItem extends BasingPrice {
     isNew?: boolean;
 }
 
-const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
+const SizeRuleDetail: React.FC<SizeRuleDetailProps> = ({
     visible,
-    vehicleRule,
+    sizeRule,
     onClose,
 }) => {
     const [form] = Form.useForm();
@@ -36,15 +36,15 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
     // Fetch distance rules
     const { data: distanceRules = [] } = useQuery({
         queryKey: ['distanceRules'],
-        queryFn: () => vehicleRuleService.getDistanceRules(),
+        queryFn: () => sizeRuleService.getDistanceRules(),
     });
 
     // Mutations for basing prices
     const createBasingPriceMutation = useMutation({
-        mutationFn: vehicleRuleService.createBasingPrice,
+        mutationFn: sizeRuleService.createBasingPrice,
         onSuccess: () => {
             // Bỏ thông báo ở đây để tránh hiển thị nhiều lần
-            queryClient.invalidateQueries({ queryKey: ['vehicleRules'] });
+            queryClient.invalidateQueries({ queryKey: ['sizeRules'] });
         },
         onError: (error) => {
             message.error('Không thể thêm giá cơ bản: ' + (error as Error).message);
@@ -52,22 +52,22 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
     });
 
     const updateBasingPriceMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string, data: { basePrice: number, vehicleRuleId: string, distanceRuleId: string } }) =>
-            vehicleRuleService.updateBasingPrice(id, data),
+        mutationFn: ({ id, data }: { id: string, data: { basePrice: number, sizeRuleId: string, distanceRuleId: string } }) =>
+            sizeRuleService.updateBasingPrice(id, data),
         onSuccess: () => {
             // Bỏ thông báo ở đây để tránh hiển thị nhiều lần
-            queryClient.invalidateQueries({ queryKey: ['vehicleRules'] });
+            queryClient.invalidateQueries({ queryKey: ['sizeRules'] });
         },
         onError: (error) => {
             message.error('Không thể cập nhật giá cơ bản: ' + (error as Error).message);
         }
     });
 
-    // Initialize editing prices when vehicleRule changes
+    // Initialize editing prices when sizeRule changes
     useEffect(() => {
-        if (vehicleRule?.basingPrices) {
-            // Đảm bảo cập nhật editingPrices với dữ liệu mới nhất từ vehicleRule
-            setEditingPrices(vehicleRule.basingPrices.map(price => ({
+        if (sizeRule?.basingPrices) {
+            // Đảm bảo cập nhật editingPrices với dữ liệu mới nhất từ sizeRule
+            setEditingPrices(sizeRule.basingPrices.map(price => ({
                 ...price,
                 isEditing: false,
                 isNew: false
@@ -75,7 +75,7 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
             setEditMode(false);
             setIsAddingPrices(false);
         }
-    }, [vehicleRule]);
+    }, [sizeRule]);
 
     const getCategoryColor = (category: string) => {
         if (category === 'NORMAL') return 'green';
@@ -173,7 +173,7 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
     // Hủy chỉnh sửa
     const cancelEditing = () => {
         // Lấy dữ liệu mới nhất từ API để đảm bảo hiển thị đúng sau khi hủy
-        queryClient.invalidateQueries({ queryKey: ['vehicleRules'] });
+        queryClient.invalidateQueries({ queryKey: ['sizeRules'] });
 
         // Nếu đang thêm mới, xóa các mục mới chưa lưu
         if (isAddingPrices) {
@@ -225,7 +225,7 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
 
                 const data = {
                     basePrice,
-                    vehicleRuleId: vehicleRule.id,
+                    sizeRuleId: sizeRule.id,
                     distanceRuleId
                 };
 
@@ -339,21 +339,21 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
     ];
 
     // Format kích thước theo cùng định dạng với bảng
-    const dimensionsFormatted = `${vehicleRule.minLength}×${vehicleRule.minWidth}×${vehicleRule.minHeight} - ${vehicleRule.maxLength}×${vehicleRule.maxWidth}×${vehicleRule.maxHeight}`;
+    const dimensionsFormatted = `${sizeRule.minLength}×${sizeRule.minWidth}×${sizeRule.minHeight} - ${sizeRule.maxLength}×${sizeRule.maxWidth}×${sizeRule.maxHeight}`;
 
     return (
         <Modal
             title={
                 <div className="flex items-center">
-                    <span className="text-base font-medium">{vehicleRule.vehicleRuleName}</span>
+                    <span className="text-base font-medium">{sizeRule.sizeRuleName}</span>
                     <div className="ml-2">
-                        <CommonStatusTag status={getStatusEnum(vehicleRule.status)} />
+                        <CommonStatusTag status={getStatusEnum(sizeRule.status)} />
                     </div>
                     <Tag
-                        color={getCategoryColor(vehicleRule.category.categoryName)}
+                        color={getCategoryColor(sizeRule.category.categoryName)}
                         className="ml-1"
                     >
-                        {getCategoryName(vehicleRule.category.categoryName)}
+                        {getCategoryName(sizeRule.category.categoryName)}
                     </Tag>
                 </div>
             }
@@ -380,7 +380,7 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
                             }
                         >
                             <div className="flex justify-end mb-2">
-                                <Text className="text-gray-500 text-xs">ID: {vehicleRule.id.substring(0, 8)}...</Text>
+                                <Text className="text-gray-500 text-xs">ID: {sizeRule.id.substring(0, 8)}...</Text>
                             </div>
 
                             <div className="grid grid-cols-1 gap-3">
@@ -390,7 +390,7 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
                                         <Text type="secondary">Loại xe:</Text>
                                     </div>
                                     <div className="ml-6">
-                                        <Text className="font-medium">{vehicleRule.vehicleTypeEntity.vehicleTypeName}</Text>
+                                        <Text className="font-medium">{sizeRule.vehicleTypeEntity.vehicleTypeName}</Text>
                                     </div>
                                 </div>
 
@@ -400,7 +400,7 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
                                         <Text type="secondary">Hiệu lực:</Text>
                                     </div>
                                     <div className="ml-6">
-                                        <Text>{formatDate(vehicleRule.effectiveFrom)} - {vehicleRule.effectiveTo ? formatDate(vehicleRule.effectiveTo) : 'Không giới hạn'}</Text>
+                                        <Text>{formatDate(sizeRule.effectiveFrom)} - {sizeRule.effectiveTo ? formatDate(sizeRule.effectiveTo) : 'Không giới hạn'}</Text>
                                     </div>
                                 </div>
 
@@ -410,7 +410,7 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
                                         <Text type="secondary">Mô tả loại hàng:</Text>
                                     </div>
                                     <div className="ml-6 mt-1">
-                                        <Text>{vehicleRule.category.description || 'Không có mô tả'}</Text>
+                                        <Text>{sizeRule.category.description || 'Không có mô tả'}</Text>
                                     </div>
                                 </div>
                             </div>
@@ -439,11 +439,11 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
                                     <div className="flex justify-between">
                                         <div className="text-center">
                                             <Text type="secondary">Tối thiểu</Text>
-                                            <div><Text strong className="text-blue-600 text-lg">{vehicleRule.minWeight}</Text></div>
+                                            <div><Text strong className="text-blue-600 text-lg">{sizeRule.minWeight}</Text></div>
                                         </div>
                                         <div className="text-center">
                                             <Text type="secondary">Tối đa</Text>
-                                            <div><Text strong className="text-blue-600 text-lg">{vehicleRule.maxWeight}</Text></div>
+                                            <div><Text strong className="text-blue-600 text-lg">{sizeRule.maxWeight}</Text></div>
                                         </div>
                                     </div>
                                 </div>
@@ -464,15 +464,15 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
                             <div className="grid grid-cols-3 gap-3">
                                 <div className="bg-gray-50 p-2 rounded-lg text-center border border-gray-200 hover:bg-gray-100 transition-colors">
                                     <Text type="secondary">Dài (m)</Text>
-                                    <div><Text className="text-gray-700">{vehicleRule.minLength} - {vehicleRule.maxLength}</Text></div>
+                                    <div><Text className="text-gray-700">{sizeRule.minLength} - {sizeRule.maxLength}</Text></div>
                                 </div>
                                 <div className="bg-gray-50 p-2 rounded-lg text-center border border-gray-200 hover:bg-gray-100 transition-colors">
                                     <Text type="secondary">Rộng (m)</Text>
-                                    <div><Text className="text-gray-700">{vehicleRule.minWidth} - {vehicleRule.maxWidth}</Text></div>
+                                    <div><Text className="text-gray-700">{sizeRule.minWidth} - {sizeRule.maxWidth}</Text></div>
                                 </div>
                                 <div className="bg-gray-50 p-2 rounded-lg text-center border border-gray-200 hover:bg-gray-100 transition-colors">
                                     <Text type="secondary">Cao (m)</Text>
-                                    <div><Text className="text-gray-700">{vehicleRule.minHeight} - {vehicleRule.maxHeight}</Text></div>
+                                    <div><Text className="text-gray-700">{sizeRule.minHeight} - {sizeRule.maxHeight}</Text></div>
                                 </div>
                             </div>
                         </Card>
@@ -578,4 +578,4 @@ const VehicleRuleDetail: React.FC<VehicleRuleDetailProps> = ({
     );
 };
 
-export default VehicleRuleDetail; 
+export default SizeRuleDetail; 

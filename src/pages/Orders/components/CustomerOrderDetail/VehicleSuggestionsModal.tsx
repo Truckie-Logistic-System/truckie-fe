@@ -149,7 +149,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                       isOptimal ? "text-blue-600" : "text-green-600"
                     }`}
                   >
-                    {suggestion.vehicleRuleName || suggestion.sizeRuleName}
+                    {suggestion.sizeRuleName}
                   </div>
                 </div>
               </div>
@@ -353,9 +353,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
           }}
           packages={selectedVehicle.packedDetailDetails}
           vehicleName={
-            selectedVehicle.vehicleRuleName ||
-            selectedVehicle.sizeRuleName ||
-            "Xe tải"
+            selectedVehicle.sizeRuleName || "Xe tải"
           }
         />
       )}

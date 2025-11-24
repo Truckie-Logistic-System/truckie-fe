@@ -62,17 +62,12 @@ const refundService = {
             
             // Add image file if provided
             if (request.bankTransferImage) {
-                console.log('📤 Adding bank transfer image:', request.bankTransferImage.name);
                 formData.append('bankTransferImage', request.bankTransferImage, request.bankTransferImage.name);
             }
-
-            console.log('📤 Submitting refund request with FormData');
-            console.log('📋 FormData contents:');
             formData.forEach((value, key) => {
                 if (value instanceof File) {
-                    console.log(`   - ${key}: File(${value.name}, ${value.size} bytes)`);
+                    
                 } else {
-                    console.log(`   - ${key}: ${value}`);
                 }
             });
             

@@ -53,7 +53,6 @@ const ServicesSection: React.FC<ServicesSectionProps> = () => {
                                 </div>
                                 <h3 className="text-lg font-semibold mb-2">{service.title}</h3>
                                 <p className="text-gray-600">{service.description}</p>
-                                <a href="#" className="text-blue-600 mt-4 block">Tìm hiểu thêm →</a>
                             </Card>
                         </Col>
                     ))}

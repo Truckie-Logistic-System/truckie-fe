@@ -71,10 +71,8 @@ const ContractSection: React.FC<ContractProps> = ({
     const fetchContractSettings = async () => {
       try {
         const response = await contractSettingService().getContractSettings();
-        console.log("Contract settings response:", response);
         // API returns array, take first element as it's always unique
         if (response.data && response.data.length > 0) {
-          console.log("Setting contract settings:", response.data[0]);
           setContractSettings(response.data[0]);
         }
       } catch (error) {

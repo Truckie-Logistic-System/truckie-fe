@@ -11,23 +11,16 @@ export const usePaymentWebhook = () => {
 
   const callPayOSWebhook = useCallback(async (orderCode: number, status: string) => {
     if (webhookCalled) {
-      console.log('[usePaymentWebhook] Webhook already called, skipping');
       return null;
     }
 
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('[usePaymentWebhook] Calling PayOS webhook:', { orderCode, status });
-      
       const response = await transactionService.callPayOSWebhook(orderCode, status);
-
-      console.log('[usePaymentWebhook] Webhook response:', response.data);
       setWebhookCalled(true);
 
       if (response.data?.success) {
-        console.log('[usePaymentWebhook] ✅ Webhook called successfully');
       }
 
       return response.data;

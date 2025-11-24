@@ -269,7 +269,7 @@ export const getOrderDetailStatusText = (status: OrderDetailStatus): string => {
     RESOLVED: "Đã giải quyết",
     REJECTED: "Đã từ chối",
     RETURNING: "Đang hoàn trả",
-    RETURNED: "Đã hoàn trả",
+    RETURNED: "Đã trả hàng",
   };
   return statusMap[status] || status;
 };
@@ -485,7 +485,7 @@ export interface CustomerVehicleAssignment {
         startLongitude: number;
         endLatitude: number;
         endLongitude: number;
-        distanceMeters: number;
+        distanceKilometers: number;
         pathCoordinatesJson: string;
         tollDetailsJson: string | null;
         status: string;
@@ -542,7 +542,6 @@ export interface RecentReceiverSuggestion {
 
 export interface StaffOrderDetail {
   id: string;
-  totalPrice: number;
   depositAmount?: number;
   notes: string;
   totalQuantity: number;
@@ -555,8 +554,8 @@ export interface StaffOrderDetail {
   status: string;
   deliveryAddress: string;
   pickupAddress: string;
-  senderName: string;
-  senderPhone: string;
+  senderRepresentativeName: string;
+  senderRepresentativePhone: string;
   senderCompanyName: string;
   categoryName: string;
   orderDetails: StaffOrderDetailItem[];
@@ -569,10 +568,10 @@ export interface StaffOrderDetailItem {
   unit: string;
   description: string;
   status: string;
-  startTime: string;
-  estimatedStartTime: string;
-  endTime: string;
-  estimatedEndTime: string;
+  startTime: string | null;
+  estimatedStartTime: string | null;
+  endTime: string | null;
+  estimatedEndTime: string | null;
   createdAt: string;
   trackingCode: string;
   orderSize?: {
@@ -598,11 +597,11 @@ export interface StaffVehicleAssignment {
       vehicleType: string;
     };
     primaryDriver?: {
-      id: string;
+      id: string | null;
       fullName: string;
       phoneNumber: string;
       email: string;
-      imageUrl: string;
+      imageUrl: string | null;
       gender: boolean;
       dateOfBirth: string;
       identityNumber: string;
@@ -614,15 +613,15 @@ export interface StaffVehicleAssignment {
       licenseClass: string;
       dateOfPassing: string;
       status: string;
-      address: string;
+      address: string | null;
       createdAt: string;
     };
     secondaryDriver?: {
-      id: string;
+      id: string | null;
       fullName: string;
       phoneNumber: string;
       email: string;
-      imageUrl: string;
+      imageUrl: string | null;
       gender: boolean;
       dateOfBirth: string;
       identityNumber: string;
@@ -634,7 +633,7 @@ export interface StaffVehicleAssignment {
       licenseClass: string;
       dateOfPassing: string;
       status: string;
-      address: string;
+      address: string | null;
       createdAt: string;
     };
     status: string;
@@ -701,7 +700,7 @@ export interface StaffVehicleAssignment {
         startLongitude: number;
         endLatitude: number;
         endLongitude: number;
-        distanceMeters: number;
+        distanceKilometers: number;
         pathCoordinatesJson: string;
         tollDetailsJson: string | null;
         status: string;
@@ -709,23 +708,44 @@ export interface StaffVehicleAssignment {
         modifiedAt: string;
       }[];
     }[];
-    photoCompletions?: string[];
+    photoCompletions?: any[];
     issues?: {
-      issue: {
+      id: string;
+      description: string;
+      locationLatitude: number | null;
+      locationLongitude: number | null;
+      status: string;
+      vehicleAssignmentId: string;
+      staff: {
         id: string;
+        name: string;
+        phone: string;
+      } | null;
+      issueTypeName: string;
+      issueTypeDescription: string | null;
+      reportedAt: string | null;
+      issueCategory: string;
+      issueImages: string[];
+      oldSeal: {
+        id: string;
+        sealCode: string;
         description: string;
-        locationLatitude: number;
-        locationLongitude: number;
-        status: string;
-        vehicleAssignmentId: string;
-        staff: {
-          id: string;
-          name: string;
-          phone: string;
-        };
-        issueTypeName: string;
-      };
-      imageUrls: string[];
+      } | null;
+      newSeal: {
+        id: string;
+        sealCode: string;
+        description: string;
+      } | null;
+      sealRemovalImage: string | null;
+      newSealAttachedImage: string | null;
+      newSealConfirmedAt: string | null;
+      paymentDeadline: string | null;
+      calculatedFee: number | null;
+      adjustedFee: number | null;
+      finalFee: number | null;
+      affectedOrderDetails: any | null;
+      refund: any | null;
+      transaction: any | null;
     }[];
 }
 
@@ -772,8 +792,8 @@ export interface ReceiverDetailsResponse {
 
 export interface VehicleSuggestion {
   vehicleIndex: number;
-  vehicleRuleId: string;
-  vehicleRuleName: string;
+  sizeRuleId: string;
+  sizeRuleName: string;
   currentLoad: number;
   currentLoadUnit: string;
   assignedDetails: AssignedDetail[];

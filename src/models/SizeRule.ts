@@ -1,10 +1,10 @@
-export interface VehicleRuleCategory {
+export interface SizeRuleCategory {
     id: string;
     categoryName: string;
     description: string;
 }
 
-export interface VehicleRuleType {
+export interface SizeRuleType {
     id: string;
     vehicleTypeName: string;
     description: string;
@@ -22,9 +22,9 @@ export interface BasingPrice {
     distanceRuleResponse: DistanceRule;
 }
 
-export interface VehicleRule {
+export interface SizeRule {
     id: string;
-    vehicleRuleName: string;
+    sizeRuleName: string;
     minWeight: number;
     maxWeight: number;
     minLength: number;
@@ -36,13 +36,13 @@ export interface VehicleRule {
     status: string;
     effectiveFrom: string;
     effectiveTo: string | null;
-    category: VehicleRuleCategory;
-    vehicleTypeEntity: VehicleRuleType;
+    category: SizeRuleCategory;
+    vehicleTypeEntity: SizeRuleType;
     basingPrices: BasingPrice[];
 }
 
-export interface VehicleRuleRequest {
-    vehicleRuleName: string;
+export interface SizeRuleRequest {
+    sizeRuleName: string;
     minWeight: number;
     maxWeight: number;
     minLength: number;
@@ -59,6 +59,6 @@ export interface VehicleRuleRequest {
     basingPrices?: BasingPrice[];
 }
 
-export interface UpdateVehicleRuleRequest extends VehicleRuleRequest {
+export interface UpdateSizeRuleRequest extends SizeRuleRequest {
     id: string;
-} 
+}

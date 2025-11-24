@@ -20,8 +20,6 @@ const VehicleTypeManagement: React.FC<VehicleTypeManagementProps> = ({ onEdit })
             setLoading(true);
             const response = await vehicleService.getVehicleTypes();
             if (response.success) {
-                console.log('Vehicle types data in component:', response.data);
-
                 // Ensure vehicleCount is a number
                 const processedData = response.data.map((type: any) => ({
                     ...type,
@@ -67,7 +65,6 @@ const VehicleTypeManagement: React.FC<VehicleTypeManagementProps> = ({ onEdit })
             dataIndex: 'vehicleCount',
             key: 'vehicleCount',
             render: (count: number | undefined, record: VehicleType) => {
-                console.log(`Vehicle count for ${record.vehicleTypeName}:`, count, typeof count);
                 const vehicleCount = typeof count === 'number' ? count : 0;
 
                 return (
@@ -105,9 +102,6 @@ const VehicleTypeManagement: React.FC<VehicleTypeManagementProps> = ({ onEdit })
     if (loading) {
         return <VehicleTypeSkeleton />;
     }
-
-    console.log('Rendering vehicle types:', vehicleTypes);
-
     return (
         <div>
             <Table
@@ -120,8 +114,6 @@ const VehicleTypeManagement: React.FC<VehicleTypeManagementProps> = ({ onEdit })
                         const count = typeof type.vehicleCount === 'number' ? type.vehicleCount : 0;
                         return total + count;
                     }, 0);
-                    console.log('Total vehicles from summary:', totalVehicles);
-
                     return (
                         <Table.Summary fixed>
                             <Table.Summary.Row>

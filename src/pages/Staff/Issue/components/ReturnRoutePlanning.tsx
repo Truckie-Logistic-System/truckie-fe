@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Button, Card, Spin, Typography, App, Tooltip, Tag, Row, Col, Divider, Space, Badge, Modal, InputNumber, Alert } from 'antd';
 import routeService from '@/services/route';
 import issueService from '@/services/issue';
@@ -69,16 +69,6 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
     
     useEffect(() => {
         renderCount.current += 1;
-        console.log(`[ReturnRoutePlanning] Render #${renderCount.current}`, {
-            issueId,
-            issueChanged: lastIssueId.current !== issueId,
-            apiCalls: apiCallCount.current,
-            callbacksChanged: {
-                onRouteGenerated: !!onRouteGenerated,
-                onFeeCalculated: !!onFeeCalculated,
-                onAdjustedFeeChange: !!onAdjustedFeeChange
-            }
-        });
         lastIssueId.current = issueId;
     });
     const [loading, setLoading] = useState<boolean>(true);
@@ -109,8 +99,6 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
             if (!issueId) return;
             
             apiCallCount.current += 1;
-            console.log(`[API Call #${apiCallCount.current}] fetchRoutePoints for issueId:`, issueId);
-            
             try {
                 setLoading(true);
                 globalCustomPoints.length = 0;
@@ -205,7 +193,8 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
     };
 
     // Get current segments - backend already returns correct segments, just add colors
-    const getCurrentSegments = () => {
+    // Memoize to prevent recalculation on every render
+    const getCurrentSegments = useMemo(() => {
         if (!segments || segments.length === 0) return [];
 
         // Xác định base segment cho từng segment
@@ -241,7 +230,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
                 segmentColor: segmentColor
             };
         });
-    };
+    }, [segments]); // Only recalculate when segments change
 
 
     // Generate route from base points and custom points
@@ -356,7 +345,6 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
 
             // Call API to get suggested route
             apiCallCount.current += 1;
-            console.log(`[API Call #${apiCallCount.current}] suggestRoute with ${coordinates.length} points`);
             const response = await routeService.suggestRoute(requestData);
 
             if (response && response.segments) {
@@ -364,8 +352,9 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
                     ...segment,
                     tolls: segment.tolls || [],
                     distance: segment.distance || 0,
-                    startName: translatePointName(segment.startName),
-                    endName: translatePointName(segment.endName),
+                    // Keep original English names for consistency with backend
+                    startName: segment.startName,
+                    endName: segment.endName,
                     segmentOrder: segment.segmentOrder || (index + 1)
                 }));
 
@@ -433,7 +422,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
             // Remove duplicate success message (already shown in generateRouteFromPoints)
         } catch (error) {
             console.error('❌ Error calculating fee:', error);
-            message.error('Không thể tính cước phí trả hàng');
+            // message.error('Không thể tính cước phí trả hàng');
         }
     };
 
@@ -445,7 +434,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
             const selectedIndex = selectedSegmentIndexRef.current;
 
             // Get the actual segments including stopovers
-            const currentSegments = getCurrentSegments();
+            const currentSegments = getCurrentSegments;
 
             if (selectedIndex >= currentSegments.length) {
                 message.error("Đoạn đường không hợp lệ");
@@ -619,7 +608,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
                                 selectedSegmentIndexRef.current = newIndex;
                             }}
                         >
-                            {getCurrentSegments().map((segment: RouteSegment, index: number) => (
+                            {getCurrentSegments.map((segment: RouteSegment, index: number) => (
                                 <option key={index} value={index}>
                                     Đoạn {segment.segmentOrder}: {translatePointName(segment.startName)} → {translatePointName(segment.endName)} 
                                     ({(segment.distance || 0).toFixed(2)} km)
@@ -678,7 +667,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
 
                 {/* Route Details */}
                 {(() => {
-                    const currentSegments = getCurrentSegments();
+                    const currentSegments = getCurrentSegments;
                     return currentSegments.length > 0 && (
                         <div className="flex-1 overflow-y-auto">
                             <h4 className="text-xs font-semibold mb-2">Chi tiết ({currentSegments.length} đoạn):</h4>
@@ -826,7 +815,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
                     onLocationChange={handleLocationChange}
                     mapLocation={currentMapLocation}
                     showRouteLines={segments.length > 0}
-                    routeSegments={getCurrentSegments()}
+                    routeSegments={getCurrentSegments}
                     animateRoute={true}
                 />
             </div>

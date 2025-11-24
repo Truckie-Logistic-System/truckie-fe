@@ -19,6 +19,7 @@ interface VietMapMapProps {
     routeSegments?: RouteSegment[];
     animateRoute?: boolean;
     getMapInstance?: (map: any) => void;
+    onMapClick?: (location: MapLocation) => void; // Callback when map is clicked
     children?: React.ReactNode; // Support overlay components
 }
 
@@ -26,6 +27,21 @@ interface VietMapMapProps {
 const VIETMAP_STYLE_CACHE_KEY = 'vietmap_style_cache';
 // Thời gian cache (1 tuần tính bằng milliseconds)
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
+
+// Function để dịch tên điểm từ tiếng Anh sang tiếng Việt
+const translatePointName = (name: string): string => {
+    const translations: { [key: string]: string } = {
+        'Carrier': 'Đơn vị vận chuyển',
+        'Pickup': 'Điểm lấy hàng',
+        'Delivery': 'Điểm giao hàng',
+        'Stopover': 'Điểm trung gian',
+        'Warehouse': 'Kho',
+        'Origin': 'Điểm đi',
+        'Destination': 'Điểm đến',
+    };
+    
+    return translations[name] || name;
+};
 
 // CSS cho popup
 const POPUP_STYLE = `
@@ -120,6 +136,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     routeSegments = [],
     animateRoute = false,
     getMapInstance,
+    onMapClick,
     children
 }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -163,13 +180,11 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
                         // Kiểm tra xem cache có còn hiệu lực không (chưa quá 1 tuần)
                         if (style && timestamp && (now - timestamp < CACHE_DURATION)) {
-                            console.log('[VietMapMap] Using cached VietMap style from localStorage');
-                            console.log('[VietMapMap] Cache age:', Math.floor((now - timestamp) / (1000 * 60 * 60)), 'hours');
+                            
                             setMapStyle(style);
                             setStyleFromCache(true);
                             return;
                         } else {
-                            console.log('[VietMapMap] Cached VietMap style expired, fetching new data');
                             // Clear expired cache
                             localStorage.removeItem(VIETMAP_STYLE_CACHE_KEY);
                         }
@@ -181,12 +196,9 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 }
 
                 // Nếu không có cache hoặc cache hết hạn, gọi API
-                console.log('[VietMapMap] Fetching map style from backend...');
                 const result = await getMapStyle();
                 const style = result.success ? result.style : null;
                 if (style) {
-                    console.log('[VietMapMap] Successfully fetched map style from backend');
-                    
                     // Lưu style vào state
                     setMapStyle(style);
                     setStyleFromCache(false);
@@ -198,7 +210,6 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     };
                     try {
                         localStorage.setItem(VIETMAP_STYLE_CACHE_KEY, JSON.stringify(cacheData));
-                        console.log('[VietMapMap] Cached new VietMap style in localStorage');
                     } catch (storageError) {
                         console.error('[VietMapMap] Failed to cache style in localStorage:', storageError);
                         // Continue anyway, map will still work without cache
@@ -298,7 +309,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             // Xử lý khi click vào bản đồ
             map.on('click', (e: any) => {
                 const { lng, lat } = e.lngLat;
-                // console.log(`Map clicked at [${lng}, ${lat}]`);
+                // 
 
                 // Reverse geocoding để lấy địa chỉ
                 reverseGeocode(lat, lng)
@@ -309,15 +320,22 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             address = result.address || '';
                         }
 
-                        // console.log(`Found address: "${address}" for location [${lat}, ${lng}]`);
+                        // 
 
-                        // Không cần cập nhật marker chính, chỉ gửi vị trí mới
                         const newLocation: MapLocation = {
                             lat: lat,
                             lng: lng,
                             address: address
                         };
-                        onLocationChange(newLocation);
+                        
+                        // If onMapClick is provided (e.g., RerouteDetail), only call it
+                        // This prevents resetting markers when adding waypoints
+                        if (onMapClick) {
+                            onMapClick(newLocation);
+                        } else {
+                            // Otherwise, call onLocationChange (default behavior for IssueDetail)
+                            onLocationChange(newLocation);
+                        }
                     })
                     .catch(error => {
                         console.error('Error in reverse geocoding:', error);
@@ -327,7 +345,13 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             lng: lng,
                             address: ''
                         };
-                        onLocationChange(newLocation);
+                        
+                        // If onMapClick is provided (e.g., RerouteDetail), only call it
+                        if (onMapClick) {
+                            onMapClick(newLocation);
+                        } else {
+                            onLocationChange(newLocation);
+                        }
                     });
             });
 
@@ -381,7 +405,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     useEffect(() => {
         if (!mapRef.current || !mapLoaded) return;
 
-        // console.log("Updating markers with length:", markers.length);
+        // 
 
         try {
             // Xóa tất cả markers cũ khỏi map
@@ -391,37 +415,34 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             // Xóa tất cả markers cũ khỏi map
             markersToRemove.forEach(marker => {
                 if (marker) {
-                    // console.log("Removing marker from map");
                     marker.remove();
                 }
             });
 
-            // Xóa trực tiếp tất cả các phần tử DOM có class 'marker'
+            // Xóa trực tiếp tất cả các phần tử DOM có class 'marker' ONLY trong container này
             const mapContainer = mapRef.current.getContainer();
             if (mapContainer) {
+                // Clean up .marker elements within THIS map container
                 const markerElements = mapContainer.querySelectorAll('.marker');
                 markerElements.forEach((el: Element) => {
                     if (el && el.parentNode) {
                         el.parentNode.removeChild(el);
                     }
                 });
+                
+                // Clean up vietmap marker elements within THIS map container only
+                const vietmapMarkers = mapContainer.querySelectorAll('.mapboxgl-marker, .vietmapgl-marker');
+                vietmapMarkers.forEach((el: Element) => {
+                    if (el && el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
             }
-
-            // Xóa trực tiếp các phần tử marker từ DOM
-            document.querySelectorAll('.mapboxgl-marker, .vietmapgl-marker').forEach((el: Element) => {
-                if (el && el.parentNode) {
-                    el.parentNode.removeChild(el);
-                }
-            });
 
             // Early return if no markers
             if (!markers || markers.length === 0) {
-                console.log('[VietMapMap] No markers provided, skipping');
                 return;
             }
-
-            console.log('[VietMapMap] Processing', markers.length, 'markers');
-
             // Filter out markers with invalid coordinates (exactly like Staff)
             const validMarkers = markers.filter(marker => {
                 const isValid = marker && 
@@ -435,9 +456,6 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 }
                 return isValid;
             });
-
-            console.log('[VietMapMap] Valid markers:', validMarkers.length, 'out of', markers.length);
-
             if (validMarkers.length === 0) {
                 console.warn('[VietMapMap] No valid markers to display');
                 return;
@@ -457,39 +475,89 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     el.setAttribute('data-marker-id', location.id);
                 }
 
-                // Set color based on point type
+                // Set color and icon based on point type
                 let color = '#1677ff'; // Default blue
+                let icon = '📍'; // Default pin
+                
                 if (location.type === 'carrier') {
-                    if (location.name?.startsWith('Quay về')) {
-                        color = '#52c41a'; // Green for return carrier
-                    } else {
-                        color = '#52c41a'; // Green for carrier
-                    }
+                    color = '#faad14'; // Orange for carrier
+                    icon = '🏭'; // Factory
                 } else if (location.type === 'pickup') {
-                    color = '#faad14'; // Yellow for pickup
+                    color = '#52c41a'; // Green for pickup
+                    icon = '📦'; // Package
                 } else if (location.type === 'delivery') {
                     color = '#f5222d'; // Red for delivery
+                    icon = '🎯'; // Target
+                } else if (location.type === 'stopover') {
+                    color = '#1890ff'; // Blue for stopover
+                    icon = '📍'; // Pin
+                    
+                    // Check if this is an issue marker (has issueCategory)
+                    if (location.issueCategory) {
+                        // Set icon and color based on issueCategory
+                        switch(location.issueCategory) {
+                            case 'REROUTE':
+                                icon = '🚧'; // Construction/roadblock
+                                color = '#ff7a45'; // Orange-red
+                                break;
+                            case 'ORDER_REJECTION':
+                                icon = '📦'; // Package
+                                color = '#ff4d4f'; // Red
+                                break;
+                            case 'SEAL_REPLACEMENT':
+                                icon = '🔒'; // Lock
+                                color = '#fa141480'; // Yellow/Orange
+                                break;
+                            case 'DAMAGE':
+                            case 'CARGO_ISSUE':
+                            case 'MISSING_ITEMS':
+                            case 'WRONG_ITEMS':
+                                icon = '⚠️'; // Warning
+                                color = '#fa141480'; // Orange
+                                break;
+                            case 'PENALTY':
+                                icon = '🚨'; // Police siren
+                                color = '#ffb84d80'; // Red
+                                break;
+                            case 'ACCIDENT':
+                            case 'VEHICLE_BREAKDOWN':
+                                icon = '🔧'; // Wrench
+                                color = '#ff4d4f80'; // Red
+                                break;
+                            case 'WEATHER':
+                                icon = '🌧️'; // Rain
+                                color = '#1890ff80'; // Blue
+                                break;
+                            case 'GENERAL':
+                            default:
+                                icon = '❗'; // Exclamation
+                                color = '#faad1480'; // Yellow
+                                break;
+                        }
+                    }
                 }
 
                 el.style.backgroundColor = color;
                 el.style.border = '2px solid white';
-                el.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+                el.style.borderRadius = '50%';
+                el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
                 el.style.cursor = 'pointer';
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
 
-                // Thêm text để dễ nhận diện
-                const textEl = document.createElement('div');
-                textEl.style.position = 'absolute';
-                textEl.style.top = '50%';
-                textEl.style.left = '50%';
-                textEl.style.transform = 'translate(-50%, -50%)';
-                textEl.style.color = 'white';
-                textEl.style.fontWeight = 'bold';
-                textEl.style.fontSize = '12px';
-                textEl.textContent = `${index + 1}`;
-                el.appendChild(textEl);
+                // Add icon emoji
+                el.innerHTML = icon;
+                el.style.fontSize = '16px';
+                el.title = location.name || location.address || '';
 
                 // Tạo marker
-                const marker = new window.vietmapgl.Marker(el)
+                const marker = new window.vietmapgl.Marker({
+                    element: el,
+                    anchor: 'center',
+                    pitchAlignment: 'viewport',
+                    rotationAlignment: 'viewport'
+                })
                     .setLngLat([location.lng, location.lat])
                     .addTo(mapRef.current);
 
@@ -501,13 +569,10 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             if (validMarkers.length > 1) {
                 setTimeout(() => {
                     try {
-                        console.log('[VietMapMap] Attempting fitBounds with', validMarkers.length, 'markers');
-                        
                         // WORKAROUND: Skip fitBounds if causing issues, just center on first marker
                         const SKIP_FIT_BOUNDS = false; // Set to true if still having issues
                         
                         if (SKIP_FIT_BOUNDS) {
-                            console.log('[VietMapMap] Skipping fitBounds, centering on first marker');
                             const marker = validMarkers[0];
                             mapRef.current.setCenter([marker.lng, marker.lat]);
                             mapRef.current.setZoom(12);
@@ -526,9 +591,6 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             const marker = validMarkers[i];
                             bounds.extend([marker.lng, marker.lat]);
                         }
-
-                        console.log('[VietMapMap] Bounds ready, calling fitBounds');
-                        
                         // Validate bounds object before calling fitBounds
                         if (!bounds || !bounds._sw || !bounds._ne || 
                             bounds._sw.lng === undefined || bounds._sw.lat === undefined ||
@@ -551,8 +613,6 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             maxZoom: 13, // Lower zoom for better overview
                             duration: 1000
                         });
-                        
-                        console.log('[VietMapMap] fitBounds completed successfully');
                     } catch (err) {
                         console.error('[VietMapMap] Error fitting bounds:', err);
                         // Fallback: center on first marker
@@ -727,8 +787,9 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
         const popupCoordinates = segment.path[midPointIndex];
 
         // Lấy tên điểm đầu và điểm cuối (loại bỏ phần khoảng cách trong ngoặc)
-        const startName = segment.startName;
-        const endName = segment.endName.split('(')[0].trim();
+        // ✅ Dịch tên từ tiếng Anh sang tiếng Việt
+        const startName = translatePointName(segment.startName);
+        const endName = translatePointName(segment.endName.split('(')[0].trim());
 
         // Tạo nội dung cho popup với cấu trúc mới
         let popupContent = `
@@ -831,7 +892,18 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                         }
                     });
 
-                    // Thêm layer
+                    // Thêm layer với custom styling support
+                    const layerPaint: any = {
+                        'line-color': getRouteColor(segment, index),
+                        'line-width': (segment as any).lineWidth || 6,
+                        'line-opacity': (segment as any).lineOpacity || 0.8
+                    };
+                    
+                    // Add dashed line if specified
+                    if ((segment as any).lineDasharray) {
+                        layerPaint['line-dasharray'] = (segment as any).lineDasharray;
+                    }
+                    
                     mapRef.current.addLayer({
                         id: layerId,
                         type: 'line',
@@ -840,11 +912,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             'line-join': 'round',
                             'line-cap': 'round'
                         },
-                        paint: {
-                            'line-color': getRouteColor(segment, index),
-                            'line-width': 6,
-                            'line-opacity': 0.8
-                        }
+                        paint: layerPaint
                     });
 
                     // Lưu ID để dọn dẹp sau này
@@ -859,7 +927,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
                     // Thêm sự kiện   click vào route để hiển thị/ẩn popup
                     mapRef.current.on('click', layerId, (e: any) => {
-                        // Ngăn sự kiện   lan truyền
+                        // ALWAYS stop propagation when clicking route lines
+                        // This prevents adding waypoints when clicking lines (user should click empty area)
                         e.originalEvent.stopPropagation();
 
                         // Đóng tất cả các popup khác
@@ -935,7 +1004,19 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     }
                 });
 
-                // Tạo layer mới
+                // Tạo layer mới với custom styling support
+                const currentSegment = routeSegments[segmentIndex];
+                const animLayerPaint: any = {
+                    'line-color': getRouteColor(currentSegment, segmentIndex),
+                    'line-width': (currentSegment as any).lineWidth || 6,
+                    'line-opacity': (currentSegment as any).lineOpacity || 0.8
+                };
+                
+                // Add dashed line if specified
+                if ((currentSegment as any).lineDasharray) {
+                    animLayerPaint['line-dasharray'] = (currentSegment as any).lineDasharray;
+                }
+                
                 mapRef.current.addLayer({
                     id: layerId,
                     type: 'line',
@@ -944,11 +1025,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                         'line-join': 'round',
                         'line-cap': 'round'
                     },
-                    paint: {
-                        'line-color': getRouteColor(routeSegments[segmentIndex], segmentIndex),
-                        'line-width': 6,
-                        'line-opacity': 0.8
-                    }
+                    paint: animLayerPaint
                 });
 
                 // Lưu ID để dọn dẹp sau này

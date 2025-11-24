@@ -9,7 +9,7 @@
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   img-src 'self' data: blob: https://res.cloudinary.com https://*.track-asia.com https://*.trackasia.vn https://maps.track-asia.com;
-  script-src 'self' https://unpkg.com https://api.trackasia.vn https://maps.track-asia.com 'unsafe-inline' 'unsafe-eval';
+  script-src 'self' https://unpkg.com https://cdn.jsdelivr.net https://api.trackasia.vn https://maps.track-asia.com 'unsafe-inline' 'unsafe-eval';
   connect-src 'self' http://localhost:* ws://localhost:* ws://* https://* wss://*;
   style-src 'self' https://unpkg.com https://api.trackasia.vn https://maps.track-asia.com https://fonts.googleapis.com 'unsafe-inline';
   worker-src 'self' blob:;
@@ -26,6 +26,10 @@
   <!-- TrackAsia Map SDK -->
   <link href="https://maps.track-asia.com/css/v2/trackasia-gl.css" rel="stylesheet" />
   <script src="https://maps.track-asia.com/js/v2/trackasia-gl.js"></script>
+  
+  <!-- ZZFX - Zuper Zmall Zound Zynth for notification sounds -->
+  <script src="/zzfx.min.js"></script>
+  
   <title>Truckie - Logistics System</title>
 </head>
 

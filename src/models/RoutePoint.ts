@@ -20,6 +20,10 @@ export interface RouteSegment {
     tolls: RouteToll[];
     distance: number; // Thêm trường distance
     rawResponse: Record<string, any>;
+    segmentColor?: string; // Custom color for this segment
+    lineDasharray?: number[]; // Dash pattern for dashed lines [dash, gap]
+    lineWidth?: number; // Custom line width
+    lineOpacity?: number; // Custom line opacity
 }
 
 export interface RouteToll {

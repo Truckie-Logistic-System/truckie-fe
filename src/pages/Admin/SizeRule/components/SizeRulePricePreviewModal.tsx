@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Table, Typography, Radio, Card, Empty, Skeleton, Collapse, Tabs } from 'antd';
-import type { VehicleRule, BasingPrice } from '../../../../models';
+import type { SizeRule, BasingPrice } from '../../../../models';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -10,7 +10,7 @@ const { TabPane } = Tabs;
 interface PricePreviewModalProps {
     visible: boolean;
     onClose: () => void;
-    vehicleRules: VehicleRule[];
+    sizeRules: SizeRule[];
     loading: boolean;
 }
 
@@ -26,7 +26,7 @@ interface TableDataItem {
     category: string;
     categoryId: string;
     dimensions: string;
-    rule: VehicleRule;
+    rule: SizeRule;
     [key: string]: any; // For dynamic distance columns
 }
 
@@ -48,7 +48,7 @@ interface CategoryInfo {
 const PricePreviewModal: React.FC<PricePreviewModalProps> = ({
     visible,
     onClose,
-    vehicleRules,
+    sizeRules,
     loading,
 }) => {
     const [sortType, setSortType] = useState<SortType>('weight');
@@ -56,7 +56,7 @@ const PricePreviewModal: React.FC<PricePreviewModalProps> = ({
     const [activeCategory, setActiveCategory] = useState<string>('');
 
     // Filter to only active rules
-    const filteredRules = vehicleRules.filter(rule => rule.status === 'ACTIVE');
+    const filteredRules = sizeRules.filter(rule => rule.status === 'ACTIVE');
 
     // Format hiển thị quãng đường
     const formatDistanceRange = (fromKm: number, toKm: number): string => {
@@ -112,7 +112,7 @@ const PricePreviewModal: React.FC<PricePreviewModalProps> = ({
 
     // Get unique vehicle types to prevent duplicates
     const getUniqueVehicleTypes = () => {
-        const uniqueVehicleTypes = new Map<string, VehicleRule>();
+        const uniqueVehicleTypes = new Map<string, SizeRule>();
 
         categoryRules.forEach(rule => {
             const key = rule.vehicleTypeEntity.id;

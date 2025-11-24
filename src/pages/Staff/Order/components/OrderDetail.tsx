@@ -44,6 +44,7 @@ import {
   VehicleAssignmentCard,
   StaffContractPreview,
 } from "@/components/features/order";
+import OrderStatusBreakdown from "@/components/common/OrderStatusBreakdown";
 
 const { TabPane } = Tabs;
 
@@ -74,14 +75,6 @@ const OrderDetailPage: React.FC = () => {
 
   // Tự động load contract data khi order status là CONTRACT_DRAFT
   useEffect(() => {
-    console.log(
-      "Order status:",
-      order?.status,
-      "ID:",
-      id,
-      "Contract data:",
-      contractData
-    );
     if (order?.status === "CONTRACT_DRAFT") {
       // Tự động chuyển sang tab contract
       if (activeTab !== "contract") {
@@ -89,7 +82,6 @@ const OrderDetailPage: React.FC = () => {
       }
       // Tự động load contract data nếu chưa có
       if (id && !contractData && !loadingContractData) {
-        console.log("Auto-loading contract data...");
         handlePreviewContract();
       }
     }
@@ -124,16 +116,12 @@ const OrderDetailPage: React.FC = () => {
 
   const handlePreviewContract = async () => {
     if (!id) return;
-
-    console.log("handlePreviewContract called with ID:", id);
     setLoadingContractData(true);
     try {
       const response = await contractService.getContractPdfData(id);
-      console.log("Contract PDF data response:", response);
       if (response.success) {
         setContractData(response.data);
         setContractPreviewVisible(true);
-        console.log("Contract data set SUCCESSFUL");
       } else {
         messageApi.error(response.message);
         console.error("Contract service returned error:", response.message);
@@ -457,6 +445,18 @@ const OrderDetailPage: React.FC = () => {
         {/* Order Status Card */}
         <OrderStatusCard order={order} />
 
+        {/* Order Status Breakdown - Show detailed breakdown if order has multiple details */}
+        {order && order.orderDetails && order.orderDetails.length > 0 && (
+          <div className="mb-6">
+            <OrderStatusBreakdown 
+              orderDetails={order.orderDetails}
+              currentOrderStatus={order.status}
+              showExplanation={true}
+              showWarning={true}
+            />
+          </div>
+        )}
+
         {/* Delivery Progress */}
         {renderDeliveryProgress()}
 
@@ -510,25 +510,44 @@ const OrderDetailPage: React.FC = () => {
                     <OrderDetailsTable orderDetails={order.orderDetails} />
                   )}
 
-                  {/* Order Size Information */}
-                  {order.orderDetails &&
-                    order.orderDetails.length > 0 &&
-                    order.orderDetails[0].orderSizeId && (
-                      <OrderSizeCard
-                        orderSize={order.orderDetails[0].orderSizeId}
-                      />
-                    )}
+                  {/* Multi-Trip Support: Show ALL trips */}
+                  {order.orderDetails && order.orderDetails.length > 0 && (() => {
+                    // Group orderDetails by vehicleAssignmentId
+                    type OrderDetail = typeof order.orderDetails[0];
+                    const tripGroups = order.orderDetails.reduce((acc: Record<string, OrderDetail[]>, detail: OrderDetail) => {
+                      const vaId = detail.vehicleAssignmentId?.id || 'unassigned';
+                      if (!acc[vaId]) acc[vaId] = [];
+                      acc[vaId].push(detail);
+                      return acc;
+                    }, {});
 
-                  {/* Vehicle Assignment Information */}
-                  {order.orderDetails &&
-                    order.orderDetails.length > 0 &&
-                    order.orderDetails[0].vehicleAssignmentId && (
-                      <VehicleAssignmentCard
-                        vehicleAssignment={
-                          order.orderDetails[0].vehicleAssignmentId
-                        }
-                      />
-                    )}
+                    return (Object.entries(tripGroups) as [string, OrderDetail[]][]).map(([vaId, details], index) => (
+                      <div key={vaId} style={{ marginBottom: '16px' }}>
+                        {Object.keys(tripGroups).length > 1 && (
+                          <h3 style={{ 
+                            color: '#1890ff', 
+                            marginBottom: '12px',
+                            fontSize: '16px',
+                            fontWeight: 600
+                          }}>
+                            🚚 Chuyến xe #{index + 1} ({details.length} kiện hàng)
+                          </h3>
+                        )}
+                        
+                        {/* Order Size for this trip */}
+                        {details[0].orderSizeId && (
+                          <OrderSizeCard orderSize={details[0].orderSizeId} />
+                        )}
+
+                        {/* Vehicle Assignment for this trip */}
+                        {vaId !== 'unassigned' && (
+                          <VehicleAssignmentCard
+                            vehicleAssignment={details[0].vehicleAssignmentId}
+                          />
+                        )}
+                      </div>
+                    ));
+                  })()}
                 </>
               )}
             </TabPane>

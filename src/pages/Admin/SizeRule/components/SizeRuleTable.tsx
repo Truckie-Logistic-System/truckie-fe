@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { Table, Button, Space, Tooltip, Modal, App } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
-import type { VehicleRule, BasingPrice } from '../../../../models';
+import type { SizeRule, BasingPrice } from '../../../../models';
 import { formatDate } from '../../../../utils/dateUtils';
-import VehicleRuleDetail from './VehicleRuleDetail';
+import SizeRuleDetail from './SizeRuleDetail';
 import { CommonStatusTag } from '../../../../components/common/tags';
 import { CommonStatusEnum } from '../../../../constants/enums';
 import StatusTag from '../../../../components/common/tags/StatusTag';
 
-interface VehicleRuleTableProps {
-    vehicleRules: VehicleRule[];
+interface SizeRuleTableProps {
+    sizeRules: SizeRule[];
     loading: boolean;
-    onEdit: (vehicleRule: VehicleRule) => void;
+    onEdit: (sizeRule: SizeRule) => void;
     onDelete: (id: string) => void;
     onRefresh: () => void;
 }
 
-const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
-    vehicleRules,
+const SizeRuleTable: React.FC<SizeRuleTableProps> = ({
+    sizeRules,
     loading,
     onEdit,
     onDelete,
@@ -25,9 +25,9 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
 }) => {
     const { modal } = App.useApp();
     const [detailVisible, setDetailVisible] = useState(false);
-    const [selectedRule, setSelectedRule] = useState<VehicleRule | null>(null);
+    const [selectedRule, setSelectedRule] = useState<SizeRule | null>(null);
 
-    const showDetail = (record: VehicleRule) => {
+    const showDetail = (record: SizeRule) => {
         setSelectedRule(record);
         setDetailVisible(true);
     };
@@ -69,7 +69,7 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
             title: 'Loại xe',
             dataIndex: ['vehicleTypeEntity', 'vehicleTypeName'],
             key: 'vehicleTypeName',
-            sorter: (a: VehicleRule, b: VehicleRule) =>
+            sorter: (a: SizeRule, b: SizeRule) =>
                 a.vehicleTypeEntity.vehicleTypeName.localeCompare(b.vehicleTypeEntity.vehicleTypeName),
             render: (text: string) => <span className="font-medium">{text}</span>,
         },
@@ -77,7 +77,7 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
             title: 'Loại hàng',
             dataIndex: ['category', 'categoryName'],
             key: 'categoryName',
-            sorter: (a: VehicleRule, b: VehicleRule) =>
+            sorter: (a: SizeRule, b: SizeRule) =>
                 a.category.categoryName.localeCompare(b.category.categoryName),
             render: (text: string) => (
                 <StatusTag
@@ -92,20 +92,20 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
                 { text: 'Hàng cồng kềnh', value: 'BULKY CARGO' },
                 { text: 'Hàng nguy hiểm', value: 'DANGEROUS' },
             ],
-            onFilter: (value: any, record: VehicleRule) => record.category.categoryName === value,
+            onFilter: (value: any, record: SizeRule) => record.category.categoryName === value,
         },
         {
             title: 'Trọng lượng (tấn)',
             key: 'weight',
-            render: (_: unknown, record: VehicleRule) => (
+            render: (_: unknown, record: SizeRule) => (
                 <span>{record.minWeight} - {record.maxWeight}</span>
             ),
-            sorter: (a: VehicleRule, b: VehicleRule) => a.maxWeight - b.maxWeight,
+            sorter: (a: SizeRule, b: SizeRule) => a.maxWeight - b.maxWeight,
         },
         {
             title: 'Kích thước (m)',
             key: 'dimensions',
-            render: (_: unknown, record: VehicleRule) => (
+            render: (_: unknown, record: SizeRule) => (
                 <Tooltip title={`Dài: ${record.minLength}-${record.maxLength}, Rộng: ${record.minWidth}-${record.maxWidth}, Cao: ${record.minHeight}-${record.maxHeight}`}>
                     <span>
                         {record.minLength}×{record.minWidth}×{record.minHeight} - {record.maxLength}×{record.maxWidth}×{record.maxHeight}
@@ -116,21 +116,21 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
         {
             title: 'Trạng thái',
             key: 'status',
-            render: (_: unknown, record: VehicleRule) => (
+            render: (_: unknown, record: SizeRule) => (
                 <CommonStatusTag status={getStatusEnum(record.status)} size="small" />
             ),
             filters: [
                 { text: 'Hoạt động', value: 'ACTIVE' },
                 { text: 'Không hoạt động', value: 'INACTIVE' },
             ],
-            onFilter: (value: any, record: VehicleRule) => record.status === value,
+            onFilter: (value: any, record: SizeRule) => record.status === value,
         },
         {
             title: 'Hiệu lực từ',
             dataIndex: 'effectiveFrom',
             key: 'effectiveFrom',
             render: (date: string) => formatDate(date),
-            sorter: (a: VehicleRule, b: VehicleRule) =>
+            sorter: (a: SizeRule, b: SizeRule) =>
                 new Date(a.effectiveFrom).getTime() - new Date(b.effectiveFrom).getTime(),
         },
         {
@@ -138,7 +138,7 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
             key: 'action',
             align: 'center' as const,
             width: 100,
-            render: (_: unknown, record: VehicleRule) => (
+            render: (_: unknown, record: SizeRule) => (
                 <Button
                     type="primary"
                     icon={<EyeOutlined />}
@@ -154,7 +154,7 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
     return (
         <>
             <Table
-                dataSource={vehicleRules}
+                dataSource={sizeRules}
                 columns={columns}
                 rowKey="id"
                 loading={loading}
@@ -166,9 +166,9 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
             />
 
             {selectedRule && (
-                <VehicleRuleDetail
+                <SizeRuleDetail
                     visible={detailVisible}
-                    vehicleRule={selectedRule}
+                    sizeRule={selectedRule}
                     onClose={() => setDetailVisible(false)}
                 />
             )}
@@ -176,4 +176,4 @@ const VehicleRuleTable: React.FC<VehicleRuleTableProps> = ({
     );
 };
 
-export default VehicleRuleTable; 
+export default SizeRuleTable; 

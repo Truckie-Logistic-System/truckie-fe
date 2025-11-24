@@ -33,7 +33,6 @@ export interface UseVehicleTrackingOptions {
   vehicleId?: string;
   autoConnect?: boolean;
   reconnectInterval?: number;
-  maxReconnectAttempts?: number;
 }
 
 export interface UseVehicleTrackingReturn {
@@ -51,7 +50,6 @@ const DEFAULT_OPTIONS: Required<UseVehicleTrackingOptions> = {
   vehicleId: '',
   autoConnect: false,
   reconnectInterval: 5000,
-  maxReconnectAttempts: 5,
 };
 
 export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): UseVehicleTrackingReturn => {
@@ -69,6 +67,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   const clientRef = useRef<Client | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const manualDisconnectRef = useRef(false); // Flag to prevent reconnect on manual disconnect
   const subscriptionsRef = useRef<any[]>([]);
   const initialDataRequestedRef = useRef(false);
   const retryInitialDataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -93,14 +92,12 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     if (!client || !client.connected) return;
 
     if (config.orderId) {
-      console.log(`📤 Requesting initial locations for order ${config.orderId}`);
       client.publish({
         destination: `/app/order/${config.orderId}/get-locations`,
         body: JSON.stringify({ orderId: config.orderId }),
       });
       initialDataRequestedRef.current = true;
     } else if (config.vehicleId) {
-      console.log(`📤 Requesting initial location for vehicle ${config.vehicleId}`);
       client.publish({
         destination: `/app/vehicle/${config.vehicleId}/get-location`,
         body: JSON.stringify({ vehicleId: config.vehicleId }),
@@ -139,7 +136,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       setVehicleLocations(mergedVehicles);
       vehicleLocationsRef.current = mergedVehicles;
       
-      console.log(`📍 [VehicleTracking] Updated ${mergedVehicles.length} vehicles (${incomingVehicles.length} from WebSocket, merged with cache)`);
+      
       
       setError(null);
     } catch (err) {
@@ -151,7 +148,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       if (cachedVehicles.length > 0) {
         setVehicleLocations(cachedVehicles);
         vehicleLocationsRef.current = cachedVehicles;
-        console.log(`📍 [VehicleTracking] Fallback to ${cachedVehicles.length} cached vehicles`);
       }
     }
   }, [logError]);
@@ -183,7 +179,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     connectingTimeoutRef.current = setTimeout(() => {
       if (isConnecting) {
         setIsConnecting(false);
-        console.log('[VehicleTracking] ⏰ Connecting timeout - switching to show cached data');
       }
     }, 3000);
 
@@ -214,19 +209,17 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
-      reconnectAttemptsRef.current = 0;
+      reconnectAttemptsRef.current = 0; // Reset retry counter on successful connection
+      manualDisconnectRef.current = false; // Reset manual disconnect flag
 
       try {
         // Subscribe to appropriate topic based on configuration
         // PRIORITY: vehicleId over orderId to avoid conflicts
         if (config.vehicleId) {
           const topicPath = `/topic/vehicles/${config.vehicleId}`;
-          console.log(`🔗 Subscribing to vehicle location: ${topicPath}`);
-          
           const subscription = client.subscribe(
             topicPath,
             (message) => {
-              console.log(`📍 WEBSOCKET: Received location for vehicle ${config.vehicleId}`);
               handleVehicleLocationMessage(message);
             }
           );
@@ -239,22 +232,19 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
             // Retry if no data received after 3 seconds
             retryInitialDataTimeoutRef.current = setTimeout(() => {
               if (vehicleLocationsRef.current.length === 0) {
-                console.log(`⚠️ No initial data received, retrying...`);
                 requestInitialData();
               }
             }, 3000);
           }, 1000);
         } else if (config.orderId) {
           const topicPath = `/topic/orders/${config.orderId}/vehicles`;
-          console.log(`🔗 Subscribing to order vehicles: ${topicPath}`);
-          
           const subscription = client.subscribe(
             topicPath,
             (message) => {
-              console.log(`📍 Received order vehicles update (RAW):`, message.body);
+              
               try {
                 const parsed = JSON.parse(message.body);
-                console.log(`📍 Received order vehicles update (PARSED):`, parsed);
+                
               } catch (e) {
                 console.error('Failed to parse message:', e);
               }
@@ -270,7 +260,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
             // Retry if no data received after 3 seconds
             retryInitialDataTimeoutRef.current = setTimeout(() => {
               if (vehicleLocationsRef.current.length === 0) {
-                console.log(`⚠️ No initial data received for order, retrying...`);
                 requestInitialData();
               }
             }, 3000);
@@ -305,11 +294,9 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       });
       subscriptionsRef.current = [];
       
-      // Attempt reconnection if not exceeded max attempts
-      if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
+      // Auto-reconnect with unlimited retries (unless manually disconnected)
+      if (!manualDisconnectRef.current) {
         scheduleReconnect();
-      } else {
-        setError('Không thể kết nối tới server sau nhiều lần thử. Vui lòng kiểm tra kết nối internet.');
       }
     };
 
@@ -330,10 +317,9 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       });
       subscriptionsRef.current = [];
       
-      if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
+      // Auto-reconnect with unlimited retries (unless manually disconnected)
+      if (!manualDisconnectRef.current) {
         scheduleReconnect();
-      } else {
-        setError('Không thể kết nối tới server. Vui lòng làm mới trang.');
       }
     };
 
@@ -358,10 +344,9 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       });
       subscriptionsRef.current = [];
       
-      if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
+      // Auto-reconnect with unlimited retries (unless manually disconnected)
+      if (!manualDisconnectRef.current) {
         scheduleReconnect();
-      } else {
-        setError('Không thể duy trì kết nối. Vui lòng làm mới trang.');
       }
     };
 
@@ -381,8 +366,8 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       });
       subscriptionsRef.current = [];
       
-      // Only attempt reconnection if not manually disconnected
-      if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
+      // Auto-reconnect with unlimited retries (unless manually disconnected)
+      if (!manualDisconnectRef.current) {
         scheduleReconnect();
       }
     };
@@ -394,22 +379,27 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     client.activate();
   }, [config.orderId, config.vehicleId, config.reconnectInterval, logError, handleVehicleLocationMessage, requestInitialData]);
 
-  // Schedule reconnection
+  // Schedule reconnection with exponential backoff (unlimited retries)
   const scheduleReconnect = useCallback(() => {
+    if (manualDisconnectRef.current) {
+      return;
+    }
+    
     clearReconnectTimeout();
     reconnectAttemptsRef.current += 1;
     
+    // Exponential backoff with max 30 seconds (like mobile and other hooks)
+    const delay = Math.min(config.reconnectInterval * Math.pow(2, Math.min(reconnectAttemptsRef.current - 1, 3)), 30000);
     reconnectTimeoutRef.current = setTimeout(() => {
-      if (reconnectAttemptsRef.current <= config.maxReconnectAttempts) {
-        connect();
-      } else {
-        setError('Không thể kết nối lại sau nhiều lần thử');
-      }
-    }, config.reconnectInterval);
-  }, [config.maxReconnectAttempts, config.reconnectInterval, connect, logError, clearReconnectTimeout]);
+      connect();
+    }, delay);
+  }, [config.reconnectInterval, connect, clearReconnectTimeout]);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
+    // Set manual disconnect flag to prevent auto-reconnection
+    manualDisconnectRef.current = true;
+    
     clearReconnectTimeout();
     
     // Clear retry timeout
@@ -418,13 +408,12 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       retryInitialDataTimeoutRef.current = null;
     }
     
-    reconnectAttemptsRef.current = config.maxReconnectAttempts; // Prevent auto-reconnection
-    
     // Unsubscribe from all topics
     subscriptionsRef.current.forEach(subscription => {
       try {
         subscription.unsubscribe();
       } catch (err) {
+        // Ignore unsubscribe errors
       }
     });
     subscriptionsRef.current = [];
@@ -443,14 +432,14 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     if (cachedVehicles.length > 0) {
       setVehicleLocations(cachedVehicles);
       vehicleLocationsRef.current = cachedVehicles;
-      console.log(`📍 [VehicleTracking] Disconnect - showing ${cachedVehicles.length} cached vehicles`);
     }
     setError(null);
-  }, [config.maxReconnectAttempts, logError, clearReconnectTimeout]);
+  }, [logError, clearReconnectTimeout]);
 
   // Manual reconnect
   const reconnect = useCallback(() => {
     reconnectAttemptsRef.current = 0; // Reset attempts
+    manualDisconnectRef.current = false; // Clear manual disconnect flag
     disconnect();
     setTimeout(() => connect(), 1000); // Wait a bit before reconnecting
   }, [connect, disconnect]);
@@ -462,7 +451,6 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     if (cachedVehicles.length > 0) {
       setVehicleLocations(cachedVehicles);
       vehicleLocationsRef.current = cachedVehicles;
-      console.log(`📍 [VehicleTracking] Loaded ${cachedVehicles.length} vehicles from cache on mount`);
     }
   }, []);
   

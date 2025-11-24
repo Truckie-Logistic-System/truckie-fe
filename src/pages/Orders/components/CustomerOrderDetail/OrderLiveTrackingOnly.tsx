@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Alert, message, Card } from 'antd';
-import { WifiOutlined, DisconnectOutlined, LoadingOutlined, TruckOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { playImportantNotificationSound, initAudioContext } from '../../../../utils/notificationSound';
+import { Card } from 'antd';
+import { EnvironmentOutlined } from '@ant-design/icons';
+import { playImportantNotificationSound } from '../../../../utils/notificationSound';
 import SmoothVehicleMarker from '../../../../components/map/SmoothVehicleMarker';
 import RoutePathRenderer from '../../../../components/map/RoutePathRenderer';
 import RouteMarkersRenderer from '../../../../components/map/RouteMarkersRenderer';
@@ -14,6 +14,7 @@ interface OrderLiveTrackingOnlyProps {
   orderId: string;
   shouldShowRealTimeTracking: boolean;
   vehicleAssignments?: any[];
+  isTabActive?: boolean; // Track if this tab is currently active
 }
 
 /**
@@ -25,12 +26,11 @@ interface OrderLiveTrackingOnlyProps {
 const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
   orderId,
   shouldShowRealTimeTracking,
-  vehicleAssignments = []
+  vehicleAssignments = [],
+  isTabActive = true // Default to true for backward compatibility
 }) => {
-  // console.log('🎯 [OrderLiveTrackingOnly] COMPONENT RENDERED');
-  // console.log('Props:', { orderId, shouldShowRealTimeTracking, vehicleAssignmentsCount: vehicleAssignments.length });
-  console.log('VehicleAssignments:', vehicleAssignments);
-  
+  // 
+  // 
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [mapStyle, setMapStyle] = useState<any>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -42,6 +42,8 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
   const componentRef = useRef<HTMLDivElement>(null);
   const hasFocusedSingleVehicle = useRef(false);
   const previousTrackingStateRef = useRef(shouldShowRealTimeTracking);
+  const previousTabActiveRef = useRef(isTabActive);
+  const hasRenderedMarkersRef = useRef(false);
 
   // VietMap routing hook
   const { getMapStyle } = useVietMapRouting();
@@ -51,11 +53,11 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     vehicleLocations,
     isConnected,
     isConnecting,
+    disconnect: disconnectTracking,
   } = useVehicleTracking({
     orderId: shouldShowRealTimeTracking ? orderId : undefined,
     autoConnect: shouldShowRealTimeTracking,
     reconnectInterval: 5000,
-    maxReconnectAttempts: 5,
   });
 
   // Cache instance để kiểm tra trạng thái vehicle
@@ -87,31 +89,27 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
             const parsed = JSON.parse(cachedStyle);
             // Validate cache: check if it has required properties
             if (parsed && typeof parsed === 'object' && parsed.version) {
-              console.log('[OrderLiveTrackingOnly] ✅ Using cached map style');
               setMapStyle(parsed);
               return;
             } else {
-              console.warn('[OrderLiveTrackingOnly] ⚠️ Cache invalid - missing required properties');
+              console.warn('[OrderLiveTrackingOnly] Cache invalid - missing required properties');
               localStorage.removeItem('vietmap_style_cache');
             }
           } catch (parseError) {
-            console.warn('[OrderLiveTrackingOnly] ⚠️ Cache corrupted - removing and refetching');
+            console.warn('[OrderLiveTrackingOnly] Cache corrupted - removing and refetching');
             localStorage.removeItem('vietmap_style_cache');
           }
         }
-
-        console.log('[OrderLiveTrackingOnly] 🔄 Fetching map style from API...');
         const result = await getMapStyle();
         if (result.success && result.style) {
-          console.log('[OrderLiveTrackingOnly] ✅ Map style fetched successfully');
           // Cache the style
           localStorage.setItem('vietmap_style_cache', JSON.stringify(result.style));
           setMapStyle(result.style);
         } else {
-          console.error('[OrderLiveTrackingOnly] ❌ Failed to get map style:', result.error);
+          console.error('[OrderLiveTrackingOnly] Failed to get map style:', result.error);
         }
       } catch (error) {
-        console.error('[OrderLiveTrackingOnly] ❌ Error fetching map style:', error);
+        console.error('[OrderLiveTrackingOnly] Error fetching map style:', error);
         fetchMapStyleRef.current = false; // Allow retry on error
       }
     };
@@ -127,8 +125,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     if (!mapContainerRef.current || !window.vietmapgl || !mapStyle || mapInitializedRef.current) {
       return;
     }
-
-    console.log('[OrderLiveTrackingOnly] Initializing map...');
     mapInitializedRef.current = true;
 
     let map: any = null;
@@ -176,7 +172,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
 
         map.on('load', () => {
           if (isDestroyed) return;
-          console.log('[OrderLiveTrackingOnly] Map loaded successfully');
           setMapInstance(map);
         });
 
@@ -194,37 +189,27 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
 
     initializeMap();
 
-    // Cleanup function
+    // Cleanup function - ONLY when component truly unmounts, not on tab switch
     return () => {
       isDestroyed = true;
-      if (map && map.remove) {
+      // Only cleanup if we're truly unmounting (not just tab switching)
+      // Check if we're still in the DOM
+      const isStillInDOM = mapContainerRef.current && document.body.contains(mapContainerRef.current);
+      
+      if (!isStillInDOM && map && map.remove) {
         try {
-          console.log('[OrderLiveTrackingOnly] Cleaning up map...');
           map.remove();
+          mapInstanceRef.current = null;
+          setMapInstance(null);
+          mapInitializedRef.current = false;
         } catch (error) {
           console.warn('[OrderLiveTrackingOnly] Error removing map:', error);
         }
       }
-      mapInstanceRef.current = null;
-      setMapInstance(null);
-      mapInitializedRef.current = false;
     };
-  }, [mapStyle]); // Only re-initialize if map style changes
+  }, [mapStyle, isTabActive]); // Re-check when tab becomes active
 
-  // Initialize audio context on user interaction
-  useEffect(() => {
-    const handleUserInteraction = () => {
-      initAudioContext();
-      window.removeEventListener('click', handleUserInteraction);
-      window.removeEventListener('touchstart', handleUserInteraction);
-    };
-    window.addEventListener('click', handleUserInteraction);
-    window.addEventListener('touchstart', handleUserInteraction);
-    return () => {
-      window.removeEventListener('click', handleUserInteraction);
-      window.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, []);
+  // ZZFX doesn't require audio context initialization
 
   // Detect when tracking becomes active
   useEffect(() => {
@@ -232,19 +217,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     const isNowTracking = shouldShowRealTimeTracking;
 
     if (wasNotTracking && isNowTracking && !hasShownTrackingNotification) {
-      console.log('[OrderLiveTrackingOnly] 🚀 Tracking activated!');
-      
-      message.success({
-        content: (
-          <span>
-            <TruckOutlined className="mr-2" />
-            Xe đã bắt đầu chuyến đi! Đang kết nối GPS...
-          </span>
-        ),
-        duration: 5,
-        icon: null,
-      });
-
       playImportantNotificationSound();
       setHasShownTrackingNotification(true);
       
@@ -259,6 +231,31 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     previousTrackingStateRef.current = shouldShowRealTimeTracking;
   }, [shouldShowRealTimeTracking, hasShownTrackingNotification]);
 
+  // Auto-disconnect GPS tracking when all OrderDetails reach final states
+  // Final states: DELIVERED, COMPENSATION, IN_TROUBLES, RETURNED, CANCELLED, SUCCESSFUL
+  useEffect(() => {
+    if (!vehicleAssignments || vehicleAssignments.length === 0) return;
+    
+    // Define final states for OrderDetails
+    const FINAL_STATES = ['DELIVERED', 'COMPENSATION', 'IN_TROUBLES', 'RETURNED', 'CANCELLED', 'SUCCESSFUL'];
+    
+    // Check if all OrderDetails across all vehicle assignments are in final states
+    const allOrderDetailsInFinalState = vehicleAssignments.every((va: any) => {
+      const vaOrderDetails = va.orderDetails || [];
+      
+      // If no orderDetails, cannot be in final state
+      if (vaOrderDetails.length === 0) return false;
+      
+      // Check if all orderDetails are in final states
+      return vaOrderDetails.every((od: any) => FINAL_STATES.includes(od.status));
+    });
+    
+    // Disconnect GPS tracking if all OrderDetails in final states
+    if (allOrderDetailsInFinalState && isConnected && disconnectTracking) {
+      disconnectTracking();
+    }
+  }, [vehicleAssignments, isConnected, disconnectTracking]);
+
   // Handle initializing state - Cải thiện UX bằng cách giảm thời gian hiển thị loading
   useEffect(() => {
     const hasValidCoordinates = vehicleLocations.length > 0 && validVehicles.length > 0;
@@ -269,10 +266,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
       // Giảm thời gian từ 15s xuống 5s để cải thiện UX
       const timeout = setTimeout(() => {
         setIsInitializingTracking(false);
-        // Không hiển thị warning nếu đã có cached data
-        if (vehicleLocations.length === 0) {
-          message.info('Kết nối GPS đang được thiết lập...');
-        }
       }, 5000);
       
       return () => clearTimeout(timeout);
@@ -282,11 +275,9 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     }
   }, [shouldShowRealTimeTracking, isConnected, vehicleLocations.length, validVehicles.length]);
 
-  // Focus vehicles before rendering markers to avoid "jumping"
+  // Focus vehicles before rendering markers to avoid "jumping" - ONLY when tab is active
   useEffect(() => {
-    if (mapInstance && validVehicles.length > 0 && !hasInitialFocus) {
-      console.log('[OrderLiveTrackingOnly] 🎯 Initial map focus for', validVehicles.length, 'vehicles');
-      
+    if (mapInstance && validVehicles.length > 0 && !hasInitialFocus && isTabActive) {
       // For single vehicle: focus on the vehicle with higher zoom
       if (validVehicles.length === 1) {
         const vehicle = validVehicles[0];
@@ -302,6 +293,8 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
           bounds.extend([vehicle.longitude, vehicle.latitude]);
         });
         
+        // Get center from bounds
+        const center = bounds.getCenter();
         mapInstance.fitBounds(bounds, {
           padding: { top: 100, bottom: 100, left: 350, right: 100 },
           duration: 1000,
@@ -314,7 +307,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
         setHasInitialFocus(true);
       }, 1100);
     }
-  }, [mapInstance, validVehicles.length, hasInitialFocus]);
+  }, [mapInstance, validVehicles.length, hasInitialFocus, isTabActive]);
 
   // Track if we've already done initial fit bounds
   const hasInitialFitBoundsRef = useRef(false);
@@ -396,10 +389,9 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     });
   }, [mapInstance, vehicleAssignments, vehicleLocations]);
 
-  // Auto-fit when vehicles first load - ONLY ONCE - Fixed dependency
+  // Auto-fit when vehicles first load - ONLY ONCE - Fixed dependency - ONLY when tab active
   useEffect(() => {
-    if (vehicleLocations.length > 0 && mapInstance && !hasInitialFitBoundsRef.current) {
-      console.log('[OrderLiveTrackingOnly] 🎯 Initial fit bounds for', vehicleLocations.length, 'vehicles');
+    if (vehicleLocations.length > 0 && mapInstance && !hasInitialFitBoundsRef.current && isTabActive) {
       hasInitialFitBoundsRef.current = true;
       const timeoutId = setTimeout(() => {
         if (mapInstance && mapInstanceRef.current === mapInstance) {
@@ -409,7 +401,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
       
       return () => clearTimeout(timeoutId);
     }
-  }, [mapInstance, vehicleLocations.length]); // Fixed: Include vehicleLocations.length but use ref to prevent infinite loop
+  }, [mapInstance, vehicleLocations.length, isTabActive]); // Include isTabActive to re-fit when tab active
 
   // Reset fit bounds when vehicle count changes (e.g., from 1 to 2 vehicles)
   // But only fit bounds ONCE when transitioning to 2+ vehicles
@@ -420,8 +412,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     const currentCount = vehicleLocations.length;
     const previousCount = lastVehicleCountRef.current;
     
-    if (currentCount > 1 && previousCount <= 1 && !hasInitialMultiVehicleFitRef.current) {
-      console.log('[OrderLiveTrackingOnly] Vehicle count changed to', currentCount, '- fit bounds once');
+    if (currentCount > 1 && previousCount <= 1 && !hasInitialMultiVehicleFitRef.current && isTabActive) {
       hasInitialMultiVehicleFitRef.current = true;
       hasInitialFitBoundsRef.current = false;
       hasFocusedSingleVehicle.current = false;
@@ -444,7 +435,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     }
     
     lastVehicleCountRef.current = currentCount;
-  }, [vehicleLocations.length, mapInstance]); // Removed fitBoundsToVehicles from deps to prevent infinite loop
+  }, [vehicleLocations.length, mapInstance, isTabActive]); // Include isTabActive
 
   // Auto-focus on single vehicle when vehicle count changes to 1
   // This handles cases where vehicles load one by one
@@ -452,7 +443,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     if (vehicleLocations.length === 1 && mapInstance && hasInitialFocus && !selectedVehicleId) {
       const vehicle = vehicleLocations[0];
       if (vehicle.latitude !== null && vehicle.longitude !== null && !hasFocusedSingleVehicle.current) {
-        console.log('[OrderLiveTrackingOnly] 🎯 Auto-focusing on single vehicle:', vehicle.vehicleId);
         mapInstance.flyTo({
           center: [vehicle.longitude, vehicle.latitude],
           zoom: 15,
@@ -476,9 +466,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
 
     const vehicle = vehicleLocations.find(v => v.vehicleId === selectedVehicleId);
     if (!vehicle || vehicle.latitude === null || vehicle.longitude === null) return;
-
-    console.log('[OrderLiveTrackingOnly] 🎯 Focusing on selected vehicle:', selectedVehicleId);
-    
     mapInstance.flyTo({
       center: [vehicle.longitude, vehicle.latitude],
       zoom: 15,
@@ -501,8 +488,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     if (vehicleLocations.length === 1 && !selectedVehicleId) {
       const vehicle = vehicleLocations[0];
       if (vehicle.latitude !== null && vehicle.longitude !== null) {
-        console.log('[OrderLiveTrackingOnly] 🎯 Auto-following single vehicle update:', vehicle.vehicleId);
-        
         // Use easeTo for smooth following (less dramatic than flyTo)
         mapInstance.easeTo({
           center: [vehicle.longitude, vehicle.latitude],
@@ -513,9 +498,49 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     }
   }, [vehicleLocations, shouldShowRealTimeTracking, isConnected, mapInstance, hasInitialFocus, selectedVehicleId]);
 
+  // Detect when tab becomes active and force re-render markers
+  useEffect(() => {
+    const wasInactive = !previousTabActiveRef.current;
+    const isNowActive = isTabActive;
+
+    if (wasInactive && isNowActive) {
+      // Force complete re-initialization
+      setTimeout(() => {
+        // Reset all initialization flags to force fresh start
+        mapInitializedRef.current = false;
+        setHasInitialFocus(false); // hasInitialFocus is state, not ref
+        hasInitialFitBoundsRef.current = false;
+        hasInitialMultiVehicleFitRef.current = false;
+        hasFocusedSingleVehicle.current = false;
+        hasRenderedMarkersRef.current = false;
+        
+        // If map exists, try to refresh it
+        if (mapInstance && !mapInstance._removed) {
+          mapInstance.resize();
+          
+          // Re-fit bounds to show all content
+          setTimeout(() => {
+            if (mapInstance && !mapInstance._removed) {
+              if (vehicleAssignments.length > 0 || vehicleLocations.length > 0) {
+                fitBoundsToVehicles();
+              }
+              setHasInitialFocus(false); // Trigger re-focus
+            }
+          }, 200);
+        } else {
+          // If map was removed, force re-creation by triggering mapStyle dependency
+          setMapInstance(null);
+          mapInstanceRef.current = null;
+          mapInitializedRef.current = false;
+        }
+      }, 150);
+    }
+
+    previousTabActiveRef.current = isTabActive;
+  }, [isTabActive, mapInstance, vehicleAssignments.length, vehicleLocations.length, fitBoundsToVehicles]);
+
   // Callback khi click vào marker xe
   const handleVehicleMarkerClick = useCallback((vehicle: VehicleLocationMessage) => {
-    console.log('[OrderLiveTrackingOnly] Vehicle marker clicked:', vehicle);
     setSelectedVehicleId(vehicle.vehicleId);
     
     if (mapInstance && vehicle.latitude !== null && vehicle.longitude !== null) {
@@ -527,48 +552,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
       });
     }
   }, [mapInstance]);
-
-  // Render connection status
-  const renderConnectionStatus = () => {
-    if (!shouldShowRealTimeTracking) return null;
-
-    if (isConnected && vehicleLocations.length > 0) {
-      const validVehicleCount = vehicleLocations.filter((vehicle): vehicle is VehicleLocationMessage & { latitude: number; longitude: number } =>
-        vehicle.latitude !== null && vehicle.longitude !== null &&
-        !isNaN(vehicle.latitude as number) && !isNaN(vehicle.longitude as number) &&
-        isFinite(vehicle.latitude as number) && isFinite(vehicle.longitude as number)
-      ).length;
-
-      return (
-        <Alert
-          message={
-            <span>
-              <WifiOutlined className="mr-2" />
-              Đang theo dõi {validVehicleCount} xe real-time
-            </span>
-          }
-          type="success"
-          showIcon
-          className="mb-4"
-        />
-      );
-    } else if (!isConnected && !isConnecting && vehicleLocations.length > 0) {
-      return (
-        <Alert
-          message={
-            <span>
-              <DisconnectOutlined className="mr-2" />
-              Mất kết nối - Hiển thị vị trí cuối cùng ({vehicleLocations.length} xe)
-            </span>
-          }
-          description="Dữ liệu từ bộ nhớ đệm. Markers không bị mất khi mất kết nối."
-          type="warning"
-          showIcon
-          className="mb-4"
-        />
-      );
-    }
-  };
 
   // Không hiển thị nếu không cần tracking
   if (!shouldShowRealTimeTracking) {
@@ -589,38 +572,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
           </div>
         }
       >
-        {/* Connection status */}
-        {renderConnectionStatus()}
-
-        {/* Loading state when initializing tracking - Chỉ hiển thị khi thực sự cần */}
-        {isInitializingTracking && vehicleLocations.length === 0 && (
-          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-center space-x-3">
-              <LoadingOutlined className="text-xl text-blue-500" />
-              <div>
-                <p className="text-blue-700 font-medium mb-1">
-                  🚛 Đang kết nối GPS...
-                </p>
-                <p className="text-sm text-blue-600">
-                  Vui lòng chờ trong giây lát
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Hiển thị thông báo khi có cached data nhưng đang kết nối */}
-        {isConnecting && vehicleLocations.length > 0 && (
-          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
-            <div className="flex items-center space-x-2">
-              <LoadingOutlined className="text-green-500" />
-              <span className="text-green-700 text-sm">
-                Hiển thị vị trí đã lưu - đang kết nối để cập nhật real-time...
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Map Container */}
         <div 
           id="customer-live-tracking-map"
@@ -740,9 +691,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
                             <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1 pt-1 border-t border-gray-200">
                               <span>⏱️</span>
                               <span>{vehicle.lastUpdated ? new Date(vehicle.lastUpdated).toLocaleString('vi-VN') : 'Chưa cập nhật'}</span>
-                              {!cacheRef.current.isVehicleOnline(vehicle) && (
-                                <span className="ml-1 text-orange-500 font-medium">(Offline)</span>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -753,40 +701,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
             </div>
           </div>
         )}
-
-        {/* Live tracking indicator */}
-        <div className={`absolute bottom-4 right-4 z-[500] px-3 py-2 rounded-lg shadow-lg ${
-          isConnected ? 'bg-green-100 border border-green-300' :
-          isConnecting ? 'bg-blue-100 border border-blue-300' :
-          'bg-yellow-100 border border-yellow-300'
-        }`}>
-          <div className="flex flex-col gap-1">
-            <span className={`text-sm font-medium flex items-center ${
-              isConnected ? 'text-green-700' : isConnecting ? 'text-blue-700' : 'text-yellow-700'
-            }`}>
-              {isConnecting ? (
-                <LoadingOutlined className="mr-1" />
-              ) : isConnected ? (
-                <WifiOutlined className="mr-1" />
-              ) : (
-                <DisconnectOutlined className="mr-1" />
-              )}
-              {isConnecting && vehicleLocations.length === 0 ? 'Đang kết nối...' : 
-               isConnecting && vehicleLocations.length > 0 ? 'Kết nối real-time...' :
-               isConnected ? 'Theo dõi trực tiếp' : 'Mất kết nối'}
-            </span>
-            {!isConnected && !isConnecting && vehicleLocations.length > 0 && (
-              <span className="text-xs text-yellow-600">
-                📍 Hiển thị vị trí cuối cùng ({vehicleLocations.length} xe từ cache)
-              </span>
-            )}
-            {isConnected && vehicleLocations.some(v => !cacheRef.current.isVehicleOnline(v)) && (
-              <span className="text-xs text-orange-600">
-                ⚠️ Một số xe có thể offline
-              </span>
-            )}
-          </div>
-        </div>
 
         {/* Real-time vehicle markers - Render as soon as map and vehicles are available */}
         {shouldShowRealTimeTracking && mapInstance && vehicleLocations.length > 0 && (
@@ -813,14 +727,10 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
       </Card>
 
       {/* Routes and route markers - Rendered outside map container */}
-      {console.log('[OrderLiveTrackingOnly] Checking route renderers:', {
-        hasMapInstance: !!mapInstance,
-        vaLength: vehicleAssignments.length,
-        shouldRender: mapInstance && vehicleAssignments.length > 0
-      })}
+      {}
       {mapInstance && vehicleAssignments.length > 0 && (
         <>
-          {console.log('[OrderLiveTrackingOnly] Rendering RoutePathRenderer and RouteMarkersRenderer')}
+          {}
           <RoutePathRenderer
             map={mapInstance}
             vehicleAssignments={vehicleAssignments}

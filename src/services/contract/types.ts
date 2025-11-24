@@ -19,8 +19,8 @@ export interface PackedDetail {
 
 export interface SuggestAssignVehicle {
   vehicleIndex: number;
-  vehicleRuleId: string;
-  vehicleRuleName: string;
+  sizeRuleId: string;
+  sizeRuleName: string;
   currentLoad: number;
   currentLoadUnit: string;
   assignedDetails: AssignedDetail[];

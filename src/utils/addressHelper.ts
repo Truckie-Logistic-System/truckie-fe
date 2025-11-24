@@ -35,14 +35,10 @@ export const createCustomFilterOption = () => {
 // Điền thông tin địa chỉ từ address_components
 export const fillAddressFromComponents = (components: any[] | undefined, placeDetail?: any) => {
     if (!components || !Array.isArray(components)) {
-        console.log('No address components found or not an array');
         return null;
     }
 
     try {
-        console.log('Processing address components:', components);
-        console.log('Place detail:', placeDetail);
-
         // Tìm street_number và route để tạo street
         const streetNumber = components.find(c => c.types && c.types.includes('street_number'));
         const route = components.find(c => c.types && c.types.includes('route'));
@@ -53,11 +49,6 @@ export const fillAddressFromComponents = (components: any[] | undefined, placeDe
         const province = components.find(c => c.types && c.types.includes('administrative_area_level_1'));
         const sublocality = components.find(c => c.types && c.types.includes('sublocality_level_1'));
         const premise = components.find(c => c.types && c.types.includes('premise'));
-
-        console.log('Found components:', {
-            streetNumber, route, ward, district, province, sublocality, premise
-        });
-
         // Tạo street từ các thành phần
         let street = '';
 
@@ -158,9 +149,6 @@ export const fillAddressFromComponents = (components: any[] | undefined, placeDe
         if (!provinceName) {
             provinceName = 'Thành phố Hồ Chí Minh';
         }
-
-        console.log('Extracted address parts:', { street, wardName, provinceName });
-
         // Tạo object chứa thông tin địa chỉ
         const formValues: any = {};
         if (street) formValues.street = street;
@@ -177,12 +165,8 @@ export const fillAddressFromComponents = (components: any[] | undefined, placeDe
 // Xử lý kết quả từ TrackAsia Place Detail
 export const processPlaceDetail = (placeDetail: PlaceDetailResult) => {
     if (!placeDetail || !placeDetail.geometry || !placeDetail.geometry.location) {
-        console.log('Invalid place detail object:', placeDetail);
         return null;
     }
-
-    console.log('Processing place detail:', placeDetail);
-
     const location = placeDetail.geometry.location;
 
     // Tìm street_number và route để tạo street
@@ -258,7 +242,5 @@ export const processPlaceDetail = (placeDetail: PlaceDetailResult) => {
         latitude: location.lat,
         longitude: location.lng
     };
-
-    console.log('Processed place detail result:', result);
     return result;
 };

@@ -19,7 +19,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ order, contract }) => {
                 orderCode={order.orderCode}
                 status={order.status}
                 createdAt={order.createdAt}
-                totalPrice={order.totalPrice}
                 contract={contract}
             />
 

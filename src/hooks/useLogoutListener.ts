@@ -11,7 +11,6 @@ export const useLogoutListener = () => {
 
   useEffect(() => {
     const unsubscribe = onLogout(() => {
-      console.log('[useLogoutListener] Received logout event, navigating to login');
       navigate('/auth/login', { replace: true });
     });
 

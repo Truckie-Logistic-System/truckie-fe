@@ -114,14 +114,14 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                                 <ClockCircleOutlined className="mr-2 text-blue-500" />
                                 <Text strong>Thời gian bắt đầu:</Text>
                             </div>
-                            <div className="ml-6">{formatDate(detail.startTime)}</div>
+                            <div className="ml-6">{formatDate(detail.startTime ?? undefined)}</div>
                         </div>
                         <div className="mb-3">
                             <div className="flex items-center mb-1">
                                 <ClockCircleOutlined className="mr-2 text-blue-500" />
                                 <Text strong>Thời gian kết thúc:</Text>
                             </div>
-                            <div className="ml-6">{formatDate(detail.endTime)}</div>
+                            <div className="ml-6">{formatDate(detail.endTime ?? undefined)}</div>
                         </div>
                         <div className="mb-3">
                             <div className="flex items-center mb-1">
@@ -129,7 +129,7 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                                 <Text strong>Thời gian dự kiến bắt đầu:</Text>
                             </div>
                             <div className="ml-6">
-                                {formatDate(detail.estimatedStartTime)}
+                                {formatDate(detail.estimatedStartTime ?? undefined)}
                             </div>
                         </div>
                         <div className="mb-3">
@@ -138,7 +138,7 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                                 <Text strong>Thời gian dự kiến kết thúc:</Text>
                             </div>
                             <div className="ml-6">
-                                {formatDate(detail.estimatedEndTime)}
+                                {formatDate(detail.estimatedEndTime ?? undefined)}
                             </div>
                         </div>
                     </Card>
@@ -198,13 +198,26 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
             {/* Vehicle Assignment Information in a separate row */}
             <Row>
                 <Col xs={24}>
-                    {vehicleAssignment ? (
+                    {vehicleAssignment && vehicleAssignment.id ? (
                         <Card
                             className="mb-4"
                             size="small"
                         >
                             <VehicleInfoSection
-                                vehicleAssignment={vehicleAssignment}
+                                vehicleAssignment={{
+                                    ...vehicleAssignment,
+                                    id: vehicleAssignment.id,
+                                    primaryDriver: vehicleAssignment.primaryDriver && vehicleAssignment.primaryDriver.id ? {
+                                        id: vehicleAssignment.primaryDriver.id,
+                                        fullName: vehicleAssignment.primaryDriver.fullName,
+                                        phoneNumber: vehicleAssignment.primaryDriver.phoneNumber
+                                    } : undefined,
+                                    secondaryDriver: vehicleAssignment.secondaryDriver && vehicleAssignment.secondaryDriver.id ? {
+                                        id: vehicleAssignment.secondaryDriver.id,
+                                        fullName: vehicleAssignment.secondaryDriver.fullName,
+                                        phoneNumber: vehicleAssignment.secondaryDriver.phoneNumber
+                                    } : undefined
+                                }}
                             />
                         </Card>
                     ) : (

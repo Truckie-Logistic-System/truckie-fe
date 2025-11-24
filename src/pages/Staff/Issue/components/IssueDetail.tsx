@@ -22,6 +22,7 @@ import IssueInfoCard from './IssueInfoCard';
 import RefundProcessingDetail from './RefundProcessingDetail';
 import PenaltyDetail from './PenaltyDetail';
 import OrderRejectionDetail from './OrderRejectionDetail';
+import RerouteDetail from './RerouteDetail';
 import issueWebSocket from '@/services/websocket/issueWebSocket';
 
 const IssueDetail: React.FC = () => {
@@ -42,14 +43,7 @@ const IssueDetail: React.FC = () => {
     // Subscribe to real-time issue updates via WebSocket
     useEffect(() => {
         if (!id) return;
-
-        console.log(`📡 [IssueDetail] Subscribing to updates for issue: ${id}`);
-        
         const unsubscribe = issueWebSocket.subscribeToIssue(id, (updatedIssue) => {
-            console.log('🔔 [IssueDetail] Received real-time update for issue:', updatedIssue.id);
-            console.log('   - Status:', updatedIssue.status);
-            console.log('   - Refreshing issue details...');
-            
             // Show notification to user
             message.success('Sự cố đã được cập nhật! Đang tải lại dữ liệu...');
             
@@ -58,27 +52,19 @@ const IssueDetail: React.FC = () => {
         });
 
         return () => {
-            console.log(`📡 [IssueDetail] Unsubscribing from updates for issue: ${id}`);
             unsubscribe();
         };
     }, [id]);
 
     // Hàm lấy thông tin chi tiết sự cố từ API
     const fetchIssueDetails = async (issueId: string) => {
-        console.log(`🔄 [IssueDetail] Fetching issue details for ${issueId} at ${new Date().toLocaleTimeString()}`);
+        
         setLoading(true);
         try {
             const data = await issueService.getIssueById(issueId);
-            console.log('✅ [IssueDetail] Fetched issue data:', {
-                id: data.id,
-                issueCategory: data.issueCategory,
-                orderDetail: data.orderDetail,
-                issueImages: data.issueImages,
-                hasSender: !!data.sender,
-                sender: data.sender,
-                timestamp: new Date().toLocaleTimeString()
-            });
+            
             setIssue(data);
+            console.log(data);
         } catch (error) {
             message.error('Không thể tải thông tin sự cố');
             console.error('Error fetching issue details:', error);
@@ -95,13 +81,9 @@ const IssueDetail: React.FC = () => {
 
     // Xử lý xác nhận giải quyết penalty issue
     const handleResolvePenalty = () => {
-        console.log('🔵 handleResolvePenalty called');
         if (!id || !issue) {
-            console.log('❌ Missing id or issue');
             return;
         }
-
-        console.log('✅ Opening confirm modal');
         modal.confirm({
             title: 'Xác nhận đã giải quyết',
             icon: <ExclamationCircleOutlined />,
@@ -116,7 +98,6 @@ const IssueDetail: React.FC = () => {
                 }
             },
             onOk: async () => {
-                console.log('✅ User confirmed, updating status...');
                 setResolvingPenalty(true);
                 try {
                     await issueService.updateIssueStatus(id, 'RESOLVED');
@@ -130,7 +111,6 @@ const IssueDetail: React.FC = () => {
                 }
             },
             onCancel: () => {
-                console.log('❌ User cancelled');
             }
         });
     };
@@ -186,18 +166,7 @@ const IssueDetail: React.FC = () => {
     }
 
     // Debug log
-    console.log('[IssueDetail] Issue data:', {
-        issueCategory: issue.issueCategory,
-        issueTypeEntityCategory: issue.issueTypeEntity?.issueCategory,
-        status: issue.status,
-        orderDetail: issue.orderDetail,
-        orderDetailEntity: issue.orderDetailEntity,
-        issueImages: issue.issueImages,
-        shouldShowSealReplacement: issue.issueCategory === 'SEAL_REPLACEMENT' || issue.issueTypeEntity?.issueCategory === 'SEAL_REPLACEMENT',
-        shouldShowRefund: (issue.issueCategory === 'DAMAGE' || issue.issueTypeEntity?.issueCategory === 'DAMAGE') && 
-                         issue.status === 'OPEN' && 
-                         (issue.orderDetailEntity || issue.orderDetail)
-    });
+    
 
     return (
         <div className="p-6">
@@ -268,17 +237,6 @@ const IssueDetail: React.FC = () => {
                 {(() => {
                     const isDamageCategory = issue.issueCategory === 'DAMAGE' || issue.issueTypeEntity?.issueCategory === 'DAMAGE';
                     const hasOrderDetail = issue.orderDetailEntity || issue.orderDetail;
-                    
-                    console.log('🔍 DAMAGE section check:', {
-                        issueCategory: issue.issueCategory,
-                        issueTypeCategory: issue.issueTypeEntity?.issueCategory,
-                        isDamageCategory,
-                        hasOrderDetail,
-                        orderDetailEntity: !!issue.orderDetailEntity,
-                        orderDetail: !!issue.orderDetail,
-                        willShow: isDamageCategory && hasOrderDetail
-                    });
-                    
                     return isDamageCategory && hasOrderDetail;
                 })() && (
                     <Col span={24}>
@@ -306,9 +264,19 @@ const IssueDetail: React.FC = () => {
                         />
                     </Col>
                 )}
+
+                {/* Reroute Detail - Hiển thị khi issue là loại tái định tuyến */}
+                {(issue.issueCategory === 'REROUTE' || issue.issueTypeEntity?.issueCategory === 'REROUTE') && (
+                    <Col span={24}>
+                        <RerouteDetail 
+                            issue={issue}
+                            onUpdate={handleIssueUpdate} 
+                        />
+                    </Col>
+                )}
             </Row>
         </div>
     );
 };
 
-export default IssueDetail; 
+export default IssueDetail;

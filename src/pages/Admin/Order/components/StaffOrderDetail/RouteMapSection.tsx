@@ -25,12 +25,13 @@ const { Title } = Typography;
 interface RouteMapSectionProps {
     journeySegments: JourneySegmentModel[];
     journeyInfo?: Partial<JourneyHistory>;
+    issues?: any[]; // Issues to display on map
     onMapReady?: (map: any) => void;
     children?: React.ReactNode;
     mapContainerRef?: React.RefObject<HTMLDivElement | null>; // Ref for map container div
 }
 
-const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, journeyInfo, onMapReady, children, mapContainerRef }) => {
+const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, journeyInfo, issues, onMapReady, children, mapContainerRef }) => {
     const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
     const [markers, setMarkers] = useState<MapLocation[]>([]);
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -167,7 +168,7 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                             !isNaN(segment.endLatitude) && !isNaN(segment.endLongitude) &&
                             isFinite(segment.endLatitude) && isFinite(segment.endLongitude)) {
                             const translatedEndName = translatePointName(segment.endPointName || '');
-                            const distance = segment.distanceMeters.toFixed(1);
+                            const distance = segment.distanceKilometers.toFixed(1);
                             newMarkers.push({
                                 lat: segment.endLatitude,
                                 lng: segment.endLongitude,
@@ -185,10 +186,10 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                         newRouteSegments.push({
                             segmentOrder: segment.segmentOrder || 0,
                             startName: translatePointName(segment.startPointName || 'Điểm đầu'),
-                            endName: `${translatePointName(segment.endPointName || 'Điểm cuối')} (${segment.distanceMeters.toFixed(1)} km)`,
+                            endName: `${translatePointName(segment.endPointName || 'Điểm cuối')} (${segment.distanceKilometers.toFixed(1)} km)`,
                             path: pathCoordinates,
                             tolls: tolls || [],
-                            distance: segment.distanceMeters || 0, // Đã là km, không cần chia 1000
+                            distance: segment.distanceKilometers || 0,
                             rawResponse: {},
                         });
 
@@ -198,6 +199,59 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                     }
                 }
             });
+
+            // Add issue markers if issues are provided (Staff can see all issues including PENALTY)
+            if (issues && issues.length > 0) {
+                issues.forEach((issue) => {
+                    if (issue.locationLatitude && issue.locationLongitude &&
+                        !isNaN(issue.locationLatitude) && !isNaN(issue.locationLongitude) &&
+                        isFinite(issue.locationLatitude) && isFinite(issue.locationLongitude)) {
+                        
+                        // Get issue icon and color based on category
+                        let issueIcon = '⚠️';
+                        
+                        switch(issue.issueCategory) {
+                            case 'ORDER_REJECTION':
+                                issueIcon = '📦';
+                                break;
+                            case 'SEAL_REPLACEMENT':
+                                issueIcon = '🔒';
+                                break;
+                            case 'DAMAGE':
+                                issueIcon = '⚠️';
+                                break;
+                            case 'PENALTY':
+                                issueIcon = '🚨';
+                                break;
+                            default:
+                                issueIcon = '❗';
+                        }
+                        
+                        // Create marker label with issue type name and reported time
+                        const issueTypeName = issue.issueTypeName || issue.issueCategory || 'Sự cố';
+                        
+                        // Format reported time
+                        let reportedTime = '';
+                        if (issue.reportedAt) {
+                            try {
+                                const date = new Date(issue.reportedAt);
+                                reportedTime = ` - ${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                            } catch (e) {
+                                reportedTime = '';
+                            }
+                        }
+                        
+                        newMarkers.push({
+                            lat: issue.locationLatitude,
+                            lng: issue.locationLongitude,
+                            address: `${issueTypeName}${reportedTime}`,
+                            name: `${issueIcon} ${issueTypeName}`,
+                            type: 'stopover', // Use stopover type (icon/color will be different via issueCategory)
+                            issueCategory: issue.issueCategory, // Pass issueCategory for proper icon/color selection
+                        });
+                    }
+                });
+            }
 
             // Set the map center to the first point if we have valid markers
             if (newMarkers.length > 0) {
@@ -209,7 +263,7 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
             setRouteSegments(newRouteSegments);
             setHasValidRoute(validRouteFound);
         }
-    }, [journeySegments]);
+    }, [journeySegments, issues]);
 
     // Auto-fit bounds when routeSegments are ready and map is loaded
     useEffect(() => {

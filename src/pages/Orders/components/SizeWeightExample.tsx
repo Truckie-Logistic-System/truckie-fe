@@ -8,7 +8,6 @@ const SizeWeightExample: React.FC = () => {
   const [form] = Form.useForm();
 
   const handleSubmit = (values: any) => {
-    console.log("Form values:", values);
     // values.sizeWeightList sẽ chứa mảng các items
     // Ví dụ: [{ value: "100x50x30 cm, 50kg" }, { value: "200x100x60 cm, 100kg" }]
   };

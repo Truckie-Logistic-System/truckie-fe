@@ -55,8 +55,8 @@ const OrderStatusTag: React.FC<OrderStatusTagProps> = ({ status, className, size
             return <CheckCircleOutlined />;
         }
 
-        // Trạng thái từ chối
-        if ([OrderStatusEnum.REJECT_ORDER].includes(status)) {
+        // Trạng thái từ chối/hủy
+        if ([OrderStatusEnum.REJECT_ORDER, OrderStatusEnum.CANCELLED].includes(status)) {
             return <CloseCircleOutlined />;
         }
 

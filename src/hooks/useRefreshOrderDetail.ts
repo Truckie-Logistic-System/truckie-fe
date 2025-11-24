@@ -24,16 +24,12 @@ export const useRefreshOrderDetail = (
     }
 
     try {
-      console.log('[useRefreshOrderDetail] Fetching order detail:', id, 'role:', userRole);
-      
       let data;
       if (userRole === 'staff') {
         data = await orderService.getOrderForStaffByOrderId(id);
       } else {
         data = await orderService.getOrderForCustomerByOrderId(id);
       }
-      
-      console.log('[useRefreshOrderDetail] ✅ Order detail refreshed');
       onSuccess?.(data);
       return data;
     } catch (error: any) {

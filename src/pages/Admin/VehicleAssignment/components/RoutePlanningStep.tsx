@@ -69,8 +69,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                 const response = await routeService.getOrderPoints(orderId);
 
                 // Kiểm tra cấu trúc response
-                console.log("Route points response:", response);
-
                 // Truy cập đúng cấu trúc response - API trả về trực tiếp points
                 const points = response.points || [];
                 setRoutePoints(points);
@@ -117,7 +115,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
     // Cleanup khi component unmount
     useEffect(() => {
         return () => {
-            console.log("Component unmounting - cleaning up markers");
             setMarkers([]);
         };
     }, []);
@@ -126,16 +123,12 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
     const handleLocationChange = (location: MapLocation) => {
         try {
             // Log the current state of customPoints
-            console.log("MAP CLICK - Current customPoints:", customPoints);
-            console.log("MAP CLICK - Current globalCustomPoints:", globalCustomPoints);
             logRouteState("BEFORE ADDING NEW STOPOVER");
 
             setCurrentMapLocation(location);
 
             // Lấy thông tin đoạn đường đã chọn từ ref để đảm bảo lấy giá trị mới nhất
             const selectedIndex = selectedSegmentIndexRef.current;
-            console.log("MAP CLICK - Selected segment index:", selectedIndex);
-
             // Get the actual segments including stopovers
             const currentSegments = getCurrentSegments();
 
@@ -160,9 +153,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                 message.error("Đoạn đường không hợp lệ");
                 return;
             }
-
-            console.log("MAP CLICK - Adding stopover for base segment index:", segmentIndex);
-
             // Xác định tên đoạn đường
             let segmentName = "";
             let startName = "";
@@ -197,30 +187,20 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                 addressId: '',
                 segmentIndex: segmentIndex // Explicitly set segmentIndex
             };
-
-            console.log("MAP CLICK - Created new stopover point:", newCustomPoint);
-
             // Add to global custom points array
             globalCustomPoints.push(newCustomPoint);
 
             // Also update the state for UI rendering
             const updatedCustomPoints = [...globalCustomPoints];
-            console.log("MAP CLICK - Updated customPoints will have length:", updatedCustomPoints.length);
-            console.log("MAP CLICK - Updated customPoints:", updatedCustomPoints);
-
             // Set the state with the new array
             setCustomPoints(updatedCustomPoints);
 
             // Tạo mảng markers mới với ID mới
             const allMarkers = createAllMarkers(routePoints, updatedCustomPoints);
-            console.log("MAP CLICK - All markers created:", allMarkers.length);
-
             // Cập nhật markers
             setMarkers(allMarkers);
 
             // Tạo route mới với bản sao của updatedCustomPoints để tránh tham chiếu
-            console.log("MAP CLICK - Generating new route after adding point");
-
             // Important: Use the updatedCustomPoints directly, not the state
             // as state updates are asynchronous and may not be reflected immediately
             generateRouteFromPoints(routePoints, [...updatedCustomPoints]);
@@ -259,10 +239,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             type: 'stopover' as const,
             id: `stopover-${point.lat}-${point.lng}-${timestamp}-${i}`
         }));
-
-        console.log("Base markers created:", baseMarkers.length);
-        console.log("Custom markers created:", customMarkers.length);
-
         // Kết hợp và trả về tất cả markers
         return [...baseMarkers, ...customMarkers];
     };
@@ -275,8 +251,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
             // Lưu lại điểm cần xóa để log
             const pointToRemove = globalCustomPoints[index];
-            console.log("Removing custom point:", pointToRemove);
-
             // Lưu lại segment index của điểm bị xóa
             // Đảm bảo segmentIndex luôn có giá trị, mặc định là 0 nếu undefined
             const segmentIndex = pointToRemove.segmentIndex !== undefined ? pointToRemove.segmentIndex : 0;
@@ -337,7 +311,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             setMarkers(allMarkers);
 
             // Tạo route mới
-            console.log("Generating new route after marker update");
             generateRoute(globalCustomPoints);
 
             // Log state after removal
@@ -353,12 +326,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
     // Generate route from base points and custom points
     const generateRouteFromPoints = async (basePoints: RoutePoint[], customPts: RoutePoint[]) => {
         if (basePoints.length === 0) return;
-        console.log("ROUTE GEN - generateRouteFromPoints called with:");
-        console.log("ROUTE GEN - basePoints:", basePoints.length);
-        console.log("ROUTE GEN - customPts:", customPts.length, customPts);
-        console.log("ROUTE GEN - Current state customPoints:", customPoints.length, customPoints);
-        console.log("ROUTE GEN - Current globalCustomPoints:", globalCustomPoints.length, globalCustomPoints);
-
         // Log detailed route state
         logRouteState("BEFORE ROUTE GENERATION");
 
@@ -366,7 +333,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
         if (customPts.length > 0) {
             // Update global array only if the provided points are different
             if (JSON.stringify(customPts) !== JSON.stringify(globalCustomPoints)) {
-                console.log("ROUTE GEN - Updating globalCustomPoints to match input");
                 globalCustomPoints.length = 0;
                 globalCustomPoints.push(...customPts);
             }
@@ -374,7 +340,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             setCustomPoints([...globalCustomPoints]);
         } else if (globalCustomPoints.length > 0) {
             // If customPts is empty but we have points in global array, use those
-            console.log("ROUTE GEN - Using points from globalCustomPoints");
             setCustomPoints([...globalCustomPoints]);
             return generateRouteFromPoints(basePoints, [...globalCustomPoints]);
         }
@@ -413,7 +378,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             const validCustomPts = globalCustomPoints.map((point: RoutePoint) => {
                 // If segmentIndex is undefined or invalid, default to 0
                 if (point.segmentIndex === undefined || point.segmentIndex < 0 || point.segmentIndex > 2) {
-                    console.log(`ROUTE GEN - Fixing invalid segmentIndex for point: ${point.name}`);
                     return { ...point, segmentIndex: 0 };
                 }
                 return point;
@@ -424,14 +388,10 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             globalCustomPoints.push(...validCustomPts);
 
             // IMPORTANT: Update state for UI
-            console.log("ROUTE GEN - Setting customPoints state with validCustomPts:", validCustomPts.length);
             setCustomPoints([...validCustomPts]);
 
             // Double-check that our state update worked
-            console.log("ROUTE GEN - After setting customPoints - state:", customPoints.length);
-            console.log("ROUTE GEN - After setting customPoints - global:", globalCustomPoints.length);
             if (customPoints.length !== validCustomPts.length) {
-                console.log("ROUTE GEN - State update didn't take effect immediately as expected, but global array is updated");
             }
 
             // Phân loại các điểm stopover theo đoạn đường
@@ -470,12 +430,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                     }
                     return a.name.localeCompare(b.name);
                 });
-
-            console.log("ROUTE GEN - Segment 0 stopovers:", segment0Stopovers.length);
-            console.log("ROUTE GEN - Segment 1 stopovers:", segment1Stopovers.length);
-            console.log("ROUTE GEN - Segment 2 stopovers:", segment2Stopovers.length);
-            console.log("ROUTE GEN - All custom points:", validCustomPts.length);
-
             // Tạo mảng các điểm theo thứ tự đúng, đảm bảo không có điểm trùng lặp
             const orderedPoints: RoutePoint[] = [];
 
@@ -528,13 +482,10 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                 type: 'carrier_return' as any // Sử dụng type khác để tránh bị lọc bỏ
             });
 
-            console.log("ROUTE GEN - Final ordered points:", orderedPoints.map(p => `${p.type}:${p.name}`));
+            
 
             // Kiểm tra xem có bao nhiêu điểm stopover trong mảng orderedPoints
             const stopoverCount = orderedPoints.filter(p => p.type === 'stopover').length;
-            console.log(`ROUTE GEN - Số điểm stopover trong mảng orderedPoints: ${stopoverCount}`);
-            console.log(`ROUTE GEN - Số điểm stopover trong validCustomPts: ${validCustomPts.length}`);
-
             // Tạo mảng tọa độ và loại điểm cho API request
             const uniquePoints: [number, number][] = [];
             const uniquePointTypes: ('carrier' | 'pickup' | 'delivery' | 'stopover')[] = [];
@@ -544,10 +495,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             const usedPointTypes = new Set<string>();
 
             // Log chi tiết từng điểm trong tuyến đường
-            console.log("ROUTE GEN - Chi tiết các điểm trong tuyến đường:");
             orderedPoints.forEach((point, index) => {
-                console.log(`ROUTE GEN - Điểm ${index + 1}: ${point.type} - ${point.name} - [${point.lat}, ${point.lng}]${point.segmentIndex !== undefined ? ` - Đoạn: ${point.segmentIndex}` : ''}`);
-
                 // Tạo key duy nhất cho mỗi điểm
                 let key = `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
 
@@ -556,7 +504,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                 // Kiểm tra nếu đã có điểm cùng loại (carrier, pickup, delivery) - chỉ cho phép một điểm mỗi loại
                 // Ngoại trừ điểm stopover và carrier_return có thể có nhiều điểm
                 if (pointTypeStr !== 'stopover' && pointTypeStr !== 'carrier_return' && usedPointTypes.has(pointTypeStr)) {
-                    console.log(`ROUTE GEN - Skipping duplicate point type: ${pointTypeStr}`);
                     return; // Skip this point
                 }
 
@@ -568,7 +515,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                     point.lat = offsetLat;
                     point.lng = offsetLng;
                     key = `${offsetLat.toFixed(6)},${offsetLng.toFixed(6)}`;
-                    console.log(`ROUTE GEN - Adjusted duplicate point at index ${index}: ${key}`);
                 }
 
                 // Đánh dấu tọa độ và loại điểm đã được sử dụng
@@ -581,9 +527,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             });
 
             // Đảm bảo không có trùng lặp trong request
-            console.log("ROUTE GEN - Points before deduplication:", uniquePoints.length);
-            console.log("ROUTE GEN - Point types before deduplication:", uniquePointTypes);
-
             // Tạo mảng mới không có trùng lặp point types
             const finalPoints: [number, number][] = [];
             const finalPointTypes: ('carrier' | 'pickup' | 'delivery' | 'stopover')[] = [];
@@ -599,7 +542,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                     // Thêm điểm quay về nhưng đổi type thành carrier cho API
                     finalPoints.push(uniquePoints[index]);
                     finalPointTypes.push('carrier');
-                    console.log(`ROUTE GEN - Converting carrier_return to carrier at index ${index}`);
                 }
                 // Nếu là stopover hoặc chưa thấy loại này trước đó
                 else if (type === 'stopover' || !seenTypes.has(typeStr)) {
@@ -607,30 +549,19 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                     finalPointTypes.push(type);
                     seenTypes.add(typeStr);
                 } else {
-                    console.log(`ROUTE GEN - Removing duplicate point type: ${type} at index ${index}`);
                 }
             });
-
-            console.log("ROUTE GEN - Points after deduplication:", finalPoints.length);
-            console.log("ROUTE GEN - Point types after deduplication:", finalPointTypes);
-
             const requestData: SuggestRouteRequest = {
                 points: finalPoints,
                 pointTypes: finalPointTypes,
                 vehicleTypeId: vehicle?.vehicleTypeId || '',
             };
-
-            console.log("ROUTE GEN - Request data:", requestData);
-
             // Call API to get suggested route
             const response = await routeService.suggestRoute(requestData);
 
             // IMPORTANT: After API call, verify our customPoints state is still intact
-            console.log("ROUTE GEN - After API call, customPoints state:", customPoints.length);
-
             // If customPoints state has changed unexpectedly, restore it from our saved reference
             if (customPoints.length !== validCustomPts.length) {
-                console.log("ROUTE GEN - customPoints state has changed unexpectedly, restoring from validCustomPts");
                 setCustomPoints(validCustomPts);
             }
 
@@ -649,10 +580,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                     totalTollAmount: response.totalTollAmount || 0,
                     totalTollCount: response.totalTollCount || 0
                 };
-
-                console.log("ROUTE GEN - Processed segments:", segments);
-                console.log("ROUTE GEN - Route info:", routeInfoFromAPI);
-
                 // Không cần animation loading nữa vì sẽ có animation trên map
                 setIsAnimatingRoute(false);
                 setSegments(segments);
@@ -663,7 +590,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                 // CRITICAL: Make sure customPoints state is still intact after setting segments
                 setTimeout(() => {
                     if (customPoints.length !== validCustomPts.length) {
-                        console.log("ROUTE GEN - customPoints state lost after setting segments, restoring");
                         setCustomPoints(validCustomPts);
                     }
 
@@ -689,11 +615,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
     // Function to reset route - wrapper around generateRouteFromPoints
     const resetRoute = () => {
-        console.log("Reset route triggered, customPoints:", customPoints.length);
-
         const executeReset = () => {
-            console.log("Executing reset...");
-
             // Xóa tất cả các điểm trung gian - both state and global
             setCustomPoints([]);
             globalCustomPoints.length = 0;
@@ -707,14 +629,10 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                 type: point.type,
                 id: `${point.type}-${point.lat}-${point.lng}-${Date.now()}`
             }));
-
-            console.log("Base markers:", baseMarkers.length);
-
             // Cập nhật markers
             setMarkers(baseMarkers);
 
             // Gọi API để tạo lại tuyến đường chỉ với các điểm cơ bản
-            console.log("Calling generateRouteFromPoints with base points only");
             generateRouteFromPoints(routePoints, []);
 
             // Hiển thị thông báo
@@ -741,10 +659,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
     // Function to generate route - wrapper around generateRouteFromPoints
     const generateRoute = (customPts = customPoints) => {
-        console.log("ROUTE - generateRoute called with customPoints:", customPts.length);
-        console.log("ROUTE - Current state customPoints:", customPoints.length);
-        console.log("ROUTE - Current globalCustomPoints:", globalCustomPoints.length);
-
         // Always create a copy to avoid reference issues
         const pointsToUse = Array.isArray(customPts) ? [...customPts] : [];
 
@@ -754,16 +668,13 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
         // If we're using the current state and it's different from the passed points
         if (customPts === customPoints && customPoints.length > 0) {
-            console.log("ROUTE - Using current state customPoints");
         } else if (pointsToUse.length > 0) {
-            console.log("ROUTE - Using provided customPoints");
             // Update both state and global if we're using different points
             setCustomPoints(pointsToUse);
             globalCustomPoints.length = 0;
             globalCustomPoints.push(...pointsToUse);
         } else if (currentGlobalPoints.length > 0) {
             // If no points provided but we have points in the global array, use those
-            console.log("ROUTE - Using points from global array");
             setCustomPoints(currentGlobalPoints);
             pointsToUse.push(...currentGlobalPoints);
         }
@@ -771,7 +682,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
         // Use a timeout to ensure state updates have been processed
         setTimeout(() => {
             if (customPoints.length === 0 && (currentStatePoints.length > 0 || currentGlobalPoints.length > 0)) {
-                console.log("ROUTE - customPoints state was lost, restoring from global");
                 const pointsToRestore = currentGlobalPoints.length > 0 ? currentGlobalPoints : currentStatePoints;
                 setCustomPoints(pointsToRestore);
             }
@@ -812,32 +722,19 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
     useEffect(() => {
         // Cập nhật ref mỗi khi selectedSegmentIndex thay đổi
         selectedSegmentIndexRef.current = selectedSegmentIndex;
-        console.log("EFFECT - selectedSegmentIndex updated:", selectedSegmentIndex);
-        console.log("EFFECT - selectedSegmentIndexRef.current:", selectedSegmentIndexRef.current);
-        console.log("EFFECT - Current customPoints:", customPoints.length, customPoints);
     }, [selectedSegmentIndex]);
 
     // Debug function to log the current state of route points
     const logRouteState = (label: string) => {
-        console.log(`${label} - ROUTE STATE DEBUG:`);
-        console.log(`  - customPoints state: ${customPoints.length} points`);
-        console.log(`  - globalCustomPoints: ${globalCustomPoints.length} points`);
-        console.log(`  - selectedSegmentIndex: ${selectedSegmentIndex}`);
-        console.log(`  - selectedSegmentIndexRef: ${selectedSegmentIndexRef.current}`);
-
         // Log segment details
         if (segments && segments.length > 0) {
             segments.forEach((segment, idx) => {
-                console.log(`  - Segment ${idx}: ${segment.startName} -> ${segment.endName}`);
             });
         }
 
         // Log custom points by segment using global array for more reliable data
         const pointsToAnalyze = globalCustomPoints.length > 0 ? globalCustomPoints : customPoints;
         const bySegment = [0, 1, 2].map(idx => pointsToAnalyze.filter((p: RoutePoint) => p.segmentIndex === idx));
-        console.log(`  - Segment 0 stopovers: ${bySegment[0].length}`);
-        console.log(`  - Segment 1 stopovers: ${bySegment[1].length}`);
-        console.log(`  - Segment 2 stopovers: ${bySegment[2].length}`);
     };
 
     // Helper function to get current segments including stopovers
@@ -851,7 +748,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
         baseSegments.forEach((segment, index) => {
             // Ensure each base segment has the correct segmentOrder (0, 1, 2)
             if (segment.segmentOrder !== index) {
-                console.log(`SEGMENTS - Fixing segmentOrder for base segment ${index}: ${segment.startName}->${segment.endName}`);
                 segment.segmentOrder = index;
             }
         });
@@ -876,10 +772,8 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
         );
 
         // Debug log to help understand the mapping
-        console.log("SEGMENTS - Original base segments:", baseSegments.map((s, i) => `${i}: ${s.startName}->${s.endName} (order: ${s.segmentOrder})`));
-        console.log("SEGMENTS - Stopovers by segment:", stopoversBySegment.map((stops, idx) =>
-            `Segment ${idx}: ${stops.length} stopovers`
-        ));
+        
+        
 
         // Process segment 0 (Carrier -> Pickup)
         if (stopoversBySegment[0].length > 0) {
@@ -998,10 +892,8 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
         // Add debugging info to each segment for easier troubleshooting
         allSegments.forEach((segment, index) => {
             // Add a more descriptive debug property to each segment
-            console.log(`SEGMENTS - Segment ${index}: ${segment.startName}->${segment.endName} (segmentOrder: ${segment.segmentOrder})`);
+            
         });
-
-        console.log("SEGMENTS - Generated all segments including stopovers:", allSegments);
         return allSegments;
     };
 
@@ -1120,8 +1012,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                                                 value={selectedSegmentIndex}
                                                 onChange={(e) => {
                                                     const newIndex = Number(e.target.value);
-                                                    console.log("SEGMENT - Changing selected segment from", selectedSegmentIndex, "to", newIndex);
-
                                                     // Log state before change
                                                     logRouteState("BEFORE SEGMENT CHANGE");
 
@@ -1137,9 +1027,6 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
                                                     // Get the selected segment and its segmentOrder
                                                     const selectedSegment = currentSegments[newIndex];
-                                                    console.log("SEGMENT - Selected segment info:", selectedSegment);
-                                                    console.log("SEGMENT - Selected segment order:", selectedSegment.segmentOrder);
-
                                                     // Save current customPoints before changing segment - use both state and global
                                                     const currentCustomPoints = [...customPoints];
                                                     const currentGlobalPoints = [...globalCustomPoints];
@@ -1161,19 +1048,15 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                                                                         selectedSegment.endName.startsWith('Quay về') ? 'ĐVVC (Quay về)' :
                                                                             selectedSegment.endName;
 
-                                                        console.log(`SEGMENT - Đã chọn đoạn ${newIndex + 1}: ${startName} → ${endName} (segmentOrder: ${selectedSegment.segmentOrder})`);
+                                                        
                                                     }
 
                                                     // Cập nhật cả state và ref
                                                     setSelectedSegmentIndex(newIndex);
                                                     selectedSegmentIndexRef.current = newIndex;
-
-                                                    console.log("SEGMENT - Updated selectedSegmentIndexRef.current:", selectedSegmentIndexRef.current);
-
                                                     // IMPORTANT: Ensure customPoints are preserved after segment change
                                                     setTimeout(() => {
                                                         if (customPoints.length !== pointsToPreserve.length) {
-                                                            console.log("SEGMENT - customPoints changed after segment selection, restoring from global");
                                                             setCustomPoints(pointsToPreserve);
                                                             globalCustomPoints.length = 0;
                                                             globalCustomPoints.push(...pointsToPreserve);

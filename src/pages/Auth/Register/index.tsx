@@ -100,7 +100,6 @@ const RegisterPage: React.FC = () => {
 
     const handleGoogleSignup = () => {
         // Implement Google signup logic here
-        console.log('Đăng ký với Google được nhấp');
     };
 
     return (

@@ -73,7 +73,7 @@ const isTokenExpiringSoon = (token: string): boolean => {
     const isExpiringSoon = timeUntilExpiry < 5 * 60 * 1000;
     
     if (isExpiringSoon) {
-      console.log(`⏰ [httpClient] Token expiring soon: ${Math.floor(timeUntilExpiry / 1000)} seconds left`);
+      
     }
     
     return isExpiringSoon;
@@ -96,10 +96,8 @@ httpClient.interceptors.request.use(
       const currentToken = authService.getAuthToken();
       
       if (currentToken && isTokenExpiringSoon(currentToken)) {
-        console.log('[httpClient] 🔄 Token expiring soon, proactively refreshing...');
         try {
           await authService.refreshToken();
-          console.log('[httpClient] ✅ Proactive token refresh successful');
         } catch (error) {
           console.warn('[httpClient] ⚠️ Proactive token refresh failed:', error);
           // Continue with current token anyway
@@ -119,7 +117,7 @@ httpClient.interceptors.request.use(
       } else {
         config.headers['Authorization'] = `Bearer ${freshToken}`;
       }
-      console.log('[httpClient] 🔑 Token set in header:', freshToken.substring(0, 20) + '...');
+      
     }
 
     return config;
@@ -187,7 +185,7 @@ httpClient.interceptors.response.use(
 
     // Nếu lỗi 401 (Unauthorized) và chưa thử refresh token và không phải là endpoint auth
     if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log(`[httpClient] 🔄 Got 401 error, attempting to refresh token (attempt ${refreshAttempts + 1}/${MAX_REFRESH_ATTEMPTS})`);
+      
 
       // Kiểm tra số lần thử refresh token
       if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) {
@@ -202,12 +200,10 @@ httpClient.interceptors.response.use(
       }
 
       if (isRefreshing) {
-        console.log('[httpClient] ⏳ Token refresh in progress, queuing request');
         // Nếu đang refresh, thêm request vào hàng đợi
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then(() => {
-          console.log('[httpClient] ✅ Token refreshed, retrying queued request');
           // IMPORTANT: Delete old Authorization header before retry
           // This forces the request interceptor to add the new token
           if (originalRequest.headers) {
@@ -242,10 +238,9 @@ httpClient.interceptors.response.use(
         const authService = await import('../auth/authService').then(module => module.default);
 
         try {
-          console.log('[httpClient] 🔑 Calling refreshToken()');
+          
           // Thử refresh token
           await authService.refreshToken();
-          console.log('[httpClient] ✅ Token refresh successful');
         } catch (refreshTokenError: any) {
           console.error('[httpClient] ❌ Token refresh failed:', refreshTokenError.message);
           
@@ -257,7 +252,6 @@ httpClient.interceptors.response.use(
                                      localStorage.getItem('userId');
             
             if (hasStoredUserData) {
-              console.log('[httpClient] ✅ User data found in localStorage, keeping session alive');
               // Don't logout immediately - give user a chance to reconnect
               throw new Error('Mất kết nối đến server. Vui lòng thử lại sau.');
             }
@@ -284,9 +278,7 @@ httpClient.interceptors.response.use(
           delete originalRequest.headers.Authorization;
         }
         delete originalRequest._retry;
-
-        console.log('[httpClient] 🔄 Retrying original request with new token');
-        console.log('[httpClient] 🔑 New token available:', newToken.substring(0, 20) + '...');
+        
         
         // Thực hiện lại request ban đầu với token mới
         // The request interceptor will automatically add the new token

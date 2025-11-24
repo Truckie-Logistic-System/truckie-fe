@@ -81,9 +81,6 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
     if (!map || !window.vietmapgl) {
       return;
     }
-
-    console.log(`🎯 [${vehicle.vehicleId}] Initializing marker...`);
-    
     // Find first valid position to create marker
     let initialLat: number = vehicle.latitude ?? 10.8231; // Ho Chi Minh City default
     let initialLng: number = vehicle.longitude ?? 106.6297;
@@ -95,7 +92,7 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
       initialLng = 106.6297;
     } else {
       lastValidPositionRef.current = { lat: initialLat, lng: initialLng };
-      console.log(`✅ [${vehicle.vehicleId}] Initial valid position: [${initialLat.toFixed(6)}, ${initialLng.toFixed(6)}]`);
+      
     }
 
     // Tạo HTML cho popup thông tin xe
@@ -240,7 +237,7 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
 
       markerRef.current = marker;
       markerElementRef.current = el;
-      console.log(`✅ [${vehicle.vehicleId}] Marker created at [${initialLat.toFixed(6)}, ${initialLng.toFixed(6)}]`);
+      
 
       // Thêm event click
       el.addEventListener('click', () => {
@@ -252,8 +249,6 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
 
     // CLEANUP: Only remove marker on component unmount
     return () => {
-      console.log(`🗑️ [${vehicleIdRef.current}] Removing marker`);
-      
       // Cancel animation
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -296,7 +291,7 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
         if (latDiff >= 0.00001 || lngDiff >= 0.00001) {
           // Log significant moves
           if (latDiff > 0.0001 || lngDiff > 0.0001) {
-            console.log(`📍 [${vehicle.vehicleId}] New target: [${lastValidPos.lat.toFixed(6)}, ${lastValidPos.lng.toFixed(6)}] → [${newLatNum.toFixed(6)}, ${newLngNum.toFixed(6)}]`);
+            
           }
           
           // Set new target position for animation
@@ -304,7 +299,7 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
         }
       } else {
         // First valid position after creation with default center
-        console.log(`✅ [${vehicle.vehicleId}] First valid position received: [${newLatNum.toFixed(6)}, ${newLngNum.toFixed(6)}]`);
+        
         targetPositionRef.current = { lat: newLatNum, lng: newLngNum };
         lastValidPositionRef.current = { lat: newLatNum, lng: newLngNum };
         markerRef.current.setLngLat([newLngNum, newLatNum]);
@@ -462,7 +457,7 @@ export default React.memo(RealTimeVehicleMarker, (prevProps, nextProps) => {
   // Only log if actually re-rendering (props changed)
   // Remove this log in production - too verbose
   // if (!propsEqual) {
-  //   console.log(`🔄 RealTimeVehicleMarker re-rendering for vehicle ${nextProps.vehicle.vehicleId}`);
+  //   
   // }
   
   return propsEqual;

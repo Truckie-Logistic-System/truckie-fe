@@ -58,7 +58,6 @@ const VehicleMaintenancePage: React.FC = () => {
     const fetchVehicles = async () => {
         try {
             const response = await vehicleService.getVehicles();
-            console.log('Raw vehicles response:', response);
             if (response.success && Array.isArray(response.data)) {
                 setVehicles(response.data);
             } else {
@@ -76,12 +75,6 @@ const VehicleMaintenancePage: React.FC = () => {
         fetchMaintenances();
         fetchVehicles();
     }, []);
-
-    // Thêm console.log để debug
-    useEffect(() => {
-        console.log('Vehicles data:', vehicles);
-        console.log('Maintenances data:', maintenances);
-    }, [vehicles, maintenances]);
 
     const handleOpenCreateModal = () => {
         // Chuyển hướng đến trang thêm mới thay vì mở modal
@@ -196,7 +189,6 @@ const VehicleMaintenancePage: React.FC = () => {
         }
 
         // Trường hợp không tìm thấy
-        console.log('Vehicle info not found for record:', record);
         return 'Không xác định';
     };
 

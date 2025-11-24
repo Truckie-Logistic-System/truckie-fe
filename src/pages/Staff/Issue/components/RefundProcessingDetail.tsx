@@ -136,16 +136,7 @@ const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, 
             cancelText: 'Hủy',
             okButtonProps: { danger: true },
             onOk: async () => {
-                console.log('📤 [RefundProcessing] Starting refund submission');
-                console.log('   - FileList length:', fileList.length);
                 if (fileList.length > 0) {
-                    console.log('   - File[0]:', {
-                        name: fileList[0].name,
-                        size: fileList[0].size,
-                        type: fileList[0].type,
-                        hasOriginFileObj: !!fileList[0].originFileObj,
-                        originFileObj: fileList[0].originFileObj,
-                    });
                 }
                 
                 setLoading(true);
@@ -155,11 +146,6 @@ const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, 
                     if (fileList.length > 0) {
                         // Try originFileObj first (from beforeUpload), then the file itself
                         imageFile = (fileList[0].originFileObj || fileList[0]) as File;
-                        console.log('   - Using image file:', {
-                            name: imageFile.name,
-                            size: imageFile.size,
-                            type: imageFile.type,
-                        });
                     }
                     
                     const request: ProcessRefundRequest = {
@@ -306,12 +292,6 @@ const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, 
     }
 
     // Debug: Log issue data to check sender
-    console.log('[RefundProcessingDetail] Issue data:', {
-        hasSender: !!issue.sender,
-        sender: issue.sender,
-        issueCategory: issue.issueCategory
-    });
-
     // Show refund processing form
     return (
         <Card className="shadow-md">

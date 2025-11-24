@@ -26,7 +26,7 @@ export interface JourneySegment {
     startLongitude: number;
     endLatitude: number;
     endLongitude: number;
-    distanceMeters: number;
+    distanceKilometers: number;
     pathCoordinatesJson: string;
     tollDetailsJson: string | null;
     status: string;
@@ -117,7 +117,7 @@ export const formatJourneyStatus = (status: string): string => {
 export const translatePointName = (pointName: string): string => {
     switch (pointName) {
         case 'Carrier':
-            return 'Nhà vận chuyển';
+            return 'Đơn vị vận chuyển';
         case 'Pickup':
             return 'Điểm lấy hàng';
         case 'Delivery':
@@ -159,17 +159,5 @@ export const formatSealStatus = (status: string): string => {
     }
 };
 
-// Helper function to get seal status color
-export const getSealStatusColor = (status: string): string => {
-    switch (status) {
-        case 'ACTIVE':
-        case 'IN_USE':
-            return 'green';
-        case 'USED':
-            return 'blue';
-        case 'REMOVED':
-            return 'red';
-        default:
-            return 'default';
-    }
-};
+// Note: getSealStatusColor is already exported from constants/enums/sealStatus.ts
+// Import it from there if needed

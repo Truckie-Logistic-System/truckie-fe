@@ -1,12 +1,28 @@
 import React, { useEffect, useRef } from 'react';
 
+// Function để dịch tên điểm từ tiếng Anh sang tiếng Việt
+const translatePointName = (name: string): string => {
+  const translations: { [key: string]: string } = {
+    'Carrier': 'Đơn vị vận chuyển',
+    'Pickup': 'Điểm lấy hàng',
+    'Delivery': 'Điểm giao hàng',
+    'Stopover': 'Điểm trung gian',
+    'Warehouse': 'Kho',
+    'Origin': 'Điểm đi',
+    'Destination': 'Điểm đến',
+  };
+  
+  return translations[name] || name;
+};
+
 interface RouteMarker {
   id: string;
   lat: number;
   lng: number;
-  type: 'pickup' | 'delivery' | 'stopover' | 'carrier';
+  type: 'pickup' | 'delivery' | 'stopover' | 'carrier' | 'issue';
   name: string;
   vaIndex: number;
+  issueCategory?: string;
 }
 
 interface RouteMarkersRendererProps {
@@ -43,8 +59,19 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
         return;
       }
 
-      // Process ALL journeys for this vehicle assignment
-      va.journeyHistories.forEach((journey: any, journeyIndex: number) => {
+      // Only process the latest ACTIVE journey history
+      const activeJourneys = va.journeyHistories
+        .filter((j: any) => j.status === 'ACTIVE')
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      if (activeJourneys.length === 0) {
+        return;
+      }
+
+      const latestActiveJourney = activeJourneys[0];
+
+      // Process only the latest ACTIVE journey
+      [latestActiveJourney].forEach((journey: any, journeyIndex: number) => {
         if (!journey || !journey.journeySegments || journey.journeySegments.length === 0) {
           return;
         }
@@ -82,7 +109,7 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
               lat: startLat,
               lng: startLng,
               type: startType,
-              name: segment.startPointName || 'Điểm đầu',
+              name: translatePointName(segment.startPointName || 'Điểm đầu'),
               vaIndex
             });
           }
@@ -110,13 +137,50 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
                 lat: endLat,
                 lng: endLng,
                 type: endType,
-                name: segment.endPointName || 'Điểm cuối',
+                name: translatePointName(segment.endPointName || 'Điểm cuối'),
                 vaIndex
               });
             }
           }
         });
       });
+
+      // Add issue markers (Customer CANNOT see PENALTY issues)
+      if (va.issues && va.issues.length > 0) {
+        va.issues.forEach((issue: any, issueIndex: number) => {
+          // Customer cannot see PENALTY issues
+          if (issue.issueCategory === 'PENALTY') {
+            return;
+          }
+
+          if (issue.locationLatitude && issue.locationLongitude &&
+              !isNaN(issue.locationLatitude) && !isNaN(issue.locationLongitude) &&
+              isFinite(issue.locationLatitude) && isFinite(issue.locationLongitude)) {
+            
+            // Format reported time
+            const issueTypeName = issue.issueTypeName || issue.issueCategory || 'Sự cố';
+            let reportedTime = '';
+            if (issue.reportedAt) {
+              try {
+                const date = new Date(issue.reportedAt);
+                reportedTime = ` - ${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+              } catch (e) {
+                reportedTime = '';
+              }
+            }
+            
+            markers.push({
+              id: `${vaIndex}-issue-${issueIndex}`,
+              lat: issue.locationLatitude,
+              lng: issue.locationLongitude,
+              type: 'issue',
+              name: `${issueTypeName}${reportedTime}`,
+              vaIndex,
+              issueCategory: issue.issueCategory
+            });
+          }
+        });
+      }
     });
 
     // Check if we need to recreate markers (only if marker IDs changed)
@@ -126,12 +190,8 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
                           !Array.from(newMarkerIds).every(id => existingMarkerIds.has(id));
 
     if (!needsRecreate) {
-      console.log('[RouteMarkersRenderer] Markers unchanged, skipping recreation');
       return;
     }
-
-    console.log('[RouteMarkersRenderer] Recreating markers');
-
     // Clear previous markers
     markerDataRef.current.forEach(({ marker }) => {
       try {
@@ -151,7 +211,7 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
         el.style.cssText = `
           width: 32px;
           height: 32px;
-          background-color: ${getMarkerColor(marker.type)};
+          background-color: ${getMarkerColor(marker.type, marker.issueCategory)};
           border: 2px solid white;
           border-radius: 50%;
           display: flex;
@@ -166,7 +226,7 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
           transition: none;
           will-change: auto;
         `;
-        el.innerHTML = getMarkerIcon(marker.type);
+        el.innerHTML = getMarkerIcon(marker.type, marker.issueCategory);
         el.title = marker.name;
 
         // Create marker - it will stay fixed at geographic coordinates
@@ -184,8 +244,6 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
 
         markersRef.current.push(vietMarker);
         markerDataRef.current.set(marker.id, { marker: vietMarker, vaIndex: marker.vaIndex });
-
-        console.log(`[RouteMarkersRenderer] Marker ${marker.id} created`);
       } catch (error) {
         console.error(`[RouteMarkersRenderer] Error rendering marker ${marker.id}:`, error);
       }
@@ -232,7 +290,29 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
   return null; // This component doesn't render anything directly
 };
 
-function getMarkerColor(type: string): string {
+function getMarkerColor(type: string, issueCategory?: string): string {
+  if (type === 'issue' && issueCategory) {
+    switch (issueCategory) {
+      case 'ORDER_REJECTION':
+        return '#ff4d4f'; // Red
+      case 'SEAL_REPLACEMENT':
+        return '#fa8c16'; // Orange
+      case 'DAMAGE':
+      case 'CARGO_ISSUE':
+      case 'MISSING_ITEMS':
+      case 'WRONG_ITEMS':
+        return '#fa8c16'; // Orange
+      case 'ACCIDENT':
+      case 'VEHICLE_BREAKDOWN':
+        return '#ff4d4f'; // Red
+      case 'WEATHER':
+        return '#1890ff'; // Blue
+      case 'GENERAL':
+      default:
+        return '#faad14'; // Yellow
+    }
+  }
+  
   switch (type) {
     case 'pickup':
       return '#52c41a'; // Green
@@ -247,7 +327,29 @@ function getMarkerColor(type: string): string {
   }
 }
 
-function getMarkerIcon(type: string): string {
+function getMarkerIcon(type: string, issueCategory?: string): string {
+  if (type === 'issue' && issueCategory) {
+    switch (issueCategory) {
+      case 'ORDER_REJECTION':
+        return '📦'; // Package
+      case 'SEAL_REPLACEMENT':
+        return '🔒'; // Lock
+      case 'DAMAGE':
+      case 'CARGO_ISSUE':
+      case 'MISSING_ITEMS':
+      case 'WRONG_ITEMS':
+        return '⚠️'; // Warning
+      case 'ACCIDENT':
+      case 'VEHICLE_BREAKDOWN':
+        return '🔧'; // Wrench
+      case 'WEATHER':
+        return '🌧️'; // Rain
+      case 'GENERAL':
+      default:
+        return '❗'; // Exclamation
+    }
+  }
+  
   switch (type) {
     case 'pickup':
       return '📦'; // Package

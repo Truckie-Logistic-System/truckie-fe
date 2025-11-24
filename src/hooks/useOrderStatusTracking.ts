@@ -54,7 +54,6 @@ export const useOrderStatusTracking = (
   const subscriptionRef = useRef<any>(null);
   const reconnectAttemptRef = useRef(0);
   const lastMessageRef = useRef<OrderStatusChangeMessage | null>(null);
-  const maxReconnectAttempts = 5;
 
   // Store callbacks in refs to avoid dependency issues
   const onStatusChangeRef = useRef(options.onStatusChange);
@@ -70,10 +69,6 @@ export const useOrderStatusTracking = (
   const handleStatusChangeMessage = useCallback((message: IMessage) => {
     try {
       const statusChange: OrderStatusChangeMessage = JSON.parse(message.body);
-      console.log('[OrderStatusTracking] 📢 Status change received:', statusChange);
-      console.log('[OrderStatusTracking] orderId type:', typeof statusChange.orderId, 'value:', statusChange.orderId);
-      console.log('[OrderStatusTracking] Full message body:', message.body);
-      
       // Check for duplicate message
       if (lastMessageRef.current) {
         const isDuplicate = 
@@ -82,7 +77,6 @@ export const useOrderStatusTracking = (
           lastMessageRef.current.timestamp === statusChange.timestamp;
         
         if (isDuplicate) {
-          console.log('[OrderStatusTracking] 🔄 Duplicate message detected, ignoring...');
           return;
         }
       }
@@ -92,15 +86,12 @@ export const useOrderStatusTracking = (
       
       // Call onStatusChange callback if provided
       if (onStatusChangeRef.current) {
-        console.log('[OrderStatusTracking] Calling onStatusChange callback...');
         onStatusChangeRef.current(statusChange);
       } else {
-        console.log('[OrderStatusTracking] No onStatusChange callback provided');
       }
       
       // Call onRefreshNeeded callback if provided (for automatic page refresh)
       if (onRefreshNeededRef.current) {
-        console.log('[OrderStatusTracking] 🔄 Triggering page refresh...');
         onRefreshNeededRef.current();
       }
       
@@ -114,13 +105,11 @@ export const useOrderStatusTracking = (
   // Connect to WebSocket
   const connect = useCallback(() => {
     if (clientRef.current?.connected || isConnecting) {
-      console.log('[OrderStatusTracking] Already connected or connecting');
       return;
     }
 
     // Clean up any existing connection before creating new one
     if (clientRef.current) {
-      console.log('[OrderStatusTracking] Cleaning up existing connection...');
       try {
         if (subscriptionRef.current) {
           subscriptionRef.current.unsubscribe();
@@ -145,8 +134,6 @@ export const useOrderStatusTracking = (
       setError('Cần cung cấp orderId');
       return;
     }
-
-    console.log('[OrderStatusTracking] 🔌 Connecting for order:', config.orderId);
     setIsConnecting(true);
     setError(null);
 
@@ -168,7 +155,6 @@ export const useOrderStatusTracking = (
 
     // Connection success handler
     client.onConnect = (_frame) => {
-      console.log('[OrderStatusTracking] ✅ Connected');
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
@@ -176,8 +162,6 @@ export const useOrderStatusTracking = (
       try {
         // Subscribe to order status changes
         const topicPath = `/topic/orders/${config.orderId}/status`;
-        console.log(`[OrderStatusTracking] 🔗 Subscribing to: ${topicPath}`);
-        
         const subscription = client.subscribe(
           topicPath,
           handleStatusChangeMessage
@@ -196,15 +180,13 @@ export const useOrderStatusTracking = (
       setIsConnecting(false);
       setError(`Lỗi kết nối: ${frame.headers['message'] || 'Unknown error'}`);
       
-      // Auto-reconnect with exponential backoff
-      if (reconnectAttemptRef.current < maxReconnectAttempts) {
-        reconnectAttemptRef.current++;
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptRef.current - 1), 30000);
-        console.log(`[OrderStatusTracking] 🔄 Attempting reconnect (${reconnectAttemptRef.current}/${maxReconnectAttempts}) in ${delay}ms`);
-        setTimeout(() => {
-          connect();
-        }, delay);
-      }
+      // Auto-reconnect with exponential backoff - unlimited retries
+      reconnectAttemptRef.current++;
+      const delay = Math.min(5000 * Math.pow(2, Math.min(reconnectAttemptRef.current - 1, 3)), 30000);
+      
+      setTimeout(() => {
+        connect();
+      }, delay);
     };
 
     // WebSocket error handler
@@ -214,20 +196,17 @@ export const useOrderStatusTracking = (
       setIsConnecting(false);
       setError('Lỗi kết nối WebSocket');
       
-      // Auto-reconnect with exponential backoff
-      if (reconnectAttemptRef.current < maxReconnectAttempts) {
-        reconnectAttemptRef.current++;
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptRef.current - 1), 30000);
-        console.log(`[OrderStatusTracking] 🔄 Attempting reconnect (${reconnectAttemptRef.current}/${maxReconnectAttempts}) in ${delay}ms`);
-        setTimeout(() => {
-          connect();
-        }, delay);
-      }
+      // Auto-reconnect with exponential backoff - unlimited retries
+      reconnectAttemptRef.current++;
+      const delay = Math.min(5000 * Math.pow(2, Math.min(reconnectAttemptRef.current - 1, 3)), 30000);
+      
+      setTimeout(() => {
+        connect();
+      }, delay);
     };
 
     // Disconnection handler
     client.onDisconnect = (_frame) => {
-      console.log('[OrderStatusTracking] 🔌 Disconnected');
       setIsConnected(false);
       setIsConnecting(false);
       subscriptionRef.current = null;
@@ -242,8 +221,6 @@ export const useOrderStatusTracking = (
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
-    console.log('[OrderStatusTracking] 🔌 Disconnecting...');
-    
     // Unsubscribe
     if (subscriptionRef.current) {
       try {

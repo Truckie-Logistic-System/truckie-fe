@@ -20,7 +20,7 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
                         <div className="container mx-auto px-4">
                             <div className="max-w-lg bg-white/80 p-8 rounded-lg">
                                 <h1 className="text-4xl font-bold mb-4 text-blue-800">
-                                    Tối ưu hiệu quả cho mọi lô hàng
+                                    Tối ưu hiệu quả cho mọi kiện hàng
                                 </h1>
                                 <p className="mb-6 text-lg">
                                     Tối ưu hóa hoạt động logistics với hệ thống quản lý vận tải toàn diện của chúng tôi
