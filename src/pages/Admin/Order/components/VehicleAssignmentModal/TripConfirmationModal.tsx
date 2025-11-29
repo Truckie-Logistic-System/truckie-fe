@@ -6,7 +6,8 @@ import {
     UserOutlined,
     EnvironmentOutlined,
     EditOutlined,
-    SafetyOutlined
+    SafetyOutlined,
+    LoadingOutlined
 } from "@ant-design/icons";
 import type { TripAssignment } from "./types";
 import type { VehicleSuggestion } from "../../../../../models/VehicleAssignment";
@@ -18,7 +19,7 @@ interface TripConfirmationModalProps {
     visible: boolean;
     tripAssignments: TripAssignment[];
     suggestionsMap: Record<number, VehicleSuggestion[]>;
-    onConfirm: (updatedAssignments: TripAssignment[]) => void;
+    onConfirm: (updatedAssignments: TripAssignment[]) => Promise<void>;
     onBack: () => void;
     excludedDriverIds?: Set<string>;
     excludedVehicleIds?: Set<string>;
@@ -38,6 +39,7 @@ const TripConfirmationModal: React.FC<TripConfirmationModalProps> = ({
     const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>();
     const [sealInput, setSealInput] = useState<string>('');
     const [editingSeals, setEditingSeals] = useState<string[]>([]);
+    const [isConfirming, setIsConfirming] = useState<boolean>(false);
 
     // Sync editedAssignments with tripAssignments prop
     useEffect(() => {
@@ -102,8 +104,17 @@ const TripConfirmationModal: React.FC<TripConfirmationModalProps> = ({
         }
     };
 
-    const handleConfirmAll = () => {
-        onConfirm(editedAssignments);
+    const handleConfirmAll = async () => {
+        setIsConfirming(true);
+        try {
+            await onConfirm(editedAssignments);
+            // Modal will be closed by parent component after successful API call
+        } catch (error) {
+            console.error("Confirmation failed:", error);
+            messageApi.error("❌ Không thể hoàn tất phân công. Vui lòng thử lại.");
+        } finally {
+            setIsConfirming(false);
+        }
     };
 
     const getVehicleInfo = (vehicleId: string, tripIndex: number) => {
@@ -478,9 +489,11 @@ const TripConfirmationModal: React.FC<TripConfirmationModalProps> = ({
                     type="primary"
                     size="large"
                     onClick={handleConfirmAll}
+                    loading={isConfirming}
+                    disabled={isConfirming}
                     className="bg-green-600 hover:bg-green-700 font-semibold px-8"
                 >
-                    Xác nhận và hoàn tất
+                    {isConfirming ? 'Đang xử lý...' : 'Xác nhận và hoàn tất'}
                 </Button>
             </div>
         </div>

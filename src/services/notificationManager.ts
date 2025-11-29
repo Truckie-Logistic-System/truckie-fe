@@ -27,6 +27,17 @@ class NotificationManager {
   
   // Queue for notifications that arrive before callbacks are registered
   private pendingNotifications: Notification[] = [];
+  
+  // Cache for sharing data between components
+  private notificationCache: {
+    notifications: Notification[];
+    total: number;
+    lastFetch: number;
+  } = {
+    notifications: [],
+    total: 0,
+    lastFetch: 0
+  };
 
   private constructor() {}
 
@@ -228,6 +239,44 @@ class NotificationManager {
   }
 
   /**
+   * Cache notifications for sharing between components
+   */
+  setCache(notifications: Notification[], total: number): void {
+    this.notificationCache = {
+      notifications: [...notifications],
+      total,
+      lastFetch: Date.now()
+    };
+    console.log('💾 [NotificationManager] Cached', notifications.length, 'notifications');
+  }
+
+  /**
+   * Get cached notifications
+   */
+  getCache(): { notifications: Notification[]; total: number; lastFetch: number } | null {
+    // Cache valid for 5 minutes
+    const CACHE_TTL = 5 * 60 * 1000;
+    if (Date.now() - this.notificationCache.lastFetch > CACHE_TTL) {
+      console.log('⏰ [NotificationManager] Cache expired');
+      return null;
+    }
+    console.log('📋 [NotificationManager] Using cache with', this.notificationCache.notifications.length, 'notifications');
+    return { ...this.notificationCache };
+  }
+
+  /**
+   * Clear cache
+   */
+  clearCache(): void {
+    this.notificationCache = {
+      notifications: [],
+      total: 0,
+      lastFetch: 0
+    };
+    console.log('🗑️ [NotificationManager] Cache cleared');
+  }
+
+  /**
    * Cleanup subscription and callbacks
    */
   cleanup(): void {
@@ -244,6 +293,7 @@ class NotificationManager {
     
     this.callbacks.clear();
     this.pendingNotifications = [];
+    this.clearCache();
     this.isInitialized = false;
     this.isInitializing = false;
     this.currentUserId = '';

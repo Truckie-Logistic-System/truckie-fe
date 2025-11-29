@@ -83,11 +83,13 @@ const NotificationListPage: React.FC = () => {
     return () => {
       notificationManager.unregister(componentId.current);
     };
-  }, [userId]);
+  }, [userId, notificationManager.isReady()]);
 
   // Silent reload when filters change (after initial load)
   useEffect(() => {
     if (!initialLoading) {
+      // Clear cache when filters change to prevent stale data
+      notificationManager.clearCache();
       loadNotifications(false);
     }
   }, [currentPage, pageSize, unreadOnly, selectedType, dateRange]);
@@ -99,6 +101,15 @@ const NotificationListPage: React.FC = () => {
   const loadNotifications = async (showLoading: boolean = false) => {
     if (showLoading) setInitialLoading(true);
     try {
+      // Try to use cache first (for navigation from dropdown)
+      const cache = notificationManager.getCache();
+      if (cache && !showLoading) {
+        console.log('📋 [NotificationListPage] Using cached data');
+        setNotifications(cache.notifications);
+        setTotal(cache.total);
+        return;
+      }
+
       const response = await notificationService.getNotifications({
         page: currentPage - 1,
         size: pageSize,
@@ -116,6 +127,9 @@ const NotificationListPage: React.FC = () => {
 
       setNotifications(sortedNotifications);
       setTotal(response.totalElements);
+      
+      // Cache the results for other components
+      notificationManager.setCache(sortedNotifications, response.totalElements);
     } catch (error) {
       console.error('Failed to load notifications:', error);
     } finally {

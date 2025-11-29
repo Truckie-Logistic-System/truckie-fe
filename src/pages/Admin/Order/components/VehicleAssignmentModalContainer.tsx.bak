@@ -330,9 +330,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         }
     };
 
-    const handleConfirmAssignments = async (updatedAssignments: TripAssignment[]): Promise<void> => {
-        await handleSubmitAll(updatedAssignments);
+    const handleConfirmAssignments = async (updatedAssignments: TripAssignment[]) => {
         setShowConfirmation(false);
+        await handleSubmitAll(updatedAssignments);
     };
 
     const handleBackFromConfirmation = () => {
@@ -359,34 +359,34 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         setCurrentSubStep(2);
     };
 
-    const handleSubmitAll = async (assignmentsToSubmit?: TripAssignment[]): Promise<void> => {
-        const finalAssignments = assignmentsToSubmit || tripAssignments;
-
-        const incompleteTrips = finalAssignments.filter(t => !t.completed);
-        if (incompleteTrips.length > 0) {
-            messageApi.error(`⚠️ Có ${incompleteTrips.length} chuyến chưa hoàn thành. Vui lòng hoàn thành tất cả các chuyến trước khi xác nhận.`);
-            throw new Error("Incomplete trips");
-        }
-
-        const groupAssignments: GroupAssignment[] = finalAssignments.map(trip => {
-            // Sắp xếp và normalize segments trước khi gửi
-            const sortedRouteInfo = trip.routeInfo ? {
-                ...trip.routeInfo,
-                segments: sortAndNormalizeRouteSegments(trip.routeInfo.segments)
-            } : trip.routeInfo;
-
-            return {
-                orderDetailIds: trip.group.orderDetails.map(d => d.id),
-                vehicleId: trip.vehicleId!,
-                driverId_1: trip.driverId_1!,
-                driverId_2: trip.driverId_2!,
-                description: trip.description || "",
-                routeInfo: sortedRouteInfo!,
-                seals: trip.seals || []
-            };
-        });
-
+    const handleSubmitAll = async (assignmentsToSubmit?: TripAssignment[]) => {
         try {
+            const finalAssignments = assignmentsToSubmit || tripAssignments;
+
+            const incompleteTrips = finalAssignments.filter(t => !t.completed);
+            if (incompleteTrips.length > 0) {
+                messageApi.error(`⚠️ Có ${incompleteTrips.length} chuyến chưa hoàn thành. Vui lòng hoàn thành tất cả các chuyến trước khi xác nhận.`);
+                return;
+            }
+
+            const groupAssignments: GroupAssignment[] = finalAssignments.map(trip => {
+                // Sắp xếp và normalize segments trước khi gửi
+                const sortedRouteInfo = trip.routeInfo ? {
+                    ...trip.routeInfo,
+                    segments: sortAndNormalizeRouteSegments(trip.routeInfo.segments)
+                } : trip.routeInfo;
+
+                return {
+                    orderDetailIds: trip.group.orderDetails.map(d => d.id),
+                    vehicleId: trip.vehicleId!,
+                    driverId_1: trip.driverId_1!,
+                    driverId_2: trip.driverId_2!,
+                    description: trip.description || "",
+                    routeInfo: sortedRouteInfo!,
+                    seals: trip.seals || []
+                };
+            });
+
             await vehicleAssignmentService.createGroupedAssignments({
                 groupAssignments
             });
@@ -397,7 +397,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         } catch (error) {
             console.error("Error submitting assignments:", error);
             messageApi.error("❌ Không thể tạo phân công xe. Vui lòng thử lại.");
-            throw error; // Re-throw to propagate to caller
         }
     };
 

@@ -45,7 +45,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   // Register with notification manager
   useEffect(() => {
-    if (!notificationManager.isReady()) return;
+    if (!notificationManager.isReady() || !userId) return;
 
     notificationManager.register(componentId.current, {
       onNewNotification: () => {
@@ -64,7 +64,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     return () => {
       notificationManager.unregister(componentId.current);
     };
-  }, [userId]);
+  }, [userId, notificationManager.isReady()]);
 
   // Silent reload when page changes
   useEffect(() => {
@@ -80,6 +80,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const loadNotifications = async (showLoading: boolean = false) => {
     if (showLoading) setInitialLoading(true);
     try {
+      // Don't use cache for pagination - always fetch fresh data
+      // Cache is only useful for initial load or refresh, not page changes
       const response = await notificationService.getNotifications({
         page: currentPage - 1,
         size: pageSize,
@@ -93,6 +95,11 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       
       setNotifications(sortedNotifications);
       setTotal(response.totalElements);
+      
+      // Only cache the first page for faster initial loads
+      if (currentPage === 1) {
+        notificationManager.setCache(sortedNotifications, response.totalElements);
+      }
     } catch (error) {
       console.error('Failed to load notifications:', error);
     } finally {

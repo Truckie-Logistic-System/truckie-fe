@@ -168,6 +168,11 @@ const PackageList: React.FC<PackageListProps> = ({
         <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
           <InboxOutlined className="text-blue-600" />
           {title} ({packageIds.length} kiện)
+          {metadata.categoryDescription && (
+            <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              ({metadata.categoryDescription})
+            </span>
+          )}
         </h4>
         
         <Table

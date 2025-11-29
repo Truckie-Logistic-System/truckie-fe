@@ -250,14 +250,14 @@ const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
       }
     );
 
-    // If we have packages array, only show summary fields
-    const summaryFields = ['orderCode', 'packageCount', 'totalWeight'];
+    // If we have packages array, only show package count and total weight
+    const summaryFields = ['packageCount', 'totalWeight'];
     const entries = packages && packages.length > 0
       ? allEntries.filter(([key]) => summaryFields.includes(key))
       : allEntries;
 
     // Sort entries
-    const keyOrder = ['orderCode', 'packageDescription', 'totalWeight', 'packageCount'];
+    const keyOrder = ['packageCount', 'totalWeight', 'packageDescription'];
     const sortedEntries = entries.sort((a, b) => {
       const indexA = keyOrder.indexOf(a[0]);
       const indexB = keyOrder.indexOf(b[0]);
@@ -273,35 +273,12 @@ const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
         <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
           <InfoCircleOutlined className="text-blue-600" />
           Thông tin đơn hàng
+          {notification.metadata?.categoryDescription && (
+            <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              ({notification.metadata.categoryDescription})
+            </span>
+          )}
         </h4>
-        
-        {/* Summary info */}
-        {sortedEntries.length > 0 && (
-          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
-            <Descriptions 
-              layout="vertical" 
-              column={sortedEntries.length > 4 ? 3 : sortedEntries.length}
-              size="small"
-              bordered
-            >
-              {sortedEntries.map(([key, value]) => (
-                <Descriptions.Item 
-                  key={key}
-                  label={
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">{getMetadataIcon(key)}</span>
-                      <span className="text-sm font-medium text-gray-700">{getMetadataLabel(key)}</span>
-                    </div>
-                  }
-                >
-                  <span className="text-sm text-gray-900">
-                    {typeof value === 'boolean' ? (value ? 'Có' : 'Không') : formatMetadataValue(key, value)}
-                  </span>
-                </Descriptions.Item>
-              ))}
-            </Descriptions>
-          </div>
-        )}
         
         {/* Individual packages table */}
         {packages && packages.length > 0 && (
@@ -407,13 +384,6 @@ const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
             </div>
           </Descriptions.Item>
 
-          {notification.relatedOrderId && (
-            <Descriptions.Item label="Mã đơn hàng">
-              <Tag color="blue">{notification.relatedOrderId}</Tag>
-            </Descriptions.Item>
-          )}
-
-
           {notification.relatedIssueId && (
             <Descriptions.Item label="Mã sự cố">
               <Tag color="orange">{notification.relatedIssueId}</Tag>
@@ -433,6 +403,58 @@ const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
           )}
 
         </Descriptions>
+
+        {/* Contract Information Section */}
+        {notification.metadata?.contractCode && (
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+              <FileTextOutlined className="text-blue-600" />
+              Thông tin hợp đồng
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Mã hợp đồng:</span>
+                <span className="font-semibold text-gray-900">{notification.metadata.contractCode}</span>
+              </div>
+              {notification.metadata.depositAmount && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tiền cọc cần thanh toán:</span>
+                  <span className="font-semibold text-red-600">{notification.metadata.depositAmount}</span>
+                </div>
+              )}
+              {notification.metadata.totalAmount && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tổng giá trị hợp đồng:</span>
+                  <span className="font-semibold text-gray-900">{notification.metadata.totalAmount}</span>
+                </div>
+              )}
+              {notification.metadata.signDeadline && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Hạn ký hợp đồng:</span>
+                  <span className="font-semibold text-red-600">{notification.metadata.signDeadline}</span>
+                </div>
+              )}
+              {notification.metadata.signDeadlineInfo && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Lưu ý:</span>
+                  <span className="font-semibold text-orange-600">{notification.metadata.signDeadlineInfo}</span>
+                </div>
+              )}
+              {notification.metadata.depositDeadline && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Hạn thanh toán cọc:</span>
+                  <span className="font-semibold text-red-600">{notification.metadata.depositDeadline}</span>
+                </div>
+              )}
+              {notification.metadata.depositDeadlineInfo && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Lưu ý:</span>
+                  <span className="font-semibold text-orange-600">{notification.metadata.depositDeadlineInfo}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Package information display */}
         {notification.relatedOrderDetailIds &&

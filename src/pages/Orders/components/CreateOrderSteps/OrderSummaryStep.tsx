@@ -19,6 +19,7 @@ import type { Category } from "../../../../models/Category";
 import type { OrderSize } from "../../../../models/OrderSize";
 import { CategoryName, getCategoryDisplayName, isFragileCategory } from "../../../../models/CategoryName";
 import { formatCurrency } from "../../../../utils/formatters";
+import { convertWeightToTons, type WeightUnit } from "../../../../utils/weightUtils";
 import dayjs from "dayjs";
 
 const { Title, Text, Paragraph } = Typography;
@@ -79,7 +80,8 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
       return {
         totalWeight: 0,
         totalDeclaredValue: 0,
-        totalPackages: 0
+        totalPackages: 0,
+        displayUnit: 'Tấn'
       };
     }
 
@@ -88,20 +90,82 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
         const weight = parseFloat(detail.weightBaseUnit || detail.weight || 0);
         const quantity = parseInt(detail.quantity || 1);
         const declaredValue = parseFloat(detail.declaredValue || 0);
+        const unit = detail.unit || 'Tấn';
+
+        // Use existing utility function to convert to tons for calculation
+        const weightInTons = convertWeightToTons(weight, unit as WeightUnit);
 
         return {
-          totalWeight: acc.totalWeight + (weight * quantity),
+          totalWeight: acc.totalWeight + (weightInTons * quantity),
           totalDeclaredValue: acc.totalDeclaredValue + (declaredValue * quantity),
-          totalPackages: acc.totalPackages + quantity
+          totalPackages: acc.totalPackages + quantity,
+          displayUnit: unit // Keep track of the unit for display
         };
       },
-      { totalWeight: 0, totalDeclaredValue: 0, totalPackages: 0 }
+      { totalWeight: 0, totalDeclaredValue: 0, totalPackages: 0, displayUnit: 'Tấn' }
     );
 
     return totals;
   };
 
   const totals = calculateTotals();
+
+  // Function to determine display unit and format total weight
+  const formatTotalWeight = () => {
+    if (!formValues.orderDetailsList || formValues.orderDetailsList.length === 0) {
+      return { value: 0, unit: 'Tấn' };
+    }
+
+    // Check if all items use the same unit
+    const units = formValues.orderDetailsList.map((detail: any) => detail.unit || 'Tấn');
+    const allSameUnit = units.every((unit: string) => unit === units[0]);
+    
+    if (allSameUnit) {
+      // If all units are the same, use that unit
+      const unit = units[0];
+      let totalValue = 0;
+      
+      formValues.orderDetailsList.forEach((detail: any) => {
+        // Use weightBaseUnit which should be the converted value in the base unit
+        const weight = parseFloat(detail.weightBaseUnit || detail.weight || 0);
+        const quantity = parseInt(detail.quantity || 1);
+        totalValue += weight * quantity;
+      });
+      
+      // Auto-convert to more readable unit if value gets too large
+      if ((unit === 'Kí' || unit === 'Kilogram') && totalValue >= 1000) {
+        return { value: totalValue / 1000, unit: 'Tấn' };
+      } else if (unit === 'Tạ' && totalValue >= 10) {
+        return { value: totalValue / 10, unit: 'Tấn' };
+      } else if (unit === 'Yến' && totalValue >= 100) {
+        return { value: totalValue / 100, unit: 'Tấn' };
+      }
+      
+      return { value: totalValue, unit };
+    } else {
+      // If mixed units, convert to tons and display in tons
+      return { value: totals.totalWeight, unit: 'Tấn' };
+    }
+  };
+
+  // Format weight value with appropriate decimal precision
+  const formatWeightValue = (value: number, unit: string) => {
+    switch (unit) {
+      case 'Tấn':
+        return value.toFixed(2);
+      case 'Tạ':
+        return value.toFixed(1);
+      case 'Kí':
+      case 'Kilogram':
+        return value.toFixed(0);
+      case 'Yến':
+        return value.toFixed(0);
+      default:
+        return value.toFixed(2);
+    }
+  };
+
+  const totalWeightDisplay = formatTotalWeight();
 
   // Tính toán thông tin bảo hiểm
   const calculateInsuranceInfo = () => {
@@ -269,7 +333,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                   <div>
                     <Text strong className="block text-sm text-blue-700">Tổng trọng lượng</Text>
                     <Text className="text-lg font-semibold text-blue-800">
-                      {totals.totalWeight.toLocaleString()} kg
+                      {formatWeightValue(totalWeightDisplay.value, totalWeightDisplay.unit).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} {totalWeightDisplay.unit}
                     </Text>
                   </div>
                   <div>

@@ -97,6 +97,8 @@ const ContractSection: React.FC<ContractProps> = ({
     contract?.adjustedValue && contract.adjustedValue !== 0
   );
 
+  const hasDepositAmount = typeof depositAmount === "number" && depositAmount > 0;
+
   // Hide contract information when order status is "processing"
   if (orderStatus?.toUpperCase() === OrderStatusEnum.PROCESSING) {
     return null;
@@ -211,7 +213,7 @@ const ContractSection: React.FC<ContractProps> = ({
       {contract ? (
         <>
           {/* Payment Summary */}
-          {depositAmount && (
+          {hasDepositAmount && (
             <div className="mb-6">
               <Alert
                 message="Thông tin thanh toán"
@@ -331,7 +333,7 @@ const ContractSection: React.FC<ContractProps> = ({
                           </div>
                         </div>
                       </Col>
-                      {depositAmount && (
+                      {hasDepositAmount && (
                         <Col xs={24} sm={8}>
                           <div className="bg-white p-4 rounded border-l-4 border-l-blue-500">
                             <div className="text-sm text-gray-600 mb-1">
@@ -356,7 +358,7 @@ const ContractSection: React.FC<ContractProps> = ({
                           </div>
                         </Col>
                       )}
-                      {contract.status !== "PAID" && depositAmount && (
+                      {contract.status !== "PAID" && hasDepositAmount && (
                         <Col xs={24} sm={8}>
                           <div className="bg-white p-4 rounded border-l-4 border-l-orange-500">
                             <div className="text-sm text-gray-600 mb-1">
@@ -378,7 +380,7 @@ const ContractSection: React.FC<ContractProps> = ({
                     </Row>
 
                     {/* Status specific information */}
-                    {contract.status === "CONTRACT_SIGNED" && depositAmount && (
+                    {contract.status === "CONTRACT_SIGNED" && hasDepositAmount && (
                       <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div>
@@ -394,7 +396,7 @@ const ContractSection: React.FC<ContractProps> = ({
                               <strong>
                                 {depositAmount.toLocaleString("vi-VN")} VNĐ
                               </strong>
-                              <br />• Thời hạn: <strong>7 ngày</strong> kể từ
+                              <br />• Thời hạn: <strong>24 giờ</strong> kể từ
                               khi ký hợp đồng
                               <br />• Phương thức: Chuyển khoản ngân hàng
                             </div>
@@ -558,7 +560,7 @@ const ContractSection: React.FC<ContractProps> = ({
           )}
           {(contract.status === "CONTRACT_SIGNED" ||
             contract.status === "UNPAID") &&
-            depositAmount && (
+            hasDepositAmount && (
               <Alert
                 message="Bước tiếp theo"
                 description={`Hợp đồng đã được ký thành công! Vui lòng thanh toán đặt cọc ${depositAmount.toLocaleString(
