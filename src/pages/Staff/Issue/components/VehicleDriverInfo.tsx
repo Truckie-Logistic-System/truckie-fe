@@ -74,8 +74,10 @@ const VehicleDriverInfo: React.FC<VehicleDriverInfoProps> = ({ vehicleAssignment
                                 <Text strong>{vehicle?.model || 'Không có thông tin'}</Text>
                             </Space>
                             <Space>
+                                <CarOutlined style={{ color: '#6c757d' }} />
+                                <Text type="secondary">Loại xe:</Text>
                                 <Tag color="blue">
-                                    {vehicle?.vehicleType?.vehicleTypeName || 'Không có thông tin'}
+                                    {vehicle?.vehicleType?.description || 'Không có thông tin'}
                                 </Tag>
                             </Space>
                         </Space>

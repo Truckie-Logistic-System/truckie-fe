@@ -235,12 +235,7 @@ const StaffOrderDetail: React.FC = () => {
     const vehicleAssignmentIds: string[] = orderData.order.vehicleAssignments.map((va: any) => va.id);
 
     if (vehicleAssignmentIds.length === 0) return;
-    // Connect to issue WebSocket if not connected
-    if (!issueWebSocket.isConnected()) {
-      issueWebSocket.connect().catch(err => {
-        console.error('[StaffOrderDetail] Failed to connect to issue WebSocket:', err);
-      });
-    }
+    // WebSocket connections are now handled by GlobalWebSocketProvider at app root
 
     // Subscribe to global issue updates with a unique callback ID based on order
     const callbackId = `order-${id}`;

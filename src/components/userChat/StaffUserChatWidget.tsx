@@ -43,7 +43,7 @@ import { API_BASE_URL } from '@/config';
 type FilterType = 'all' | 'customer' | 'driver' | 'guest';
 
 const StaffUserChatWidget: React.FC = () => {
-  console.log('StaffUserChatWidget rendered');
+  // console.log('StaffUserChatWidget rendered');
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [conversations, setConversations] = useState<ChatConversationResponse[]>([]);
@@ -62,16 +62,6 @@ const StaffUserChatWidget: React.FC = () => {
   const [wsConnected, setWsConnected] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Debug: Log selectedConversation changes
-  useEffect(() => {
-    console.log('selectedConversation changed:', {
-      id: selectedConversation?.id,
-      exists: !!selectedConversation,
-      wsConnected: wsConnected,
-      hasStompClient: !!stompClientRef.current
-    });
-  }, [selectedConversation, wsConnected]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -173,10 +163,10 @@ const StaffUserChatWidget: React.FC = () => {
 
   // Initialize WebSocket connection for real-time badge updates
   useEffect(() => {
-    console.log('Staff WebSocket useEffect triggered:', {
-      staffId,
-      apiBaseUrl: API_BASE_URL
-    });
+    // console.log('Staff WebSocket useEffect triggered:', {
+    //   staffId,
+    //   apiBaseUrl: API_BASE_URL
+    // });
     
     if (!staffId) {
       console.log('Staff WebSocket useEffect skipped - staffId is undefined');
@@ -190,21 +180,21 @@ const StaffUserChatWidget: React.FC = () => {
     };
 
     const wsUrl = `${API_BASE_URL}/ws`;
-    console.log('Staff WebSocket connecting to:', wsUrl);
+    // console.log('Staff WebSocket connecting to:', wsUrl);
     
     const stompClient = new Client({
       webSocketFactory: () => new SockJS(wsUrl),
       connectHeaders: {
         Authorization: getAuthToken(),
       },
-      debug: (str) => console.log('STOMP Debug:', str),
+      // debug: (str) => console.log('STOMP Debug:', str),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });
 
     stompClient.onConnect = () => {
-      console.log('Staff WebSocket connected, wsConnected will be set to true');
+      // console.log('Staff WebSocket connected, wsConnected will be set to true');
       setWsConnected(true);
       
       // Refresh unread count when WebSocket reconnects
@@ -212,7 +202,7 @@ const StaffUserChatWidget: React.FC = () => {
       loadConversationsRef.current();
       
       // Log current state
-      console.log('Staff WebSocket onConnect - selectedConversation:', selectedConversation?.id);
+      // console.log('Staff WebSocket onConnect - selectedConversation:', selectedConversation?.id);
       
       // Subscribe to staff new message notifications (for badge updates AND real-time updates)
       stompClient.subscribe('/topic/chat/staff/new-message', (message) => {
@@ -359,16 +349,16 @@ const StaffUserChatWidget: React.FC = () => {
 
   // Subscribe to selected conversation for real-time messages
   useEffect(() => {
-    console.log('Subscription useEffect triggered:', {
-      hasSelectedConversation: !!selectedConversation,
-      wsConnected,
-      hasStompClient: !!stompClientRef.current,
-      stompConnected: stompClientRef.current?.connected,
-      conversationId: selectedConversation?.id
-    });
+    // console.log('Subscription useEffect triggered:', {
+    //   hasSelectedConversation: !!selectedConversation,
+    //   wsConnected,
+    //   hasStompClient: !!stompClientRef.current,
+    //   stompConnected: stompClientRef.current?.connected,
+    //   conversationId: selectedConversation?.id
+    // });
     
     if (!selectedConversation || !wsConnected || !stompClientRef.current || !stompClientRef.current.connected) {
-      console.log('Subscription skipped - conditions not met');
+      // console.log('Subscription skipped - conditions not met');
       return;
     }
 
@@ -820,8 +810,9 @@ const StaffUserChatWidget: React.FC = () => {
     return true; // This is the last read message from this sender
   };
 
-  if (!isOpen) {
-    return (
+  // Always render the button, modal visibility controlled by isOpen state
+  return (
+    <>
       <Button
         type="primary"
         shape="circle"
@@ -846,10 +837,9 @@ const StaffUserChatWidget: React.FC = () => {
           </span>
         )}
       </Button>
-    );
-  }
 
-  return (
+      {/* Modal - only render when isOpen is true */}
+      {isOpen && (
         <Card
           className={`fixed shadow-2xl transition-all duration-300 ${
             isMinimized ? 'w-80 h-14' : 'w-[480px] h-[650px] max-h-[80vh]'
@@ -1365,6 +1355,8 @@ const StaffUserChatWidget: React.FC = () => {
           />
         )}
         </Card>
+      )}
+    </>
   );
 };
 

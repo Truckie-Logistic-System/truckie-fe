@@ -1,4 +1,5 @@
 export * from './IssueEnum';
+export * from './IssueTypeEnum';
 export * from './issueStatus';
 export * from './sealStatus';
 export * from './JourneyHistoryStatusEnum';

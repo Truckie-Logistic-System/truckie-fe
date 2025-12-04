@@ -8,7 +8,9 @@ export enum SoundType {
   WARNING = 'warning',
   ERROR = 'error',
   NEW_ISSUE = 'new_issue',
-  SEAL_CONFIRMATION = 'seal_confirmation'
+  SEAL_CONFIRMATION = 'seal_confirmation',
+  OFF_ROUTE_YELLOW = 'off_route_yellow',  // 5-min warning - moderate alert
+  OFF_ROUTE_RED = 'off_route_red'          // 10-min warning - urgent alert
 }
 
 class SoundManager {
@@ -132,6 +134,10 @@ class SoundManager {
         return 300; // Lowest pitch for error
       case SoundType.NEW_ISSUE:
         return 500; // Medium-low pitch for new issues
+      case SoundType.OFF_ROUTE_YELLOW:
+        return 450; // Warning tone for 5-min off-route
+      case SoundType.OFF_ROUTE_RED:
+        return 350; // Urgent tone for 10-min off-route
       default:
         return 500;
     }
@@ -149,6 +155,10 @@ class SoundManager {
         return 0.5; // Longer for warnings/issues
       case SoundType.ERROR:
         return 0.7; // Longest for errors
+      case SoundType.OFF_ROUTE_YELLOW:
+        return 0.6; // Moderate duration for yellow warning
+      case SoundType.OFF_ROUTE_RED:
+        return 0.8; // Longer duration for red warning
       default:
         return 0.3;
     }

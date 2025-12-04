@@ -4,6 +4,8 @@ import type { User } from "@/models/User";
 import authService from "@/services/auth";
 import type { LoginResponse } from "@/services/auth/types";
 import { onLogout as onHttpClientLogout } from "@/services/api/httpClient";
+import { issueWebSocket } from "@/services/websocket/issueWebSocket";
+import { notificationService } from "@/services/notificationService";
 
 interface AuthContextType {
     user: User | null;
@@ -179,6 +181,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const logout = () => {
         setIsLoading(true);
+        
+        // Disconnect all WebSocket connections
+        console.log('[AuthContext] Disconnecting WebSocket connections on logout');
+        try {
+            issueWebSocket.disconnect();
+        } catch (error) {
+            console.error('[AuthContext] Error disconnecting issueWebSocket:', error);
+        }
+        
+        try {
+            notificationService.disconnect();
+        } catch (error) {
+            console.error('[AuthContext] Error disconnecting notificationService:', error);
+        }
+        
         authService.logout();
         setUser(null);
         setIsLoading(false);

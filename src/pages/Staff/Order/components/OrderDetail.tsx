@@ -54,7 +54,7 @@ const OrderDetailPage: React.FC = () => {
   const messageApi = App.useApp().message;
   
   // Use hook for order data management
-  const { order, priceDetails, loading, refetch } = useStaffOrderDetail();
+  const { order, priceDetails, loading, refetch, refetchWithReturn } = useStaffOrderDetail();
   const [activeTab, setActiveTab] = useState<string>("info");
   const [assigningVehicle, setAssigningVehicle] = useState<boolean>(false);
   const [contractModalVisible, setContractModalVisible] =
@@ -154,6 +154,7 @@ const OrderDetailPage: React.FC = () => {
   const handleOrderStatusChange = createOrderStatusChangeHandler({
     orderId: id,
     refetch: refetch,
+    refetchWithReturn: refetchWithReturn,
     messageApi: messageApi,
     // Use default staff notifications - no custom ones needed
     onTabSwitch: (tabKey: string) => {

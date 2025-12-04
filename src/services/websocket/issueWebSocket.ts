@@ -47,7 +47,7 @@ class IssueWebSocketService {
 
         return new Promise<void>((resolve, reject) => {
             // Use API_BASE_URL from environment configuration
-            const socket = new SockJS(`${API_BASE_URL}/ws`);
+            const socket = new SockJS(`${API_BASE_URL}/vehicle-tracking-browser`);
             
             this.client = new Client({
                 webSocketFactory: () => socket as any,

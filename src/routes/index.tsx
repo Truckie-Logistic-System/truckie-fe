@@ -2,6 +2,7 @@ import { createBrowserRouter, Outlet } from "react-router-dom";
 import HomePage from "../pages/Home";
 import { LoginPage, RegisterPage } from "../pages/Auth";
 import { PaymentReturn } from "../pages/Payment";
+import RecipientOrderTracking from "../pages/RecipientTracking";
 import Dashboard from "../pages/Dashboard";
 import AdminDashboard from "../pages/Dashboard/components/AdminDashboard";
 import StaffDashboard from "../pages/Dashboard/components/StaffDashboard";
@@ -208,6 +209,10 @@ const router = createBrowserRouter([
           {
             path: "payment/return",
             element: <PaymentReturn />,
+          },
+          {
+            path: "tracking",
+            element: <RecipientOrderTracking />,
           },
         ],
       },

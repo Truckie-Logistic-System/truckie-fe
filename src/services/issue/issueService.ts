@@ -1,5 +1,11 @@
 import httpClient from '../api/httpClient';
 import type { Issue } from '@/models/Issue';
+import type { 
+    OffRouteEvent, 
+    ContactConfirmationRequest, 
+    GracePeriodExtensionRequest, 
+    OffRouteEventResponse 
+} from '@/models/OffRouteEvent';
 import type {
     IssueResponse,
     IssuesResponse,
@@ -24,23 +30,9 @@ const mapApiResponseToIssue = (apiData: IssueApiResponse): Issue => {
         issueCategory: (apiData.issueCategory || 'GENERAL') as IssueCategory,
         reportedAt: apiData.reportedAt,
         resolvedAt: apiData.resolvedAt,
-        vehicleAssignment: apiData.vehicleAssignmentEntity ? {
-            id: apiData.vehicleAssignmentEntity.id,
-            createdAt: apiData.vehicleAssignmentEntity.createdAt,
-            modifiedAt: apiData.vehicleAssignmentEntity.modifiedAt,
-            createdBy: apiData.vehicleAssignmentEntity.createdBy,
-            modifiedBy: apiData.vehicleAssignmentEntity.modifiedBy,
-            description: apiData.vehicleAssignmentEntity.description,
-            status: apiData.vehicleAssignmentEntity.status,
-            trackingCode: apiData.vehicleAssignmentEntity.trackingCode,
-            vehicle: apiData.vehicleAssignmentEntity.vehicle,
-            driver1: apiData.vehicleAssignmentEntity.driver1,
-            driver2: apiData.vehicleAssignmentEntity.driver2
-        } : undefined,
         vehicleAssignmentEntity: apiData.vehicleAssignmentEntity,
         staff: apiData.staff,
         issueTypeEntity: apiData.issueTypeEntity,
-        orderDetailEntity: apiData.orderDetailEntity,
         // Seal replacement fields
         oldSeal: apiData.oldSeal,
         newSeal: apiData.newSeal,
@@ -54,7 +46,9 @@ const mapApiResponseToIssue = (apiData: IssueApiResponse): Issue => {
         sender: apiData.sender,
         // REROUTE specific fields
         affectedSegment: apiData.affectedSegment,
-        reroutedJourney: apiData.reroutedJourney
+        reroutedJourney: apiData.reroutedJourney,
+        // DAMAGE compensation
+        damageCompensation: apiData.damageCompensation as Issue['damageCompensation']
     };
 };
 
@@ -436,7 +430,188 @@ const issueService = {
             console.error('Error fetching suggested routes:', error);
             throw new Error(error.response?.data?.message || 'Không thể tải các đề xuất lộ trình');
         }
+    },
+
+    // ===== OFF_ROUTE_RUNAWAY methods =====
+    
+    /**
+     * Get OFF_ROUTE_RUNAWAY issue detail with packages
+     * @param issueId Issue ID
+     * @returns Promise with off-route runaway detail
+     */
+    getOffRouteRunawayDetail: async (issueId: string): Promise<OffRouteRunawayDetail> => {
+        try {
+            const response = await httpClient.get(`/issues/off-route-runaway/${issueId}/detail`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error fetching off-route runaway detail:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tải chi tiết sự cố lệch tuyến');
+        }
+    },
+
+    // Off-route event management methods
+    /**
+     * Confirm contact with driver for off-route event
+     * @param eventId Off-route event ID
+     * @param staffId Staff ID confirming contact
+     * @param contactNotes Optional notes about the contact
+     * @returns Promise with updated off-route event
+     */
+    confirmContact: async (eventId: string, staffId: string, contactNotes?: string): Promise<any> => {
+        try {
+            const response = await httpClient.post(`/off-route-events/${eventId}/confirm-contact`, {
+                contactNotes
+            });
+            return response.data;
+        } catch (error: any) {
+            console.error('Error confirming contact:', error);
+            throw new Error(error.response?.data?.message || 'Không thể xác nhận liên hệ với tài xế');
+        }
+    },
+
+    /**
+     * Extend grace period for off-route event
+     * @param eventId Off-route event ID
+     * @param staffId Staff ID requesting extension
+     * @param extensionReason Optional reason for extension
+     * @returns Promise with updated off-route event
+     */
+    extendGracePeriod: async (eventId: string, staffId: string, extensionReason?: string): Promise<any> => {
+        try {
+            const response = await httpClient.post(`/off-route-events/${eventId}/extend-grace-period`, {
+                extensionReason
+            });
+            return response.data;
+        } catch (error: any) {
+            console.error('Error extending grace period:', error);
+            throw new Error(error.response?.data?.message || 'Không thể gia hạn thời gian chờ');
+        }
+    },
+
+    /**
+     * Get off-route event by ID
+     * @param eventId Off-route event ID
+     * @returns Promise with off-route event details
+     */
+    getOffRouteEventById: async (eventId: string): Promise<OffRouteEvent> => {
+        try {
+            const response = await httpClient.get(`/off-route-events/${eventId}/detail`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching off-route event:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tải thông tin sự kiện lệch tuyến');
+        }
+    },
+
+    // ===== DAMAGE compensation methods =====
+    
+    /**
+     * Update DAMAGE issue compensation information (Staff)
+     * Calculates compensation based on insurance policy and saves assessment data.
+     * @param request Update damage compensation request
+     * @returns Promise with updated issue
+     */
+    updateDamageCompensation: async (request: UpdateDamageCompensationRequest): Promise<Issue> => {
+        try {
+            const response = await httpClient.put<IssueResponse>('/issues/damage/compensation', request);
+            return mapApiResponseToIssue(response.data.data);
+        } catch (error: any) {
+            console.error('Error updating damage compensation:', error);
+            throw new Error(error.response?.data?.message || 'Không thể cập nhật thông tin bồi thường');
+        }
+    },
+    
+    /**
+     * Get DAMAGE issue compensation details including policy information
+     * @param issueId Issue ID
+     * @returns Promise with damage compensation details
+     */
+    getDamageCompensationDetail: async (issueId: string): Promise<DamageCompensationDetail> => {
+        try {
+            const response = await httpClient.get(`/issues/damage/${issueId}/compensation`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error fetching damage compensation detail:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tải chi tiết bồi thường');
+        }
     }
+
 };
+
+// Types for DAMAGE compensation
+export interface UpdateDamageCompensationRequest {
+    issueId: string;
+    damageAssessmentPercent: number;
+    damageHasDocuments: boolean;
+    damageDeclaredValue?: number;
+    damageEstimatedMarketValue?: number;
+    damageFinalCompensation?: number;
+    damageAdjustReason?: string;
+    damageHandlerNote?: string;
+    damageCompensationStatus?: string;
+}
+
+export interface DamageCompensationDetail {
+    damageAssessmentPercent?: number;
+    hasInsurance?: boolean;
+    damageHasDocuments?: boolean;
+    damageDeclaredValue?: number;
+    damageEstimatedMarketValue?: number;
+    damageFreightFee?: number;
+    damageLegalLimit?: number;
+    damageEstimatedLoss?: number;
+    damagePolicyCompensation?: number;
+    damageFinalCompensation?: number;
+    damageCompensationCase?: string;
+    damageCompensationCaseLabel?: string;
+    damageCompensationCaseDescription?: string;
+    appliesLegalLimit?: boolean;
+    damageAdjustReason?: string;
+    damageHandlerNote?: string;
+    damageCompensationStatus?: string;
+    damageCompensationStatusLabel?: string;
+}
+
+// Types for OFF_ROUTE_RUNAWAY
+export interface OffRouteRunawayDetail {
+    issueId: string;
+    description: string;
+    status: string;
+    reportedAt: string;
+    resolvedAt?: string;
+    locationLatitude: number;
+    locationLongitude: number;
+    offRouteEventInfo?: {
+        eventId: string;
+        detectedAt: string;
+        offRouteDurationMinutes: number;
+        distanceFromRouteMeters: number;
+        warningStatus: string;
+        canContactDriver: boolean;
+        contactNotes?: string;
+        contactedAt?: string;
+    };
+    vehicleAssignment: any;
+    sender?: {
+        id: string;
+        companyName?: string;
+        representativeName?: string;
+        representativePhone?: string;
+        businessAddress?: string;
+    };
+    packages: PackageInfo[];
+    totalDeclaredValue: number;
+    refund?: any;
+}
+
+export interface PackageInfo {
+    orderDetailId: string;
+    trackingCode: string;
+    description: string;
+    weightBaseUnit: number;
+    unit: string;
+    declaredValue: number;
+    status: string;
+}
 
 export default issueService;

@@ -26,16 +26,20 @@ import VehicleAssignmentQuickViewModal from './VehicleAssignmentQuickViewModal';
 
 interface DriverOverviewModalProps {
   driverId: string;
+  visible: boolean;
   onClose: () => void;
   onTripSelect?: (vehicleAssignmentId: string) => void;
   isEmbedded?: boolean;
+  zIndex?: number;
 }
 
 const DriverOverviewModal: React.FC<DriverOverviewModalProps> = ({ 
-  driverId, 
+  driverId,
+  visible,
   onClose,
   onTripSelect,
-  isEmbedded = false
+  isEmbedded = false,
+  zIndex = 1000
 }) => {
   const [data, setData] = useState<DriverOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -392,8 +396,8 @@ const DriverOverviewModal: React.FC<DriverOverviewModalProps> = ({
   return (
     <>
       {/* Backdrop with 10% margin (5% on each side) */}
-      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
-      <div className="fixed inset-[5%] flex z-50 rounded-lg overflow-hidden shadow-2xl">
+      <div className="fixed inset-0 bg-black/50" style={{ zIndex: zIndex - 1 }} onClick={onClose} />
+      <div className="fixed inset-[5%] flex rounded-lg overflow-hidden shadow-2xl" style={{ zIndex }}>
         {/* Driver Overview Panel - 40% width on left */}
         <div className="bg-white shadow-xl w-[40%] h-full overflow-hidden flex flex-col">
           {/* Header - height matched with quick view modals */}

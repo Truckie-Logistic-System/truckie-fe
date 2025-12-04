@@ -9,6 +9,7 @@ import type { OrderStatusChangeMessage } from '../hooks/useOrderStatusTracking';
 export interface UseOrderStatusNotificationsOptions {
   orderId: string | undefined;
   refetch: () => void;
+  refetchWithReturn?: () => Promise<any>; // Enhanced refetch that returns data for verification
   messageApi: any;
   onStatusChange?: (message: OrderStatusChangeMessage) => void;
   customNotifications?: Partial<Record<string, (message: OrderStatusChangeMessage) => void>>;
@@ -24,21 +25,80 @@ export interface UseOrderStatusNotificationsOptions {
 export const createOrderStatusChangeHandler = (
   options: UseOrderStatusNotificationsOptions
 ) => {
-  const { orderId, refetch, messageApi, onStatusChange, customNotifications, onTabSwitch } = options;
+  const { orderId, refetch, refetchWithReturn, messageApi, onStatusChange, customNotifications, onTabSwitch } = options;
+
+  // Enhanced refetch with retry mechanism to handle race conditions
+  const refetchWithRetry = useCallback(async (expectedStatus?: string, statusChange?: OrderStatusChangeMessage) => {
+    const MAX_RETRIES = 3;
+    const BASE_DELAY = 500; // Start with 500ms
+    let retryCount = 0;
+    
+    const attemptRefetch = async (): Promise<boolean> => {
+      try {
+        console.log(`🔄 Refetch attempt ${retryCount + 1}/${MAX_RETRIES}`);
+        
+        // Wait before refetching to let database transaction settle
+        const delay = BASE_DELAY * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Perform refetch - use enhanced version if available for status verification
+        let orderData = null;
+        if (refetchWithReturn) {
+          orderData = await refetchWithReturn();
+        } else {
+          await refetch();
+        }
+        
+        // Verify the expected status is present in the fetched data
+        if (expectedStatus && orderData && orderData.status) {
+          if (orderData.status === expectedStatus) {
+            console.log(`✅ Refetch successful - status verified: ${expectedStatus}`);
+          } else {
+            console.warn(`⚠️ Status mismatch - expected: ${expectedStatus}, got: ${orderData.status}`);
+            // Status doesn't match, this might be stale data - retry
+            throw new Error(`Status verification failed: expected ${expectedStatus}, got ${orderData.status}`);
+          }
+        } else {
+          console.log(`✅ Refetch successful on attempt ${retryCount + 1}`);
+        }
+        
+        // Handle tab switching after successful refetch
+        if (statusChange && onTabSwitch) {
+          handleTabSwitching(statusChange, onTabSwitch);
+        }
+        
+        return true;
+        
+      } catch (error) {
+        console.error(`❌ Refetch attempt ${retryCount + 1} failed:`, error);
+        
+        retryCount++;
+        if (retryCount < MAX_RETRIES) {
+          // Exponential backoff: 500ms, 1s, 2s
+          const nextDelay = BASE_DELAY * Math.pow(2, retryCount);
+          console.log(`⏳ Retrying in ${nextDelay}ms...`);
+          setTimeout(() => attemptRefetch(), nextDelay);
+        } else {
+          console.error('🚨 Max refetch retries reached');
+          if (messageApi) {
+            messageApi.error({
+              content: 'Không thể cập nhật dữ liệu mới nhất. Vui lòng tải lại trang.',
+              duration: 5,
+            });
+          }
+        }
+        return false;
+      }
+    };
+    
+    await attemptRefetch();
+  }, [refetch, refetchWithReturn, messageApi, onTabSwitch]);
 
   return useCallback((statusChange: OrderStatusChangeMessage) => {
     // Check if this status change is for the current order
     if (orderId && statusChange.orderId === orderId) {
-      // Debounce refetch to avoid spike load and prevent mobile WebSocket disruption
-      // Wait 500ms to let WebSocket broadcasts settle
-      setTimeout(() => {
-        refetch();
-        
-        // Handle tab switching after data is refetched
-        if (onTabSwitch) {
-          handleTabSwitching(statusChange, onTabSwitch);
-        }
-      }, 500);
+      // Enhanced refetch with retry mechanism to handle race conditions
+      refetchWithRetry(statusChange.newStatus, statusChange);
       
       // Call custom handler if provided
       if (onStatusChange) {
@@ -55,7 +115,7 @@ export const createOrderStatusChangeHandler = (
       }
     } else {
     }
-  }, [orderId, refetch, messageApi, onStatusChange, customNotifications, onTabSwitch]);
+  }, [orderId, refetch, messageApi, onStatusChange, customNotifications, onTabSwitch, refetchWithRetry]);
 };
 
 /**

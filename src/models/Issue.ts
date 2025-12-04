@@ -1,37 +1,87 @@
-// Issue model
+// Issue model - matches backend GetBasicIssueResponse
 export interface Issue {
     id: string;
     description: string;
     locationLatitude: number | null;
     locationLongitude: number | null;
     status: IssueStatus;
-    issueCategory: IssueCategory; // NEW: Category to determine issue type
+    issueCategory: IssueCategory;
     reportedAt?: string;
     resolvedAt?: string;
-    vehicleAssignment?: VehicleAssignment; // For compatibility with old code
-    vehicleAssignmentEntity?: VehicleAssignment; // Backend returns this field name
+    vehicleAssignmentEntity?: VehicleAssignment; // Full vehicle assignment with tracking code, vehicle, drivers
     staff?: IssueUser;
     issueTypeEntity?: IssueTypeEntity;
     
-    // Seal replacement specific fields (only for SEAL_REPLACEMENT category)
+    // Seal replacement specific fields
     oldSeal?: Seal;
     newSeal?: Seal;
     sealRemovalImage?: string;
     newSealAttachedImage?: string;
     newSealConfirmedAt?: string;
 
-    // Damage issue specific fields (only for DAMAGE category)
-    orderDetailEntity?: OrderDetailInfo; // The specific package that is damaged
-    issueImages?: string[]; // URLs of damage images
-    orderDetail?: OrderDetailForIssue; // Order detail info (tracking code, description, weight, unit)
+    // Damage issue specific fields
+    issueImages?: string[];
+    orderDetail?: OrderDetailForIssue;
+    sender?: CustomerInfo;
     
-    // Sender/Customer information (for damage and order rejection issues)
-    sender?: CustomerInfo; // Customer contact information for staff
+    // ORDER_REJECTION specific fields
+    paymentDeadline?: string;
+    calculatedFee?: number;
+    adjustedFee?: number;
+    finalFee?: number;
+    affectedOrderDetails?: OrderDetailForIssue[];
+    transactions?: any[];
     
-    // REROUTE specific fields (only for REROUTE category)
-    affectedSegment?: JourneySegment; // The segment where the issue occurred
-    reroutedJourney?: JourneyHistory; // The new journey after rerouting
+    // REROUTE specific fields
+    affectedSegment?: JourneySegment;
+    reroutedJourney?: JourneyHistory;
+    
+    // DAMAGE compensation specific fields
+    damageCompensation?: DamageCompensation;
 }
+
+// DAMAGE compensation details
+export interface DamageCompensation {
+    // Input data
+    damageAssessmentPercent?: number;
+    hasInsurance?: boolean;
+    damageHasDocuments?: boolean;
+    damageDeclaredValue?: number;
+    damageEstimatedMarketValue?: number;
+    
+    // Calculated values
+    damageFreightFee?: number;
+    damageLegalLimit?: number;
+    damageEstimatedLoss?: number;
+    damagePolicyCompensation?: number;
+    damageFinalCompensation?: number;
+    
+    // Policy info
+    damageCompensationCase?: DamageCompensationCase;
+    damageCompensationCaseLabel?: string;
+    damageCompensationCaseDescription?: string;
+    appliesLegalLimit?: boolean;
+    
+    // Processing info
+    damageAdjustReason?: string;
+    damageHandlerNote?: string;
+    damageCompensationStatus?: DamageCompensationStatus;
+    damageCompensationStatusLabel?: string;
+}
+
+// Damage compensation case enum
+export type DamageCompensationCase = 
+    | 'CASE1_HAS_INS_HAS_DOC'
+    | 'CASE2_HAS_INS_NO_DOC'
+    | 'CASE3_NO_INS_HAS_DOC'
+    | 'CASE4_NO_INS_NO_DOC';
+
+// Damage compensation status enum
+export type DamageCompensationStatus = 
+    | 'PENDING_ASSESSMENT'
+    | 'PROPOSED'
+    | 'APPROVED'
+    | 'REJECTED';
 
 // Order detail information for issue
 export interface OrderDetailForIssue {
@@ -56,7 +106,8 @@ export type IssueCategory =
     | 'WRONG_ITEMS'
     | 'ORDER_REJECTION'
     | 'PENALTY'
-    | 'REROUTE';
+    | 'REROUTE'
+    | 'OFF_ROUTE_RUNAWAY';
 
 export interface Seal {
     id: string;
@@ -92,7 +143,7 @@ export interface VehicleAssignment {
     modifiedBy?: string;
     description?: string;
     status?: string;
-    trackingCode?: string;
+    trackingCode?: string; // Trip code - Mã chuyến xe
     vehicle?: VehicleInfo;
     driver1?: DriverInfo;
     driver2?: DriverInfo;
@@ -110,6 +161,7 @@ export interface VehicleInfo {
 export interface VehicleTypeInfo {
     id: string;
     vehicleTypeName: string;
+    description?: string;
 }
 
 export interface DriverInfo {
@@ -288,6 +340,8 @@ export const getIssueCategoryLabel = (category: IssueCategory): string => {
             return 'Vi phạm giao thông';
         case 'REROUTE':
             return 'Tái định tuyến';
+        case 'OFF_ROUTE_RUNAWAY':
+            return 'Lệch tuyến bỏ trốn';
         default:
             return category;
     }
@@ -313,7 +367,80 @@ export const getIssueCategoryColor = (category: IssueCategory): string => {
             return 'magenta';
         case 'REROUTE':
             return 'blue';
+        case 'OFF_ROUTE_RUNAWAY':
+            return 'red';
         default:
             return 'default';
     }
-}; 
+};
+
+// Damage compensation helpers
+export const getDamageCompensationCaseLabel = (caseType: DamageCompensationCase): string => {
+    switch (caseType) {
+        case 'CASE1_HAS_INS_HAS_DOC':
+            return 'Có bảo hiểm + Có chứng từ';
+        case 'CASE2_HAS_INS_NO_DOC':
+            return 'Có bảo hiểm + Không chứng từ';
+        case 'CASE3_NO_INS_HAS_DOC':
+            return 'Không bảo hiểm + Có chứng từ';
+        case 'CASE4_NO_INS_NO_DOC':
+            return 'Không bảo hiểm + Không chứng từ';
+        default:
+            return caseType;
+    }
+};
+
+export const getDamageCompensationCaseColor = (caseType: DamageCompensationCase): string => {
+    switch (caseType) {
+        case 'CASE1_HAS_INS_HAS_DOC':
+            return 'green';
+        case 'CASE2_HAS_INS_NO_DOC':
+            return 'orange';
+        case 'CASE3_NO_INS_HAS_DOC':
+            return 'orange';
+        case 'CASE4_NO_INS_NO_DOC':
+            return 'red';
+        default:
+            return 'default';
+    }
+};
+
+export const getDamageCompensationStatusLabel = (status: DamageCompensationStatus): string => {
+    switch (status) {
+        case 'PENDING_ASSESSMENT':
+            return 'Chờ thẩm định';
+        case 'PROPOSED':
+            return 'Đã đề xuất bồi thường';
+        case 'APPROVED':
+            return 'Đã phê duyệt';
+        case 'REJECTED':
+            return 'Từ chối bồi thường';
+        default:
+            return status;
+    }
+};
+
+export const getDamageCompensationStatusColor = (status: DamageCompensationStatus): string => {
+    switch (status) {
+        case 'PENDING_ASSESSMENT':
+            return 'orange';
+        case 'PROPOSED':
+            return 'blue';
+        case 'APPROVED':
+            return 'green';
+        case 'REJECTED':
+            return 'red';
+        default:
+            return 'default';
+    }
+};
+
+// Format currency VND
+export const formatCurrency = (value?: number): string => {
+    if (value === undefined || value === null) return '-';
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+        maximumFractionDigits: 0
+    }).format(value);
+};

@@ -8,6 +8,7 @@ import {
   UserOutlined,
   LogoutOutlined,
   DownOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "../../config";
@@ -32,6 +33,8 @@ const Header: React.FC = () => {
       setSelectedKey("trangchu");
     } else if (pathname.startsWith("/orders")) {
       setSelectedKey("orders");
+    } else if (pathname.startsWith("/tracking")) {
+      setSelectedKey("tracking");
     } else if (pathname.includes("/profile")) {
       // Không chọn tab nào khi ở trang profile
       setSelectedKey("");
@@ -79,10 +82,33 @@ const Header: React.FC = () => {
     },
   ];
 
-  const menuItems = [
-    { key: "trangchu", label: <Link to="/">Trang chủ</Link> },
-    { key: "orders", label: <Link to="/orders">Đơn hàng</Link> },
-  ];
+  // Menu items - hiển thị khác nhau cho authenticated và guest
+  const menuItems = isAuthenticated
+    ? [
+        { key: "trangchu", label: <Link to="/">Trang chủ</Link> },
+        { key: "orders", label: <Link to="/orders">Đơn hàng</Link> },
+        { 
+          key: "tracking", 
+          label: (
+            <Link to="/tracking">
+              <SearchOutlined className="mr-1" />
+              Tra cứu đơn hàng
+            </Link>
+          ) 
+        },
+      ]
+    : [
+        { key: "trangchu", label: <Link to="/">Trang chủ</Link> },
+        { 
+          key: "tracking", 
+          label: (
+            <Link to="/tracking">
+              <SearchOutlined className="mr-1" />
+              Tra cứu đơn hàng
+            </Link>
+          ) 
+        },
+      ];
 
   return (
     <div className="fixed w-full z-10">

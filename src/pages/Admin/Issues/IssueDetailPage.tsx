@@ -24,6 +24,7 @@ import issueService from '@/services/issue/issueService';
 import { getIssueStatusColor, getIssueStatusLabel, getIssueCategoryLabel, getIssueCategoryColor } from '@/models/Issue';
 import { useAuth } from '@/context/AuthContext';
 import SealReplacementDetail from './components/SealReplacementDetail';
+import OffRouteRunawayDetail from '@/pages/Staff/Issue/components/OffRouteRunawayDetail';
 
 const { Title, Text } = Typography;
 const { confirm } = Modal;
@@ -252,13 +253,18 @@ const IssueDetailPage: React.FC = () => {
       </Card>
 
       {/* Seal Replacement Details - Only show for SEAL_REPLACEMENT category */}
-      {(() => {
-        return issue.issueCategory === 'SEAL_REPLACEMENT' ? (
-          <div className="mb-4">
-            <SealReplacementDetail issue={issue} onUpdate={setIssue} />
-          </div>
-        ) : null;
-      })()}
+      {issue.issueCategory === 'SEAL_REPLACEMENT' && (
+        <div className="mb-4">
+          <SealReplacementDetail issue={issue} onUpdate={setIssue} />
+        </div>
+      )}
+
+      {/* Off-Route Runaway Details - Only show for OFF_ROUTE_RUNAWAY category */}
+      {(issue.issueCategory === 'OFF_ROUTE_RUNAWAY' || issue.issueTypeEntity?.issueCategory === 'OFF_ROUTE_RUNAWAY') && (
+        <div className="mb-4">
+          <OffRouteRunawayDetail issue={issue} onUpdate={setIssue} />
+        </div>
+      )}
 
       {/* Vehicle & Driver Info */}
       {issue.vehicleAssignment && (

@@ -130,6 +130,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     switch (issue.issueCategory) {
       case 'ORDER_REJECTION':
       case 'SEAL_REPLACEMENT':
+      case 'OFF_ROUTE_RUNAWAY':
         return 'HIGH';
       case 'DAMAGE':
       case 'REROUTE':
@@ -557,6 +558,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
           }
         }
       );
+
     };
 
     client.onWebSocketError = (event) => {

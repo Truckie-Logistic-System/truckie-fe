@@ -7,7 +7,7 @@ import {
     ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { IssueStatusTag } from '@/components/common/tags';
-import { IssueEnum } from '@/constants/enums';
+import { IssueEnum, getIssueTypeLabel } from '@/constants/enums';
 import type { Issue } from '@/models/Issue';
 import MapPreview from './MapPreview';
 
@@ -82,7 +82,7 @@ const IssueInfoCard: React.FC<IssueInfoCardProps> = ({ issue }) => {
                                             </Text>
                                         </Space>
                                         <Tag color="orange" style={{ fontSize: 14, padding: '4px 12px' }}>
-                                            {issue.issueTypeEntity?.issueTypeName || 'Không xác định'}
+                                            {getIssueTypeLabel(issue.issueTypeEntity?.issueTypeName || '')}
                                         </Tag>
                                         {issue.issueTypeEntity?.description && (
                                             <Text type="secondary" style={{ fontSize: 13 }}>

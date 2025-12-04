@@ -6,7 +6,6 @@ import { IssuesProvider } from '@/context/IssuesContext';
 import CustomerChatWidget from '@/components/userChat/CustomerChatWidget';
 import StaffUserChatWidget from '@/components/userChat/StaffUserChatWidget';
 import { AIChatbot } from '@/components/ai-chatbot';
-import issueWebSocket from '@/services/websocket/issueWebSocket';
 
 /**
  * Root layout component that wraps all routes
@@ -45,19 +44,7 @@ const RootLayout: React.FC = () => {
     setIsAIChatOpen(false);
   };
 
-  // Connect to issue WebSocket for staff users
-  useEffect(() => {
-    if (isStaff && user?.id) {
-      // console.log('🔌 [RootLayout] Connecting to issue WebSocket for staff user:', user.id);
-      issueWebSocket.connect(user.id).catch(error => {
-        console.error('❌ [RootLayout] Failed to connect issue WebSocket:', error);
-      });
-
-      return () => {
-        issueWebSocket.disconnect();
-      };
-    }
-  }, [user]);
+  // WebSocket connections are now handled by GlobalWebSocketProvider at app root
 
   return (
     <IssuesProvider>

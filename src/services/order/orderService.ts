@@ -713,6 +713,25 @@ const orderService = {
       throw handleApiError(error, "Không thể tải danh sách lý do hủy");
     }
   },
+
+  /**
+   * Get order tracking information for recipient by order code
+   * This is a public endpoint - no authentication required
+   * Returns order information without contract/transaction data
+   * @param orderCode Order code to search
+   * @returns Promise with recipient order tracking data
+   */
+  getOrderForRecipientByOrderCode: async (orderCode: string): Promise<any> => {
+    try {
+      const response = await httpClient.get(
+        `/public/recipient-tracking/${encodeURIComponent(orderCode)}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching recipient tracking for order ${orderCode}:`, error);
+      throw handleApiError(error, "Không tìm thấy đơn hàng với mã này");
+    }
+  },
 };
 
 export default orderService;

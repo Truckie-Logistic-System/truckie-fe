@@ -158,6 +158,27 @@ export interface IssueApiResponse {
             status?: string;
         }>;
     };
+    // DAMAGE compensation specific fields
+    damageCompensation?: {
+        damageAssessmentPercent?: number;
+        hasInsurance?: boolean;
+        damageHasDocuments?: boolean;
+        damageDeclaredValue?: number;
+        damageEstimatedMarketValue?: number;
+        damageFreightFee?: number;
+        damageLegalLimit?: number;
+        damageEstimatedLoss?: number;
+        damagePolicyCompensation?: number;
+        damageFinalCompensation?: number;
+        damageCompensationCase?: string;
+        damageCompensationCaseLabel?: string;
+        damageCompensationCaseDescription?: string;
+        appliesLegalLimit?: boolean;
+        damageAdjustReason?: string;
+        damageHandlerNote?: string;
+        damageCompensationStatus?: string;
+        damageCompensationStatusLabel?: string;
+    };
 }
 
 export interface IssueCreateDto {

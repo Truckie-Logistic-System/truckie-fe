@@ -512,12 +512,7 @@ const CustomerOrderDetail: React.FC = () => {
     // Get current user ID from sessionStorage
     const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId');
     
-    // Connect to issue WebSocket if not connected (with userId for customer notifications)
-    if (!issueWebSocket.isConnected()) {
-      issueWebSocket.connect(userId || undefined).catch(err => {
-        console.error('[CustomerOrderDetail] Failed to connect to issue WebSocket:', err);
-      });
-    }
+    // WebSocket connections are now handled by GlobalWebSocketProvider at app root
 
     // Subscribe to user-specific notifications (payment timeout, etc.)
     const unsubscribeUserNotifications = userId ? issueWebSocket.subscribeToUserNotifications((notification: any) => {

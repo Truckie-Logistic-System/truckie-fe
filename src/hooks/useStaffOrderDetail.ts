@@ -16,15 +16,14 @@ export const useStaffOrderDetail = () => {
   const [priceDetails, setPriceDetails] = useState<any>(null);
   const [loadingPriceDetails, setLoadingPriceDetails] = useState<boolean>(false);
 
-  const fetchOrderDetail = useCallback(async () => {
+  const fetchOrderDetailWithReturn = useCallback(async () => {
     if (!id) {
       setError('No order ID provided');
       setLoading(false);
-      return;
+      return null;
     }
 
     try {
-      setLoading(true);
       setError(null);
       
       const orderData = await orderService.getOrderForStaffByOrderId(id);
@@ -52,13 +51,20 @@ export const useStaffOrderDetail = () => {
         }
       } catch (contractError) {
       }
+      
+      return orderData; // Return the fetched order data for verification
     } catch (err: any) {
       console.error('[useStaffOrderDetail] Error fetching order detail:', err);
       setError(err?.message || 'Không thể tải thông tin đơn hàng');
+      return null;
     } finally {
       setLoading(false);
     }
   }, [id]);
+
+  const fetchOrderDetail = useCallback(async () => {
+    await fetchOrderDetailWithReturn();
+  }, [fetchOrderDetailWithReturn]);
 
   useEffect(() => {
     fetchOrderDetail();
@@ -106,6 +112,7 @@ export const useStaffOrderDetail = () => {
     loadingPriceDetails,
     error,
     refetch: fetchOrderDetail,
+    refetchWithReturn: fetchOrderDetailWithReturn,
     updateOrder,
     deleteOrder,
     createContract,

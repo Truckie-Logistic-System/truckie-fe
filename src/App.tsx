@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context';
 import { APP_NAME } from './config';
 import { RouterProvider } from 'react-router-dom';
 import MessageProvider from './components/common/MessageProvider';
+import GlobalWebSocketProvider from './components/websocket/GlobalWebSocketProvider';
 
 function App() {
   // Set document title
@@ -24,7 +25,9 @@ function App() {
     >
       <MessageProvider>
         <AuthProvider>
-          <AppContentWrapper />
+          <GlobalWebSocketProvider>
+            <AppContentWrapper />
+          </GlobalWebSocketProvider>
         </AuthProvider>
       </MessageProvider>
     </ConfigProvider>
