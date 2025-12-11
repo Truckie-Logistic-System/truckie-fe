@@ -50,6 +50,12 @@ import ContractListPage from "../pages/Staff/Contract";
 import ContractDetailPage from "../pages/Staff/Contract/ContractDetail";
 import RefundListPage from "../pages/Staff/Refund";
 import AdminSettingsPage from "../pages/Admin/Settings";
+import IssueTypePage from "../pages/Staff/IssueType";
+import CompensationAssessmentPage from "../pages/Staff/CompensationAssessment";
+import OffRouteEventPage from "../pages/Staff/OffRouteEvent";
+import FuelConsumptionPage from "../pages/Admin/FuelConsumption";
+import FuelTypePage from "../pages/Admin/FuelType";
+import StaffCustomerPage from "../pages/Staff/Customer";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -257,6 +263,10 @@ const router = createBrowserRouter([
         ),
         children: [
           {
+            path: "customers",
+            element: <StaffCustomerPage />,
+          },
+          {
             path: "dashboard",
             element: <Dashboard />,
           },
@@ -275,6 +285,21 @@ const router = createBrowserRouter([
           {
             path: "issues/:id",
             element: <IssueDetail />,
+          },
+          // Staff: Quản lý loại sự cố
+          {
+            path: "issue-types",
+            element: <IssueTypePage />,
+          },
+          // Staff: Danh sách thẩm định bồi thường
+          {
+            path: "compensation-assessments",
+            element: <CompensationAssessmentPage />,
+          },
+          // Staff: Danh sách cảnh báo lệch tuyến
+          {
+            path: "off-route-events",
+            element: <OffRouteEventPage />,
           },
           {
             path: "vehicle-assignments",
@@ -462,6 +487,16 @@ const router = createBrowserRouter([
           {
             path: "categories",
             element: <CategoryManagement />,
+          },
+          // Admin: Quản lý tiêu thụ nhiên liệu
+          {
+            path: "fuel-consumptions",
+            element: <FuelConsumptionPage />,
+          },
+          // Admin: Quản lý loại nhiên liệu
+          {
+            path: "fuel-types",
+            element: <FuelTypePage />,
           },
           {
             path: "settings",

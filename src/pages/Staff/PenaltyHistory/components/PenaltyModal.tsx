@@ -13,7 +13,10 @@ import {
     Flex,
     Collapse,
     Avatar,
-    Tooltip
+    Tooltip,
+    Row,
+    Col,
+    Tabs
 } from 'antd';
 import type { BadgeProps } from 'antd';
 import {
@@ -25,13 +28,16 @@ import {
     CalendarOutlined,
     ExclamationCircleOutlined,
     CameraOutlined,
-    InfoCircleOutlined
+    InfoCircleOutlined,
+    EnvironmentOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Penalty, VehicleAssignmentSummary, DriverSummary } from '@/models/Penalty';
+import { VehicleAssignmentStatusLabels } from '@/constants/enums/VehicleAssignmentStatusEnum';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
+const { TabPane } = Tabs;
 
 interface PenaltyModalProps {
     visible: boolean;
@@ -82,7 +88,7 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
         const key = status.toUpperCase();
         switch (key) {
             case 'ACTIVE':
-                return 'Đang lái';
+                return 'Hoạt động';
             case 'INACTIVE':
                 return 'Ngưng hoạt động';
             case 'SUSPENDED':
@@ -106,7 +112,7 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
         licenseNumber?: string;
     }, driverLabel: string) => {
         if (!driver.name) return null;
-        
+
         return (
             <Card 
                 size="small" 
@@ -160,6 +166,10 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
             return statusMap[status.toUpperCase()] ?? 'default';
         };
 
+        const statusLabel = vehicleAssignment.status
+            ? VehicleAssignmentStatusLabels[vehicleAssignment.status as keyof typeof VehicleAssignmentStatusLabels] ?? vehicleAssignment.status
+            : undefined;
+
         return (
             <Card 
                 title={
@@ -175,7 +185,7 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
                         <Tag color="blue">{vehicleAssignment.trackingCode}</Tag>
                     </Descriptions.Item>
                     <Descriptions.Item label="Trạng thái chuyến">
-                        <Badge status={getStatusColor(vehicleAssignment.status)} text={vehicleAssignment.status} />
+                        <Badge status={getStatusColor(vehicleAssignment.status)} text={statusLabel} />
                     </Descriptions.Item>
                     <Descriptions.Item label="Biển số xe">
                         <Text strong className="text-blue-600">{vehicleAssignment.vehiclePlateNumber}</Text>
@@ -183,6 +193,21 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
                     <Descriptions.Item label="Loại xe">
                         <Tag color="green">{vehicleAssignment.vehicleTypeDescription}</Tag>
                     </Descriptions.Item>
+                    {vehicleAssignment.vehicleName && (
+                        <Descriptions.Item label="Tên xe" span={2}>
+                            <Text>{vehicleAssignment.vehicleName}</Text>
+                        </Descriptions.Item>
+                    )}
+                    {vehicleAssignment.vehicleBrand && (
+                        <Descriptions.Item label="Hãng xe">
+                            <Text>{vehicleAssignment.vehicleBrand}</Text>
+                        </Descriptions.Item>
+                    )}
+                    {vehicleAssignment.vehicleModel && (
+                        <Descriptions.Item label="Dòng xe">
+                            <Text>{vehicleAssignment.vehicleModel}</Text>
+                        </Descriptions.Item>
+                    )}
                     {vehicleAssignment.description && (
                         <Descriptions.Item label="Mô tả chuyến" span={2}>
                             <Text italic>{vehicleAssignment.description}</Text>
@@ -214,6 +239,117 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
                         "Tài xế phụ"
                     )}
                 </div>
+            </Card>
+        );
+    };
+
+    const renderCompactDriverSummary = (driver?: DriverSummary) => {
+        if (!driver) return null;
+
+        const roleLabel = translateRoleName(driver.roleName);
+        const userStatusLabel = translateUserStatus(driver.userStatus);
+
+        const getUserStatusColor = (status?: string): BadgeProps['status'] => {
+            if (!status) return 'default';
+
+            const statusMap: { [key: string]: BadgeProps['status'] } = {
+                ACTIVE: 'success',
+                INACTIVE: 'default',
+                LOCKED: 'error'
+            };
+
+            return statusMap[status.toUpperCase()] ?? 'default';
+        };
+
+        return (
+            <Card 
+                title={
+                    <Space>
+                        <UserOutlined className="text-blue-600" />
+                        <Text strong>Thông tin tài xế</Text>
+                    </Space>
+                }
+                className="shadow-sm h-full"
+            >
+                <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Họ tên">
+                        <Text strong>{driver.fullName}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="SĐT">
+                        <Space>
+                            <PhoneOutlined className="text-green-600" />
+                            <Text>{driver.phoneNumber}</Text>
+                        </Space>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Email">
+                        <Space>
+                            <MailOutlined className="text-blue-600" />
+                            <Text>{driver.email}</Text>
+                        </Space>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Vai trò">
+                        <Tag color="blue">{roleLabel}</Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Trạng thái">
+                        <Badge status={getUserStatusColor(driver.userStatus)} text={userStatusLabel} />
+                    </Descriptions.Item>
+                </Descriptions>
+            </Card>
+        );
+    };
+
+    const renderCompactVehicleAssignment = (vehicleAssignment: VehicleAssignmentSummary) => {
+        const getStatusColor = (status?: string): BadgeProps['status'] => {
+            if (!status) return 'default';
+
+            const statusMap: { [key: string]: BadgeProps['status'] } = {
+                ACTIVE: 'processing',
+                COMPLETED: 'success',
+                CANCELLED: 'error',
+                PENDING: 'warning'
+            };
+
+            return statusMap[status.toUpperCase()] ?? 'default';
+        };
+
+        const statusLabel = vehicleAssignment.status
+            ? VehicleAssignmentStatusLabels[vehicleAssignment.status as keyof typeof VehicleAssignmentStatusLabels] ?? vehicleAssignment.status
+            : undefined;
+
+        return (
+            <Card 
+                title={
+                    <Space>
+                        <CarOutlined className="text-blue-600" />
+                        <Text strong>Thông tin chuyến xe</Text>
+                    </Space>
+                }
+                className="shadow-sm h-full"
+            >
+                <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Mã chuyến xe">
+                        <Tag color="blue">{vehicleAssignment.trackingCode}</Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Trạng thái">
+                        <Badge status={getStatusColor(vehicleAssignment.status)} text={statusLabel} />
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Biển số xe">
+                        <Text strong className="text-blue-600">{vehicleAssignment.vehiclePlateNumber}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Loại xe">
+                        <Tag color="green">{vehicleAssignment.vehicleTypeDescription}</Tag>
+                    </Descriptions.Item>
+                    {vehicleAssignment.driver1Name && (
+                        <Descriptions.Item label="Tài xế chính">
+                            <Text>{vehicleAssignment.driver1Name}</Text>
+                        </Descriptions.Item>
+                    )}
+                    {vehicleAssignment.driver2Name && (
+                        <Descriptions.Item label="Tài xế phụ">
+                            <Text>{vehicleAssignment.driver2Name}</Text>
+                        </Descriptions.Item>
+                    )}
+                </Descriptions>
             </Card>
         );
     };
@@ -367,102 +503,175 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
                 ]}
                 width={1000}
                 styles={{
-                    body: { padding: '24px' },
+                    body: { padding: '16px' },
                     header: { borderBottom: '2px solid #f0f0f0' }
                 }}
             >
-                <Space direction="vertical" size="large" className="w-full">
-                    {/* Penalty Information Card */}
-                    <Card 
-                        title={
+                <Tabs defaultActiveKey="1" size="large">
+                    <TabPane 
+                        tab={
                             <Space>
                                 <ExclamationCircleOutlined className="text-red-500" />
-                                <Text strong>Thông tin vi phạm</Text>
+                                <span>Thông tin vi phạm</span>
                             </Space>
-                        }
-                        className="shadow-sm"
+                        } 
+                        key="1"
                     >
-                        <Descriptions column={2} size="small">
-                            <Descriptions.Item label="Loại vi phạm">
-                                <Tag color={getViolationSeverity(penalty.violationType)}>
-                                    {penalty.violationType}
-                                </Tag>
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Ngày vi phạm">
-                                <Space>
-                                    <CalendarOutlined className="text-blue-600" />
-                                    <Text>{dayjs(penalty.penaltyDate).format('DD/MM/YYYY')}</Text>
-                                </Space>
-                            </Descriptions.Item>
-                        </Descriptions>
-                    </Card>
-
-                    {/* Driver Information */}
-                    {renderDriverSummary(penalty.driverSummary)}
-
-                    {/* Violation Image */}
-                    {penalty.trafficViolationRecordImageUrl && (
-                        <Card 
-                            title={
-                                <Space>
-                                    <CameraOutlined className="text-green-600" />
-                                    <Text strong>Hình ảnh vi phạm</Text>
-                                </Space>
-                            }
-                            className="shadow-sm"
-                        >
-                            <Image.PreviewGroup
-                                preview={{
-                                    countRender: (current, total) => `${current} / ${total}`,
-                                }}
-                            >
-                                <Image
-                                    src={penalty.trafficViolationRecordImageUrl}
-                                    alt="Hình ảnh vi phạm"
-                                    className="rounded-lg"
-                                    style={{ 
-                                        maxWidth: '300px', 
-                                        maxHeight: '300px', 
-                                        objectFit: 'cover',
-                                        border: '1px solid #d9d9d9'
-                                    }}
-                                    placeholder={
-                                        <div className="flex items-center justify-center h-48 bg-gray-100 rounded">
-                                            <Space direction="vertical" align="center">
-                                                <CameraOutlined className="text-4xl text-gray-400" />
-                                                <Text type="secondary">Đang tải hình ảnh...</Text>
-                                            </Space>
-                                        </div>
+                        <Row gutter={[16, 16]}>
+                            <Col span={16}>
+                                <Card 
+                                    title={
+                                        <Space>
+                                            <ExclamationCircleOutlined className="text-red-500" />
+                                            <Text strong>Chi tiết vi phạm</Text>
+                                        </Space>
                                     }
-                                />
-                            </Image.PreviewGroup>
-                        </Card>
-                    )}
+                                    className="shadow-sm"
+                                >
+                                    <Descriptions column={2} size="small">
+                                        <Descriptions.Item label="Loại vi phạm">
+                                            <Tag color={getViolationSeverity(penalty.violationType)}>
+                                                {penalty.violationType}
+                                            </Tag>
+                                        </Descriptions.Item>
+                                        <Descriptions.Item label="Ngày vi phạm">
+                                            <Space>
+                                                <CalendarOutlined className="text-blue-600" />
+                                                <Text>{dayjs(penalty.penaltyDate).format('DD/MM/YYYY')}</Text>
+                                            </Space>
+                                        </Descriptions.Item>
+                                    </Descriptions>
+                                </Card>
+                            </Col>
+                            
+                            {/* Violation Image - Small thumbnail */}
+                            {penalty.trafficViolationRecordImageUrl && (
+                                <Col span={8}>
+                                    <Card 
+                                        title={
+                                            <Space>
+                                                <CameraOutlined className="text-green-600" />
+                                                <Text strong>Hình ảnh</Text>
+                                            </Space>
+                                        }
+                                        className="shadow-sm"
+                                    >
+                                        <Image.PreviewGroup
+                                            preview={{
+                                                countRender: (current, total) => `${current} / ${total}`,
+                                            }}
+                                        >
+                                            <Image
+                                                src={penalty.trafficViolationRecordImageUrl}
+                                                alt="Hình ảnh vi phạm"
+                                                className="rounded-lg cursor-pointer"
+                                                style={{ 
+                                                    width: '100%', 
+                                                    height: '120px', 
+                                                    objectFit: 'cover',
+                                                    border: '1px solid #d9d9d9'
+                                                }}
+                                                placeholder={
+                                                    <div className="flex items-center justify-center h-20 bg-gray-100 rounded">
+                                                        <Space direction="vertical" align="center">
+                                                            <CameraOutlined className="text-xl text-gray-400" />
+                                                            <Text type="secondary" className="text-xs">Đang tải...</Text>
+                                                        </Space>
+                                                    </div>
+                                                }
+                                            />
+                                        </Image.PreviewGroup>
+                                    </Card>
+                                </Col>
+                            )}
+                        </Row>
+                        
+                        {/* Violation Location Map */}
+                        {penalty.violationLatitude && penalty.violationLongitude && (
+                            <Row gutter={[16, 16]} className="mt-4">
+                                <Col span={24}>
+                                    <Card
+                                        title={
+                                            <Space>
+                                                <EnvironmentOutlined className="text-red-500" />
+                                                <Text strong>Vị trí vi phạm</Text>
+                                            </Space>
+                                        }
+                                        className="shadow-sm"
+                                    >
+                                        <div style={{ height: '300px', width: '100%', position: 'relative' }}>
+                                            <iframe
+                                                width="100%"
+                                                height="100%"
+                                                style={{ border: 0, borderRadius: '8px' }}
+                                                loading="lazy"
+                                                allowFullScreen
+                                                referrerPolicy="no-referrer-when-downgrade"
+                                                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBNLrJhOMz6idD05pzfn5lhA-TAw-mAZCU&q=${penalty.violationLatitude},${penalty.violationLongitude}&zoom=15`}
+                                            />
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: '16px',
+                                                left: '16px',
+                                                background: 'white',
+                                                padding: '8px 12px',
+                                                borderRadius: '4px',
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                            }}>
+                                                <Space>
+                                                    <EnvironmentOutlined style={{ color: '#ff4d4f' }} />
+                                                    <Text strong style={{ fontSize: 12 }}>
+                                                        {penalty.violationLatitude.toFixed(6)}, {penalty.violationLongitude.toFixed(6)}
+                                                    </Text>
+                                                </Space>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </Col>
+                            </Row>
+                        )}
+                        
+                        {/* Driver Information */}
+                        <Row gutter={[16, 16]} className="mt-4">
+                            <Col span={24}>
+                                {renderCompactDriverSummary(penalty.driverSummary)}
+                            </Col>
+                        </Row>
+                    </TabPane>
                     
-                    {/* Vehicle Assignment Information */}
-                    {penalty.vehicleAssignment ? (
-                        renderVehicleAssignment(penalty.vehicleAssignment)
-                    ) : (
-                        <Card 
-                            title={
-                                <Space>
-                                    <InfoCircleOutlined className="text-orange-500" />
-                                    <Text strong>Thông tin tham chiếu</Text>
-                                </Space>
-                            }
-                            className="shadow-sm bg-orange-50"
-                        >
-                            <Descriptions column={2} size="small">
-                                <Descriptions.Item label="ID Tài xế">
-                                    <Text code copyable>{penalty.driverId}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="ID Phân công xe">
-                                    <Text code copyable>{penalty.vehicleAssignmentId}</Text>
-                                </Descriptions.Item>
-                            </Descriptions>
-                        </Card>
-                    )}
-                </Space>
+                    <TabPane 
+                        tab={
+                            <Space>
+                                <CarOutlined className="text-blue-600" />
+                                <span>Thông tin chuyến xe</span>
+                            </Space>
+                        } 
+                        key="2"
+                    >
+                        {penalty.vehicleAssignment ? (
+                            renderVehicleAssignment(penalty.vehicleAssignment)
+                        ) : (
+                            <Card 
+                                title={
+                                    <Space>
+                                        <InfoCircleOutlined className="text-orange-500" />
+                                        <Text strong>Thông tin tham chiếu</Text>
+                                    </Space>
+                                }
+                                className="shadow-sm bg-orange-50"
+                            >
+                                <Descriptions column={2} size="small">
+                                    <Descriptions.Item label="ID Tài xế">
+                                        <Text code copyable>{penalty.driverId}</Text>
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="ID Phân công xe">
+                                        <Text code copyable>{penalty.vehicleAssignmentId}</Text>
+                                    </Descriptions.Item>
+                                </Descriptions>
+                            </Card>
+                        )}
+                    </TabPane>
+                </Tabs>
             </Modal>
         );
     }

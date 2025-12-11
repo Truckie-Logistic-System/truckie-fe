@@ -5,7 +5,7 @@ import { UserOutlined, CarOutlined, DashboardOutlined } from '@ant-design/icons'
 import { dashboardService } from '../../../services/dashboard';
 import type { DashboardFilter, TimeRange, AdminDashboardResponse, TopPerformer, TrendDataPoint } from '../../../services/dashboard';
 import type { PeriodType, RegistrationTimeSeries, TopStaff, TopDriver } from '../../../models/AdminDashboard';
-import { StatsCards, RegistrationChart, TopPerformersChart, DeviceStatsCards, FleetTab, PenaltiesSummaryCards, PenaltiesTimeSeriesChart } from './widgets';
+import { StatsCards, RegistrationChart, TopPerformersChart, DeviceStatsCards, FleetTab, PenaltiesSummaryCards, PenaltiesTimeSeriesChart, FuelConsumptionChart, DeviceStatsCard, PenaltiesStatsCard, VehicleInspectionAlerts } from './widgets';
 import { TimeRangeFilter, KpiCard, AiSummaryCard } from '../../Dashboard/components/widgets';
 
 const { Title, Text } = Typography;
@@ -91,7 +91,7 @@ const AdminDashboard: React.FC = () => {
       fleetStatus: {
         totalVehicles: fleetHealth.totalVehicles,
         availableVehicles: fleetHealth.activeVehicles,
-        inUseVehicles: fleetHealth.activeVehicles, // Use active as in-use
+        inUseVehicles: fleetHealth.inUseVehicles || 0, // Use IN_TRANSIT vehicles
         inMaintenanceVehicles: fleetHealth.inMaintenanceVehicles,
         maintenanceAlerts: fleetHealth.upcomingMaintenances?.map((alert: any) => ({
           vehicleId: alert.vehicleId,
@@ -105,7 +105,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Single API call for all admin dashboard data
-  const { data: dashboard, isLoading } = useQuery({
+  const { data: dashboard, isLoading, refetch } = useQuery({
     queryKey: ['adminDashboard', filter],
     queryFn: () => dashboardService.getAdminDashboard(filter),
   });
@@ -281,6 +281,53 @@ const AdminDashboard: React.FC = () => {
                   console.log('Navigate to vehicle:', vehicleId);
                 }}
               />
+            ),
+          },
+          {
+            key: 'operations',
+            label: (
+              <span>
+                <DashboardOutlined />
+                Vận hành
+              </span>
+            ),
+            children: (
+              <>
+                {/* Device Statistics */}
+                <div className="mt-6">
+                  <DeviceStatsCard
+                    data={dashboard?.deviceStatistics}
+                    loading={isLoading}
+                  />
+                </div>
+
+                {/* Fuel Consumption & Penalties Charts */}
+                <Row gutter={[16, 16]} className="mt-6">
+                  <Col xs={24} lg={12}>
+                    <FuelConsumptionChart
+                      data={dashboard?.fuelConsumptionStatistics}
+                      loading={isLoading}
+                    />
+                  </Col>
+                  <Col xs={24} lg={12}>
+                    <PenaltiesStatsCard
+                      data={dashboard?.penaltiesStatistics}
+                      loading={isLoading}
+                    />
+                  </Col>
+                </Row>
+
+                {/* Vehicle Inspection Alerts */}
+                <div className="mt-6">
+                  <VehicleInspectionAlerts
+                    data={dashboard?.vehicleInspectionAlerts}
+                    loading={isLoading}
+                    onScheduleSuccess={() => {
+                      refetch();
+                    }}
+                  />
+                </div>
+              </>
             ),
           },
         ]}

@@ -216,7 +216,7 @@ const vehicleService = {
      */
     getVehicleMaintenances: async () => {
         try {
-            const response = await httpClient.get<GetVehicleMaintenancesResponse>('/vehicle-maintenances');
+            const response = await httpClient.get<GetVehicleMaintenancesResponse>('/vehicle-service-records');
             // Ensure data is always an array
             if (response.data.success) {
                 if (!Array.isArray(response.data.data)) {
@@ -273,11 +273,10 @@ const vehicleService = {
      */
     getVehicleMaintenanceById: async (id: string) => {
         try {
-            const response = await httpClient.get<GetVehicleMaintenanceDetailResponse>(`/vehicle-maintenances/${id}`);
+            const response = await httpClient.get<GetVehicleMaintenanceDetailResponse>(`/vehicle-service-records/${id}`);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
-                // 404 không phải lỗi mà là không tìm thấy lịch bảo trì
                 return {
                     success: false,
                     message: 'Không tìm thấy lịch bảo trì',
@@ -295,7 +294,7 @@ const vehicleService = {
      */
     createVehicleMaintenance: async (maintenanceData: CreateVehicleMaintenanceRequest) => {
         try {
-            const response = await httpClient.post<CreateVehicleMaintenanceResponse>('/vehicle-maintenances', maintenanceData);
+            const response = await httpClient.post<CreateVehicleMaintenanceResponse>('/vehicle-service-records', maintenanceData);
             return response.data;
         } catch (error) {
             console.error('Error creating vehicle maintenance:', error);
@@ -304,15 +303,14 @@ const vehicleService = {
     },
 
     /**
-     * Update an existing vehicle maintenance
+     * Update vehicle maintenance
      */
     updateVehicleMaintenance: async (id: string, maintenanceData: UpdateVehicleMaintenanceRequest) => {
         try {
-            const response = await httpClient.put<UpdateVehicleMaintenanceResponse>(`/vehicle-maintenances/${id}`, maintenanceData);
+            const response = await httpClient.put<UpdateVehicleMaintenanceResponse>(`/vehicle-service-records/${id}`, maintenanceData);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
-                // 404 không phải lỗi mà là không tìm thấy lịch bảo trì để cập nhật
                 return {
                     success: false,
                     message: 'Không tìm thấy lịch bảo trì để cập nhật',
@@ -330,11 +328,10 @@ const vehicleService = {
      */
     deleteVehicleMaintenance: async (id: string) => {
         try {
-            const response = await httpClient.delete(`/vehicle-maintenances/${id}`);
+            const response = await httpClient.delete(`/vehicle-service-records/${id}`);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
-                // 404 không phải lỗi mà là không tìm thấy lịch bảo trì để xóa
                 return {
                     success: false,
                     message: 'Không tìm thấy lịch bảo trì để xóa',
@@ -344,7 +341,109 @@ const vehicleService = {
             console.error(`Error deleting vehicle maintenance with ID ${id}:`, error);
             throw error;
         }
+    },
+
+    /**
+     * Get vehicle maintenances paginated (sorted by createdAt desc)
+     */
+    getVehicleMaintenancesPaginated: async (page: number = 0, size: number = 10) => {
+        try {
+            const response = await httpClient.get(`/vehicle-service-records/paginated?page=${page}&size=${size}`);
+            return response.data;
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 404) {
+                return {
+                    success: true,
+                    message: 'Không có dữ liệu',
+                    statusCode: 200,
+                    data: { content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 }
+                };
+            }
+            console.error('Error fetching paginated vehicle maintenances:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get service types from config
+     */
+    getServiceTypes: async () => {
+        try {
+            const response = await httpClient.get<{ success: boolean; data: string[] }>('/vehicle-service-records/service-types');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching service types:', error);
+            return {
+                success: true,
+                data: []
+            };
+        }
+    },
+
+    /**
+     * Complete a maintenance record
+     */
+    completeMaintenance: async (id: string) => {
+        try {
+            const response = await httpClient.post(`/vehicle-service-records/${id}/complete`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error completing maintenance ${id}:`, error);
+            throw error;
+        }
+    },
+
+    /**
+     * Cancel a maintenance record
+     */
+    cancelMaintenance: async (id: string) => {
+        try {
+            const response = await httpClient.post(`/vehicle-service-records/${id}/cancel`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error cancelling maintenance ${id}:`, error);
+            throw error;
+        }
+    },
+
+    /**
+     * Trigger manual expiry check
+     */
+    triggerExpiryCheck: async () => {
+        try {
+            const response = await httpClient.post('/vehicle-service-records/check-expiry');
+            return response.data;
+        } catch (error) {
+            console.error('Error triggering expiry check:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get services due soon (within warning days)
+     */
+    getServicesDueSoon: async (warningDays: number = 30) => {
+        try {
+            const response = await httpClient.get(`/vehicle-service-records/due-soon?warningDays=${warningDays}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching services due soon:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get overdue services
+     */
+    getOverdueServices: async () => {
+        try {
+            const response = await httpClient.get('/vehicle-service-records/overdue');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching overdue services:', error);
+            throw error;
+        }
     }
 };
 
-export default vehicleService; 
+export default vehicleService;

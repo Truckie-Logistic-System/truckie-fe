@@ -1,13 +1,14 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import type { GetVehicleMaintenanceDetailResponse } from '../../../services/vehicle/types';
 import { Card, Descriptions, Button, Skeleton, Divider, Tag, App, Row, Col } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, CarOutlined, ToolOutlined, TagOutlined } from '@ant-design/icons';
 
 import vehicleService from '../../../services/vehicle/vehicleService';
 import { formatCurrency } from '../../../utils/formatters';
 import { VehicleStatusEnum } from '@/constants/enums';
-import { VehicleStatusTag, MaintenanceTypeTag } from '@/components/common/tags';
+import { VehicleStatusTag, CommonStatusTag } from '@/components/common/tags';
 
 const VehicleMaintenanceDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -16,8 +17,18 @@ const VehicleMaintenanceDetail: React.FC = () => {
     const { data, isLoading, error } = useQuery({
         queryKey: ['vehicleMaintenance', id],
         queryFn: () => id ? vehicleService.getVehicleMaintenanceById(id) : Promise.reject('ID không hợp lệ'),
-        enabled: !!id,
+        enabled: !!id
     });
+
+    // Log the response to help debug vehicle type information
+    React.useEffect(() => {
+        if (data) {
+            console.log('Vehicle maintenance detail response:', data);
+            if (data.data?.vehicleEntity) {
+                console.log('Vehicle entity:', data.data.vehicleEntity);
+            }
+        }
+    }, [data]);
 
     const maintenance = data?.data;
 
@@ -102,24 +113,28 @@ const VehicleMaintenanceDetail: React.FC = () => {
             >
                 <Descriptions bordered column={{ xs: 1, sm: 2, md: 3 }}>
                     <Descriptions.Item label="Ngày bảo dưỡng">
-                        {new Date(maintenance.maintenanceDate).toLocaleDateString('vi-VN')}
+                        {maintenance.actualDate || maintenance.plannedDate
+                            ? new Date(maintenance.actualDate || maintenance.plannedDate as string).toLocaleDateString('vi-VN')
+                            : 'Chưa xác định'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Chi phí">
-                        {formatCurrency(maintenance.cost)} VNĐ
+                        {/* Backend chưa cung cấp trường chi phí, hiển thị fallback */}
+                        Chưa có thông tin
                     </Descriptions.Item>
+
                     <Descriptions.Item label="Số đồng hồ công-tơ-mét">
                         {maintenance.odometerReading ? `${maintenance.odometerReading} km` : 'Không có'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Trung tâm dịch vụ">
-                        {maintenance.serviceCenter}
+                        {(maintenance as any).notes || 'Không có'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Ngày bảo dưỡng tiếp theo">
-                        {maintenance.nextMaintenanceDate
-                            ? new Date(maintenance.nextMaintenanceDate).toLocaleDateString('vi-VN')
+                        {maintenance.nextServiceDate
+                            ? new Date(maintenance.nextServiceDate).toLocaleDateString('vi-VN')
                             : 'Chưa xác định'}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Loại bảo dưỡng">
-                        <MaintenanceTypeTag status={maintenance.maintenanceTypeEntity.isActive} className="text-base" />
+                    <Descriptions.Item label="Loại dịch vụ">
+                        <Tag color="blue">{maintenance.serviceType || 'Không xác định'}</Tag>
                     </Descriptions.Item>
                 </Descriptions>
             </Card>
@@ -133,7 +148,7 @@ const VehicleMaintenanceDetail: React.FC = () => {
                 }
                 className="mb-6"
             >
-                <p className="whitespace-pre-line">{maintenance.description}</p>
+                <p className="whitespace-pre-line">{maintenance.description || 'Không có mô tả'}</p>
             </Card>
 
             <Divider />
@@ -149,50 +164,28 @@ const VehicleMaintenanceDetail: React.FC = () => {
             >
                 <Descriptions bordered column={{ xs: 1, sm: 2, md: 2 }}>
                     <Descriptions.Item label="Biển số xe">
-                        {maintenance.vehicleEntity.licensePlateNumber}
+                        {maintenance.vehicleEntity?.licensePlateNumber || 'Không có dữ liệu xe'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Mẫu xe">
-                        {maintenance.vehicleEntity.model}
+                        {maintenance.vehicleEntity?.model || 'Không có dữ liệu xe'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Nhà sản xuất">
-                        {maintenance.vehicleEntity.manufacturer}
+                        {maintenance.vehicleEntity?.manufacturer || 'Không có dữ liệu xe'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Năm sản xuất">
-                        {maintenance.vehicleEntity.year}
+                        {maintenance.vehicleEntity?.year ?? 'Không có dữ liệu xe'}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Trọng tải">
-                        {maintenance.vehicleEntity.capacity} kg
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Trạng thái">
-                        <VehicleStatusTag status={maintenance.vehicleEntity.status as VehicleStatusEnum} />
-                    </Descriptions.Item>
-                </Descriptions>
-            </Card>
-
-            <Card
-                title={
-                    <div className="flex items-center">
-                        <ToolOutlined className="mr-2 text-blue-500" />
-                        <span>Thông tin loại bảo dưỡng</span>
-                    </div>
-                }
-                className="mb-6"
-            >
-                <Descriptions bordered column={{ xs: 1, sm: 2, md: 2 }}>
-                    <Descriptions.Item label="Tên loại bảo dưỡng">
-                        {maintenance.maintenanceTypeEntity.maintenanceTypeName}
+                    <Descriptions.Item label="Loại xe">
+                        {(maintenance?.vehicleEntity as any)?.vehicleTypeEntity?.vehicleTypeName || 
+                         maintenance?.vehicleEntity?.vehicleTypeDescription || 
+                         (maintenance?.vehicleEntity?.vehicleTypeId ? 'Đã có ID loại xe nhưng thiếu thông tin mô tả' : 'Không có dữ liệu loại xe')}
                     </Descriptions.Item>
                     <Descriptions.Item label="Trạng thái">
-                        <MaintenanceTypeTag status={maintenance.maintenanceTypeEntity.isActive} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Mô tả" span={2}>
-                        {maintenance.maintenanceTypeEntity.description}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày tạo">
-                        {new Date(maintenance.maintenanceTypeEntity.createdAt).toLocaleDateString('vi-VN')}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày cập nhật">
-                        {new Date(maintenance.maintenanceTypeEntity.modifiedAt).toLocaleDateString('vi-VN')}
+                        {maintenance.vehicleEntity ? (
+                            <VehicleStatusTag status={maintenance.vehicleEntity.status as VehicleStatusEnum} />
+                        ) : (
+                            'Không có dữ liệu xe'
+                        )}
                     </Descriptions.Item>
                 </Descriptions>
             </Card>
@@ -200,4 +193,4 @@ const VehicleMaintenanceDetail: React.FC = () => {
     );
 };
 
-export default VehicleMaintenanceDetail; 
+export default VehicleMaintenanceDetail;

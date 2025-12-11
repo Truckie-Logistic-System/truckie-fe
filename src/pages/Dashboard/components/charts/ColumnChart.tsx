@@ -83,6 +83,8 @@ const ColumnChart: React.FC<ColumnChartProps> = ({
                     fill: '#666',
                     fontSize: 12,
                 },
+                autoHide: true,
+                autoEllipsis: true,
             },
             title: xAxisLabel
                 ? {
@@ -93,6 +95,7 @@ const ColumnChart: React.FC<ColumnChartProps> = ({
                       },
                   }
                 : undefined,
+            tickCount: Math.min(data.length, 8),
         },
         yAxis: {
             label: {
@@ -135,7 +138,7 @@ const ColumnChart: React.FC<ColumnChartProps> = ({
                                 backgroundColor: Array.isArray(color) ? color[items[0]?.dataIndex || 0] : color,
                                 display: 'inline-block'
                             }}></span>
-                            <span>Số lượng: <strong>{value.toLocaleString('vi-VN')}</strong></span>
+                            <span>Số lượng: <strong>{(typeof value === 'number' && !Number.isNaN(value) ? value : 0).toLocaleString('vi-VN')}</strong></span>
                         </div>
                     </div>
                 );
@@ -155,7 +158,9 @@ const ColumnChart: React.FC<ColumnChartProps> = ({
                 <BarChartOutlined className="text-xl text-blue-500 mr-2" />
                 <h3 className="text-lg font-semibold m-0">{title}</h3>
             </div>
-            <Column {...config} />
+            <div style={{ width: '100%', overflow: 'hidden' }}>
+                <Column {...config} />
+            </div>
         </Card>
     );
 };

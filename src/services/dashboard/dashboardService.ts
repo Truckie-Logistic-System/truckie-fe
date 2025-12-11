@@ -68,11 +68,44 @@ export interface MaintenanceAlert {
 export interface FleetHealthSummary {
   totalVehicles: number;
   activeVehicles: number;
+  inUseVehicles: number;
   inMaintenanceVehicles: number;
   pendingMaintenanceVehicles: number;
   overdueMaintenanceVehicles: number;
   averageFuelConsumption: number;
   upcomingMaintenances: MaintenanceAlert[];
+}
+
+export interface DeviceStatistics {
+  totalDevices: number;
+  activeDevices: number;
+  inactiveDevices: number;
+  assignedDevices: number;
+  deltaPercent?: number;
+}
+
+export interface FuelConsumptionStatistics {
+  totalFuelConsumed: number;
+  averageFuelConsumption: number;
+  deltaPercent?: number;
+  fuelConsumptionTrend: TrendDataPoint[];
+}
+
+export interface PenaltiesStatistics {
+  totalPenalties: number;
+  unresolvedPenalties: number;
+  deltaPercent?: number;
+  penaltiesTrend: TrendDataPoint[];
+}
+
+export interface VehicleInspectionAlert {
+  vehicleId: string;
+  licensePlate: string;
+  alertType: string;
+  dueDate: string;
+  daysUntilDue: number;
+  isOverdue: boolean;
+  description: string;
 }
 
 export interface RegistrationData {
@@ -92,6 +125,10 @@ export interface AdminDashboardResponse {
   topDrivers: TopPerformer[];
   topStaff: TopPerformer[];
   fleetHealth: FleetHealthSummary;
+  deviceStatistics?: DeviceStatistics;
+  fuelConsumptionStatistics?: FuelConsumptionStatistics;
+  penaltiesStatistics?: PenaltiesStatistics;
+  vehicleInspectionAlerts?: VehicleInspectionAlert[];
   orderStatusDistribution: Record<string, number>;
   registrationData: RegistrationData;
 }

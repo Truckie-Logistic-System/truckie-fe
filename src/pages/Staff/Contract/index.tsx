@@ -14,8 +14,7 @@ import {
   Statistic,
   Select,
   Skeleton,
-  Empty,
-  Progress
+  Empty
 } from 'antd';
 import { 
   FileTextOutlined, 
@@ -24,8 +23,10 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  ExclamationCircleOutlined,
   EyeOutlined,
-  DollarOutlined
+  DollarOutlined,
+  StopOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
@@ -34,102 +35,119 @@ import contractService from '../../../services/contract/contractService';
 
 const { Title, Text } = Typography;
 
-interface Contract {
+interface StaffContract {
   id: string;
-  contractCode: string;
-  totalPrice: number;
-  depositAmount: number;
-  remainingAmount: number;
+  contractName: string;
   status: string;
-  paymentStatus: string;
+  description?: string;
+  attachFileUrl?: string;
   createdAt: string;
-  signedAt?: string;
+  effectiveDate?: string;
+  expirationDate?: string;
+  totalValue: number;
+  adjustedValue: number;
+  effectiveValue: number;
+  paidAmount: number;
+  remainingAmount: number;
   order?: {
     id: string;
     orderCode: string;
     status: string;
+    senderName?: string;
+    senderPhone?: string;
+    receiverName?: string;
+    receiverPhone?: string;
+    pickupAddress?: string;
+    deliveryAddress?: string;
+    createdAt?: string;
   };
-  transactions?: any[];
+  staff?: {
+    id: string;
+    fullName?: string;
+    email?: string;
+    phoneNumber?: string;
+  };
 }
 
 const ContractListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [paymentFilter, setPaymentFilter] = useState<string>('all');
 
   const { data: contracts = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['staffContracts'],
-    queryFn: () => contractService.getAllContracts(),
+    queryKey: ['staffContractsForStaff'],
+    queryFn: () => contractService.getAllContractsForStaff(),
+  });
+
+  // Sort newest first on FE as well (fallback + ensure consistency)
+  const sortedContracts = [...contracts].sort((a: StaffContract, b: StaffContract) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bTime - aTime;
   });
 
   // Filter contracts
-  const filteredContracts = contracts.filter((c: Contract) => {
+  const filteredContracts = sortedContracts.filter((c: StaffContract) => {
     const matchSearch = searchText === '' || 
-      c.contractCode?.toLowerCase().includes(searchText.toLowerCase()) ||
+      c.contractName?.toLowerCase().includes(searchText.toLowerCase()) ||
       c.order?.orderCode?.toLowerCase().includes(searchText.toLowerCase());
     
     const matchStatus = statusFilter === 'all' || c.status === statusFilter;
-    const matchPayment = paymentFilter === 'all' || c.paymentStatus === paymentFilter;
 
-    return matchSearch && matchStatus && matchPayment;
+    return matchSearch && matchStatus;
   });
 
   // Stats
   const stats = {
-    total: contracts.length,
-    active: contracts.filter((c: Contract) => c.status === 'ACTIVE' || c.status === 'SIGNED').length,
-    pending: contracts.filter((c: Contract) => c.status === 'PENDING' || c.status === 'DRAFT').length,
-    completed: contracts.filter((c: Contract) => c.status === 'COMPLETED').length,
-    totalValue: contracts.reduce((sum: number, c: Contract) => sum + (c.totalPrice || 0), 0),
+    total: sortedContracts.length,
+    active: sortedContracts.filter((c: StaffContract) => 
+      c.status === 'CONTRACT_SIGNED' || c.status === 'DEPOSITED' || c.status === 'PAID'
+    ).length,
+    pending: sortedContracts.filter((c: StaffContract) => 
+      c.status === 'CONTRACT_DRAFT' || c.status === 'UNPAID'
+    ).length,
+    totalValue: sortedContracts.reduce((sum: number, c: StaffContract) => sum + (c.effectiveValue || 0), 0),
   };
 
+  // Get status tag with color and Vietnamese translation
+  // Based on ContractStatusEnum: CONTRACT_DRAFT, CONTRACT_SIGNED, DEPOSITED, PAID, UNPAID, CANCELLED, EXPIRED, REFUNDED
   const getStatusTag = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'SIGNED':
-      case 'ACTIVE':
-        return <Tag icon={<CheckCircleOutlined />} color="success">Đã ký</Tag>;
-      case 'PENDING':
-      case 'DRAFT':
-        return <Tag icon={<ClockCircleOutlined />} color="warning">Chờ ký</Tag>;
-      case 'COMPLETED':
-        return <Tag icon={<CheckCircleOutlined />} color="blue">Hoàn thành</Tag>;
+      case 'CONTRACT_DRAFT':
+        return <Tag icon={<ClockCircleOutlined />} color="warning">Bản nháp</Tag>;
+      case 'CONTRACT_SIGNED':
+        return <Tag icon={<CheckCircleOutlined />} color="processing">Đã ký</Tag>;
+      case 'DEPOSITED':
+        return <Tag icon={<CheckCircleOutlined />} color="cyan">Đã đặt cọc</Tag>;
+      case 'PAID':
+        return <Tag icon={<CheckCircleOutlined />} color="success">Đã thanh toán</Tag>;
+      case 'UNPAID':
+        return <Tag icon={<ExclamationCircleOutlined />} color="orange">Chưa thanh toán</Tag>;
       case 'CANCELLED':
         return <Tag icon={<CloseCircleOutlined />} color="error">Đã hủy</Tag>;
+      case 'EXPIRED':
+        return <Tag icon={<ExclamationCircleOutlined />} color="default">Hết hạn</Tag>;
+      case 'REFUNDED':
+        return <Tag icon={<StopOutlined />} color="purple">Đã hoàn tiền</Tag>;
       default:
-        return <Tag color="default">{status}</Tag>;
+        return <Tag color="default">{status || 'Không xác định'}</Tag>;
     }
   };
 
-  const getPaymentStatusTag = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'PAID':
-      case 'FULL_PAID':
-        return <Tag color="success">Đã thanh toán đủ</Tag>;
-      case 'DEPOSIT_PAID':
-        return <Tag color="blue">Đã đặt cọc</Tag>;
-      case 'PENDING':
-        return <Tag color="warning">Chưa thanh toán</Tag>;
-      case 'PARTIAL':
-        return <Tag color="orange">Thanh toán một phần</Tag>;
-      default:
-        return <Tag>{status}</Tag>;
-    }
-  };
-
-  const columns: ColumnsType<Contract> = [
+  const columns: ColumnsType<StaffContract> = [
     {
       title: 'Mã hợp đồng',
-      dataIndex: 'contractCode',
-      key: 'contractCode',
-      width: 150,
-      render: (code: string, record) => (
+      dataIndex: 'contractName',
+      key: 'contractName',
+      width: 180,
+      render: (name: string, record) => (
         <Button 
           type="link" 
-          className="p-0 font-semibold"
+          className="p-0 font-semibold text-left"
+          style={{ whiteSpace: 'normal', textAlign: 'left' }}
           onClick={() => navigate(`/staff/contracts/${record.id}`)}
         >
-          {code}
+          {name || `HĐ-${record.id?.substring(0, 8)}`}
         </Button>
       )
     },
@@ -138,63 +156,40 @@ const ContractListPage: React.FC = () => {
       key: 'orderCode',
       width: 140,
       render: (_, record) => (
-        <Text>{record.order?.orderCode || '-'}</Text>
+        <Button 
+          type="link" 
+          className="p-0"
+          onClick={() => record.order?.id && navigate(`/staff/orders/${record.order.id}`)}
+          disabled={!record.order?.id}
+        >
+          {record.order?.orderCode || '-'}
+        </Button>
       )
     },
     {
       title: 'Tổng giá trị',
-      dataIndex: 'totalPrice',
-      key: 'totalPrice',
-      width: 150,
+      key: 'effectiveValue',
+      width: 160,
       align: 'right',
-      render: (price: number) => (
+      render: (_, record) => (
         <Text strong className="text-green-600">
-          {price?.toLocaleString('vi-VN')} đ
+          {(record.effectiveValue || 0).toLocaleString('vi-VN')} đ
         </Text>
       )
-    },
-    {
-      title: 'Tiến độ thanh toán',
-      key: 'paymentProgress',
-      width: 180,
-      render: (_, record) => {
-        const paid = (record.totalPrice || 0) - (record.remainingAmount || 0);
-        const percent = record.totalPrice > 0 ? Math.round((paid / record.totalPrice) * 100) : 0;
-        return (
-          <div>
-            <Progress 
-              percent={percent} 
-              size="small" 
-              status={percent === 100 ? 'success' : 'active'}
-              format={() => `${percent}%`}
-            />
-            <Text type="secondary" className="text-xs">
-              {paid.toLocaleString('vi-VN')} / {record.totalPrice?.toLocaleString('vi-VN')} đ
-            </Text>
-          </div>
-        );
-      }
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 120,
+      width: 140,
       render: (status: string) => getStatusTag(status)
-    },
-    {
-      title: 'Thanh toán',
-      dataIndex: 'paymentStatus',
-      key: 'paymentStatus',
-      width: 150,
-      render: (status: string) => getPaymentStatusTag(status)
     },
     {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 140,
-      render: (date: string) => dayjs(date).format('DD/MM/YYYY HH:mm')
+      width: 150,
+      render: (date: string) => date ? dayjs(date).format('DD/MM/YYYY HH:mm') : '-'
     },
     {
       title: 'Thao tác',
@@ -235,24 +230,36 @@ const ContractListPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <Row gutter={[16, 16]} className="mb-6">
+      <Row gutter={[16, 16]} className="mb-6" align="stretch">
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-blue-500">
+          <Card
+            className="text-center shadow-sm border-t-4 border-t-blue-500"
+            style={{ height: '100%' }}
+          >
             <Statistic title="Tổng hợp đồng" value={stats.total} prefix={<FileTextOutlined />} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-green-500">
+          <Card
+            className="text-center shadow-sm border-t-4 border-t-green-500"
+            style={{ height: '100%' }}
+          >
             <Statistic title="Đang hoạt động" value={stats.active} valueStyle={{ color: '#52c41a' }} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-yellow-500">
+          <Card
+            className="text-center shadow-sm border-t-4 border-t-yellow-500"
+            style={{ height: '100%' }}
+          >
             <Statistic title="Chờ xử lý" value={stats.pending} valueStyle={{ color: '#faad14' }} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-purple-500">
+          <Card
+            className="text-center shadow-sm border-t-4 border-t-purple-500"
+            style={{ height: '100%' }}
+          >
             <Statistic 
               title="Tổng giá trị" 
               value={stats.totalValue} 
@@ -278,24 +285,17 @@ const ContractListPage: React.FC = () => {
             <Select
               value={statusFilter}
               onChange={setStatusFilter}
-              style={{ width: 150 }}
-              options={[
-                { value: 'all', label: 'Tất cả trạng thái' },
-                { value: 'SIGNED', label: 'Đã ký' },
-                { value: 'PENDING', label: 'Chờ ký' },
-                { value: 'COMPLETED', label: 'Hoàn thành' },
-                { value: 'CANCELLED', label: 'Đã hủy' },
-              ]}
-            />
-            <Select
-              value={paymentFilter}
-              onChange={setPaymentFilter}
               style={{ width: 180 }}
               options={[
-                { value: 'all', label: 'Tất cả thanh toán' },
-                { value: 'PAID', label: 'Đã thanh toán đủ' },
-                { value: 'DEPOSIT_PAID', label: 'Đã đặt cọc' },
-                { value: 'PENDING', label: 'Chưa thanh toán' },
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'CONTRACT_DRAFT', label: 'Bản nháp' },
+                { value: 'CONTRACT_SIGNED', label: 'Đã ký' },
+                { value: 'DEPOSITED', label: 'Đã đặt cọc' },
+                { value: 'PAID', label: 'Đã thanh toán' },
+                { value: 'UNPAID', label: 'Chưa thanh toán' },
+                { value: 'CANCELLED', label: 'Đã hủy' },
+                { value: 'EXPIRED', label: 'Hết hạn' },
+                { value: 'REFUNDED', label: 'Đã hoàn tiền' },
               ]}
             />
           </Space>

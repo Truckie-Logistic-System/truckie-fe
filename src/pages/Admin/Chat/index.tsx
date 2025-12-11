@@ -180,7 +180,7 @@ const StaffChatDashboard: React.FC = () => {
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="Tìm kiếm..."
+                placeholder="Tìm kiếm theo tên hoặc số điện thoại..."
                 className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

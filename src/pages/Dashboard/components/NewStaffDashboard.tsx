@@ -69,7 +69,9 @@ const ISSUE_STATUS_COLORS: Record<string, string> = {
   CLOSED: 'default',
 };
 
-const formatCurrency = (value: number): string => {
+const formatCurrency = (rawValue?: number | null): string => {
+  const value = typeof rawValue === 'number' && !Number.isNaN(rawValue) ? rawValue : 0;
+
   if (value >= 1000000000) {
     return `${(value / 1000000000).toFixed(1)} tỷ`;
   }
@@ -834,9 +836,10 @@ const NewStaffDashboard: React.FC = () => {
                                 dataIndex: 'totalPackages',
                                 align: 'center' as const,
                                 width: 120,
-                                render: (value: number) => (
-                                  <Tag color="blue">{value.toLocaleString('vi-VN')}</Tag>
-                                ),
+                                render: (value: number) => {
+                                  const safeValue = typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+                                  return <Tag color="blue">{safeValue.toLocaleString('vi-VN')}</Tag>;
+                                },
                               },
                               {
                                 title: 'Doanh thu',

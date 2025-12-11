@@ -11,7 +11,6 @@ export { default as VehicleAssignmentTag } from './VehicleAssignmentTag';
 export { default as PenaltyStatusTag } from './PenaltyStatusTag';
 export { default as ConversationStatusTag } from './ConversationStatusTag';
 export { default as CommonStatusTag } from './CommonStatusTag';
-export { default as MaintenanceTypeTag } from './MaintenanceTypeTag';
 export { default as DeviceStatusTag } from './DeviceStatusTag';
 export { default as PriorityTag } from './PriorityTag';
-export { default as LicenseClassTag } from './LicenseClassTag'; 
+export { default as LicenseClassTag } from './LicenseClassTag';

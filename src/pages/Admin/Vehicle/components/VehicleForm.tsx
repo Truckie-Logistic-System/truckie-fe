@@ -63,9 +63,17 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
             <Form.Item
                 name="licensePlateNumber"
                 label="Biển số xe"
-                rules={[{ required: true, message: 'Vui lòng nhập biển số xe' }]}
+                rules={[
+                    { required: true, message: 'Vui lòng nhập biển số xe' },
+                    { 
+                        pattern: /^[0-9]{2}[A-Z]{1,2}[-\s]?[0-9]{4,5}$/i, 
+                        message: 'Biển số xe không hợp lệ (VD: 51A-12345, 30H-1234)' 
+                    },
+                    { min: 7, message: 'Biển số xe phải có ít nhất 7 ký tự' },
+                    { max: 12, message: 'Biển số xe không được quá 12 ký tự' },
+                ]}
             >
-                <Input placeholder="Nhập biển số xe" />
+                <Input placeholder="Nhập biển số xe (VD: 51A-12345)" style={{ textTransform: 'uppercase' }} />
             </Form.Item>
 
             <Form.Item
@@ -98,19 +106,6 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
             </Form.Item>
 
             <Form.Item
-                name="capacity"
-                label="Sức chứa (kg)"
-                rules={[{ required: true, message: 'Vui lòng nhập sức chứa' }]}
-            >
-                <InputNumber
-                    className="w-full"
-                    placeholder="Nhập sức chứa"
-                    min={0}
-                    addonAfter="kg"
-                />
-            </Form.Item>
-
-            <Form.Item
                 name="vehicleTypeId"
                 label="Loại phương tiện"
                 rules={[{ required: true, message: 'Vui lòng chọn loại phương tiện' }]}
@@ -122,7 +117,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
                 >
                     {vehicleTypes.map(type => (
                         <Select.Option key={type.id} value={type.id}>
-                            {type.vehicleTypeName}
+                            {type.description || type.vehicleTypeName}
                         </Select.Option>
                     ))}
                 </Select>
@@ -132,11 +127,12 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
                 name="status"
                 label="Trạng thái"
                 rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
-                initialValue="active"
+                initialValue={mode === 'create' ? 'ACTIVE' : initialValues?.status || 'ACTIVE'}
             >
-                <Radio.Group>
-                    <Radio value="active">Hoạt động</Radio>
-                    <Radio value="inactive">Không hoạt động</Radio>
+                <Radio.Group disabled={mode === 'create'}>
+                    <Radio value="ACTIVE">Hoạt động</Radio>
+                    <Radio value="INACTIVE">Không hoạt động</Radio>
+                    <Radio value="IN_TRANSIT">Đang di chuyển</Radio>
                 </Radio.Group>
             </Form.Item>
 

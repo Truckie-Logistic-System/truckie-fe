@@ -4,7 +4,7 @@ import { maintenanceTypeService } from '@/services/maintenance-type/maintenanceT
 
 export const useMaintenanceManagement = () => {
   const [maintenances, setMaintenances] = useState<any[]>([]);
-  const [maintenanceTypes, setMaintenanceTypes] = useState<any[]>([]);
+  const [serviceTypes, setServiceTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,7 +17,8 @@ export const useMaintenanceManagement = () => {
         maintenanceTypeService.getMaintenanceTypes()
       ]);
       setMaintenances(maintenancesRes.data || []);
-      setMaintenanceTypes(typesRes.data || []);
+      // Service types are now strings from backend config
+      setServiceTypes(typesRes.data || []);
     } catch (err: any) {
       console.error('[useMaintenanceManagement] Error:', err);
       setError(err?.message || 'Không thể tải danh sách bảo trì');
@@ -44,7 +45,7 @@ export const useMaintenanceManagement = () => {
 
   return {
     maintenances,
-    maintenanceTypes,
+    serviceTypes,
     loading,
     error,
     refetch: fetchMaintenances,

@@ -70,11 +70,21 @@ const DamageResolutionPanel: React.FC<DamageResolutionPanelProps> = ({ issueId, 
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isSaving, setSaving] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  
+  // Monitor form fields to check if the form is valid
+  const formValues = Form.useWatch([], form);
+  
+  useEffect(() => {
+    form.validateFields({ validateOnly: true })
+      .then(() => setIsFormValid(true))
+      .catch(() => setIsFormValid(false));
+  }, [formValues, form]);
   const [damageDetail, setDamageDetail] = useState<CompensationDetailResponse | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [hasDocuments, setHasDocuments] = useState(false);
   const [damageRatePercent, setDamageRatePercent] = useState(0); // lưu dạng % (0-100)
-  const [isFormValid, setIsFormValid] = useState(false);
   const [isFraud, setIsFraud] = useState(false); // State riêng để disable form khi gian lận
   const [documentFiles, setDocumentFiles] = useState<any[]>([]);
   const [refundProofFile, setRefundProofFile] = useState<any>(null);

@@ -1,4 +1,4 @@
-import type { Vehicle, VehicleMaintenance, VehicleMaintenanceDetail, CreateVehicleMaintenanceRequest, UpdateVehicleMaintenanceRequest } from '../../models';
+import type { Vehicle, VehicleMaintenance, CreateVehicleMaintenanceRequest, UpdateVehicleMaintenanceRequest } from '../../models';
 import type { ApiResponse } from '../api/types';
 
 export type GetVehiclesResponse = ApiResponse<Vehicle[]>;
@@ -8,7 +8,7 @@ export type UpdateVehicleResponse = ApiResponse<Vehicle>;
 
 export type GetVehicleMaintenancesResponse = ApiResponse<VehicleMaintenance[]>;
 export type GetVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>;
-export type GetVehicleMaintenanceDetailResponse = ApiResponse<VehicleMaintenanceDetail>;
+export type GetVehicleMaintenanceDetailResponse = ApiResponse<VehicleMaintenance>;
 export type CreateVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>;
 export type UpdateVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>;
 

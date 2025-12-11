@@ -53,37 +53,132 @@ const NotificationListPage: React.FC = () => {
   // Filters
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [selectedType, setSelectedType] = useState<NotificationType | undefined>(undefined);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all'); // Default to 'all'
   const [dateRange, setDateRange] = useState<[string, string] | undefined>(undefined);
+
+  // Notification type groups for staff (based on actual notification types from backend)
+  const notificationGroups = {
+    order: {
+      label: 'Đơn hàng',
+      types: [
+        'STAFF_ORDER_CREATED',
+        'STAFF_ORDER_PROCESSING', 
+        'STAFF_CONTRACT_SIGNED',
+        'STAFF_ORDER_CANCELLED',
+        'STAFF_DELIVERY_COMPLETED',
+        'STAFF_RETURN_COMPLETED',
+        'STAFF_RETURN_IN_PROGRESS',
+        'ORDER_STATUS_CHANGE'
+      ] as NotificationType[]
+    },
+    issue: {
+      label: 'Sự cố',
+      types: [
+        'NEW_ISSUE_REPORTED',
+        'ISSUE_ESCALATED',
+        'PACKAGE_DAMAGED',
+        'ORDER_REJECTED_BY_RECEIVER',
+        'REROUTE_REQUIRED',
+        'SEAL_REPLACED',
+        'SEAL_REPLACEMENT_COMPLETED',
+        'SEAL_ASSIGNED',
+        'ISSUE_STATUS_CHANGE',
+        'SEAL_REPLACEMENT',
+        'ORDER_REJECTION',
+        'DAMAGE',
+        'REROUTE'
+      ] as NotificationType[]
+    },
+    payment: {
+      label: 'Thanh toán',
+      types: [
+        'STAFF_DEPOSIT_RECEIVED',
+        'STAFF_FULL_PAYMENT',
+        'STAFF_RETURN_PAYMENT',
+        'STAFF_PAYMENT_REMINDER',
+        'PAYMENT_DEPOSIT_SUCCESS',
+        'PAYMENT_FULL_SUCCESS',
+        'PAYMENT_REMINDER',
+        'PAYMENT_OVERDUE',
+        'COMPENSATION_PROCESSED',
+        'PAYMENT_SUCCESS',
+        'PAYMENT_TIMEOUT'
+      ] as NotificationType[]
+    },
+    maintenance: {
+      label: 'Bảo trì xe',
+      types: [
+        'VEHICLE_MAINTENANCE_DUE',
+        'VEHICLE_INSPECTION_DUE'
+      ] as NotificationType[]
+    },
+    contract: {
+      label: 'Hợp đồng',
+      types: [
+        'CONTRACT_READY',
+        'CONTRACT_SIGNED',
+        'CONTRACT_SIGN_REMINDER',
+        'CONTRACT_SIGN_OVERDUE'
+      ] as NotificationType[]
+    }
+  };
 
   // Get user ID from localStorage or auth context
   const userId = localStorage.getItem('userId') || '';
 
-  // Register with notification manager
+  // Initialize notification manager and load data
   useEffect(() => {
-    if (!notificationManager.isReady() || !userId) return;
-
-    notificationManager.register('staff-notification-list', {
-      onNewNotification: (notification) => {
-        console.log('🔔 [StaffNotificationListPage] New notification received:', notification);
-        // Silent reload - no loading animation
-        loadNotifications(false);
-        loadStats();
-      },
-      onListUpdate: () => {
-        // Reload when list updates from other components
-        loadNotifications(false);
-        loadStats();
+    const initializeAndLoad = async () => {
+      if (!userId) {
+        console.warn('[NotificationListPage] No userId found');
+        return;
       }
-    });
 
-    // Initial load
-    loadNotifications(true);
-    loadStats();
+      // Always load data first, regardless of manager state
+      loadNotifications(true);
+      loadStats();
+
+      // Register with manager if ready, otherwise it will register later
+      if (notificationManager.isReady()) {
+        notificationManager.register('staff-notification-list', {
+          onNewNotification: (notification) => {
+            console.log('🔔 [StaffNotificationListPage] New notification received:', notification);
+            loadNotifications(false);
+            loadStats();
+          },
+          onListUpdate: () => {
+            loadNotifications(false);
+            loadStats();
+          }
+        });
+      }
+    };
+
+    initializeAndLoad();
     
     return () => {
-      notificationManager.unregister('staff-notification-list');
+      if (notificationManager.isReady()) {
+        notificationManager.unregister('staff-notification-list');
+      }
     };
-  }, [userId, notificationManager.isReady()]);
+  }, [userId]);
+
+  // Register with manager when it becomes ready (if not already registered)
+  useEffect(() => {
+    if (notificationManager.isReady() && userId) {
+      notificationManager.register('staff-notification-list', {
+        onNewNotification: (notification) => {
+          console.log('🔔 [StaffNotificationListPage] New notification received:', notification);
+          loadNotifications(false);
+          loadStats();
+        },
+        onListUpdate: () => {
+          loadNotifications(false);
+          loadStats();
+        }
+      });
+    }
+  }, [notificationManager.isReady(), userId]);
 
   // Silent reload when filters change (after initial load)
   useEffect(() => {
@@ -92,7 +187,7 @@ const NotificationListPage: React.FC = () => {
       notificationManager.clearCache();
       loadNotifications(false);
     }
-  }, [currentPage, pageSize, unreadOnly, selectedType, dateRange]);
+  }, [currentPage, pageSize, unreadOnly, selectedType, selectedCategory, dateRange]);
 
   /**
    * Load notifications
@@ -110,23 +205,44 @@ const NotificationListPage: React.FC = () => {
         return;
       }
 
+      // Determine notification type based on category or specific type
+      let notificationType = selectedType;
+      if (selectedCategory && !selectedType) {
+        // If category is selected but no specific type, we'll filter on frontend
+        notificationType = undefined;
+      }
+
       const response = await notificationService.getNotifications({
         page: currentPage - 1,
         size: pageSize,
         unreadOnly,
-        notificationType: selectedType,
+        notificationType,
         startDate: dateRange?.[0],
         endDate: dateRange?.[1],
       });
 
+      // Filter by category on frontend if category is selected (and not 'all')
+      let filteredContent = response.content;
+      if (selectedCategory && selectedCategory !== 'all' && !selectedType) {
+        const categoryTypes = notificationGroups[selectedCategory as keyof typeof notificationGroups]?.types || [];
+        console.log('🔍 Filter Debug:', {
+          selectedCategory,
+          categoryTypes,
+          allNotificationTypes: response.content.map(n => n.notificationType),
+          beforeFilter: response.content.length
+        });
+        filteredContent = response.content.filter(n => categoryTypes.includes(n.notificationType));
+        console.log('✅ After filter:', filteredContent.length, 'notifications');
+      }
+
       // Sort by createdAt descending
-      const sortedNotifications = response.content.sort(
+      const sortedNotifications = filteredContent.sort(
         (a: Notification, b: Notification) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
       setNotifications(sortedNotifications);
-      setTotal(response.totalElements);
+      setTotal(selectedCategory && selectedCategory !== 'all' && !selectedType ? filteredContent.length : response.totalElements);
       
       // Cache the results for other components
       notificationManager.setCache(sortedNotifications, response.totalElements);
@@ -298,7 +414,7 @@ const NotificationListPage: React.FC = () => {
       {/* Filters */}
       <Card className="mb-4">
         <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} sm={8}>
+          <Col xs={24} sm={6}>
             <Select
               placeholder="Lọc theo trạng thái"
               allowClear
@@ -313,9 +429,28 @@ const NotificationListPage: React.FC = () => {
               <Option value="unread">Chưa đọc</Option>
             </Select>
           </Col>
-          <Col xs={24} sm={8}>
+          <Col xs={24} sm={6}>
             <Select
-              placeholder="Lọc theo loại"
+              placeholder="Lọc theo nhóm"
+              value={selectedCategory}
+              onChange={(value) => {
+                setSelectedCategory(value || 'all');
+                setSelectedType(undefined); // Clear specific type when category changes
+                setCurrentPage(1);
+              }}
+              className="w-full"
+            >
+              <Option value="all">📊 Tất cả</Option>
+              <Option value="order">📦 Đơn hàng</Option>
+              <Option value="issue">⚠️ Sự cố</Option>
+              <Option value="payment">💰 Thanh toán</Option>
+              <Option value="maintenance">🔧 Bảo trì xe</Option>
+              <Option value="contract">📋 Hợp đồng</Option>
+            </Select>
+          </Col>
+          <Col xs={24} sm={6}>
+            <Select
+              placeholder="Lọc theo loại cụ thể"
               allowClear
               value={selectedType}
               onChange={(value) => {
@@ -323,19 +458,16 @@ const NotificationListPage: React.FC = () => {
                 setCurrentPage(1);
               }}
               className="w-full"
+              disabled={!selectedCategory || selectedCategory === 'all'}
             >
-              <Option value="SEAL_REPLACEMENT">Thay seal</Option>
-              <Option value="ORDER_REJECTION">Từ chối đơn hàng</Option>
-              <Option value="DAMAGE">Hư hỏng</Option>
-              <Option value="REROUTE">Đổi tuyến</Option>
-              <Option value="PENALTY">Phạt</Option>
-              <Option value="PAYMENT_SUCCESS">Thanh toán</Option>
-              <Option value="PAYMENT_TIMEOUT">Hết hạn thanh toán</Option>
-              <Option value="ORDER_STATUS_CHANGE">Cập nhật đơn hàng</Option>
-              <Option value="ISSUE_STATUS_CHANGE">Cập nhật sự cố</Option>
+              {selectedCategory && notificationGroups[selectedCategory as keyof typeof notificationGroups]?.types.map(type => (
+                <Option key={type} value={type}>
+                  {getNotificationTypeName(type)}
+                </Option>
+              ))}
             </Select>
           </Col>
-          <Col xs={24} sm={8}>
+          <Col xs={24} sm={6}>
             <RangePicker
               placeholder={['Từ ngày', 'Đến ngày']}
               onChange={(dates) => {

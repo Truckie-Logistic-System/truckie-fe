@@ -41,9 +41,9 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({
         <Empty description="Không có dữ liệu" />
       ) : (
         <div className="space-y-4">
-          {/* Table */}
+          {/* Table - limit to top 5 */}
           <Table
-            dataSource={data}
+            dataSource={(data || []).slice(0, 5)}
             rowKey={(item) => (item as any).staffId || (item as any).driverId}
             pagination={false}
             size="small"
@@ -81,9 +81,10 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({
                 dataIndex: metricKey,
                 align: 'right' as const,
                 width: 120,
-                render: (value: number) => (
-                  <Tag color={color}>{value.toLocaleString('vi-VN')}</Tag>
-                ),
+                render: (value: number) => {
+                  const safeValue = typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+                  return <Tag color={color}>{safeValue.toLocaleString('vi-VN')}</Tag>;
+                },
               },
             ]}
           />
@@ -97,7 +98,10 @@ const TopPerformersChart: React.FC<TopPerformersChartProps> = ({
               }))}
               height={250}
               color={color}
-              formatter={(value: number) => value.toLocaleString('vi-VN')}
+              formatter={(value: number) => {
+                const safeValue = typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+                return safeValue.toLocaleString('vi-VN');
+              }}
             />
           </div>
         </div>

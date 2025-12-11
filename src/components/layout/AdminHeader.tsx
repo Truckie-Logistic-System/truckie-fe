@@ -68,15 +68,30 @@ const AdminHeader: React.FC = () => {
                     );
                 })()}
 
-                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                    <div className="flex items-center cursor-pointer">
+                {user && (user.role === 'staff' || user.role === 'admin') ? (
+                    <div className="flex items-center gap-3">
                         <Avatar icon={<UserOutlined />} />
-                        <span className="ml-2 hidden sm:inline">{user?.username}</span>
+                        <span className="hidden sm:inline">{user.username}</span>
+                        <Button
+                            type="text"
+                            icon={<LogoutOutlined />}
+                            danger
+                            onClick={handleLogout}
+                        >
+                            Đăng xuất
+                        </Button>
                     </div>
-                </Dropdown>
+                ) : (
+                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                        <div className="flex items-center cursor-pointer">
+                            <Avatar icon={<UserOutlined />} />
+                            <span className="ml-2 hidden sm:inline">{user?.username}</span>
+                        </div>
+                    </Dropdown>
+                )}
             </div>
         </Header>
     );
 };
 
-export default AdminHeader; 
+export default AdminHeader;

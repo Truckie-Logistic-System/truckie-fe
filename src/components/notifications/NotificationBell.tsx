@@ -22,14 +22,17 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId, userRole })
   useEffect(() => {
     const initializeNotifications = async () => {
       try {
+        if (!userId) {
+          console.warn('[NotificationBell] No userId provided');
+          return;
+        }
+
         // Initialize notification manager
         await notificationManager.initialize(userId, userRole);
         
         // Register callbacks
         notificationManager.register(componentId.current, {
           onNewNotification: (notification) => {
-            // console.log('🔔 [NotificationBell] New notification received:', notification);
-            
             // Play sound and show animation
             playNotificationSound(NotificationSoundType.INFO);
             setHasNewNotification(true);
@@ -38,7 +41,6 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId, userRole })
             // Immediately increment badge count for instant UI feedback
             setUnreadCount(prev => {
               const newCount = prev + 1;
-              // console.log('🔔 [NotificationBell] Badge count incremented:', prev, '→', newCount);
               return newCount;
             });
             
@@ -46,7 +48,6 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId, userRole })
             setRefreshTrigger(prev => prev + 1);
           },
           onStatsUpdate: (stats) => {
-            // console.log('🔔 [NotificationBell] Stats updated from server:', stats);
             setUnreadCount(stats.unreadCount);
           },
           onListUpdate: () => {

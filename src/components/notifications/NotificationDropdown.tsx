@@ -39,39 +39,136 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all'); // Default to 'all'
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const componentId = useRef('notification-dropdown');
   
-  const pageSize = 6;
+  const pageSize = 20; // Increase to match main page
 
-  // Register with notification manager
+  // Notification type groups for staff (based on actual notification types from backend)
+  const notificationGroups = {
+    order: {
+      label: 'Đơn hàng',
+      types: [
+        'STAFF_ORDER_CREATED',
+        'STAFF_ORDER_PROCESSING', 
+        'STAFF_CONTRACT_SIGNED',
+        'STAFF_ORDER_CANCELLED',
+        'STAFF_DELIVERY_COMPLETED',
+        'STAFF_RETURN_COMPLETED',
+        'STAFF_RETURN_IN_PROGRESS',
+        'ORDER_STATUS_CHANGE'
+      ] as NotificationType[]
+    },
+    issue: {
+      label: 'Sự cố',
+      types: [
+        'NEW_ISSUE_REPORTED',
+        'ISSUE_ESCALATED',
+        'PACKAGE_DAMAGED',
+        'ORDER_REJECTED_BY_RECEIVER',
+        'REROUTE_REQUIRED',
+        'SEAL_REPLACED',
+        'SEAL_REPLACEMENT_COMPLETED',
+        'SEAL_ASSIGNED',
+        'ISSUE_STATUS_CHANGE',
+        'SEAL_REPLACEMENT',
+        'ORDER_REJECTION',
+        'DAMAGE',
+        'REROUTE'
+      ] as NotificationType[]
+    },
+    payment: {
+      label: 'Thanh toán',
+      types: [
+        'STAFF_DEPOSIT_RECEIVED',
+        'STAFF_FULL_PAYMENT',
+        'STAFF_RETURN_PAYMENT',
+        'STAFF_PAYMENT_REMINDER',
+        'PAYMENT_DEPOSIT_SUCCESS',
+        'PAYMENT_FULL_SUCCESS',
+        'PAYMENT_REMINDER',
+        'PAYMENT_OVERDUE',
+        'COMPENSATION_PROCESSED',
+        'PAYMENT_SUCCESS',
+        'PAYMENT_TIMEOUT'
+      ] as NotificationType[]
+    },
+    maintenance: {
+      label: 'Bảo trì xe',
+      types: [
+        'VEHICLE_MAINTENANCE_DUE',
+        'VEHICLE_INSPECTION_DUE'
+      ] as NotificationType[]
+    },
+    contract: {
+      label: 'Hợp đồng',
+      types: [
+        'CONTRACT_READY',
+        'CONTRACT_SIGNED',
+        'CONTRACT_SIGN_REMINDER',
+        'CONTRACT_SIGN_OVERDUE'
+      ] as NotificationType[]
+    }
+  };
+
+  // Initialize and load data
   useEffect(() => {
-    if (!notificationManager.isReady() || !userId) return;
-
-    notificationManager.register(componentId.current, {
-      onNewNotification: () => {
-        // Silent reload when new notification arrives
-        loadNotifications(false);
-      },
-      onListUpdate: () => {
-        // Reload when list updates from other components
-        loadNotifications(false);
+    const initializeAndLoad = async () => {
+      if (!userId) {
+        console.warn('[NotificationDropdown] No userId found');
+        return;
       }
-    });
 
-    // Initial load
-    loadNotifications(true);
+      // Always load data first, regardless of manager state
+      loadNotifications(true);
+
+      // Register with manager if ready
+      if (notificationManager.isReady()) {
+        notificationManager.register(componentId.current, {
+          onNewNotification: () => {
+            loadNotifications(false);
+          },
+          onListUpdate: () => {
+            loadNotifications(false);
+          }
+        });
+      }
+    };
+
+    initializeAndLoad();
 
     return () => {
-      notificationManager.unregister(componentId.current);
+      if (notificationManager.isReady()) {
+        notificationManager.unregister(componentId.current);
+      }
     };
-  }, [userId, notificationManager.isReady()]);
+  }, [userId]);
 
-  // Silent reload when page changes
+  // Register with manager when it becomes ready
+  useEffect(() => {
+    if (notificationManager.isReady() && userId) {
+      notificationManager.register(componentId.current, {
+        onNewNotification: () => {
+          loadNotifications(false);
+        },
+        onListUpdate: () => {
+          loadNotifications(false);
+        }
+      });
+    }
+  }, [notificationManager.isReady(), userId]);
+
+  // Silent reload when page or filter changes
   useEffect(() => {
     if (!initialLoading) {
+      // Clear cache when filter changes to prevent stale data (like in NotificationListPage)
+      if (selectedCategory !== 'all' || unreadOnly) {
+        notificationManager.clearCache();
+      }
       loadNotifications(false);
     }
-  }, [currentPage, refreshTrigger]);
+  }, [currentPage, selectedCategory, unreadOnly, refreshTrigger]);
 
   /**
    * Load notifications
@@ -80,24 +177,71 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const loadNotifications = async (showLoading: boolean = false) => {
     if (showLoading) setInitialLoading(true);
     try {
-      // Don't use cache for pagination - always fetch fresh data
-      // Cache is only useful for initial load or refresh, not page changes
+      // Try to use cache first (for navigation from dropdown) - but only if no filter is applied
+      const cache = notificationManager.getCache();
+      if (cache && currentPage === 1 && selectedCategory === 'all' && !unreadOnly && !showLoading) {
+        console.log('📋 [NotificationDropdown] Using cached data');
+        setNotifications(cache.notifications);
+        setTotal(cache.total);
+        return;
+      }
+
+      console.log('🔍 [NotificationDropdown] Fetching fresh data:', {
+        selectedCategory,
+        unreadOnly,
+        currentPage,
+        pageSize,
+        useCache: cache && currentPage === 1 && selectedCategory === 'all' && !unreadOnly
+      });
+
+      // Determine notification type based on category or specific type
+      let notificationType = undefined;
+      if (selectedCategory && selectedCategory !== 'all') {
+        // If category is selected but no specific type, we'll filter on frontend
+        notificationType = undefined;
+      }
+
       const response = await notificationService.getNotifications({
         page: currentPage - 1,
         size: pageSize,
-        unreadOnly: false,
+        unreadOnly,
+        notificationType,
+      });
+
+      // Filter by category on frontend if category is selected
+      let filteredContent = response.content;
+      if (selectedCategory && selectedCategory !== 'all') {
+        const categoryTypes = notificationGroups[selectedCategory as keyof typeof notificationGroups]?.types || [];
+        console.log('🔍 [NotificationDropdown] Applying category filter:', {
+          selectedCategory,
+          categoryTypes,
+          beforeFilter: response.content.length,
+          allTypes: response.content.map(n => n.notificationType),
+          matchingTypes: response.content.filter(n => categoryTypes.includes(n.notificationType)).map(n => n.notificationType)
+        });
+        filteredContent = response.content.filter(n => categoryTypes.includes(n.notificationType));
+        console.log('✅ [NotificationDropdown] After category filter:', {
+          count: filteredContent.length,
+          titles: filteredContent.map(n => n.title)
+        });
+      }
+      
+      console.log('📈 [NotificationDropdown] Final result:', {
+        total: filteredContent.length,
+        first5Types: filteredContent.slice(0, 5).map(n => n.notificationType)
       });
       
+      
       // Sort by createdAt descending
-      const sortedNotifications = response.content.sort((a: Notification, b: Notification) => 
+      const sortedNotifications = filteredContent.sort((a: Notification, b: Notification) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       
       setNotifications(sortedNotifications);
-      setTotal(response.totalElements);
+      setTotal(selectedCategory && selectedCategory !== 'all' ? filteredContent.length : response.totalElements);
       
-      // Only cache the first page for faster initial loads
-      if (currentPage === 1) {
+      // Cache the results for other components (only when no filter applied)
+      if (currentPage === 1 && selectedCategory === 'all' && !unreadOnly) {
         notificationManager.setCache(sortedNotifications, response.totalElements);
       }
     } catch (error) {
@@ -151,7 +295,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     <div className="notification-dropdown" style={{ width: '100%' }}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <BellOutlined className="text-blue-600 text-lg" />
             <h3 className="text-lg font-semibold text-gray-800 m-0">
@@ -167,6 +311,93 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             Xem tất cả
           </Button>
         </div>
+        {/* Filters */}
+        {userRole === 'STAFF' && (
+          <div className="space-y-2">
+            {/* Read/Unread Filter */}
+            <div className="flex gap-2">
+              <Button
+                type={!unreadOnly ? 'primary' : 'default'}
+                size="small"
+                shape="round"
+                className={
+                  !unreadOnly
+                    ? 'bg-green-600 text-white border-green-600'
+                    : ''
+                }
+                onClick={() => {
+                  setUnreadOnly(false);
+                  setCurrentPage(1);
+                }}
+              >
+                Tất cả
+              </Button>
+              <Button
+                type={unreadOnly ? 'primary' : 'default'}
+                size="small"
+                shape="round"
+                className={
+                  unreadOnly
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : ''
+                }
+                onClick={() => {
+                  setUnreadOnly(true);
+                  setCurrentPage(1);
+                }}
+              >
+                Chưa đọc
+              </Button>
+            </div>
+            {/* Category Filter */}
+            <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1">
+              {/* All filter button */}
+              <Button
+                type={selectedCategory === 'all' ? 'primary' : 'default'}
+                size="small"
+                shape="round"
+                className={
+                  selectedCategory === 'all'
+                    ? 'bg-blue-600 text-white border-blue-600 whitespace-nowrap'
+                    : 'whitespace-nowrap'
+                }
+                onClick={() => {
+                  if (selectedCategory !== 'all') {
+                    setSelectedCategory('all');
+                    setCurrentPage(1);
+                  }
+                }}
+              >
+                📊 Tất cả
+              </Button>
+              {/* Category filter buttons */}
+              {Object.entries(notificationGroups).map(([key, group]) => {
+                const isActive = selectedCategory === key;
+                return (
+                  <Button
+                    key={key}
+                    type={isActive ? 'primary' : 'default'}
+                    size="small"
+                    shape="round"
+                    className={
+                      isActive
+                        ? 'bg-blue-600 text-white border-blue-600 whitespace-nowrap'
+                        : 'whitespace-nowrap'
+                    }
+                    onClick={() => {
+                      if (selectedCategory !== key) {
+                        setSelectedCategory(key);
+                        setCurrentPage(1);
+                      }
+                    }}
+                  >
+                    {key === 'order' ? '📦' : key === 'issue' ? '⚠️' : key === 'payment' ? '💰' : key === 'maintenance' ? '🔧' : '📋'} {group.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Notification List */}

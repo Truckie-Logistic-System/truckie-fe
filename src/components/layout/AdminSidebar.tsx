@@ -92,12 +92,22 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
             {
               key: "/admin/vehicle-maintenances",
               icon: <ToolOutlined />,
-              label: <Link to="/admin/vehicle-maintenances">Bảo trì</Link>,
+              label: <Link to="/admin/vehicle-maintenances">Đăng kiểm & Bảo trì</Link>,
             },
             {
               key: "/admin/devices",
               icon: <HddOutlined />,
-              label: <Link to="/admin/devices">Thiết bị GPS</Link>,
+              label: <Link to="/admin/devices">Thiết bị</Link>,
+            },
+            {
+              key: "/admin/fuel-consumptions",
+              icon: <DashboardOutlined />,
+              label: <Link to="/admin/fuel-consumptions">Tiêu thụ nhiên liệu</Link>,
+            },
+            {
+              key: "/admin/fuel-types",
+              icon: <TagsOutlined />,
+              label: <Link to="/admin/fuel-types">Loại nhiên liệu</Link>,
             },
           ],
         },
@@ -114,14 +124,41 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       return [
         ...baseItems,
         {
+          key: "/staff/customers",
+          icon: <UserOutlined />,
+          label: <Link to="/staff/customers">Khách hàng</Link>,
+        },
+        {
           key: "/staff/orders",
           icon: <ShoppingCartOutlined />,
           label: <Link to="/staff/orders">Đơn hàng</Link>,
         },
         {
-          key: "/staff/issues",
+          key: "staff-issue-management",
           icon: <ExclamationCircleOutlined />,
-          label: <Link to="/staff/issues">Sự cố</Link>,
+          label: "Quản lý sự cố",
+          children: [
+            {
+              key: "/staff/issues",
+              icon: <ExclamationCircleOutlined />,
+              label: <Link to="/staff/issues">Danh sách sự cố</Link>,
+            },
+            {
+              key: "/staff/issue-types",
+              icon: <TagsOutlined />,
+              label: <Link to="/staff/issue-types">Loại sự cố</Link>,
+            },
+            {
+              key: "/staff/compensation-assessments",
+              icon: <DollarOutlined />,
+              label: <Link to="/staff/compensation-assessments">Thẩm định bồi thường</Link>,
+            },
+            // {
+            //   key: "/staff/off-route-events",
+            //   icon: <SwapOutlined />,
+            //   label: <Link to="/staff/off-route-events">Cảnh báo lệch tuyến</Link>,
+            // },
+          ],
         },
         {
           key: "/staff/vehicle-assignments",

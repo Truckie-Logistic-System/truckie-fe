@@ -181,12 +181,22 @@ export interface Vehicle {
     model?: string;
     manufacturer?: string;
     year?: number;
-    capacity?: number;
     status: string;
     currentLatitude?: number;
     currentLongitude?: number;
     lastUpdated?: string;
     vehicleType?: VehicleType;
+    vehicleSummary?: {
+        licensePlateNumber?: string;
+        model?: string;
+        manufacturer?: string;
+        year?: number;
+        status: string;
+        currentLatitude?: number;
+        currentLongitude?: number;
+        lastUpdated?: string;
+        vehicleType?: VehicleType;
+    }
 }
 
 export interface VehicleType {

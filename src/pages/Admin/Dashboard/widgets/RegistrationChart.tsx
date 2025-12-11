@@ -20,7 +20,7 @@ const RegistrationChart: React.FC<RegistrationChartProps> = ({
 }) => {
   const chartData = data?.points.map((point) => {
     // Use the label directly since backend already formats appropriately
-    // WEEK: "dd/MM", MONTH: "Tuần X", YEAR: "MM/yyyy"
+    // WEEK: "yyyy-MM-dd", MONTH: "Tuần X", YEAR: "MM/yyyy"
     return {
       date: point.date,
       count: point.count,
@@ -33,13 +33,46 @@ const RegistrationChart: React.FC<RegistrationChartProps> = ({
     yField: 'count',
     smooth: true,
     color: color,
+    // Scale config to ensure proper date ordering for string dates
+    scale: {
+      date: {
+        type: 'cat' as const, // Categorical scale for string dates
+      },
+    },
+    // Format xAxis labels for yyyy-MM-dd dates (WEEK filter)
+    xAxis: {
+      label: {
+        formatter: (value: string) => {
+          // If value is yyyy-MM-dd string, format to dd/MM
+          if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            const [year, month, day] = value.split('-');
+            return `${day}/${month}`;
+          }
+          return value;
+        },
+        autoHide: true,
+        autoEllipsis: true,
+        style: {
+          fontSize: 11,
+        },
+      },
+      tickCount: Math.min(chartData.length, 8),
+    },
     point: {
       size: 4,
       shape: 'circle',
     },
     tooltip: {
       showTitle: true,
-      title: (datum: any) => datum.date,
+      title: (datum: any) => {
+        const dateValue = datum.date;
+        // Format yyyy-MM-dd to dd/MM for tooltip
+        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+          const [year, month, day] = dateValue.split('-');
+          return `${day}/${month}`;
+        }
+        return dateValue;
+      },
       customContent: (title: string, items: any[]) => {
         if (!items || items.length === 0) return null;
         const value = items[0]?.data?.count || 0;
@@ -74,7 +107,7 @@ const RegistrationChart: React.FC<RegistrationChartProps> = ({
           <Spin />
         </div>
       ) : (
-        <div style={{ height: 300 }}>
+        <div style={{ height: 300, width: '100%', overflow: 'hidden' }}>
           <Line {...config} />
         </div>
       )}

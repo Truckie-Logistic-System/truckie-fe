@@ -10,6 +10,10 @@ import {
   Skeleton,
   Tooltip,
   App,
+  Typography,
+  Divider,
+  Row,
+  Col,
 } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { categoryService } from "../../../../services/category";
@@ -372,19 +376,25 @@ const CategoryCombinedList = forwardRef<
 
         {/* Edit/Create Modal */}
         <Modal
-          title={isEditing ? "Chỉnh sửa loại hàng" : "Thêm loại hàng mới"}
+          title={
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              {isEditing ? "Chỉnh sửa loại hàng" : "Thêm loại hàng mới"}
+            </Typography.Title>
+          }
           open={isModalVisible}
           onCancel={handleCancel}
           onOk={handleSubmit}
           okText={isEditing ? "Cập nhật" : "Thêm mới"}
           cancelText="Hủy"
+          okButtonProps={{ type: "primary" }}
+          cancelButtonProps={{ type: "default" }}
           confirmLoading={
             createCategoryMutation.isPending ||
             updateCategoryMutation.isPending ||
             createPricingMutation.isPending ||
             updatePricingMutation.isPending
           }
-          width={500}
+          width={560}
           maskClosable={
             !(
               createCategoryMutation.isPending ||
@@ -409,10 +419,20 @@ const CategoryCombinedList = forwardRef<
               updatePricingMutation.isPending
             )
           }
-          bodyStyle={{ padding: "20px" }}
+          bodyStyle={{ padding: 24, paddingTop: 16 }}
         >
-          <Form form={form} layout="vertical">
-            <h3 className="text-lg font-medium mb-2">Thông tin loại hàng</h3>
+          <Form form={form} layout="vertical" size="middle">
+            <Typography.Title
+              level={5}
+              style={{ marginBottom: 4, color: "#1d4ed8" }}
+            >
+              Thông tin loại hàng
+            </Typography.Title>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+              Thiết lập tên và mô tả cho loại hàng để thuận tiện tra cứu và báo
+              giá.
+            </Typography.Paragraph>
+
             <Form.Item
               name="categoryName"
               label="Tên loại hàng"
@@ -420,7 +440,7 @@ const CategoryCombinedList = forwardRef<
                 { required: true, message: "Vui lòng nhập tên loại hàng" },
               ]}
             >
-              <Input placeholder="Nhập tên loại hàng" />
+              <Input placeholder="Ví dụ: HÀNG THƯỜNG, HÀNG DỄ VỠ" allowClear />
             </Form.Item>
 
             <Form.Item
@@ -428,44 +448,72 @@ const CategoryCombinedList = forwardRef<
               label="Mô tả"
               rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
             >
-              <Input.TextArea rows={3} placeholder="Nhập mô tả về loại hàng" />
-            </Form.Item>
-
-            <h3 className="text-lg font-medium mb-2 mt-4">Thông tin giá</h3>
-            <Form.Item
-              name="priceMultiplier"
-              label="Hệ số giá"
-              rules={[{ required: false, message: "Vui lòng nhập hệ số giá" }]}
-            >
-              <InputNumber
-                min={0}
-                step={0.1}
-                precision={2}
-                className="w-full"
-                placeholder="Nhập hệ số giá (ví dụ: 1.5)"
+              <Input.TextArea
+                rows={3}
+                placeholder="Mô tả ngắn gọn về đặc điểm loại hàng này"
+                showCount
+                maxLength={200}
               />
             </Form.Item>
 
-            <Form.Item
-              name="extraFee"
-              label="Phí bổ sung (VNĐ)"
-              rules={[
-                { required: false, message: "Vui lòng nhập phí bổ sung" },
-              ]}
-            >
-              <InputNumber
-                min={0}
-                step={1000}
-                formatter={(value) =>
-                  `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                }
-                parser={(value: string | undefined) =>
-                  value ? Number(value.replace(/\$\s?|(,*)/g, "")) : 0
-                }
-                className="w-full"
-                placeholder="Nhập phí bổ sung"
-              />
-            </Form.Item>
+            <Divider style={{ margin: "16px 0 12px" }}>
+              <Typography.Text strong>Thông tin giá</Typography.Text>
+            </Divider>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="priceMultiplier"
+                  label="Hệ số giá"
+                  tooltip="Nếu để trống, hệ thống sẽ dùng hệ số mặc định là 1.00"
+                  rules={[
+                    {
+                      required: false,
+                      message: "Vui lòng nhập hệ số giá",
+                    },
+                  ]}
+                >
+                  <InputNumber
+                    min={0}
+                    step={0.1}
+                    precision={2}
+                    style={{ width: "100%" }}
+                    placeholder="Ví dụ: 1.00, 1.50"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="extraFee"
+                  label="Phí bổ sung (VNĐ)"
+                  tooltip="Phí cộng thêm cho loại hàng này, có thể để 0 nếu không áp dụng"
+                  rules={[
+                    {
+                      required: false,
+                      message: "Vui lòng nhập phí bổ sung",
+                    },
+                  ]}
+                >
+                  <InputNumber
+                    min={0}
+                    step={1000}
+                    formatter={(value) =>
+                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                    }
+                    parser={(value: string | undefined) =>
+                      value ? Number(value.replace(/\$\s?|(,*)/g, "")) : 0
+                    }
+                    style={{ width: "100%" }}
+                    placeholder="Ví dụ: 10.000"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* <Typography.Paragraph type="secondary" style={{ marginTop: 4 }}>
+              Bạn có thể cập nhật lại hệ số giá và phí bổ sung sau trong trang
+              quản lý bảng giá.
+            </Typography.Paragraph> */}
           </Form>
         </Modal>
       </div>

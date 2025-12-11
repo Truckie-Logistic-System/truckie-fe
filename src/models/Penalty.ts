@@ -35,6 +35,9 @@ export interface VehicleAssignmentSummary {
     status?: string;
     vehiclePlateNumber?: string;
     vehicleTypeDescription?: string;
+    vehicleName?: string;
+    vehicleBrand?: string;
+    vehicleModel?: string;
     
     driver1Id?: string;
     driver1Name?: string;
@@ -56,6 +59,9 @@ export interface Penalty {
     driverSummary?: DriverSummary;
     vehicleAssignmentId?: string;
     vehicleAssignment?: VehicleAssignmentSummary;
+    // Location from related Issue (issueCategory = PENALTY)
+    violationLatitude?: number;
+    violationLongitude?: number;
 }
 
 export interface PenaltyCreateDto {

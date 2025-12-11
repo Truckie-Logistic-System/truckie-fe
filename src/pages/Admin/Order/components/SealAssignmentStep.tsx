@@ -158,9 +158,6 @@ const SealAssignmentStep: React.FC<SealAssignmentStepProps> = ({
                         Quay lại
                     </Button>
                     <Space>
-                        <Button onClick={handleSkip}>
-                            Bỏ qua
-                        </Button>
                         <Button
                             type="primary"
                             onClick={handleSubmit}

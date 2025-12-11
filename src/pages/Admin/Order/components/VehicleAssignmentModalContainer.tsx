@@ -859,14 +859,13 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             return <Result status="error" title="Vui lòng chọn xe trước" />;
         }
 
-        const vehicleForRoute = {
-            id: trip.vehicleId,
-            licensePlateNumber: "Selected Vehicle",
+        const newVehicle = {
+            id: `temp-${Date.now()}`,
+            licensePlateNumber: "",
             model: "",
             manufacturer: "",
             vehicleTypeId: "",
             year: 2023,
-            capacity: 1000,
             status: 'ACTIVE' as const
         };
 
@@ -874,7 +873,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             <RoutePlanningStep
                 orderId={orderId}
                 vehicleId={trip.vehicleId}
-                vehicle={vehicleForRoute}
+                vehicle={newVehicle}
                 onComplete={handleRouteComplete}
                 onBack={handleRouteBack}
             />

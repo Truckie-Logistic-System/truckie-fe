@@ -136,7 +136,6 @@ const StaffVehicleAssignmentPage: React.FC = () => {
             title="Quản lý chuyến xe"
             icon={<SwapOutlined />}
             description="Quản lý các chuyến xe và tài xế"
-            addButtonText="Tạo chuyến xe mới"
             addButtonIcon={<PlusOutlined />}
             onAddClick={handleOpenModal}
             searchText={searchText}

@@ -17,6 +17,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { Order, OrderStatus } from '@/models';
 import { OrderStatusEnum } from '@/constants/enums';
 import { OrderStatusTag } from '@/components/common/tags';
+import OrderStatCards from './OrderStatCards';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -211,76 +212,7 @@ const OrderList: React.FC<OrderListProps> = ({
 
     // Render stats card theo layout của Driver
     const renderStatCards = () => (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Text className="text-gray-600 block">Đơn chờ xử lý</Text>
-                        {loading ? (
-                            <Skeleton.Input style={{ width: 60 }} active size="small" />
-                        ) : (
-                            <Title level={3} className="m-0 text-orange-800">{stats.pendingOrders}</Title>
-                        )}
-                    </div>
-                    <Badge count={loading ? 0 : stats.pendingOrders} color="orange" showZero>
-                        <div className="bg-orange-200 p-2 rounded-full">
-                            <ClockCircleOutlined className="text-3xl text-orange-600" />
-                        </div>
-                    </Badge>
-                </div>
-            </Card>
-            <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Text className="text-gray-600 block">Đang vận chuyển</Text>
-                        {loading ? (
-                            <Skeleton.Input style={{ width: 60 }} active size="small" />
-                        ) : (
-                            <Title level={3} className="m-0 text-blue-800">{stats.inProgressOrders}</Title>
-                        )}
-                    </div>
-                    <Badge count={loading ? 0 : stats.inProgressOrders} color="blue" showZero>
-                        <div className="bg-blue-200 p-2 rounded-full">
-                            <CarOutlined className="text-3xl text-blue-600" />
-                        </div>
-                    </Badge>
-                </div>
-            </Card>
-            <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Text className="text-gray-600 block">Hoàn thành</Text>
-                        {loading ? (
-                            <Skeleton.Input style={{ width: 60 }} active size="small" />
-                        ) : (
-                            <Title level={3} className="m-0 text-green-700">{stats.completedOrders}</Title>
-                        )}
-                    </div>
-                    <Badge count={loading ? 0 : stats.completedOrders} color="green" showZero>
-                        <div className="bg-green-200 p-2 rounded-full">
-                            <CheckCircleOutlined className="text-3xl text-green-600" />
-                        </div>
-                    </Badge>
-                </div>
-            </Card>
-            <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Text className="text-gray-600 block">Có vấn đề</Text>
-                        {loading ? (
-                            <Skeleton.Input style={{ width: 60 }} active size="small" />
-                        ) : (
-                            <Title level={3} className="m-0 text-red-700">{stats.issueOrders}</Title>
-                        )}
-                    </div>
-                    <Badge count={loading ? 0 : stats.issueOrders} color="red" showZero>
-                        <div className="bg-red-200 p-2 rounded-full">
-                            <ExclamationCircleOutlined className="text-3xl text-red-600" />
-                        </div>
-                    </Badge>
-                </div>
-            </Card>
-        </div>
+        <OrderStatCards orders={orders || []} loading={loading} />
     );
 
     return (

@@ -16,6 +16,7 @@ import {
   CalendarOutlined,
   InfoCircleOutlined,
 } from "@ant-design/icons";
+// Note: DownloadOutlined already imported above
 import { useContractPdfGeneration } from "../../hooks/useContractPdfGeneration";
 import type { Contract } from "../../services/contract/types";
 import { ContractStatusTag } from "./tags";
@@ -146,9 +147,22 @@ const ContractInfo: React.FC<ContractInfoProps> = ({
             <Text strong className="block mb-1">
               File đính kèm:
             </Text>
-            <Link href={contract.attachFileUrl} target="_blank">
-              <FileTextOutlined /> Xem file đính kèm
-            </Link>
+            <Button
+              type="link"
+              className="p-0"
+              icon={<DownloadOutlined />}
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = contract.attachFileUrl!;
+                link.download = `hop-dong-${contract.contractName || contract.id}.pdf`;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+            >
+              Tải file đính kèm
+            </Button>
           </div>
         )}
 

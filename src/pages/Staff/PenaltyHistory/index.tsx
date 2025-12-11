@@ -263,10 +263,10 @@ const PenaltyHistory: React.FC = () => {
                                     className="mb-0"
                                 />
                                 <Input
-                                    placeholder="Tìm kiếm..."
+                                    placeholder="Tìm kiếm theo loại vi phạm, tài xế, mã chuyến..."
                                     prefix={<SearchOutlined />}
                                     onChange={e => debouncedSearch(e.target.value)}
-                                    className="flex-1 min-w-[200px]"
+                                    className="flex-1 min-w-[300px]"
                                     disabled={isLoading}
                                 />
                             </Space.Compact>

@@ -53,7 +53,17 @@ const AddressModal: React.FC<AddressModalProps> = ({
     const [useManualInput, setUseManualInput] = useState(false);
     const [useTrackAsia, setUseTrackAsia] = useState(false); // Default to false now
     const [useVietMap, setUseVietMap] = useState(true); // Default to true
+    const [isFormValid, setIsFormValid] = useState(false);
     const { message } = App.useApp();
+
+    // Monitor form fields to check if the form is valid
+    const formValues = Form.useWatch([], form);
+    
+    useEffect(() => {
+        form.validateFields({ validateOnly: true })
+            .then(() => setIsFormValid(true))
+            .catch(() => setIsFormValid(false));
+    }, [formValues, form]);
 
     // TrackAsia states
     const [selectedPlace, setSelectedPlace] = useState<PlaceDetailResult | null>(null);
@@ -145,7 +155,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
         }
         return () => { isMounted = false; };
     }, [visible, useVietMap, useTrackAsia]);
-
 
     useEffect(() => {
         if (!visible) return;
@@ -415,7 +424,6 @@ const AddressModal: React.FC<AddressModalProps> = ({
                 
             }, 0);
 
-            // Log để debug
             
         } catch (error) {
             console.error('Error processing place details:', error);
@@ -644,7 +652,10 @@ const AddressModal: React.FC<AddressModalProps> = ({
             maskClosable={false}
             width={1000}
             className="address-modal"
-            okButtonProps={{ className: 'rounded-md' }}
+            okButtonProps={{ 
+                className: 'rounded-md',
+                disabled: !isFormValid 
+            }}
             cancelButtonProps={{ className: 'rounded-md border-gray-300 hover:border-gray-400' }}
             bodyStyle={{ paddingTop: '1rem' }}
             style={{ top: 20 }}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, App, Typography, Tag, Tabs, Collapse, Badge, Card, Row, Col, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, EyeOutlined, CarFilled, CheckCircleOutlined, StopOutlined, CarOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Modal, App, Typography, Tag, Tabs, Collapse, Badge, Card, Row, Col, Empty, Input, Form, Select, DatePicker, InputNumber } from 'antd';
+import { PlusOutlined, EditOutlined, EyeOutlined, CarFilled, CheckCircleOutlined, StopOutlined, CarOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { vehicleService } from '../../../services';
 import type { Vehicle, CreateVehicleRequest, UpdateVehicleRequest, VehicleType } from '../../../models';
@@ -13,6 +13,10 @@ import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
 import { VehicleStatusEnum } from '@/constants/enums';
 import { VehicleStatusTag } from '@/components/common/tags';
+import VehicleStatCards from './components/VehicleStatCards';
+import MaintenanceAlertBanner from '../../../components/MaintenanceAlertBanner';
+import MaintenanceForm from '../VehicleMaintenance/components/MaintenanceForm';
+import dayjs from 'dayjs';
 import './styles/VehiclePage.css';
 
 const { Title, Text } = Typography;
@@ -35,8 +39,12 @@ const VehiclePage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<string>('vehicles');
     const [isStatusModalOpen, setIsStatusModalOpen] = useState<boolean>(false);
     const [statusModalLoading, setStatusModalLoading] = useState<boolean>(false);
-    const [selectedStatus, setSelectedStatus] = useState<string>('');
+    const [selectedStatus, setSelectedStatus] = useState<string>('active');
+    const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState<boolean>(false);
+    const [selectedMaintenance, setSelectedMaintenance] = useState<any>(null);
+    const [maintenanceFormData, setMaintenanceFormData] = useState<{vehicleId: string, serviceType: string} | null>(null);
     const [groupedView, setGroupedView] = useState<boolean>(true);
+    const [bannerRefreshCounter, setBannerRefreshCounter] = useState<number>(0);
     const { message } = App.useApp();
     const navigate = useNavigate();
 
@@ -146,7 +154,6 @@ const VehiclePage: React.FC = () => {
                 model,
                 manufacturer,
                 year,
-                capacity,
                 vehicleTypeId,
                 currentLatitude,
                 currentLongitude
@@ -158,7 +165,6 @@ const VehiclePage: React.FC = () => {
                 model,
                 manufacturer,
                 year,
-                capacity,
                 vehicleTypeId,
                 status: selectedStatus,
                 currentLatitude,
@@ -189,7 +195,6 @@ const VehiclePage: React.FC = () => {
                     model: values.model,
                     manufacturer: values.manufacturer,
                     year: values.year,
-                    capacity: values.capacity,
                     status: values.status,
                     vehicleTypeId: values.vehicleTypeId,
                     currentLatitude: values.currentLatitude,
@@ -305,6 +310,116 @@ const VehiclePage: React.FC = () => {
         }
     ];
 
+    const handleCreateScheduleFromBanner = (vehicleId: string, serviceType: string) => {
+        // Find the vehicle
+        const vehicle = vehicles.find(v => v.id === vehicleId);
+        if (!vehicle) {
+            message.error('Không tìm thấy thông tin phương tiện');
+            return;
+        }
+
+        // Clear selected maintenance to ensure create mode
+        setSelectedMaintenance(null);
+        
+        // Create initial values for pre-filling the form
+        const initialValues = {
+            vehicleId: vehicleId,
+            serviceType: serviceType,
+            plannedDate: dayjs().add(1, 'day'),
+            description: `Lịch ${serviceType} cho xe ${vehicle.licensePlateNumber}`
+        };
+        
+        // Open modal in create mode with pre-filled data
+        setSelectedMaintenance(initialValues);
+        setIsMaintenanceModalOpen(true);
+        
+        message.info(`Tạo lịch ${serviceType} cho xe ${vehicle.licensePlateNumber}`);
+    };
+
+    const handleMaintenanceFormSubmit = async (values: any) => {
+        try {
+            if (selectedMaintenance && selectedMaintenance.id) {
+                // Edit mode - not used in Vehicle page but kept for consistency
+                const response = await vehicleService.updateVehicleMaintenance(selectedMaintenance.id, values);
+                if (response.success) {
+                    message.success('Cập nhật lịch bảo trì thành công');
+                    setIsMaintenanceModalOpen(false);
+                    setSelectedMaintenance(null);
+                    setMaintenanceFormData(null);
+                    // Fetch lại data để cập nhật banner
+                    fetchVehicles();
+                } else {
+                    message.warning(response.message || 'Không thể cập nhật lịch bảo trì');
+                }
+            } else {
+                // Create mode
+                const response = await vehicleService.createVehicleMaintenance(values);
+                if (response.success) {
+                    message.success('Tạo lịch bảo trì thành công');
+                    setIsMaintenanceModalOpen(false);
+                    setSelectedMaintenance(null);
+                    setMaintenanceFormData(null);
+                    // Fetch lại data để cập nhật banner
+                    fetchVehicles();
+                    setBannerRefreshCounter(bannerRefreshCounter + 1);
+                } else {
+                    message.warning(response.message || 'Không thể tạo lịch bảo trì');
+                }
+            }
+        } catch (error) {
+            console.error('Error submitting maintenance form:', error);
+            message.error('Có lỗi xảy ra khi lưu lịch bảo trì');
+        }
+    };
+
+    const getExpiryWarnings = (vehicle: Vehicle) => {
+        const warnings: React.ReactNode[] = [];
+        
+        if (vehicle.isInspectionExpiringSoon) {
+            warnings.push(
+                <Tag key="inspection" color="warning" style={{ marginBottom: 2 }}>
+                    Đăng kiểm: {vehicle.daysUntilInspectionExpiry} ngày
+                </Tag>
+            );
+        }
+        if (vehicle.isInsuranceExpiringSoon) {
+            warnings.push(
+                <Tag key="insurance" color="warning" style={{ marginBottom: 2 }}>
+                    Bảo hiểm: {vehicle.daysUntilInsuranceExpiry} ngày
+                </Tag>
+            );
+        }
+        if (vehicle.isMaintenanceDueSoon) {
+            warnings.push(
+                <Tag key="maintenance" color="warning" style={{ marginBottom: 2 }}>
+                    Bảo trì: {vehicle.daysUntilNextMaintenance} ngày
+                </Tag>
+            );
+        }
+        
+        // Check for expired status
+        if (vehicle.status === 'INSPECTION_EXPIRED') {
+            warnings.push(
+                <Tag key="inspection-expired" color="error" style={{ marginBottom: 2 }}>
+                    Hết hạn đăng kiểm
+                </Tag>
+            );
+        }
+        if (vehicle.status === 'INSURANCE_EXPIRED') {
+            warnings.push(
+                <Tag key="insurance-expired" color="error" style={{ marginBottom: 2 }}>
+                    Hết hạn bảo hiểm
+                </Tag>
+            );
+        }
+        
+        return warnings.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {warnings}
+            </div>
+        ) : <Tag color="success">Bình thường</Tag>;
+    };
+
     const columns = [
         {
             title: 'Biển số xe',
@@ -332,10 +447,9 @@ const VehiclePage: React.FC = () => {
             key: 'year',
         },
         {
-            title: 'Sức chứa',
-            dataIndex: 'capacity',
-            key: 'capacity',
-            render: (capacity: number) => `${capacity} kg`,
+            title: 'Cảnh báo',
+            key: 'warnings',
+            render: (_: any, record: Vehicle) => getExpiryWarnings(record),
         },
         {
             title: 'Trạng thái',
@@ -353,6 +467,11 @@ const VehiclePage: React.FC = () => {
                         onClick={() => handleViewDetails(record.id)}
                         title="Xem chi tiết"
                     />
+                    <Button
+                        icon={<EditOutlined />}
+                        onClick={() => handleOpenEditModal(record)}
+                        title="Chỉnh sửa"
+                    />
                     {record.status.toLowerCase() === 'active' ? (
                         <Button
                             danger
@@ -360,6 +479,14 @@ const VehiclePage: React.FC = () => {
                             onClick={() => handleOpenStatusModal(record)}
                             title="Vô hiệu hóa"
                         />
+                    ) : record.status.toLowerCase() === 'in_transit' ? (
+                        <Button
+                            disabled
+                            icon={<StopOutlined />}
+                            title="Không thể vô hiệu hóa xe đang di chuyển"
+                        >
+                            Đang di chuyển
+                        </Button>
                     ) : (
                         <Button
                             type="primary"
@@ -387,17 +514,13 @@ const VehiclePage: React.FC = () => {
         vehicle.manufacturer.toLowerCase().includes(searchText.toLowerCase())
     );
 
-    const activeVehicles = vehicles.filter(vehicle =>
-        vehicle.status.toLowerCase() === 'active' ||
-        vehicle.status.toLowerCase() === 'hoạt động'
-    );
-
-    const inactiveVehicles = vehicles.filter(vehicle =>
-        vehicle.status.toLowerCase() === 'inactive' ||
-        vehicle.status.toLowerCase() === 'không hoạt động' ||
-        vehicle.status.toLowerCase() === 'banned' ||
-        vehicle.status.toLowerCase() === 'bị cấm'
-    );
+    // Lọc xe theo từng trạng thái trong VehicleStatusEnum
+    const activeVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === 'active');
+    const inactiveVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === 'inactive');
+    const maintenanceVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === 'maintenance');
+    const inTransitVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === 'in_transit');
+    const breakdownVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === 'breakdown');
+    const accidentVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === 'accident');
 
     // Nhóm phương tiện theo loại
     const groupedVehicles = vehicleTypes.map(type => {
@@ -406,9 +529,11 @@ const VehiclePage: React.FC = () => {
             typeId: type.id,
             typeName: type.vehicleTypeName,
             description: type.description,
+            vehicleTypeDescription: type.vehicleTypeDescription || type.vehicleTypeName,
             vehicles: vehiclesOfType,
             activeCount: vehiclesOfType.filter(v => v.status.toLowerCase() === 'active').length,
-            inactiveCount: vehiclesOfType.filter(v => v.status.toLowerCase() !== 'active').length
+            transitCount: vehiclesOfType.filter(v => v.status.toLowerCase() === 'in_transit').length,
+            inactiveCount: vehiclesOfType.filter(v => v.status.toLowerCase() === 'inactive').length
         };
     });
 
@@ -457,10 +582,6 @@ const VehiclePage: React.FC = () => {
                         <span className="vehicle-info-label">Năm sản xuất:</span>
                         <span className="vehicle-info-value">{vehicle.year}</span>
                     </div>
-                    <div className="vehicle-info-item">
-                        <span className="vehicle-info-label">Sức chứa:</span>
-                        <span className="vehicle-info-value">{vehicle.capacity} kg</span>
-                    </div>
                 </div>
                 <div className="vehicle-card-actions">
                     <Space>
@@ -471,6 +592,13 @@ const VehiclePage: React.FC = () => {
                         >
                             Chi tiết
                         </Button>
+                        <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => handleOpenEditModal(vehicle)}
+                        >
+                            Sửa
+                        </Button>
                         {vehicle.status.toLowerCase() === 'active' ? (
                             <Button
                                 size="small"
@@ -479,6 +607,15 @@ const VehiclePage: React.FC = () => {
                                 onClick={() => handleOpenStatusModal(vehicle)}
                             >
                                 Vô hiệu
+                            </Button>
+                        ) : vehicle.status.toLowerCase() === 'in_transit' ? (
+                            <Button
+                                size="small"
+                                disabled
+                                icon={<StopOutlined />}
+                                title="Không thể vô hiệu hóa xe đang di chuyển"
+                            >
+                                Đang chạy
                             </Button>
                         ) : (
                             <Button
@@ -498,15 +635,6 @@ const VehiclePage: React.FC = () => {
 
     const renderGroupedVehicles = () => (
         <div>
-            <div className="mb-4 flex justify-end">
-                <Button
-                    type={groupedView ? "primary" : "default"}
-                    onClick={() => setGroupedView(!groupedView)}
-                >
-                    {groupedView ? "Xem dạng bảng" : "Xem theo nhóm"}
-                </Button>
-            </div>
-
             {nonEmptyGroups.length === 0 && !loading && !isFetching ? (
                 <Empty description="Không tìm thấy phương tiện nào" />
             ) : (
@@ -516,14 +644,16 @@ const VehiclePage: React.FC = () => {
                             key={group.typeId}
                             header={
                                 <div className="flex items-center">
-                                    <Title level={5} className="m-0 text-blue-700">{group.typeName}</Title>
-                                    <Text className="ml-2 text-gray-500">({group.description})</Text>
+                                    <Title level={5} className="m-0 text-blue-700">
+                                        {group.description || group.typeName}
+                                    </Title>
                                 </div>
                             }
                             extra={
                                 <Space>
-                                    <Badge count={group.activeCount} color="green" overflowCount={999} title="Đang hoạt động" />
-                                    <Badge count={group.inactiveCount} color="red" overflowCount={999} title="Không hoạt động" />
+                                    <Badge count={group.activeCount} color="#22c55e" overflowCount={999} title="Đang hoạt động" />
+                                    <Badge count={group.transitCount} color="#eab308" overflowCount={999} title="Đang di chuyển" />
+                                    <Badge count={group.inactiveCount} color="#6b7280" overflowCount={999} title="Không hoạt động" />
                                 </Space>
                             }
                             className="vehicle-type-panel"
@@ -547,19 +677,23 @@ const VehiclePage: React.FC = () => {
             return <VehicleSkeleton />;
         }
 
-        if (groupedView) {
-            return renderGroupedVehicles();
-        } else {
-            return (
-                <div>
-                    <div className="mb-4 flex justify-end">
-                        <Button
-                            type={groupedView ? "default" : "primary"}
-                            onClick={() => setGroupedView(!groupedView)}
-                        >
-                            {groupedView ? "Xem dạng bảng" : "Xem theo nhóm"}
-                        </Button>
-                    </div>
+        return (
+            <div>
+                {/* Hiển thị card thống kê cho tất cả các trạng thái xe */}
+                <VehicleStatCards vehicles={vehicles} loading={loading} />
+                
+                <div className="mb-4 flex justify-end">
+                    <Button
+                        type={groupedView ? "primary" : "default"}
+                        onClick={() => setGroupedView(!groupedView)}
+                    >
+                        {groupedView ? "Xem dạng bảng" : "Xem theo nhóm"}
+                    </Button>
+                </div>
+                
+                {groupedView ? (
+                    renderGroupedVehicles()
+                ) : (
                     <Table
                         dataSource={filteredVehicles}
                         columns={columns}
@@ -569,9 +703,9 @@ const VehiclePage: React.FC = () => {
                             emptyText: <Empty description="Không tìm thấy phương tiện nào" />
                         }}
                     />
-                </div>
-            );
-        }
+                )}
+            </div>
+        );
     };
 
     const renderVehicleTypeTab = () => (
@@ -646,30 +780,100 @@ const VehiclePage: React.FC = () => {
                     onCancel={() => setIsStatusModalOpen(false)}
                 />
             )}
+
+            {/* Maintenance Modal - luôn ở chế độ tạo mới khi mở từ banner */}
+            <Modal
+                title="Tạo lịch bảo trì"
+                open={isMaintenanceModalOpen}
+                onCancel={() => {
+                    setIsMaintenanceModalOpen(false);
+                    setSelectedMaintenance(null);
+                    setMaintenanceFormData(null);
+                }}
+                footer={null}
+                maskClosable={false}
+                width={1200}
+                styles={{ body: { maxHeight: '80vh', overflowY: 'auto' } }}
+            >
+                <MaintenanceForm
+                    initialValues={selectedMaintenance}
+                    isEditMode={false}
+                    onSubmit={handleMaintenanceFormSubmit}
+                    onCancel={() => {
+                        setIsMaintenanceModalOpen(false);
+                        setSelectedMaintenance(null);
+                        setMaintenanceFormData(null);
+                    }}
+                    vehicles={vehicles}
+                />
+            </Modal>
         </>
     );
 
+    const renderContent = () => (
+        <div>
+            {renderModal()}
+        </div>
+    );
+
     return (
-        <EntityManagementLayout
-            title="Quản lý phương tiện"
-            icon={<CarFilled />}
-            description="Quản lý Thông tin chuyến xe trong hệ thống"
-            addButtonText={activeTab === 'vehicles' ? "Thêm phương tiện" : "Thêm loại phương tiện"}
-            addButtonIcon={<PlusOutlined />}
-            onAddClick={activeTab === 'vehicles' ? handleOpenCreateModal : handleOpenVehicleTypeCreateModal}
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            onRefresh={fetchVehicles}
-            isLoading={loading}
-            isFetching={isFetching}
-            totalCount={vehicles.length}
-            activeCount={activeVehicles.length}
-            bannedCount={inactiveVehicles.length}
-            tableTitle={activeTab === 'vehicles' ? "Danh sách phương tiện" : "Danh sách loại phương tiện"}
-            tableComponent={renderTabs()}
-            modalComponent={renderModal()}
-        />
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <Title level={2} className="flex items-center m-0 text-blue-800">
+                            <CarFilled className="mr-3 text-blue-600" /> Quản lý phương tiện
+                        </Title>
+                        <Text type="secondary">Quản lý Thông tin phương tiện trong hệ thống</Text>
+                    </div>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={activeTab === 'vehicles' ? handleOpenCreateModal : handleOpenVehicleTypeCreateModal}
+                        className="bg-blue-600 hover:bg-blue-700"
+                        size="large"
+                    >
+                        {activeTab === 'vehicles' ? "Thêm phương tiện" : "Thêm loại phương tiện"}
+                    </Button>
+                </div>
+
+                {/* Maintenance Alert Banner - only show on vehicles tab */}
+                {activeTab === 'vehicles' && (
+                    <MaintenanceAlertBanner 
+                        onCreateSchedule={handleCreateScheduleFromBanner} 
+                        refreshBanner={bannerRefreshCounter} 
+                        className="mb-4"
+                    />
+                )}
+
+                <Card className="shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                        <Title level={4} className="m-0 mb-4 md:mb-0">{activeTab === 'vehicles' ? "Danh sách phương tiện" : "Danh sách loại phương tiện"}</Title>
+                        <div className="flex w-full md:w-auto gap-2">
+                            <Input
+                                placeholder="Tìm kiếm theo biển số, mẫu xe, nhà sản xuất..."
+                                prefix={<SearchOutlined />}
+                                className="w-full md:w-64"
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                disabled={loading}
+                            />
+                            <Button
+                                icon={<ReloadOutlined spin={isFetching} />}
+                                onClick={fetchVehicles}
+                                title="Làm mới dữ liệu"
+                                loading={isFetching}
+                            />
+                        </div>
+                    </div>
+
+                    {renderTabs()}
+                </Card>
+            </div>
+
+            {renderModal()}
+        </div>
     );
 };
 
-export default VehiclePage; 
+export default VehiclePage;

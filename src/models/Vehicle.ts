@@ -1,14 +1,41 @@
+import type { Penalty } from './Penalty';
+import type { VehicleServiceRecord } from './VehicleServiceRecord';
+
+// Alias for backward compatibility
+type VehicleMaintenance = VehicleServiceRecord;
+
 export interface Vehicle {
     id: string;
     licensePlateNumber: string;
     model: string;
     manufacturer: string;
     year: number;
-    capacity: number;
     status: string;
     vehicleTypeId: string;
+
+    vehicleTypeDescription?: string;
     currentLatitude?: number;
     currentLongitude?: number;
+    
+    // Đăng kiểm (Inspection)
+    lastInspectionDate?: string;
+    inspectionExpiryDate?: string;
+    
+    // Bảo hiểm (Insurance)
+    insuranceExpiryDate?: string;
+    insurancePolicyNumber?: string;
+    
+    // Bảo trì (Maintenance)
+    lastMaintenanceDate?: string;
+    nextMaintenanceDate?: string;
+    
+    // Cảnh báo (tính toán từ backend)
+    isInspectionExpiringSoon?: boolean;
+    isInsuranceExpiringSoon?: boolean;
+    isMaintenanceDueSoon?: boolean;
+    daysUntilInspectionExpiry?: number;
+    daysUntilInsuranceExpiry?: number;
+    daysUntilNextMaintenance?: number;
 }
 
 export interface VehicleType {
@@ -16,6 +43,7 @@ export interface VehicleType {
     vehicleTypeName: string;
     description: string;
     vehicleCount?: number;
+    vehicleTypeDescription?: string;
 }
 
 export interface VehicleAssignment {
@@ -49,24 +77,20 @@ export enum VehicleAssignmentStatus {
     COMPLETED = "COMPLETED"
 }
 
-// VehicleMaintenance đã được di chuyển sang file VehicleMaintenance.ts
-// Giữ lại reference type ở đây để tránh phá vỡ code hiện tại
-export interface VehicleMaintenance {
-    id: string;
-    maintenanceDate: string;
-    description: string;
-    cost: number;
-    nextMaintenanceDate: string;
-    odometerReading: number;
-    serviceCenter: string;
-    vehicleId: string;
-    maintenanceTypeId: string;
+export interface TopDriver {
+    driverId: string;
+    driverName: string;
+    driverPhoneNumber: string;
+    driverStatus: string;
+    tripCount: number;
 }
 
 export interface VehicleDetail extends Vehicle {
     vehicleAssignmentResponse: VehicleAssignment[];
     vehicleMaintenanceResponse: VehicleMaintenance[];
     vehicleTypeResponse: VehicleType;
+    topDrivers?: TopDriver[];
+    penalties?: Penalty[];
 }
 
 export interface CreateVehicleRequest {
@@ -74,7 +98,6 @@ export interface CreateVehicleRequest {
     model: string;
     manufacturer: string;
     year: number;
-    capacity: number;
     status: string;
     vehicleTypeId: string;
     currentLatitude?: number;

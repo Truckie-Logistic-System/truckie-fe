@@ -67,6 +67,16 @@ const DamageCompensationDetail: React.FC<DamageCompensationDetailProps> = ({
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [isFormValid, setIsFormValid] = useState(false);
+    
+    // Monitor form fields to check if the form is valid
+    const formValues = Form.useWatch([], form);
+    
+    useEffect(() => {
+        form.validateFields({ validateOnly: true })
+            .then(() => setIsFormValid(true))
+            .catch(() => setIsFormValid(false));
+    }, [formValues, form]);
     
     // Local state for real-time calculation preview
     const [previewValues, setPreviewValues] = useState({
@@ -513,6 +523,7 @@ const DamageCompensationDetail: React.FC<DamageCompensationDetailProps> = ({
                         htmlType="submit"
                         icon={<SaveOutlined />}
                         loading={saving}
+                        disabled={!isFormValid}
                         size="large"
                         block
                     >

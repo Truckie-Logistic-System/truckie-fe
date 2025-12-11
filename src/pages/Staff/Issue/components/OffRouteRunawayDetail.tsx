@@ -84,8 +84,17 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
     const [hasDocuments, setHasDocuments] = useState<boolean>(true);
     const [suggestedCompensationPreview, setSuggestedCompensationPreview] = useState<number>(0);
     const [isSaving, setIsSaving] = useState<boolean>(false);
-    const [submitting, setSubmitting] = useState<boolean>(false);
-    const [isFormValid, setIsFormValid] = useState<boolean>(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [isFormValid, setIsFormValid] = useState(false);
+    
+    // Monitor form fields to check if the form is valid
+    const formValues = Form.useWatch([], form);
+    
+    useEffect(() => {
+        form.validateFields({ validateOnly: true })
+            .then(() => setIsFormValid(true))
+            .catch(() => setIsFormValid(false));
+    }, [formValues, form]);
     const [documentFiles, setDocumentFiles] = useState<any[]>([]);
     const [refundProofFile, setRefundProofFile] = useState<any>(null);
     const [compDetail, setCompDetail] = useState<CompensationDetailResponse | null>(null);
@@ -1763,7 +1772,7 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
                                 <Button
                                     type="primary"
                                     htmlType="submit"
-                                    loading={submitting}
+                                    loading={submitting || isSaving}
                                     disabled={!isFormValid && !isFraud}
                                     icon={<SaveOutlined />}
                                     block

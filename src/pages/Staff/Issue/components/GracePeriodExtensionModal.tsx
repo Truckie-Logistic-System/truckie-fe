@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Modal,
     Form,
@@ -44,6 +44,12 @@ const GracePeriodExtensionModal: React.FC<GracePeriodExtensionModalProps> = ({
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [extensionReason, setExtensionReason] = useState('');
+    const [isFormValid, setIsFormValid] = useState(false);
+
+    // Check if form is valid whenever extension reason changes
+    useEffect(() => {
+        setIsFormValid(extensionReason.trim().length > 0);
+    }, [extensionReason]);
 
     const handleSubmit = async () => {
         if (!offRouteEvent) return;
@@ -126,7 +132,7 @@ const GracePeriodExtensionModal: React.FC<GracePeriodExtensionModalProps> = ({
                     loading={loading}
                     onClick={handleSubmit}
                     icon={<PlusOutlined />}
-                    disabled={isExpired}
+                    disabled={isExpired || !isFormValid}
                 >
                     Gia hạn thời gian chờ
                 </Button>

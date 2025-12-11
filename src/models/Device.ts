@@ -3,7 +3,6 @@ import type { Vehicle } from './Vehicle';
 export interface DeviceType {
     id: string;
     deviceTypeName: string;
-    vehicleCapacity: number;
     description: string;
     isActive: boolean;
 }
@@ -48,7 +47,6 @@ export interface UpdateDeviceRequest {
 
 export interface CreateDeviceTypeRequest {
     deviceTypeName: string;
-    vehicleCapacity: number;
     description: string;
 }
 
@@ -56,5 +54,4 @@ export interface UpdateDeviceTypeRequest {
     deviceTypeName: string;
     description: string;
     isActive: boolean;
-    vehicleCapacity: number;
-} 
+}

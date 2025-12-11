@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -38,6 +38,16 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({
 }) => {
   const [form] = Form.useForm();
   const { loading, submitContract } = useContractForm();
+  const [isFormValid, setIsFormValid] = useState(false);
+
+  // Monitor form fields to check if the form is valid
+  const formValues = Form.useWatch([], form);
+
+  useEffect(() => {
+    form.validateFields({ validateOnly: true })
+      .then(() => setIsFormValid(true))
+      .catch(() => setIsFormValid(false));
+  }, [formValues, form]);
 
   const handleSubmit = async (values: any) => {
     const result = await submitContract(values, orderId);
@@ -196,6 +206,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({
               type="primary"
               htmlType="submit"
               loading={loading}
+              disabled={!isFormValid}
               icon={loading ? <LoadingOutlined /> : <FileTextOutlined />}
             >
               {loading ? "Đang tạo..." : "Tạo hợp đồng"}

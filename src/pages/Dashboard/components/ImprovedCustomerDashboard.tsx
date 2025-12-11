@@ -48,7 +48,9 @@ import { OrderStatusEnum, OrderStatusLabels } from '@/constants/enums';
 
 const { Title, Text } = Typography;
 
-const formatCurrency = (value: number): string => {
+const formatCurrency = (rawValue?: number | null): string => {
+  const value = typeof rawValue === 'number' && !Number.isNaN(rawValue) ? rawValue : 0;
+
   if (value >= 1000000000) {
     return `${(value / 1000000000).toFixed(1)} tỷ`;
   }
@@ -614,7 +616,7 @@ const ImprovedCustomerDashboard: React.FC = () => {
                 <div>
                   <div className="flex justify-between mb-1">
                     <Text>Đã thanh toán</Text>
-                    <Tooltip title={`${(data?.financialSummary?.totalPaid || 0).toLocaleString('vi-VN')}₫`}>
+                    <Tooltip title={`${((val) => { const v = typeof val === 'number' && !Number.isNaN(val) ? val : 0; return v.toLocaleString('vi-VN'); })(data?.financialSummary?.totalPaid || 0)}₫`}>
                       <Text className="text-green-600 font-semibold cursor-help">
                         {formatCurrency(data?.financialSummary?.totalPaid || 0)}₫
                       </Text>
@@ -633,7 +635,7 @@ const ImprovedCustomerDashboard: React.FC = () => {
                 <div>
                   <div className="flex justify-between mb-1">
                     <Text>Chờ thanh toán</Text>
-                    <Tooltip title={`${(data?.financialSummary?.pendingPayment || 0).toLocaleString('vi-VN')}₫`}>
+                    <Tooltip title={`${((val) => { const v = typeof val === 'number' && !Number.isNaN(val) ? val : 0; return v.toLocaleString('vi-VN'); })(data?.financialSummary?.pendingPayment || 0)}₫`}>
                       <Text className="text-orange-500 font-semibold cursor-help">
                         {formatCurrency(data?.financialSummary?.pendingPayment || 0)}₫
                       </Text>
@@ -652,7 +654,7 @@ const ImprovedCustomerDashboard: React.FC = () => {
                 <div>
                   <div className="flex justify-between mb-1">
                     <Text>Đã hoàn tiền</Text>
-                    <Tooltip title={`${(data?.financialSummary?.totalRefunded || 0).toLocaleString('vi-VN')}₫`}>
+                    <Tooltip title={`${((val) => { const v = typeof val === 'number' && !Number.isNaN(val) ? val : 0; return v.toLocaleString('vi-VN'); })(data?.financialSummary?.totalRefunded || 0)}₫`}>
                       <Text className="text-blue-500 font-semibold cursor-help">
                         {formatCurrency(data?.financialSummary?.totalRefunded || 0)}₫
                       </Text>

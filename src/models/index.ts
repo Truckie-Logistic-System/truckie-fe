@@ -19,5 +19,4 @@ export * from "./TrackAsia";
 export * from "./VietMap";
 export * from "./JourneyHistory";
 export * from "./OrderDetailStatus";
-export * from "./maintenanceType";
-export type { VehicleMaintenanceDetail, CreateVehicleMaintenanceRequest, UpdateVehicleMaintenanceRequest } from "./VehicleMaintenance";
+export * from "./VehicleServiceRecord";

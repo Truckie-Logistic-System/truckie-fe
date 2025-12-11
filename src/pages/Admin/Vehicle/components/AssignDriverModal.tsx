@@ -19,7 +19,17 @@ const AssignDriverModal: React.FC<AssignDriverModalProps> = ({
     const [form] = Form.useForm();
     const [loading, setLoading] = useState<boolean>(false);
     const [drivers, setDrivers] = useState<any[]>([]);
+    const [isFormValid, setIsFormValid] = useState<boolean>(false);
     const { message } = App.useApp();
+
+    // Monitor form fields to check if the form is valid
+    const formValues = Form.useWatch([], form);
+
+    useEffect(() => {
+        form.validateFields({ validateOnly: true })
+            .then(() => setIsFormValid(true))
+            .catch(() => setIsFormValid(false));
+    }, [formValues, form]);
 
     useEffect(() => {
         if (visible) {
@@ -116,7 +126,12 @@ const AssignDriverModal: React.FC<AssignDriverModalProps> = ({
 
                 <div className="flex justify-end gap-2 mt-4">
                     <Button onClick={onCancel}>Hủy</Button>
-                    <Button type="primary" htmlType="submit" loading={loading}>
+                    <Button 
+                        type="primary" 
+                        htmlType="submit" 
+                        loading={loading}
+                        disabled={!isFormValid}
+                    >
                         Phân công
                     </Button>
                 </div>

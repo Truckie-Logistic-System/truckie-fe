@@ -73,4 +73,13 @@ export const formatPhoneNumber = (phone: string): string => {
  */
 export const formatDistance = (distance: number): string => {
     return `${distance.toFixed(1)} km`;
-}; 
+};
+
+/**
+ * Safely format a number to Vietnamese locale string
+ * Handles undefined, null, and NaN values by defaulting to 0
+ */
+export const safeFormatNumber = (value?: number | null): string => {
+    const safeValue = typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+    return safeValue.toLocaleString('vi-VN');
+};

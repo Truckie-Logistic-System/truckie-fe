@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, DatePicker, InputNumber, Button } from 'antd';
 import dayjs from 'dayjs';
 import { vehicleService } from '../../../../services';
@@ -19,6 +19,16 @@ const ScheduleMaintenanceModal: React.FC<ScheduleMaintenanceModalProps> = ({
 }) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
+    const [isFormValid, setIsFormValid] = useState(false);
+    
+    // Monitor form fields to check if the form is valid
+    const formValues = Form.useWatch([], form);
+    
+    useEffect(() => {
+        form.validateFields({ validateOnly: true })
+            .then(() => setIsFormValid(true))
+            .catch(() => setIsFormValid(false));
+    }, [formValues, form]);
     const { message } = App.useApp();
 
     const handleSubmit = async (values: any) => {
@@ -27,9 +37,10 @@ const ScheduleMaintenanceModal: React.FC<ScheduleMaintenanceModalProps> = ({
             const maintenanceData = {
                 ...values,
                 vehicleId,
-                maintenanceDate: values.maintenanceDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
-                nextMaintenanceDate: values.nextMaintenanceDate ? values.nextMaintenanceDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : undefined,
-                maintenanceTypeId: "1" // Giả sử có một loại bảo trì mặc định
+                plannedDate: values.maintenanceDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
+                nextServiceDate: values.nextMaintenanceDate ? values.nextMaintenanceDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : undefined,
+                serviceType: 'Bảo dưỡng định kỳ', // Service type from backend config
+                serviceStatus: 'PLANNED'
             };
 
             const response = await vehicleService.createVehicleMaintenance(maintenanceData);
@@ -131,7 +142,12 @@ const ScheduleMaintenanceModal: React.FC<ScheduleMaintenanceModalProps> = ({
 
                 <div className="flex justify-end gap-2">
                     <Button onClick={onCancel}>Hủy</Button>
-                    <Button type="primary" htmlType="submit" loading={loading}>
+                    <Button 
+                        type="primary" 
+                        htmlType="submit" 
+                        loading={loading}
+                        disabled={!isFormValid}
+                    >
                         Đặt lịch
                     </Button>
                 </div>

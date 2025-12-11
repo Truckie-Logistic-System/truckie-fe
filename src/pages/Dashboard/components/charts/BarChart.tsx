@@ -81,7 +81,8 @@ const BarChart: React.FC<BarChartProps> = ({
         if (formatter) {
           return formatter(datum.value);
         }
-        return datum.value.toLocaleString('vi-VN');
+        const value = typeof datum.value === 'number' && !Number.isNaN(datum.value) ? datum.value : 0;
+        return value.toLocaleString('vi-VN');
       },
       style: {
         textAlign: (d: any) => (+d.value > maxValue * 0.1 ? 'right' : 'start'),
@@ -91,7 +92,16 @@ const BarChart: React.FC<BarChartProps> = ({
     },
     axis: {
       y: {
-        labelFormatter: formatter ? (value: number) => formatter(value) : (value: number) => value.toLocaleString('vi-VN'),
+        labelFormatter: formatter ? (value: number) => formatter(value) : (value: number) => {
+          const safeValue = typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+          return safeValue.toLocaleString('vi-VN');
+        },
+        labelAutoHide: true,
+        labelAutoEllipsis: true,
+      },
+      x: {
+        labelAutoHide: true,
+        labelAutoEllipsis: true,
       },
     },
     style: {
@@ -114,7 +124,9 @@ const BarChart: React.FC<BarChartProps> = ({
 
   return (
     <Card title={title} className="shadow-sm">
-      <Bar {...config} />
+      <div style={{ width: '100%', overflow: 'hidden' }}>
+        <Bar {...config} />
+      </div>
     </Card>
   );
 };

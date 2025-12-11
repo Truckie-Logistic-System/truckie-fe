@@ -57,33 +57,61 @@ const NotificationListPage: React.FC = () => {
 
   const componentId = useRef('notification-list-page');
 
-  // Register with notification manager for centralized event handling
+  // Initialize and load data
   useEffect(() => {
-    if (!notificationManager.isReady() || !userId) return;
-
-    notificationManager.register(componentId.current, {
-      onNewNotification: () => {
-        console.log('🔔 [NotificationListPage] New notification received via manager');
-        // Silent reload when new notification arrives
-        loadNotifications(false);
-        loadStats();
-      },
-      onListUpdate: () => {
-        console.log('🔄 [NotificationListPage] List update received via manager');
-        // Reload when list updates from other components (mark as read, etc.)
-        loadNotifications(false);
-        loadStats();
+    const initializeAndLoad = async () => {
+      if (!userId) {
+        console.warn('[CustomerNotificationListPage] No userId found');
+        return;
       }
-    });
 
-    // Initial load
-    loadNotifications(true);
-    loadStats();
+      // Always load data first, regardless of manager state
+      loadNotifications(true);
+      loadStats();
+
+      // Register with manager if ready
+      if (notificationManager.isReady()) {
+        notificationManager.register(componentId.current, {
+          onNewNotification: () => {
+            console.log('🔔 [NotificationListPage] New notification received via manager');
+            loadNotifications(false);
+            loadStats();
+          },
+          onListUpdate: () => {
+            console.log('🔄 [NotificationListPage] List update received via manager');
+            loadNotifications(false);
+            loadStats();
+          }
+        });
+      }
+    };
+
+    initializeAndLoad();
 
     return () => {
-      notificationManager.unregister(componentId.current);
+      if (notificationManager.isReady()) {
+        notificationManager.unregister(componentId.current);
+      }
     };
-  }, [userId, notificationManager.isReady()]);
+  }, [userId]);
+
+  // Register with manager when it becomes ready
+  useEffect(() => {
+    if (notificationManager.isReady() && userId) {
+      notificationManager.register(componentId.current, {
+        onNewNotification: () => {
+          console.log('🔔 [NotificationListPage] New notification received via manager');
+          loadNotifications(false);
+          loadStats();
+        },
+        onListUpdate: () => {
+          console.log('🔄 [NotificationListPage] List update received via manager');
+          loadNotifications(false);
+          loadStats();
+        }
+      });
+    }
+  }, [notificationManager.isReady(), userId]);
 
   // Silent reload when filters change (after initial load)
   useEffect(() => {

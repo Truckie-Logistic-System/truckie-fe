@@ -1,111 +1,49 @@
 import httpClient from '../api/httpClient';
 import axios from 'axios';
-import type {
-    GetMaintenanceTypesResponse,
-    GetMaintenanceTypeResponse,
-    CreateMaintenanceTypeRequest,
-    UpdateMaintenanceTypeRequest,
-} from './types';
-import type { MaintenanceTypeEntity } from '../../models';
 
-const BASE_URL = '/maintenance-types';
+// Service types are now read-only strings from backend config
+export type ServiceType = string;
+
+export interface GetServiceTypesResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: ServiceType[];
+}
+
+const BASE_URL = '/vehicle-service-records/service-types';
 
 export const maintenanceTypeService = {
-    getMaintenanceTypes: async (): Promise<GetMaintenanceTypesResponse> => {
+    // Only get operation is available - service types are managed in backend config
+    getMaintenanceTypes: async (): Promise<GetServiceTypesResponse> => {
         try {
-            const response = await httpClient.get<GetMaintenanceTypesResponse>(BASE_URL);
+            const response = await httpClient.get<GetServiceTypesResponse>(BASE_URL);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
-                // 404 không phải lỗi mà là không có dữ liệu
+                // Return empty array if no service types configured
                 return {
-                    success: false,
-                    message: 'Không tìm thấy dữ liệu loại bảo dưỡng',
-                    statusCode: 404,
+                    success: true,
+                    message: 'Không có loại dịch vụ nào được cấu hình',
+                    statusCode: 200,
                     data: []
                 };
             }
-            console.error('Error fetching maintenance types:', error);
+            console.error('Error fetching service types:', error);
             throw error;
         }
     },
 
-    getMaintenanceType: async (id: string): Promise<GetMaintenanceTypeResponse> => {
-        try {
-            const response = await httpClient.get<MaintenanceTypeEntity>(`${BASE_URL}/${id}`);
-            // Wrap the direct response into our expected format
-            return {
-                success: true,
-                message: 'Lấy thông tin loại bảo dưỡng thành công',
-                statusCode: 200,
-                data: response.data
-            };
-        } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
-                // 404 không phải lỗi mà là không tìm thấy loại bảo dưỡng
-                return {
-                    success: false,
-                    message: 'Không tìm thấy loại bảo dưỡng',
-                    statusCode: 404,
-                    data: null
-                };
-            }
-            console.error(`Error fetching maintenance type with ID ${id}:`, error);
-            throw error;
-        }
+    // CRUD operations are no longer supported - service types are config-based
+    createMaintenanceType: async () => {
+        throw new Error('Tạo loại dịch vụ không được hỗ trợ. Các loại dịch vụ được quản lý trong cấu hình hệ thống.');
     },
 
-    createMaintenanceType: async (data: CreateMaintenanceTypeRequest): Promise<GetMaintenanceTypeResponse> => {
-        try {
-            const response = await httpClient.post<MaintenanceTypeEntity>(BASE_URL, data);
-            // Wrap the direct response into our expected format
-            return {
-                success: true,
-                message: 'Tạo loại bảo dưỡng thành công',
-                statusCode: 201,
-                data: response.data
-            };
-        } catch (error) {
-            console.error('Error creating maintenance type:', error);
-            throw error;
-        }
+    updateMaintenanceType: async () => {
+        throw new Error('Cập nhật loại dịch vụ không được hỗ trợ. Các loại dịch vụ được quản lý trong cấu hình hệ thống.');
     },
 
-    updateMaintenanceType: async (id: string, data: UpdateMaintenanceTypeRequest): Promise<GetMaintenanceTypeResponse> => {
-        try {
-            const response = await httpClient.put<MaintenanceTypeEntity>(`${BASE_URL}/${id}`, data);
-            // Wrap the direct response into our expected format
-            return {
-                success: true,
-                message: 'Cập nhật loại bảo dưỡng thành công',
-                statusCode: 200,
-                data: response.data
-            };
-        } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
-                // 404 không phải lỗi mà là không tìm thấy loại bảo dưỡng để cập nhật
-                return {
-                    success: false,
-                    message: 'Không tìm thấy loại bảo dưỡng để cập nhật',
-                    statusCode: 404,
-                    data: null
-                };
-            }
-            console.error(`Error updating maintenance type with ID ${id}:`, error);
-            throw error;
-        }
+    deleteMaintenanceType: async () => {
+        throw new Error('Xóa loại dịch vụ không được hỗ trợ. Các loại dịch vụ được quản lý trong cấu hình hệ thống.');
     },
-
-    deleteMaintenanceType: async (id: string): Promise<void> => {
-        try {
-            await httpClient.delete(`${BASE_URL}/${id}`);
-        } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
-                console.warn(`Maintenance type with ID ${id} not found for deletion`);
-                return;
-            }
-            console.error(`Error deleting maintenance type with ID ${id}:`, error);
-            throw error;
-        }
-    },
-}; 
+};

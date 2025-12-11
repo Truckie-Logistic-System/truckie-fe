@@ -213,6 +213,35 @@ const contractService = {
       throw handleApiError(error, "Không thể tạo file PDF hợp đồng");
     }
   },
+
+  /**
+   * Get all contracts with full details for staff management
+   * Returns order info, staff info, computed values
+   */
+  getAllContractsForStaff: async () => {
+    try {
+      const response = await httpClient.get("/contracts/staff/list");
+      return response.data.data || response.data || [];
+    } catch (error) {
+      console.error("Error fetching staff contracts:", error);
+      // Return empty array instead of throwing to avoid crashing the page
+      return [];
+    }
+  },
+
+  /**
+   * Get contract detail with full information for staff
+   * Includes order info, staff info, transactions, computed values
+   */
+  getContractDetailForStaff: async (contractId: string) => {
+    try {
+      const response = await httpClient.get(`/contracts/staff/${contractId}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error("Error fetching staff contract detail:", error);
+      throw handleApiError(error, "Không thể tải chi tiết hợp đồng");
+    }
+  },
 };
 
 export default contractService;

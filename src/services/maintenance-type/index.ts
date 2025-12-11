@@ -1,2 +1,1 @@
-export * from './types';
-export { maintenanceTypeService } from './maintenanceTypeService'; 
+export { maintenanceTypeService } from './maintenanceTypeService';

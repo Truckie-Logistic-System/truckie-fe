@@ -71,7 +71,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
             <Row gutter={16} className="mb-4">
                 <Col span={8}>
                     <Input
-                        placeholder="Tìm kiếm đơn hàng"
+                        placeholder="Tìm kiếm theo mã đơn, tên người nhận, số điện thoại..."
                         prefix={<SearchOutlined />}
                         onChange={(e) => handleSearch(e.target.value)}
                         allowClear

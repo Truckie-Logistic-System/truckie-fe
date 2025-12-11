@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { App } from 'antd';
-import { TeamOutlined, UserAddOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
+import { App, Card, Typography, Input, Button } from 'antd';
+import { TeamOutlined, UserAddOutlined, CheckCircleOutlined, StopOutlined, SearchOutlined, ReloadOutlined, ClockCircleOutlined, LockOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import userService from '../../../services/user';
 import type { UserModel } from '../../../services/user/types';
@@ -8,9 +8,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import StaffTable from './components/StaffTable';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
-import EntityManagementLayout from '../../../components/features/admin/EntityManagementLayout';
-import { UserStatusEnum } from '@/constants/enums';
-import { UserStatusTag } from '@/components/common/tags';
+import UserStatCards from '../../../components/common/UserStatCards';
+import { UserStatusEnum } from '../../../constants/enums/UserStatusEnum';
+
+const { Title, Text } = Typography;
 
 const StaffPage: React.FC = () => {
     const navigate = useNavigate();
@@ -69,8 +70,11 @@ const StaffPage: React.FC = () => {
         );
     });
 
-    const activeCount = staffData?.filter(staff => staff.status.toLowerCase() === 'active').length || 0;
-    const bannedCount = staffData?.filter(staff => staff.status.toLowerCase() === 'banned').length || 0;
+    // Chuyển đổi dữ liệu để sử dụng với UserStatCards
+    const usersForStatCards = staffData?.map(staff => ({
+        id: staff.id,
+        status: staff.status
+    })) || [];
 
     // Hàm chuyển đổi status sang UserStatusEnum
     const mapToUserStatusEnum = (status: string | boolean): UserStatusEnum => {
@@ -111,20 +115,41 @@ const StaffPage: React.FC = () => {
         return 'Không xác định';
     };
 
-    // Status options for the modal
+    // Status options for the modal - đầy đủ theo UserStatusEnum
     const statusOptions: StatusOption[] = [
         {
-            value: 'ACTIVE',
+            value: UserStatusEnum.ACTIVE,
             label: 'Hoạt động',
             description: 'Nhân viên có thể đăng nhập và sử dụng hệ thống',
             color: 'green',
             icon: <CheckCircleOutlined />
         },
         {
-            value: 'BANNED',
-            label: 'Cấm hoạt động',
-            description: 'Nhân viên không thể đăng nhập và sử dụng hệ thống',
+            value: UserStatusEnum.INACTIVE,
+            label: 'Không hoạt động',
+            description: 'Nhân viên tạm thời không thể đăng nhập và sử dụng hệ thống',
+            color: 'default',
+            icon: <StopOutlined />
+        },
+        {
+            value: UserStatusEnum.OTP_PENDING,
+            label: 'Chờ OTP',
+            description: 'Nhân viên đang chờ xác thực OTP',
+            color: 'gold',
+            icon: <StopOutlined />
+        },
+        {
+            value: UserStatusEnum.BANNED,
+            label: 'Bị cấm',
+            description: 'Nhân viên bị cấm sử dụng hệ thống',
             color: 'red',
+            icon: <StopOutlined />
+        },
+        {
+            value: UserStatusEnum.DELETED,
+            label: 'Đã xóa',
+            description: 'Tài khoản nhân viên đã bị xóa',
+            color: 'default',
             icon: <StopOutlined />
         }
     ];
@@ -144,51 +169,82 @@ const StaffPage: React.FC = () => {
     }
 
     return (
-        <EntityManagementLayout
-            title="Quản lý nhân viên"
-            icon={<TeamOutlined />}
-            description="Quản lý thông tin và trạng thái của các nhân viên trong hệ thống"
-            addButtonText="Thêm nhân viên mới"
-            addButtonIcon={<UserAddOutlined />}
-            onAddClick={handleAddStaff}
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            onRefresh={refetch}
-            isLoading={isLoading}
-            isFetching={isFetching}
-            totalCount={staffData?.length || 0}
-            activeCount={activeCount}
-            bannedCount={bannedCount}
-            tableTitle="Danh sách nhân viên"
-            tableComponent={
-                <StaffTable
-                    data={filteredStaff || []}
-                    loading={isLoading}
-                    onViewDetails={handleViewDetails}
-                    onStatusChange={handleStatusChange}
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <Title level={2} className="flex items-center m-0 text-blue-800">
+                            <TeamOutlined className="mr-3 text-blue-600" /> Quản lý nhân viên
+                        </Title>
+                        <Text type="secondary">Quản lý thông tin và trạng thái của các nhân viên trong hệ thống</Text>
+                    </div>
+                    <Button
+                        type="primary"
+                        icon={<UserAddOutlined />}
+                        onClick={handleAddStaff}
+                        className="bg-blue-600 hover:bg-blue-700"
+                        size="large"
+                    >
+                        Thêm nhân viên mới
+                    </Button>
+                </div>
+
+                {/* Hiển thị card thống kê cho tất cả các trạng thái nhân viên */}
+                <UserStatCards 
+                    users={usersForStatCards} 
+                    loading={isLoading} 
+                    userType="staff"
                 />
-            }
-            modalComponent={
-                <StatusChangeModal
-                    visible={isStatusModalVisible}
-                    loading={updateStatusMutation.isPending}
-                    title="Cập nhật trạng thái nhân viên"
-                    icon={<TeamOutlined />}
-                    entityName={selectedStaff?.fullName || ''}
-                    entityDescription={selectedStaff?.email || ''}
-                    avatarIcon={<TeamOutlined />}
-                    currentStatus={selectedStaff?.status || ''}
-                    getStatusColor={getStatusColor}
-                    getStatusText={getStatusText}
-                    statusOptions={statusOptions}
-                    selectedStatus={newStatus}
-                    onStatusChange={setNewStatus}
-                    onOk={handleStatusUpdate}
-                    onCancel={() => setIsStatusModalVisible(false)}
-                />
-            }
-        />
+
+                <Card className="shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                        <Title level={4} className="m-0 mb-4 md:mb-0">Danh sách nhân viên</Title>
+                        <div className="flex w-full md:w-auto gap-2">
+                            <Input
+                                placeholder="Tìm kiếm theo tên, email, tên đăng nhập, số điện thoại..."
+                                prefix={<SearchOutlined />}
+                                className="w-full md:w-80"
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                disabled={isLoading}
+                            />
+                            <Button
+                                icon={<ReloadOutlined spin={isFetching} />}
+                                onClick={() => refetch()}
+                                title="Làm mới dữ liệu"
+                                loading={isFetching}
+                            />
+                        </div>
+                    </div>
+
+                    <StaffTable
+                        data={filteredStaff || []}
+                        loading={isLoading}
+                        onViewDetails={handleViewDetails}
+                        onStatusChange={handleStatusChange}
+                    />
+                </Card>
+            </div>
+
+            <StatusChangeModal
+                visible={isStatusModalVisible}
+                loading={updateStatusMutation.isPending}
+                title="Cập nhật trạng thái nhân viên"
+                icon={<TeamOutlined />}
+                entityName={selectedStaff?.fullName || ''}
+                entityDescription={selectedStaff?.email || ''}
+                avatarIcon={<TeamOutlined />}
+                currentStatus={selectedStaff?.status || ''}
+                getStatusColor={getStatusColor}
+                getStatusText={getStatusText}
+                statusOptions={statusOptions}
+                selectedStatus={newStatus}
+                onStatusChange={setNewStatus}
+                onOk={handleStatusUpdate}
+                onCancel={() => setIsStatusModalVisible(false)}
+            />
+        </div>
     );
 };
 
-export default StaffPage; 
+export default StaffPage;

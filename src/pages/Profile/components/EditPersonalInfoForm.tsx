@@ -120,12 +120,24 @@ const EditPersonalInfoForm: React.FC<EditPersonalInfoFormProps> = ({ userData, o
             <Form.Item
                 name="dateOfBirth"
                 label="Ngày sinh"
-                rules={[{ required: true, message: 'Vui lòng chọn ngày sinh' }]}
+                rules={[
+                    { required: true, message: 'Vui lòng chọn ngày sinh' },
+                    {
+                        validator(_, value) {
+                            if (!value) return Promise.resolve();
+                            if (value.isAfter(dayjs())) {
+                                return Promise.reject(new Error('Ngày sinh không thể là ngày trong tương lai'));
+                            }
+                            return Promise.resolve();
+                        },
+                    },
+                ]}
             >
                 <DatePicker
                     format="DD/MM/YYYY"
                     placeholder="Chọn ngày sinh"
                     className="w-full rounded-md"
+                    disabledDate={(current) => current && current > dayjs().endOf('day')}
                 />
             </Form.Item>
 

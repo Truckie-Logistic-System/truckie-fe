@@ -272,7 +272,7 @@ const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
         <Divider className="my-3" />
         <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
           <InfoCircleOutlined className="text-blue-600" />
-          Thông tin đơn hàng
+          Thông tin kiện hàng
           {notification.metadata?.categoryDescription && (
             <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded">
               ({notification.metadata.categoryDescription})
@@ -459,18 +459,18 @@ const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
           </div>
         )}
 
-        {/* Package information display */}
+        {/* Package information display - only show one of these to avoid duplication */}
         {notification.relatedOrderDetailIds &&
-          notification.relatedOrderDetailIds.length > 0 && (
+          notification.relatedOrderDetailIds.length > 0 ? (
             <PackageList
               packageIds={notification.relatedOrderDetailIds}
               metadata={notification.metadata}
               title="Danh sách kiện hàng"
             />
+          ) : (
+            /* Show horizontal metadata only if no PackageList */
+            renderHorizontalMetadata()
           )}
-
-        {/* Horizontal metadata display */}
-        {renderHorizontalMetadata()}
       </div>
     </Modal>
   );

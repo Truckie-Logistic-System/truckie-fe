@@ -5,3 +5,7 @@ export { default as DeviceStatsCards } from './DeviceStatsCards';
 export { default as FleetTab } from './FleetTab';
 export { default as PenaltiesSummaryCards } from './PenaltiesSummaryCards';
 export { default as PenaltiesTimeSeriesChart } from './PenaltiesTimeSeriesChart';
+export { default as FuelConsumptionChart } from './FuelConsumptionChart';
+export { default as DeviceStatsCard } from './DeviceStatsCard';
+export { default as PenaltiesStatsCard } from './PenaltiesStatsCard';
+export { default as VehicleInspectionAlerts } from './VehicleInspectionAlerts';

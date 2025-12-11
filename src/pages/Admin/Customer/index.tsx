@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { App } from 'antd';
-import { ShopOutlined, UserAddOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
+import { App, Card, Typography, Input, Button } from 'antd';
+import { ShopOutlined, CheckCircleOutlined, StopOutlined, SearchOutlined, ReloadOutlined, ClockCircleOutlined, LockOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import userService from '../../../services/user';
 import type { UserModel } from '../../../services/user/types';
@@ -8,7 +8,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import CustomerTable from './components/CustomerTable';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
-import EntityManagementLayout from '../../../components/features/admin/EntityManagementLayout';
+import UserStatCards from './components/UserStatCards';
+import { UserStatusEnum } from '../../../constants/enums/UserStatusEnum';
+
+const { Title, Text } = Typography;
 
 const CustomerPage: React.FC = () => {
     const navigate = useNavigate();
@@ -63,8 +66,11 @@ const CustomerPage: React.FC = () => {
         );
     });
 
-    const activeCount = customersData?.filter(customer => customer.status.toLowerCase() === 'active').length || 0;
-    const bannedCount = customersData?.filter(customer => customer.status.toLowerCase() === 'banned').length || 0;
+    // Chuyển đổi dữ liệu để sử dụng với UserStatCards
+    const usersForStatCards = customersData?.map(customer => ({
+        id: customer.id,
+        status: customer.status
+    })) || [];
 
     // Status handling functions
     const getStatusColor = (status: string | boolean) => {
@@ -99,21 +105,42 @@ const CustomerPage: React.FC = () => {
         return 'Không xác định';
     };
 
-    // Status options for the modal
+    // Status options for the modal - đầy đủ theo UserStatusEnum
     const statusOptions: StatusOption[] = [
         {
-            value: 'ACTIVE',
+            value: UserStatusEnum.ACTIVE,
             label: 'Hoạt động',
             description: 'Khách hàng có thể đặt và theo dõi đơn hàng',
             color: 'green',
             icon: <CheckCircleOutlined />
         },
         {
-            value: 'INACTIVE',
+            value: UserStatusEnum.INACTIVE,
             label: 'Không hoạt động',
             description: 'Khách hàng tạm thời không thể đăng nhập và sử dụng hệ thống',
-            color: 'red',
+            color: 'default',
             icon: <StopOutlined />
+        },
+        {
+            value: UserStatusEnum.OTP_PENDING,
+            label: 'Chờ OTP',
+            description: 'Khách hàng đang chờ xác thực OTP',
+            color: 'gold',
+            icon: <ClockCircleOutlined />
+        },
+        {
+            value: UserStatusEnum.BANNED,
+            label: 'Bị cấm',
+            description: 'Khách hàng bị cấm sử dụng hệ thống',
+            color: 'red',
+            icon: <LockOutlined />
+        },
+        {
+            value: UserStatusEnum.DELETED,
+            label: 'Đã xóa',
+            description: 'Tài khoản khách hàng đã bị xóa',
+            color: 'default',
+            icon: <DeleteOutlined />
         }
     ];
 
@@ -132,50 +159,75 @@ const CustomerPage: React.FC = () => {
     }
 
     return (
-        <EntityManagementLayout
-            title="Quản lý khách hàng"
-            icon={<ShopOutlined />}
-            description="Quản lý thông tin và trạng thái của các khách hàng trong hệ thống"
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            onRefresh={refetch}
-            isLoading={isLoading}
-            isFetching={isFetching}
-            totalCount={customersData?.length || 0}
-            activeCount={activeCount}
-            bannedCount={bannedCount}
-            tableTitle="Danh sách khách hàng"
-            tableComponent={
-                <CustomerTable
-                    data={filteredCustomers || []}
-                    loading={isLoading}
-                    onViewDetails={handleViewDetails}
-                    onStatusChange={handleStatusChange}
-                    getStatusColor={getStatusColor}
-                    getStatusText={getStatusText}
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <Title level={2} className="flex items-center m-0 text-blue-800">
+                            <ShopOutlined className="mr-3 text-blue-600" /> Quản lý khách hàng
+                        </Title>
+                        <Text type="secondary">Quản lý thông tin và trạng thái của các khách hàng trong hệ thống</Text>
+                    </div>
+                </div>
+
+                {/* Hiển thị card thống kê cho tất cả các trạng thái khách hàng */}
+                <UserStatCards 
+                    users={usersForStatCards} 
+                    loading={isLoading} 
+                    userType="customer"
                 />
-            }
-            modalComponent={
-                <StatusChangeModal
-                    visible={isStatusModalVisible}
-                    loading={updateStatusMutation.isPending}
-                    title="Cập nhật trạng thái khách hàng"
-                    icon={<ShopOutlined />}
-                    entityName={selectedCustomer?.fullName || ''}
-                    entityDescription={selectedCustomer?.email || ''}
-                    avatarIcon={<ShopOutlined />}
-                    currentStatus={selectedCustomer?.status || ''}
-                    getStatusColor={getStatusColor}
-                    getStatusText={getStatusText}
-                    statusOptions={statusOptions}
-                    selectedStatus={newStatus}
-                    onStatusChange={setNewStatus}
-                    onOk={handleStatusUpdate}
-                    onCancel={() => setIsStatusModalVisible(false)}
-                />
-            }
-        />
+
+                <Card className="shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                        <Title level={4} className="m-0 mb-4 md:mb-0">Danh sách khách hàng</Title>
+                        <div className="flex w-full md:w-auto gap-2">
+                            <Input
+                                placeholder="Tìm kiếm theo tên, email, tên đăng nhập, số điện thoại..."
+                                prefix={<SearchOutlined />}
+                                className="w-full md:w-80"
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                disabled={isLoading}
+                            />
+                            <Button
+                                icon={<ReloadOutlined spin={isFetching} />}
+                                onClick={() => refetch()}
+                                title="Làm mới dữ liệu"
+                                loading={isFetching}
+                            />
+                        </div>
+                    </div>
+
+                    <CustomerTable
+                        data={filteredCustomers || []}
+                        loading={isLoading}
+                        onViewDetails={handleViewDetails}
+                        onStatusChange={handleStatusChange}
+                        getStatusColor={getStatusColor}
+                        getStatusText={getStatusText}
+                    />
+                </Card>
+            </div>
+
+            <StatusChangeModal
+                visible={isStatusModalVisible}
+                loading={updateStatusMutation.isPending}
+                title="Cập nhật trạng thái khách hàng"
+                icon={<ShopOutlined />}
+                entityName={selectedCustomer?.fullName || ''}
+                entityDescription={selectedCustomer?.email || ''}
+                avatarIcon={<ShopOutlined />}
+                currentStatus={selectedCustomer?.status || ''}
+                getStatusColor={getStatusColor}
+                getStatusText={getStatusText}
+                statusOptions={statusOptions}
+                selectedStatus={newStatus}
+                onStatusChange={setNewStatus}
+                onOk={handleStatusUpdate}
+                onCancel={() => setIsStatusModalVisible(false)}
+            />
+        </div>
     );
 };
 
-export default CustomerPage; 
+export default CustomerPage;

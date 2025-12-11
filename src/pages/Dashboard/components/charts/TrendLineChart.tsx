@@ -42,15 +42,29 @@ const TrendLineChart: React.FC<TrendLineChartProps> = ({
         if (!data || data.length === 0) return [];
         
         // Chuẩn hóa dữ liệu thời gian để trục X theo filter dashboard (WEEK/MONTH/YEAR/CUSTOM)
-        return data.map((item) => {
+        const transformed = data.map((item) => {
             const raw = (item as any).date ?? item.label;
-            const parsed = new Date(raw);
+            
+            // For yyyy-MM-dd format (WEEK filter), keep as string - G2Plot handles it better
+            // For other formats, try to parse as Date
+            let timeValue: any;
+            if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+                // yyyy-MM-dd format - keep as string for better G2Plot compatibility
+                timeValue = raw;
+            } else {
+                // Other formats - try Date parsing
+                const parsed = new Date(raw);
+                timeValue = Number.isNaN(parsed.getTime()) ? raw : parsed;
+            }
+            
             return {
                 ...item,
-                time: Number.isNaN(parsed.getTime()) ? raw : parsed,
+                time: timeValue,
             };
         });
-    }, [data]);
+
+        return transformed;
+    }, [data, title]);
 
     const hasCategory = data?.some((d) => !!d.category) || false;
 
@@ -72,6 +86,12 @@ const TrendLineChart: React.FC<TrendLineChartProps> = ({
                 lineJoin: 'miter' as const,
             },
             seriesField: hasCategory ? 'category' : undefined,
+            // Scale config to ensure proper date ordering for string dates (yyyy-MM-dd)
+            scale: {
+                time: {
+                    type: 'cat' as const, // Categorical scale for string dates
+                },
+            },
             point: {
                 size: 5,
                 shape: 'circle',
@@ -87,13 +107,14 @@ const TrendLineChart: React.FC<TrendLineChartProps> = ({
                 title: (title: string) => title,
                 formatter: (datum: any) => {
                     // Giá trị hiển thị: tiền tệ VND hoặc số lượng thường
+                    const safeValue = typeof datum.value === 'number' && !Number.isNaN(datum.value) ? datum.value : 0;
                     const formattedValue = isCurrency
-                        ? (datum.value >= 1000000
-                            ? `${(datum.value / 1000000).toFixed(2)} triệu ₫`
-                            : datum.value >= 1000
-                                ? `${(datum.value / 1000).toFixed(1)}k ₫`
-                                : `${datum.value.toLocaleString('vi-VN')} ₫`)
-                        : datum.value.toLocaleString('vi-VN');
+                        ? (safeValue >= 1000000
+                            ? `${(safeValue / 1000000).toFixed(2)} triệu ₫`
+                            : safeValue >= 1000
+                                ? `${(safeValue / 1000).toFixed(1)}k ₫`
+                                : `${safeValue.toLocaleString('vi-VN')} ₫`)
+                        : safeValue.toLocaleString('vi-VN');
 
                     // Nếu có category (multi-series) thì giữ nguyên tên category, ngược lại dùng nhãn trục Y
                     const name = hasCategory && datum.category ? datum.category : yAxisLabel;
@@ -109,11 +130,29 @@ const TrendLineChart: React.FC<TrendLineChartProps> = ({
                 tickStroke: '#cdcdcd',
                 gridStroke: '#efefef',
                 label: {
+                    formatter: (value: any) => {
+                        // If value is a Date object, format it nicely
+                        if (value instanceof Date) {
+                            return value.toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                            });
+                        }
+                        // If value is yyyy-MM-dd string, format to dd/MM
+                        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                            const [year, month, day] = value.split('-');
+                            return `${day}/${month}`;
+                        }
+                        return value;
+                    },
                     style: {
                         fill: '#666',
                         fontSize: 12,
                     },
+                    autoHide: true,
+                    autoEllipsis: true,
                 },
+                tickCount: Math.min(transformedData.length, 8),
             },
             yAxis: {
                 tickStroke: '#cdcdcd',
@@ -227,7 +266,7 @@ const TrendLineChart: React.FC<TrendLineChartProps> = ({
                 <LineChartOutlined className="text-xl text-blue-500 mr-2" />
                 <h3 className="text-lg font-semibold m-0">{title}</h3>
             </div>
-            <div ref={chartRef} />
+            <div ref={chartRef} style={{ width: '100%', overflow: 'hidden' }} />
         </Card>
     );
 };

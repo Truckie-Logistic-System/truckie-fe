@@ -1,4 +1,5 @@
 import httpClient from '../api/httpClient';
+import { handleApiError } from '../api/errorHandler';
 
 export interface ProcessRefundRequest {
     issueId: string;
@@ -30,6 +31,61 @@ export interface Refund {
         email: string;
     };
     createdAt: string;
+}
+
+// Staff refund response types
+export interface StaffRefundResponse {
+    id: string;
+    refundAmount: number;
+    bankTransferImage?: string;
+    bankName?: string;
+    accountNumber?: string;
+    accountHolderName?: string;
+    transactionCode?: string;
+    refundDate?: string;
+    notes?: string;
+    sourceType?: string;
+    createdAt: string;
+    processedByStaff?: {
+        id: string;
+        fullName: string;
+        email: string;
+        phone?: string;
+    };
+    issue?: {
+        id: string;
+        issueTypeName?: string;
+        issueCategory?: string;
+        description?: string;
+        status?: string;
+        reportedAt?: string;
+        resolvedAt?: string;
+        damageFinalCompensation?: number;
+        damageCompensationStatus?: string;
+    };
+    order?: {
+        id: string;
+        orderCode?: string;
+        status?: string;
+        senderName?: string;
+        receiverName?: string;
+    };
+    vehicleAssignment?: {
+        id: string;
+        trackingCode?: string;
+        status?: string;
+        vehiclePlateNumber?: string;
+        driverName?: string;
+    };
+    transaction?: {
+        id: string;
+        transactionType?: string;
+        amount?: number;
+        status?: string;
+        paymentProvider?: string;
+        gatewayOrderCode?: string;
+        paymentDate?: string;
+    };
 }
 
 interface RefundResponse {
@@ -118,6 +174,35 @@ const refundService = {
             }
             console.error(`Error fetching refund for order detail ${orderDetailId}:`, error);
             throw new Error(error.response?.data?.message || 'Không thể tải thông tin hoàn tiền');
+        }
+    },
+
+    /**
+     * Get all refunds for staff management
+     * @returns Promise with list of refunds sorted by newest first
+     */
+    getAllRefundsForStaff: async (): Promise<StaffRefundResponse[]> => {
+        try {
+            const response = await httpClient.get('/refunds/staff/list');
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching refunds for staff:', error);
+            throw handleApiError(error, 'Không thể tải danh sách hoàn tiền');
+        }
+    },
+
+    /**
+     * Get refund detail for staff with full information
+     * @param refundId Refund ID
+     * @returns Promise with refund details including issue, order, vehicle assignment, and transaction
+     */
+    getRefundDetailForStaff: async (refundId: string): Promise<StaffRefundResponse> => {
+        try {
+            const response = await httpClient.get(`/refunds/staff/${refundId}`);
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching refund detail:', error);
+            throw handleApiError(error, 'Không thể tải chi tiết hoàn tiền');
         }
     },
 };

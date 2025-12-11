@@ -264,6 +264,54 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                     </div>
                 </Card>
 
+                {/* Devices Info */}
+                {va.devices && va.devices.length > 0 && (
+                    <Card className="shadow-sm rounded-lg border-purple-100" size="small">
+                        <div className="mb-4 bg-purple-50 p-4 rounded-lg">
+                            <div className="flex items-center mb-3">
+                                <ToolOutlined className="text-xl text-purple-500 mr-3" />
+                                <span className="text-lg font-medium">Thiết bị gắn trên xe</span>
+                                <Tag color="purple" className="ml-3">{va.devices.length} thiết bị</Tag>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {va.devices.map((device: any) => (
+                                <div key={device.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                    <div className="flex items-center mb-2">
+                                        <ToolOutlined className="text-purple-500 mr-2" />
+                                        <span className="font-medium">{device.deviceCode}</span>
+                                        {device.deviceTypeName && (
+                                            <Tag color="blue" className="ml-2">{device.deviceTypeName}</Tag>
+                                        )}
+                                    </div>
+                                    <div className="ml-6 space-y-1 text-sm">
+                                        <div className="flex items-center">
+                                            <TagOutlined className="mr-2 text-gray-500" />
+                                            <span className="text-gray-600">Nhà sản xuất:</span>
+                                            <span className="ml-1 font-medium">{device.manufacturer || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <CarOutlined className="mr-2 text-gray-500" />
+                                            <span className="text-gray-600">Model:</span>
+                                            <span className="ml-1 font-medium">{device.model || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <InfoCircleOutlined className="mr-2 text-gray-500" />
+                                            <span className="text-gray-600">IP:</span>
+                                            <span className="ml-1 font-mono text-xs">{device.ipAddress || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <ToolOutlined className="mr-2 text-gray-500" />
+                                            <span className="text-gray-600">Firmware:</span>
+                                            <span className="ml-1 font-mono text-xs">{device.firmwareVersion || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                )}
+
                 {/* Trip Status */}
                 {/* <Card className="shadow-sm rounded-lg" size="small">
                     <div className="text-sm font-semibold text-gray-700 mb-3 flex items-center">

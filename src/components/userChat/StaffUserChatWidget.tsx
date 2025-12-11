@@ -899,7 +899,7 @@ const StaffUserChatWidget: React.FC = () => {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm kiếm..."
+                    placeholder="Tìm kiếm theo tên người dùng..."
                     className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>

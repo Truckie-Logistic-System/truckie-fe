@@ -84,7 +84,7 @@ const FleetTab: React.FC<FleetTabProps> = ({ data, isLoading, handleNavigateToVe
                 </Row>
 
                 {/* Maintenance Alerts */}
-                {data?.fleetStatus?.maintenanceAlerts && data.fleetStatus.maintenanceAlerts.length > 0 && (
+                {/* {data?.fleetStatus?.maintenanceAlerts && data.fleetStatus.maintenanceAlerts.length > 0 && (
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center mb-3">
                       <Text strong className="text-orange-600">
@@ -140,7 +140,7 @@ const FleetTab: React.FC<FleetTabProps> = ({ data, isLoading, handleNavigateToVe
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
                 
                 {(!data?.fleetStatus?.maintenanceAlerts || data.fleetStatus.maintenanceAlerts.length === 0) && (
                   <div className="border-t pt-4">

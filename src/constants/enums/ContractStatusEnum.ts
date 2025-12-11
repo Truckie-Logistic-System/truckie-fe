@@ -26,8 +26,8 @@ export const ContractStatusColors = {
 };
 
 export const ContractStatusLabels = {
-  [ContractStatusEnum.CONTRACT_DRAFT]: 'Bản nháp hợp đồng',
-  [ContractStatusEnum.CONTRACT_SIGNED]: 'Hợp đồng đã ký',
+  [ContractStatusEnum.CONTRACT_DRAFT]: 'Bản nháp',
+  [ContractStatusEnum.CONTRACT_SIGNED]: 'Đã ký',
   [ContractStatusEnum.DEPOSITED]: 'Đã đặt cọc',
   [ContractStatusEnum.PAID]: 'Đã thanh toán',
   [ContractStatusEnum.UNPAID]: 'Chưa thanh toán',

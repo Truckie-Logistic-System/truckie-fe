@@ -16,8 +16,8 @@ import {
   Skeleton,
   Empty,
   Modal,
-  Descriptions,
-  Image
+  Image,
+  Divider
 } from 'antd';
 import { 
   RollbackOutlined, 
@@ -27,74 +27,41 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   EyeOutlined,
-  ExclamationCircleOutlined
+  ShoppingOutlined,
+  CarOutlined,
+  ExclamationCircleOutlined,
+  DollarOutlined,
+  BankOutlined,
+  UserOutlined
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import issueService from '../../../services/issue/issueService';
+import refundService, { type StaffRefundResponse } from '../../../services/refund/refundService';
+import { getIssueTypeLabel } from '../../../constants/enums/IssueTypeEnum';
 
 const { Title, Text } = Typography;
 
-interface RefundItem {
-  id: string;
-  amount: number;
-  reason: string;
-  status: string;
-  createdAt: string;
-  processedAt?: string;
-  issue?: {
-    id: string;
-    issueCode: string;
-    issueType: string;
-    description: string;
-    issueImages?: { imageUrl: string }[];
-  };
-  orderDetail?: {
-    id: string;
-    order?: {
-      orderCode: string;
-    };
-  };
-}
-
 const RefundListPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedRefund, setSelectedRefund] = useState<RefundItem | null>(null);
+  const [selectedRefund, setSelectedRefund] = useState<StaffRefundResponse | null>(null);
   const [isDetailVisible, setIsDetailVisible] = useState(false);
 
-  const { data: issues = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['staffIssues'],
-    queryFn: () => issueService.getAllIssues(),
+  const { data: refunds = [], isLoading, refetch, isFetching } = useQuery({
+    queryKey: ['staffRefunds'],
+    queryFn: () => refundService.getAllRefundsForStaff(),
   });
-
-  // Extract refunds from issues (issues that have damageCompensation)
-  const refunds: RefundItem[] = issues
-    .filter((issue: any) => issue.damageCompensation)
-    .map((issue: any) => ({
-      id: issue.damageCompensation.id || issue.id,
-      amount: issue.damageCompensation.amount || 0,
-      reason: issue.damageCompensation.reason || issue.description,
-      status: issue.damageCompensation.status || 'PENDING',
-      createdAt: issue.damageCompensation.createdAt || issue.createdAt,
-      processedAt: issue.damageCompensation.processedAt,
-      issue: {
-        id: issue.id,
-        issueCode: issue.issueCode,
-        issueType: issue.issueType,
-        description: issue.description,
-        issueImages: issue.issueImages,
-      },
-      orderDetail: issue.orderDetail,
-    }));
 
   // Filter refunds
   const filteredRefunds = refunds.filter(r => {
     const matchSearch = searchText === '' || 
-      r.issue?.issueCode?.toLowerCase().includes(searchText.toLowerCase()) ||
-      r.orderDetail?.order?.orderCode?.toLowerCase().includes(searchText.toLowerCase());
+      r.issue?.id?.toLowerCase().includes(searchText.toLowerCase()) ||
+      r.vehicleAssignment?.trackingCode?.toLowerCase().includes(searchText.toLowerCase()) ||
+      r.order?.orderCode?.toLowerCase().includes(searchText.toLowerCase());
     
-    const matchStatus = statusFilter === 'all' || r.status === statusFilter;
+    const matchStatus = statusFilter === 'all' || r.issue?.status === statusFilter;
 
     return matchSearch && matchStatus;
   });
@@ -102,79 +69,93 @@ const RefundListPage: React.FC = () => {
   // Stats
   const stats = {
     total: refunds.length,
-    completed: refunds.filter(r => r.status === 'COMPLETED' || r.status === 'PAID').length,
-    pending: refunds.filter(r => r.status === 'PENDING').length,
-    totalAmount: refunds.reduce((sum, r) => sum + (r.amount || 0), 0),
+    completed: refunds.filter(r => r.issue?.status === 'RESOLVED').length,
+    pending: refunds.filter(r => r.issue?.status === 'OPEN' || r.issue?.status === 'IN_PROGRESS').length,
+    totalAmount: refunds.reduce((sum, r) => sum + (r.refundAmount || 0), 0),
   };
 
-  const getStatusTag = (status: string) => {
+  const getIssueStatusTag = (status?: string) => {
     switch (status?.toUpperCase()) {
-      case 'COMPLETED':
-      case 'PAID':
-        return <Tag icon={<CheckCircleOutlined />} color="success">Đã hoàn tiền</Tag>;
-      case 'PENDING':
+      case 'RESOLVED':
+        return <Tag icon={<CheckCircleOutlined />} color="success">Đã hoàn</Tag>;
+      case 'OPEN':
+      case 'IN_PROGRESS':
         return <Tag icon={<ClockCircleOutlined />} color="warning">Chờ xử lý</Tag>;
-      case 'REJECTED':
-        return <Tag icon={<CloseCircleOutlined />} color="error">Từ chối</Tag>;
+      case 'CANCELLED':
+        return <Tag icon={<CloseCircleOutlined />} color="error">Đã hủy</Tag>;
       default:
-        return <Tag color="default">{status}</Tag>;
+        return <Tag color="default">{status || '-'}</Tag>;
     }
   };
 
-  const handleViewDetail = (refund: RefundItem) => {
-    setSelectedRefund(refund);
-    setIsDetailVisible(true);
+  const getIssueTypeTag = (issueTypeName?: string) => {
+    const label = getIssueTypeLabel(issueTypeName || '');
+    switch (issueTypeName?.toUpperCase()) {
+      case 'DAMAGE':
+        return <Tag color="red">{label}</Tag>;
+      case 'ORDER_REJECTION':
+        return <Tag color="orange">{label}</Tag>;
+      case 'SEAL_REPLACEMENT':
+        return <Tag color="blue">{label}</Tag>;
+      case 'PENALTY':
+        return <Tag color="purple">{label}</Tag>;
+      case 'REROUTE':
+        return <Tag color="cyan">{label}</Tag>;
+      case 'OFF_ROUTE_RUNAWAY':
+        return <Tag color="magenta">{label}</Tag>;
+      default:
+        return <Tag color="default">{label}</Tag>;
+    }
   };
 
-  const columns: ColumnsType<RefundItem> = [
+  const handleViewDetail = async (refund: StaffRefundResponse) => {
+    try {
+      const detail = await refundService.getRefundDetailForStaff(refund.id);
+      setSelectedRefund(detail);
+      setIsDetailVisible(true);
+    } catch (error) {
+      console.error('Error fetching refund detail:', error);
+    }
+  };
+
+  const columns: ColumnsType<StaffRefundResponse> = [
     {
       title: 'Mã sự cố',
-      key: 'issueCode',
+      key: 'issueId',
+      width: 120,
+      render: (_, record) => (
+        <Text strong className="text-blue-600 text-xs">
+          {record.issue?.id?.slice(0, 8) || '-'}...
+        </Text>
+      )
+    },
+    {
+      title: 'Tracking Code',
+      key: 'trackingCode',
       width: 140,
       render: (_, record) => (
-        <Text strong className="text-blue-600">{record.issue?.issueCode || '-'}</Text>
+        <Text className="font-medium">{record.vehicleAssignment?.trackingCode || '-'}</Text>
       )
     },
     {
       title: 'Mã đơn hàng',
       key: 'orderCode',
-      width: 140,
+      width: 160,
       render: (_, record) => (
-        <Text>{record.orderDetail?.order?.orderCode || '-'}</Text>
+        <Text>{record.order?.orderCode || '-'}</Text>
       )
     },
     {
       title: 'Loại sự cố',
       key: 'issueType',
       width: 150,
-      render: (_, record) => {
-        const type = record.issue?.issueType;
-        switch (type?.toUpperCase()) {
-          case 'DAMAGED': return <Tag color="red">Hư hỏng</Tag>;
-          case 'LOST': return <Tag color="orange">Mất hàng</Tag>;
-          case 'DELAY': return <Tag color="blue">Trễ hẹn</Tag>;
-          default: return <Tag>{type}</Tag>;
-        }
-      }
-    },
-    {
-      title: 'Số tiền hoàn',
-      dataIndex: 'amount',
-      key: 'amount',
-      width: 150,
-      align: 'right',
-      render: (amount: number) => (
-        <Text strong className="text-green-600">
-          {amount?.toLocaleString('vi-VN')} đ
-        </Text>
-      )
+      render: (_, record) => getIssueTypeTag(record.issue?.issueTypeName)
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'status',
       key: 'status',
-      width: 130,
-      render: (status: string) => getStatusTag(status)
+      width: 120,
+      render: (_, record) => getIssueStatusTag(record.issue?.status)
     },
     {
       title: 'Ngày tạo',
@@ -253,11 +234,11 @@ const RefundListPage: React.FC = () => {
         <Space wrap className="w-full justify-between">
           <Space wrap>
             <Input
-              placeholder="Tìm theo mã sự cố, đơn hàng..."
+              placeholder="Tìm theo mã sự cố, tracking code, đơn hàng..."
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              style={{ width: 280 }}
+              style={{ width: 320 }}
               allowClear
             />
             <Select
@@ -266,9 +247,9 @@ const RefundListPage: React.FC = () => {
               style={{ width: 150 }}
               options={[
                 { value: 'all', label: 'Tất cả trạng thái' },
-                { value: 'COMPLETED', label: 'Đã hoàn' },
-                { value: 'PENDING', label: 'Chờ xử lý' },
-                { value: 'REJECTED', label: 'Từ chối' },
+                { value: 'RESOLVED', label: 'Đã hoàn' },
+                { value: 'OPEN', label: 'Chờ xử lý' },
+                { value: 'IN_PROGRESS', label: 'Đang xử lý' },
               ]}
             />
           </Space>
@@ -300,65 +281,206 @@ const RefundListPage: React.FC = () => {
       {/* Detail Modal */}
       <Modal
         title={
-          <Space>
-            <ExclamationCircleOutlined className="text-blue-600" />
+          <div className="flex items-center">
+            <RollbackOutlined className="mr-2 text-blue-600" />
             Chi tiết hoàn tiền
-          </Space>
+          </div>
         }
         open={isDetailVisible}
         onCancel={() => setIsDetailVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setIsDetailVisible(false)}>
-            Đóng
-          </Button>
-        ]}
-        width={700}
+        footer={null}
+        width={1000}
       >
         {selectedRefund && (
           <div className="space-y-4">
-            <Descriptions column={2} bordered size="small">
-              <Descriptions.Item label="Mã sự cố" span={1}>
-                {selectedRefund.issue?.issueCode}
-              </Descriptions.Item>
-              <Descriptions.Item label="Mã đơn hàng" span={1}>
-                {selectedRefund.orderDetail?.order?.orderCode || '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Loại sự cố" span={1}>
-                {selectedRefund.issue?.issueType}
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái" span={1}>
-                {getStatusTag(selectedRefund.status)}
-              </Descriptions.Item>
-              <Descriptions.Item label="Số tiền hoàn" span={1}>
-                <Text strong className="text-green-600">
-                  {selectedRefund.amount?.toLocaleString('vi-VN')} đ
-                </Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Ngày tạo" span={1}>
-                {dayjs(selectedRefund.createdAt).format('DD/MM/YYYY HH:mm')}
-              </Descriptions.Item>
-              <Descriptions.Item label="Lý do" span={2}>
-                {selectedRefund.reason || selectedRefund.issue?.description || '-'}
-              </Descriptions.Item>
-            </Descriptions>
+            {/* Quick Info Banners - 3 columns */}
+            <Row gutter={[12, 12]}>
+              {/* Order Banner */}
+              <Col xs={24} md={8}>
+                <Card 
+                  size="small"
+                  className="h-full border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => selectedRefund.order?.id && navigate(`/staff/orders/${selectedRefund.order.id}`)}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShoppingOutlined className="text-blue-500 text-lg" />
+                    <Text strong>Đơn hàng</Text>
+                  </div>
+                  <div className="space-y-1">
+                    <Text className="block text-blue-600 font-medium">
+                      {selectedRefund.order?.orderCode || '-'}
+                    </Text>
+                    <Text type="secondary" className="text-xs block">
+                      Người gửi: {selectedRefund.order?.senderName || '-'}
+                    </Text>
+                    <Text type="secondary" className="text-xs block">
+                      Người nhận: {selectedRefund.order?.receiverName || '-'}
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
 
-            {selectedRefund.issue?.issueImages && selectedRefund.issue.issueImages.length > 0 && (
-              <Card title="Hình ảnh sự cố" size="small">
-                <Image.PreviewGroup>
-                  <Space wrap>
-                    {selectedRefund.issue.issueImages.map((img, index) => (
-                      <Image
-                        key={index}
-                        width={100}
-                        height={100}
-                        src={img.imageUrl}
-                        style={{ objectFit: 'cover' }}
-                      />
-                    ))}
-                  </Space>
-                </Image.PreviewGroup>
-              </Card>
+              {/* Vehicle Assignment Banner */}
+              <Col xs={24} md={8}>
+                <Card 
+                  size="small"
+                  className="h-full border-l-4 border-l-green-500 cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => selectedRefund.vehicleAssignment?.id && navigate(`/staff/trips/${selectedRefund.vehicleAssignment.id}`)}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <CarOutlined className="text-green-500 text-lg" />
+                    <Text strong>Chuyến xe</Text>
+                  </div>
+                  <div className="space-y-1">
+                    <Text className="block text-green-600 font-medium">
+                      {selectedRefund.vehicleAssignment?.trackingCode || '-'}
+                    </Text>
+                    <Text type="secondary" className="text-xs block">
+                      Biển số: {selectedRefund.vehicleAssignment?.vehiclePlateNumber || '-'}
+                    </Text>
+                    <Text type="secondary" className="text-xs block">
+                      Tài xế: {selectedRefund.vehicleAssignment?.driverName || '-'}
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Issue Banner */}
+              <Col xs={24} md={8}>
+                <Card 
+                  size="small"
+                  className="h-full border-l-4 border-l-orange-500 cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => selectedRefund.issue?.id && navigate(`/staff/issues/${selectedRefund.issue.id}`)}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <ExclamationCircleOutlined className="text-orange-500 text-lg" />
+                    <Text strong>Sự cố</Text>
+                  </div>
+                  <div className="space-y-1">
+                    <div>{getIssueTypeTag(selectedRefund.issue?.issueTypeName)}</div>
+                    <Text type="secondary" className="text-xs block">
+                      Trạng thái: {getIssueStatusTag(selectedRefund.issue?.status)}
+                    </Text>
+                    <Text type="secondary" className="text-xs block truncate">
+                      {selectedRefund.issue?.description || '-'}
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+
+            <Divider className="my-3" />
+
+            {/* Refund Details - 3 columns when image exists */}
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={selectedRefund.bankTransferImage ? 8 : 12}>
+                <Card size="small" title={<><DollarOutlined className="mr-2" />Thông tin hoàn tiền</>}>
+                  <div className="space-y-3">
+                    <div>
+                      <Text type="secondary" className="block text-xs">Số tiền hoàn</Text>
+                      <Text strong className="text-green-600 text-lg">
+                        {selectedRefund.refundAmount?.toLocaleString('vi-VN')} đ
+                      </Text>
+                    </div>
+                    <div>
+                      <Text type="secondary" className="block text-xs">Mã giao dịch</Text>
+                      <Text>{selectedRefund.transactionCode || '-'}</Text>
+                    </div>
+                    <div>
+                      <Text type="secondary" className="block text-xs">Ngày hoàn tiền</Text>
+                      <Text>
+                        {selectedRefund.refundDate 
+                          ? dayjs(selectedRefund.refundDate).format('DD/MM/YYYY HH:mm') 
+                          : '-'}
+                      </Text>
+                    </div>
+                    <div>
+                      <Text type="secondary" className="block text-xs">Ngày tạo</Text>
+                      <Text>{dayjs(selectedRefund.createdAt).format('DD/MM/YYYY HH:mm')}</Text>
+                    </div>
+                    {selectedRefund.notes && (
+                      <div>
+                        <Text type="secondary" className="block text-xs">Ghi chú</Text>
+                        <Text>{selectedRefund.notes}</Text>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </Col>
+
+              <Col xs={24} md={selectedRefund.bankTransferImage ? 8 : 12}>
+                <Card size="small" title={<><BankOutlined className="mr-2" />Thông tin ngân hàng</>}>
+                  <div className="space-y-3">
+                    <div>
+                      <Text type="secondary" className="block text-xs">Ngân hàng</Text>
+                      <Text>{selectedRefund.bankName || '-'}</Text>
+                    </div>
+                    <div>
+                      <Text type="secondary" className="block text-xs">Số tài khoản</Text>
+                      <Text>{selectedRefund.accountNumber || '-'}</Text>
+                    </div>
+                    <div>
+                      <Text type="secondary" className="block text-xs">Chủ tài khoản</Text>
+                      <Text>{selectedRefund.accountHolderName || '-'}</Text>
+                    </div>
+                    {selectedRefund.processedByStaff && (
+                      <div>
+                        <Text type="secondary" className="block text-xs">Nhân viên xử lý</Text>
+                        <div className="flex items-center gap-2">
+                          <UserOutlined />
+                          <Text>{selectedRefund.processedByStaff.fullName}</Text>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Bank Transfer Image - third column when present */}
+              {selectedRefund.bankTransferImage && (
+                <Col xs={24} md={8}>
+                  <Card size="small" title="Ảnh chứng từ chuyển khoản">
+                    <Image
+                      src={selectedRefund.bankTransferImage}
+                      alt="Bank transfer proof"
+                      style={{ maxHeight: 200, objectFit: 'contain', width: '100%' }}
+                    />
+                  </Card>
+                </Col>
+              )}
+            </Row>
+
+            {/* Transaction Info (if any) */}
+            {selectedRefund.transaction && (
+              <>
+                <Divider className="my-3" />
+                <Card size="small" title={<><DollarOutlined className="mr-2" />Giao dịch liên quan</>}>
+                  <Row gutter={[16, 8]}>
+                    <Col xs={12} md={6}>
+                      <Text type="secondary" className="block text-xs">Mã giao dịch</Text>
+                      <Text className="text-blue-600">{selectedRefund.transaction.gatewayOrderCode || '-'}</Text>
+                    </Col>
+                    <Col xs={12} md={6}>
+                      <Text type="secondary" className="block text-xs">Loại</Text>
+                      <Text>{selectedRefund.transaction.transactionType || '-'}</Text>
+                    </Col>
+                    <Col xs={12} md={6}>
+                      <Text type="secondary" className="block text-xs">Số tiền</Text>
+                      <Text className="text-green-600">
+                        {selectedRefund.transaction.amount?.toLocaleString('vi-VN')} đ
+                      </Text>
+                    </Col>
+                    <Col xs={12} md={6}>
+                      <Text type="secondary" className="block text-xs">Trạng thái</Text>
+                      <Tag color={selectedRefund.transaction.status === 'SUCCESS' ? 'green' : 'orange'}>
+                        {selectedRefund.transaction.status}
+                      </Tag>
+                    </Col>
+                  </Row>
+                </Card>
+              </>
             )}
+
           </div>
         )}
       </Modal>

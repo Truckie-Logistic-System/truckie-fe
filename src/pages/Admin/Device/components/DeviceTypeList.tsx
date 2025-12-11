@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Switch, Space, Skeleton } from 'antd';
+import { Table, Button, Modal, Form, Input, Switch, Space, Skeleton } from 'antd';
+
 import type { MessageInstance } from 'antd/es/message/interface';
 import { PlusOutlined, EditOutlined, SwapOutlined, CheckCircleOutlined, StopOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { deviceService } from '../../../../services/device';
 import type { DeviceType, CreateDeviceTypeRequest, UpdateDeviceTypeRequest } from '../../../../models';
 import StatusChangeModal from '../../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../../components/common/StatusChangeModal';
-import { MaintenanceTypeTag } from '@/components/common/tags';
+import { CommonStatusEnum } from '@/constants/enums';
+import { CommonStatusTag } from '@/components/common/tags';
 
 export interface DeviceTypeListRef {
     showAddModal: () => void;
@@ -117,7 +119,6 @@ const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props
                     deviceTypeName: values.deviceTypeName,
                     description: values.description || '',
                     isActive: currentDeviceType.isActive, // Giữ nguyên trạng thái hiện tại
-                    vehicleCapacity: values.vehicleCapacity
                 };
 
                 await deviceService.updateDeviceType(currentDeviceType.id, updateData);
@@ -127,7 +128,6 @@ const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props
                 const createData: CreateDeviceTypeRequest = {
                     deviceTypeName: values.deviceTypeName,
                     description: values.description || '',
-                    vehicleCapacity: values.vehicleCapacity
                 };
 
                 await deviceService.createDeviceType(createData);
@@ -162,7 +162,6 @@ const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props
                     deviceTypeName: selectedDeviceType.deviceTypeName,
                     description: selectedDeviceType.description || '',
                     isActive: newStatus,
-                    vehicleCapacity: selectedDeviceType.vehicleCapacity
                 };
 
                 await deviceService.updateDeviceType(selectedDeviceType.id, updateData);
@@ -224,11 +223,6 @@ const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props
             key: 'deviceTypeName',
         },
         {
-            title: 'Tải trọng xe (kg)',
-            dataIndex: 'vehicleCapacity',
-            key: 'vehicleCapacity',
-        },
-        {
             title: 'Mô tả',
             dataIndex: 'description',
             key: 'description',
@@ -238,7 +232,7 @@ const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props
             dataIndex: 'isActive',
             key: 'isActive',
             render: (isActive: boolean) => (
-                <MaintenanceTypeTag status={isActive} />
+                <CommonStatusTag status={isActive ? CommonStatusEnum.ACTIVE : CommonStatusEnum.INACTIVE} />
             ),
         },
         {
@@ -301,14 +295,6 @@ const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props
                             >
                                 <Input placeholder="Nhập tên loại thiết bị" />
                             </Form.Item>
-
-                            <Form.Item
-                                name="vehicleCapacity"
-                                label="Tải trọng xe (kg)"
-                                rules={[{ required: true, message: 'Vui lòng nhập tải trọng xe' }]}
-                            >
-                                <InputNumber min={0} className="w-full" placeholder="Nhập tải trọng xe" />
-                            </Form.Item>
                         </div>
                         <div>
                             <Form.Item
@@ -332,7 +318,7 @@ const DeviceTypeList = forwardRef<DeviceTypeListRef, DeviceTypeListProps>((props
                 title="Cập nhật trạng thái loại thiết bị"
                 icon={<AppstoreOutlined />}
                 entityName={selectedDeviceType?.deviceTypeName || ''}
-                entityDescription={`Tải trọng: ${selectedDeviceType?.vehicleCapacity} kg`}
+                entityDescription={selectedDeviceType?.description || ''}
                 avatarIcon={<AppstoreOutlined />}
                 currentStatus={selectedDeviceType?.isActive ?? false}
                 getStatusColor={getStatusColor}

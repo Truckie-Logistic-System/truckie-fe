@@ -11,7 +11,7 @@ interface SocialLoginProps {
 const SocialLogin: React.FC<SocialLoginProps> = ({ loading, onGoogleLogin }) => {
     return (
         <>
-            <div className="text-center my-4">hoặc</div>
+            {/* <div className="text-center my-4">hoặc</div>
 
             <Button
                 icon={<GoogleOutlined />}
@@ -20,7 +20,7 @@ const SocialLogin: React.FC<SocialLoginProps> = ({ loading, onGoogleLogin }) => 
                 disabled={loading}
             >
                 Đăng nhập với Google
-            </Button>
+            </Button> */}
 
             <div className="text-center mt-4">
                 <span className="text-gray-500">Chưa có tài khoản? </span>

@@ -213,8 +213,9 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                 name="status"
                                 label="Trạng thái"
                                 rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+                                initialValue={isEditing ? initialValues?.status : 'ACTIVE'}
                             >
-                                <Select>
+                                <Select disabled={!isEditing}>
                                     <Select.Option value="ACTIVE">Hoạt động</Select.Option>
                                     <Select.Option value="INACTIVE">Không hoạt động</Select.Option>
                                 </Select>
@@ -260,7 +261,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                             <Form.Item
                                 name="effectiveFrom"
                                 label="Hiệu lực từ"
-                                rules={[{ required: true, message: 'Vui lòng chọn ngày bắt đầu hiệu lực' }]}
+                                rules={[
+                                    { required: true, message: 'Vui lòng chọn ngày bắt đầu hiệu lực' },
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            const effectiveTo = getFieldValue('effectiveTo');
+                                            if (value && effectiveTo && value.isAfter(effectiveTo)) {
+                                                return Promise.reject(new Error('Ngày bắt đầu phải trước ngày kết thúc'));
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    }),
+                                ]}
+                                dependencies={['effectiveTo']}
                             >
                                 <DatePicker
                                     className="w-full"
@@ -274,6 +287,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                             <Form.Item
                                 name="effectiveTo"
                                 label="Hiệu lực đến"
+                                rules={[
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            if (!value) return Promise.resolve();
+                                            const effectiveFrom = getFieldValue('effectiveFrom');
+                                            if (effectiveFrom && value.isBefore(effectiveFrom)) {
+                                                return Promise.reject(new Error('Ngày kết thúc phải sau ngày bắt đầu'));
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    }),
+                                ]}
+                                dependencies={['effectiveFrom']}
                             >
                                 <DatePicker
                                     className="w-full"
@@ -303,7 +329,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                         <Form.Item
                                             name="minWeight"
                                             label="Tối thiểu"
-                                            rules={[{ required: true, message: 'Vui lòng nhập trọng lượng tối thiểu' }]}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập trọng lượng tối thiểu' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        const maxWeight = getFieldValue('maxWeight');
+                                                        if (value !== undefined && maxWeight !== undefined && value > maxWeight) {
+                                                            return Promise.reject(new Error('Trọng lượng tối thiểu phải nhỏ hơn tối đa'));
+                                                        }
+                                                        return Promise.resolve();
+                                                    },
+                                                }),
+                                            ]}
+                                            dependencies={['maxWeight']}
                                         >
                                             <InputNumber className="w-full" min={0} step={0.01} placeholder="Nhập trọng lượng tối thiểu" />
                                         </Form.Item>
@@ -312,7 +350,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                         <Form.Item
                                             name="maxWeight"
                                             label="Tối đa"
-                                            rules={[{ required: true, message: 'Vui lòng nhập trọng lượng tối đa' }]}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập trọng lượng tối đa' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        const minWeight = getFieldValue('minWeight');
+                                                        if (value !== undefined && minWeight !== undefined && value < minWeight) {
+                                                            return Promise.reject(new Error('Trọng lượng tối đa phải lớn hơn tối thiểu'));
+                                                        }
+                                                        return Promise.resolve();
+                                                    },
+                                                }),
+                                            ]}
+                                            dependencies={['minWeight']}
                                         >
                                             <InputNumber className="w-full" min={0} step={0.01} placeholder="Nhập trọng lượng tối đa" />
                                         </Form.Item>
@@ -329,7 +379,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                         <Form.Item
                                             name="minLength"
                                             label="Chiều dài tối thiểu"
-                                            rules={[{ required: true, message: 'Vui lòng nhập chiều dài tối thiểu' }]}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập chiều dài tối thiểu' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        const maxLength = getFieldValue('maxLength');
+                                                        if (value !== undefined && maxLength !== undefined && value > maxLength) {
+                                                            return Promise.reject(new Error('Chiều dài tối thiểu phải nhỏ hơn tối đa'));
+                                                        }
+                                                        return Promise.resolve();
+                                                    },
+                                                }),
+                                            ]}
+                                            dependencies={['maxLength']}
                                         >
                                             <InputNumber className="w-full" min={0} step={0.01} placeholder="Nhập chiều dài tối thiểu" />
                                         </Form.Item>
@@ -338,7 +400,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                         <Form.Item
                                             name="maxLength"
                                             label="Chiều dài tối đa"
-                                            rules={[{ required: true, message: 'Vui lòng nhập chiều dài tối đa' }]}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập chiều dài tối đa' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        const minLength = getFieldValue('minLength');
+                                                        if (value !== undefined && minLength !== undefined && value < minLength) {
+                                                            return Promise.reject(new Error('Chiều dài tối đa phải lớn hơn tối thiểu'));
+                                                        }
+                                                        return Promise.resolve();
+                                                    },
+                                                }),
+                                            ]}
+                                            dependencies={['minLength']}
                                         >
                                             <InputNumber className="w-full" min={0} step={0.01} placeholder="Nhập chiều dài tối đa" />
                                         </Form.Item>
@@ -350,7 +424,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                         <Form.Item
                                             name="minWidth"
                                             label="Chiều rộng tối thiểu"
-                                            rules={[{ required: true, message: 'Vui lòng nhập chiều rộng tối thiểu' }]}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập chiều rộng tối thiểu' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        const maxWidth = getFieldValue('maxWidth');
+                                                        if (value !== undefined && maxWidth !== undefined && value > maxWidth) {
+                                                            return Promise.reject(new Error('Chiều rộng tối thiểu phải nhỏ hơn tối đa'));
+                                                        }
+                                                        return Promise.resolve();
+                                                    },
+                                                }),
+                                            ]}
+                                            dependencies={['maxWidth']}
                                         >
                                             <InputNumber className="w-full" min={0} step={0.01} placeholder="Nhập chiều rộng tối thiểu" />
                                         </Form.Item>
@@ -359,7 +445,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                         <Form.Item
                                             name="maxWidth"
                                             label="Chiều rộng tối đa"
-                                            rules={[{ required: true, message: 'Vui lòng nhập chiều rộng tối đa' }]}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập chiều rộng tối đa' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        const minWidth = getFieldValue('minWidth');
+                                                        if (value !== undefined && minWidth !== undefined && value < minWidth) {
+                                                            return Promise.reject(new Error('Chiều rộng tối đa phải lớn hơn tối thiểu'));
+                                                        }
+                                                        return Promise.resolve();
+                                                    },
+                                                }),
+                                            ]}
+                                            dependencies={['minWidth']}
                                         >
                                             <InputNumber className="w-full" min={0} step={0.01} placeholder="Nhập chiều rộng tối đa" />
                                         </Form.Item>
@@ -371,7 +469,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                         <Form.Item
                                             name="minHeight"
                                             label="Chiều cao tối thiểu"
-                                            rules={[{ required: true, message: 'Vui lòng nhập chiều cao tối thiểu' }]}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập chiều cao tối thiểu' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        const maxHeight = getFieldValue('maxHeight');
+                                                        if (value !== undefined && maxHeight !== undefined && value > maxHeight) {
+                                                            return Promise.reject(new Error('Chiều cao tối thiểu phải nhỏ hơn tối đa'));
+                                                        }
+                                                        return Promise.resolve();
+                                                    },
+                                                }),
+                                            ]}
+                                            dependencies={['maxHeight']}
                                         >
                                             <InputNumber className="w-full" min={0} step={0.01} placeholder="Nhập chiều cao tối thiểu" />
                                         </Form.Item>
@@ -380,7 +490,19 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                                         <Form.Item
                                             name="maxHeight"
                                             label="Chiều cao tối đa"
-                                            rules={[{ required: true, message: 'Vui lòng nhập chiều cao tối đa' }]}
+                                            rules={[
+                                                { required: true, message: 'Vui lòng nhập chiều cao tối đa' },
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        const minHeight = getFieldValue('minHeight');
+                                                        if (value !== undefined && minHeight !== undefined && value < minHeight) {
+                                                            return Promise.reject(new Error('Chiều cao tối đa phải lớn hơn tối thiểu'));
+                                                        }
+                                                        return Promise.resolve();
+                                                    },
+                                                }),
+                                            ]}
+                                            dependencies={['minHeight']}
                                         >
                                             <InputNumber className="w-full" min={0} step={0.01} placeholder="Nhập chiều cao tối đa" />
                                         </Form.Item>

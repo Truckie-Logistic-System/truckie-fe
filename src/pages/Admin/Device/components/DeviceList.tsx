@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Space, Skeleton } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Space, Skeleton, Descriptions } from 'antd';
+
 import type { MessageInstance } from 'antd/es/message/interface';
 import { PlusOutlined, EditOutlined, SwapOutlined, CheckCircleOutlined, StopOutlined, MobileOutlined } from '@ant-design/icons';
 import { deviceService } from '../../../../services/device';
+import vehicleService from '../../../../services/vehicle';
 import type { Device, DeviceType, CreateDeviceRequest, UpdateDeviceRequest } from '../../../../models';
 import dayjs from 'dayjs';
 import StatusChangeModal from '../../../../components/common/StatusChangeModal';
@@ -33,11 +35,14 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
     } = props;
     const [devices, setDevices] = useState<Device[]>([]);
     const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
-    const [vehicles, setVehicles] = useState<any[]>([]); // This would need a proper vehicle service
+    const [vehicles, setVehicles] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [currentDevice, setCurrentDevice] = useState<Device | null>(null);
+    const [isDetailModalVisible, setIsDetailModalVisible] = useState<boolean>(false);
+    const [detailDevice, setDetailDevice] = useState<Device | null>(null);
+
     const [form] = Form.useForm();
 
     // Status change modal state
@@ -113,13 +118,20 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
         }
     };
 
-    // For a real implementation, you would need a vehicle service
+    // Fetch vehicles from API
     const fetchVehicles = async () => {
-        // Mock data for now
-        setVehicles([
-            { id: '1', licensePlateNumber: '51A-12345' },
-            { id: '2', licensePlateNumber: '51B-67890' },
-        ]);
+        try {
+            const response = await vehicleService.getVehicles();
+            if (response && response.data) {
+                const vehicleData = Array.isArray(response.data) ? response.data : [];
+                setVehicles(vehicleData);
+            } else {
+                setVehicles([]);
+            }
+        } catch (error) {
+            console.error('Error fetching vehicles:', error);
+            setVehicles([]);
+        }
     };
 
     useEffect(() => {
@@ -203,6 +215,11 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
         setSelectedDevice(device);
         setNewStatus(device.status || 'ACTIVE');
         setIsStatusModalVisible(true);
+    };
+
+    const handleViewDetail = (device: Device) => {
+        setDetailDevice(device);
+        setIsDetailModalVisible(true);
     };
 
     const handleStatusUpdate = async () => {
@@ -309,28 +326,6 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
             ),
         },
         {
-            title: 'Ngày lắp đặt',
-            dataIndex: 'installedAt',
-            key: 'installedAt',
-            render: (date: string) => date ? dayjs(date).format('DD/MM/YYYY') : 'N/A',
-        },
-        {
-            title: 'Địa chỉ IP',
-            dataIndex: 'ipAddress',
-            key: 'ipAddress',
-        },
-        {
-            title: 'Phiên bản firmware',
-            dataIndex: 'firmwareVersion',
-            key: 'firmwareVersion',
-        },
-        {
-            title: 'Loại thiết bị',
-            dataIndex: 'deviceTypeEntity',
-            key: 'deviceType',
-            render: (deviceType: DeviceType) => deviceType?.deviceTypeName || 'N/A',
-        },
-        {
             title: 'Phương tiện',
             dataIndex: 'vehicleEntity',
             key: 'vehicle',
@@ -342,14 +337,22 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
             render: (_: any, record: Device) => (
                 <Space>
                     <Button
+                        size="small"
+                        onClick={() => handleViewDetail(record)}
+                    >
+                        Chi tiết
+                    </Button>
+                    <Button
                         type="primary"
                         icon={<EditOutlined />}
                         onClick={() => showModal(record)}
+                        size="small"
                     />
                     <Button
                         icon={<SwapOutlined />}
                         onClick={() => handleStatusChange(record)}
                         className={record.status?.toLowerCase() === 'active' ? 'border-red-400 text-red-500 hover:text-red-600 hover:border-red-500' : 'border-green-400 text-green-500 hover:text-green-600 hover:border-green-500'}
+                        size="small"
                     >
                         {record.status?.toLowerCase() === 'active' ? 'Vô hiệu hóa' : 'Kích hoạt'}
                     </Button>
@@ -369,6 +372,7 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
                 columns={columns}
                 rowKey="id"
                 pagination={{ pageSize: 10 }}
+                scroll={{ x: 'max-content' }}
             />
 
             {/* Edit/Create Modal */}
@@ -454,7 +458,14 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
                             name="vehicleId"
                             label="Phương tiện"
                         >
-                            <Select placeholder="Chọn phương tiện (không bắt buộc)">
+                            <Select 
+                                placeholder="Chọn phương tiện (không bắt buộc)"
+                                showSearch
+                                filterOption={(input, option) =>
+                                    String(option?.children || '').toLowerCase().includes(input.toLowerCase())
+                                }
+                                allowClear
+                            >
                                 <Select.Option value="">Không gắn với phương tiện</Select.Option>
                                 {vehicles.map(vehicle => (
                                     <Select.Option key={vehicle.id} value={vehicle.id}>
@@ -465,6 +476,41 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
                         </Form.Item>
                     </div>
                 </Form>
+            </Modal>
+
+            {/* Detail Modal */}
+            <Modal
+                title="Chi tiết thiết bị"
+                open={isDetailModalVisible}
+                onCancel={() => setIsDetailModalVisible(false)}
+                footer={[
+                    <Button key="close" onClick={() => setIsDetailModalVisible(false)}>
+                        Đóng
+                    </Button>,
+                ]}
+                width={720}
+            >
+                {detailDevice && (
+                    <Descriptions column={2} bordered size="small">
+                        <Descriptions.Item label="Mã thiết bị">{detailDevice.deviceCode}</Descriptions.Item>
+                        <Descriptions.Item label="Trạng thái">
+                            <DeviceStatusTag status={detailDevice.status as DeviceStatusEnum} />
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Nhà sản xuất">{detailDevice.manufacturer}</Descriptions.Item>
+                        <Descriptions.Item label="Model">{detailDevice.model}</Descriptions.Item>
+                        <Descriptions.Item label="Ngày lắp đặt" span={2}>
+                            {detailDevice.installedAt ? dayjs(detailDevice.installedAt).format('DD/MM/YYYY') : 'N/A'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Địa chỉ IP">{detailDevice.ipAddress || 'N/A'}</Descriptions.Item>
+                        <Descriptions.Item label="Phiên bản firmware">{detailDevice.firmwareVersion || 'N/A'}</Descriptions.Item>
+                        <Descriptions.Item label="Loại thiết bị">
+                            {detailDevice.deviceTypeEntity?.deviceTypeName || 'N/A'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Phương tiện">
+                            {detailDevice.vehicleEntity?.licensePlateNumber || 'Không gắn với phương tiện'}
+                        </Descriptions.Item>
+                    </Descriptions>
+                )}
             </Modal>
 
             {/* Status Change Modal */}
@@ -489,4 +535,4 @@ const DeviceList = forwardRef<DeviceListRef, DeviceListProps>((props, ref) => {
     );
 });
 
-export default DeviceList; 
+export default DeviceList;

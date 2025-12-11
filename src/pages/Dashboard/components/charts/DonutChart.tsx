@@ -118,7 +118,8 @@ const DonutChart: React.FC<DonutChartProps> = ({
                 },
                 formatter: () => {
                     const total = data.reduce((sum, item) => sum + item.value, 0);
-                    return total.toLocaleString('vi-VN');
+                    const safeTotal = typeof total === 'number' && !Number.isNaN(total) ? total : 0;
+                    return safeTotal.toLocaleString('vi-VN');
                 },
             },
         },
@@ -144,7 +145,9 @@ const DonutChart: React.FC<DonutChartProps> = ({
                 <PieChartOutlined className="text-xl text-blue-500 mr-2" />
                 <h3 className="text-lg font-semibold m-0">{title}</h3>
             </div>
-            <Pie {...config} />
+            <div style={{ width: '100%', overflow: 'hidden' }}>
+                <Pie {...config} />
+            </div>
         </Card>
     );
 };

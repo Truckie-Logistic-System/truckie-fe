@@ -34,6 +34,9 @@ interface EntityManagementLayoutProps {
     tableTitle: string;
     tableComponent: ReactNode;
     modalComponent: ReactNode;
+    searchPlaceholder?: string;
+    activeCardTitle?: string;
+    bannedCardTitle?: string;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -86,7 +89,10 @@ const EntityManagementLayout: React.FC<EntityManagementLayoutProps> = ({
     bannedCount,
     tableTitle,
     tableComponent,
-    modalComponent
+    modalComponent,
+    searchPlaceholder,
+    activeCardTitle,
+    bannedCardTitle
 }) => {
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
@@ -122,7 +128,7 @@ const EntityManagementLayout: React.FC<EntityManagementLayoutProps> = ({
                     />
                     <StatCard
                         icon={icon}
-                        title={`${title.replace('Quản lý', '').trim().replace(/^(.)/, match => match.toUpperCase())} Hoạt động`}
+                        title={activeCardTitle || `${title.replace('Quản lý', '').trim().replace(/^(.)/, match => match.toUpperCase())} Hoạt động`}
                         count={activeCount}
                         isLoading={isLoading}
                         bgColorClass="from-green-50 to-green-100 border-green-200"
@@ -132,7 +138,7 @@ const EntityManagementLayout: React.FC<EntityManagementLayoutProps> = ({
                     />
                     <StatCard
                         icon={icon}
-                        title={`${title.replace('Quản lý', '').trim().replace(/^(.)/, match => match.toUpperCase())} Bị cấm`}
+                        title={bannedCardTitle || `${title.replace('Quản lý', '').trim().replace(/^(.)/, match => match.toUpperCase())} Bị cấm`}
                         count={bannedCount}
                         isLoading={isLoading}
                         bgColorClass="from-red-50 to-red-100 border-red-200"
@@ -147,7 +153,7 @@ const EntityManagementLayout: React.FC<EntityManagementLayoutProps> = ({
                         <Title level={4} className="m-0 mb-4 md:mb-0">{tableTitle}</Title>
                         <div className="flex w-full md:w-auto gap-2">
                             <Input
-                                placeholder={`Tìm kiếm theo tên, email, số điện thoại...`}
+                                placeholder={searchPlaceholder || `Tìm kiếm theo tên, email, số điện thoại...`}
                                 prefix={<SearchOutlined />}
                                 className="w-full md:w-64"
                                 value={searchText}

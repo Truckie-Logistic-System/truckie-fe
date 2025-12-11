@@ -200,8 +200,8 @@ export interface DriverOverviewResponse {
 export interface RecentTripInfo {
   vehicleAssignmentId: string;
   trackingCode: string;
-  orderCode?: string;
   status: string;
+  orderCode?: string;
   vehicleType?: string;
   pickupAddress?: string;
   deliveryAddress?: string;

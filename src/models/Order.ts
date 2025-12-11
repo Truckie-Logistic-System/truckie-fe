@@ -116,7 +116,6 @@ export interface OrderDetail {
       id: string;
       licensePlate?: string;
       vehicleType?: string;
-      capacity?: string;
     };
     driver?: {
       id: string;

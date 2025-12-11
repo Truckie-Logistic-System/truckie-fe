@@ -1,15 +1,18 @@
 import React, { useState, useRef } from 'react';
-import { App, Tabs } from 'antd';
-import { MobileOutlined, PlusOutlined } from '@ant-design/icons';
+import { App, Tabs, Card, Typography, Input, Button } from 'antd';
+import { MobileOutlined, PlusOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { deviceService } from '../../../services/device';
 import { useQuery } from '@tanstack/react-query';
+import { deviceService } from '../../../services/device';
 import type { Device, DeviceType } from '../../../models';
 import DeviceList from './components/DeviceList';
 import DeviceTypeList from './components/DeviceTypeList';
+import DeviceStatCards from './components/DeviceStatCards';
 import type { DeviceListRef } from './components/DeviceList';
 import type { DeviceTypeListRef } from './components/DeviceTypeList';
 import EntityManagementLayout from '../../../components/features/admin/EntityManagementLayout';
+
+const { Title, Text } = Typography;
 
 const DeviceManagement: React.FC = () => {
     const navigate = useNavigate();
@@ -109,38 +112,96 @@ const DeviceManagement: React.FC = () => {
         );
     }
 
+    const renderDeviceTab = () => (
+        <div>
+            {/* Hiển thị card thống kê cho tất cả các trạng thái thiết bị */}
+            <DeviceStatCards 
+                devices={devicesData?.data || []} 
+                loading={isDevicesLoading} 
+                type="devices"
+            />
+            <DeviceList
+                ref={deviceListRef}
+                messageApi={message}
+                devices={filteredDevices}
+                loading={isDevicesLoading}
+                deviceTypes={deviceTypesData?.data || []}
+                onRefresh={refetchDevices}
+            />
+        </div>
+    );
+
+    const renderDeviceTypeTab = () => (
+        <div>
+            {/* Hiển thị card thống kê cho tất cả các trạng thái loại thiết bị */}
+            <DeviceStatCards 
+                devices={deviceTypesData?.data || []} 
+                loading={isDeviceTypesLoading} 
+                type="deviceTypes"
+            />
+            <DeviceTypeList
+                ref={deviceTypeListRef}
+                messageApi={message}
+                deviceTypes={filteredDeviceTypes}
+                loading={isDeviceTypesLoading}
+                onRefresh={refetchDeviceTypes}
+            />
+        </div>
+    );
+
     return (
-        <EntityManagementLayout
-            title={activeTab === 'devices' ? "Quản lý thiết bị" : "Quản lý loại thiết bị"}
-            icon={<MobileOutlined />}
-            description={activeTab === 'devices'
-                ? "Quản lý thông tin và trạng thái của các thiết bị trong hệ thống"
-                : "Quản lý thông tin và trạng thái của các loại thiết bị trong hệ thống"
-            }
-            addButtonText={activeTab === 'devices' ? "Thêm thiết bị mới" : "Thêm loại thiết bị mới"}
-            addButtonIcon={<PlusOutlined />}
-            onAddClick={() => {
-                // Handle add button click based on active tab using refs
-                if (activeTab === 'devices') {
-                    deviceListRef.current?.showAddModal();
-                } else {
-                    deviceTypeListRef.current?.showAddModal();
-                }
-            }}
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            onRefresh={handleRefresh}
-            isLoading={activeTab === 'devices' ? isDevicesLoading : isDeviceTypesLoading}
-            isFetching={activeTab === 'devices' ? isDevicesFetching : false}
-            totalCount={activeTab === 'devices'
-                ? (devicesData?.data?.length || 0)
-                : (deviceTypesData?.data?.length || 0)
-            }
-            activeCount={activeTab === 'devices' ? activeDevicesCount : activeDeviceTypesCount}
-            bannedCount={activeTab === 'devices' ? inactiveDevicesCount : inactiveDeviceTypesCount}
-            tableTitle={activeTab === 'devices' ? "Danh sách thiết bị" : "Danh sách loại thiết bị"}
-            tableComponent={
-                <div>
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <Title level={2} className="flex items-center m-0 text-blue-800">
+                            <MobileOutlined className="mr-3 text-blue-600" /> {activeTab === 'devices' ? "Quản lý thiết bị" : "Quản lý loại thiết bị"}
+                        </Title>
+                        <Text type="secondary">{activeTab === 'devices'
+                            ? "Quản lý thông tin và trạng thái của các thiết bị trong hệ thống"
+                            : "Quản lý thông tin và trạng thái của các loại thiết bị trong hệ thống"
+                        }</Text>
+                    </div>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            if (activeTab === 'devices') {
+                                deviceListRef.current?.showAddModal();
+                            } else {
+                                deviceTypeListRef.current?.showAddModal();
+                            }
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700"
+                        size="large"
+                    >
+                        {activeTab === 'devices' ? "Thêm thiết bị mới" : "Thêm loại thiết bị mới"}
+                    </Button>
+                </div>
+
+                <Card className="shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                        <Title level={4} className="m-0 mb-4 md:mb-0">{activeTab === 'devices' ? "Danh sách thiết bị" : "Danh sách loại thiết bị"}</Title>
+                        <div className="flex w-full md:w-auto gap-2">
+                            <Input
+                                placeholder={activeTab === 'devices' 
+                                    ? "Tìm kiếm theo mã thiết bị, nhà sản xuất, mẫu thiết bị..."
+                                    : "Tìm kiếm theo tên loại thiết bị, mô tả..."}
+                                prefix={<SearchOutlined />}
+                                className="w-full md:w-64"
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                disabled={activeTab === 'devices' ? isDevicesLoading : isDeviceTypesLoading}
+                            />
+                            <Button
+                                icon={<ReloadOutlined spin={activeTab === 'devices' ? isDevicesFetching : false} />}
+                                onClick={handleRefresh}
+                                title="Làm mới dữ liệu"
+                                loading={activeTab === 'devices' ? isDevicesFetching : false}
+                            />
+                        </div>
+                    </div>
+
                     <Tabs
                         activeKey={activeTab}
                         onChange={handleTabChange}
@@ -149,39 +210,19 @@ const DeviceManagement: React.FC = () => {
                             {
                                 key: 'devices',
                                 label: 'Thiết bị',
-                                children: null,
+                                children: renderDeviceTab(),
                             },
                             {
                                 key: 'deviceTypes',
                                 label: 'Loại thiết bị',
-                                children: null,
+                                children: renderDeviceTypeTab(),
                             },
                         ]}
                     />
-
-                    {activeTab === 'devices' ? (
-                        <DeviceList
-                            ref={deviceListRef}
-                            messageApi={message}
-                            devices={filteredDevices}
-                            loading={isDevicesLoading}
-                            deviceTypes={deviceTypesData?.data || []}
-                            onRefresh={refetchDevices}
-                        />
-                    ) : (
-                        <DeviceTypeList
-                            ref={deviceTypeListRef}
-                            messageApi={message}
-                            deviceTypes={filteredDeviceTypes}
-                            loading={isDeviceTypesLoading}
-                            onRefresh={refetchDeviceTypes}
-                        />
-                    )}
-                </div>
-            }
-            modalComponent={null}
-        />
+                </Card>
+            </div>
+        </div>
     );
 };
 
-export default DeviceManagement; 
+export default DeviceManagement;

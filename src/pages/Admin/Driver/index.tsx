@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { App } from 'antd';
-import { UserAddOutlined, IdcardOutlined, CheckCircleOutlined, StopOutlined, CarOutlined } from '@ant-design/icons';
+import { App, Card, Typography, Input, Button } from 'antd';
+import { UserAddOutlined, IdcardOutlined, CheckCircleOutlined, StopOutlined, CarOutlined, SearchOutlined, ReloadOutlined, ClockCircleOutlined, LockOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import driverService from '../../../services/driver';
 import type { DriverModel } from '../../../services/driver';
@@ -8,7 +8,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DriverTable from './components/DriverTable';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
-import EntityManagementLayout from '../../../components/features/admin/EntityManagementLayout';
+import UserStatCards from '../../../components/common/UserStatCards';
+import { UserStatusEnum } from '../../../constants/enums/UserStatusEnum';
+
+const { Title, Text } = Typography;
 
 const DriverPage: React.FC = () => {
     const navigate = useNavigate();
@@ -68,8 +71,11 @@ const DriverPage: React.FC = () => {
         );
     });
 
-    const activeCount = driversData?.filter(driver => driver.status.toLowerCase() === 'active').length || 0;
-    const bannedCount = driversData?.filter(driver => driver.status.toLowerCase() === 'banned').length || 0;
+    // Chuyển đổi dữ liệu để sử dụng với UserStatCards
+    const usersForStatCards = driversData?.map(driver => ({
+        id: driver.id,
+        status: driver.status
+    })) || [];
 
     // Status handling functions
     const getStatusColor = (status: string | boolean) => {
@@ -94,21 +100,42 @@ const DriverPage: React.FC = () => {
         return 'Không xác định';
     };
 
-    // Status options for the modal
+    // Status options for the modal - đầy đủ theo UserStatusEnum
     const statusOptions: StatusOption[] = [
         {
-            value: 'ACTIVE',
+            value: UserStatusEnum.ACTIVE,
             label: 'Hoạt động',
             description: 'Tài xế có thể nhận và thực hiện đơn hàng',
             color: 'green',
             icon: <CheckCircleOutlined />
         },
         {
-            value: 'BANNED',
-            label: 'Cấm hoạt động',
-            description: 'Tài xế không thể nhận và thực hiện đơn hàng',
-            color: 'red',
+            value: UserStatusEnum.INACTIVE,
+            label: 'Không hoạt động',
+            description: 'Tài xế tạm thởi không thể nhận đơn hàng',
+            color: 'default',
             icon: <StopOutlined />
+        },
+        {
+            value: UserStatusEnum.OTP_PENDING,
+            label: 'Chờ OTP',
+            description: 'Tài xế đang chờ xác thực OTP',
+            color: 'gold',
+            icon: <ClockCircleOutlined />
+        },
+        {
+            value: UserStatusEnum.BANNED,
+            label: 'Bị cấm',
+            description: 'Tài xế bị cấm sử dụng hệ thống',
+            color: 'red',
+            icon: <LockOutlined />
+        },
+        {
+            value: UserStatusEnum.DELETED,
+            label: 'Đã xóa',
+            description: 'Tài khoản tài xế đã bị xóa',
+            color: 'default',
+            icon: <DeleteOutlined />
         }
     ];
 
@@ -127,51 +154,82 @@ const DriverPage: React.FC = () => {
     }
 
     return (
-        <EntityManagementLayout
-            title="Quản lý tài xế"
-            icon={<IdcardOutlined />}
-            description="Quản lý thông tin và trạng thái của các tài xế trong hệ thống"
-            addButtonText="Thêm tài xế mới"
-            addButtonIcon={<UserAddOutlined />}
-            onAddClick={handleAddDriver}
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            onRefresh={refetch}
-            isLoading={isLoading}
-            isFetching={isFetching}
-            totalCount={driversData?.length || 0}
-            activeCount={activeCount}
-            bannedCount={bannedCount}
-            tableTitle="Danh sách tài xế"
-            tableComponent={
-                <DriverTable
-                    data={filteredDrivers || []}
-                    loading={isLoading}
-                    onViewDetails={handleViewDetails}
-                    onStatusChange={handleStatusChange}
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <Title level={2} className="flex items-center m-0 text-blue-800">
+                            <IdcardOutlined className="mr-3 text-blue-600" /> Quản lý tài xế
+                        </Title>
+                        <Text type="secondary">Quản lý thông tin và trạng thái của các tài xế trong hệ thống</Text>
+                    </div>
+                    <Button
+                        type="primary"
+                        icon={<UserAddOutlined />}
+                        onClick={handleAddDriver}
+                        className="bg-blue-600 hover:bg-blue-700"
+                        size="large"
+                    >
+                        Thêm tài xế mới
+                    </Button>
+                </div>
+
+                {/* Hiển thị card thống kê cho tất cả các trạng thái tài xế */}
+                <UserStatCards 
+                    users={usersForStatCards} 
+                    loading={isLoading} 
+                    userType="driver"
                 />
-            }
-            modalComponent={
-                <StatusChangeModal
-                    visible={isStatusModalVisible}
-                    loading={updateStatusMutation.isPending}
-                    title="Cập nhật trạng thái tài xế"
-                    icon={<CarOutlined />}
-                    entityName={selectedDriver?.userResponse?.fullName || ''}
-                    entityDescription={selectedDriver?.userResponse?.phoneNumber || ''}
-                    avatarIcon={<CarOutlined />}
-                    currentStatus={selectedDriver?.status || ''}
-                    getStatusColor={getStatusColor}
-                    getStatusText={getStatusText}
-                    statusOptions={statusOptions}
-                    selectedStatus={newStatus}
-                    onStatusChange={setNewStatus}
-                    onOk={handleStatusUpdate}
-                    onCancel={() => setIsStatusModalVisible(false)}
-                />
-            }
-        />
+
+                <Card className="shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                        <Title level={4} className="m-0 mb-4 md:mb-0">Danh sách tài xế</Title>
+                        <div className="flex w-full md:w-auto gap-2">
+                            <Input
+                                placeholder="Tìm kiếm theo tên, số điện thoại, CMND, bằng lái..."
+                                prefix={<SearchOutlined />}
+                                className="w-full md:w-80"
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                disabled={isLoading}
+                            />
+                            <Button
+                                icon={<ReloadOutlined spin={isFetching} />}
+                                onClick={() => refetch()}
+                                title="Làm mới dữ liệu"
+                                loading={isFetching}
+                            />
+                        </div>
+                    </div>
+
+                    <DriverTable
+                        data={filteredDrivers || []}
+                        loading={isLoading}
+                        onViewDetails={handleViewDetails}
+                        onStatusChange={handleStatusChange}
+                    />
+                </Card>
+            </div>
+
+            <StatusChangeModal
+                visible={isStatusModalVisible}
+                loading={updateStatusMutation.isPending}
+                title="Cập nhật trạng thái tài xế"
+                icon={<CarOutlined />}
+                entityName={selectedDriver?.userResponse?.fullName || ''}
+                entityDescription={selectedDriver?.userResponse?.phoneNumber || ''}
+                avatarIcon={<CarOutlined />}
+                currentStatus={selectedDriver?.status || ''}
+                getStatusColor={getStatusColor}
+                getStatusText={getStatusText}
+                statusOptions={statusOptions}
+                selectedStatus={newStatus}
+                onStatusChange={setNewStatus}
+                onOk={handleStatusUpdate}
+                onCancel={() => setIsStatusModalVisible(false)}
+            />
+        </div>
     );
 };
 
-export default DriverPage; 
+export default DriverPage;

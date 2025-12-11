@@ -34,7 +34,7 @@ const DeviceStatsCards: React.FC<DeviceStatsCardsProps> = ({ data, loading }) =>
       case 'vehicles':
         return 'Tổng số phương tiện';
       case 'devices':
-        return 'Tổng số thiết bị GPS';
+        return 'Tổng số thiết bị';
       case 'maintenances':
         return 'Bảo trì đang thực hiện';
       case 'penalties':
