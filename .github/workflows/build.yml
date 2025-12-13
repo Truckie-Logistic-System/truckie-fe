@@ -28,3 +28,21 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}:latest
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+            VITE_API_TIMEOUT=${{ secrets.VITE_API_TIMEOUT }}
+            VITE_AUTH_ACCESS_TOKEN_KEY=${{ secrets.VITE_AUTH_ACCESS_TOKEN_KEY }}
+            VITE_AUTH_REFRESH_TOKEN_KEY=${{ secrets.VITE_AUTH_REFRESH_TOKEN_KEY }}
+            VITE_VIET_MAPS_API_KEY=${{ secrets.VITE_VIET_MAPS_API_KEY }}
+            VITE_OPEN_MAP_API_KEY=${{ secrets.VITE_OPEN_MAP_API_KEY }}
+            VITE_OPEN_MAP_API_BASE_URL=${{ secrets.VITE_OPEN_MAP_API_BASE_URL }}
+            VITE_TRACKASIA_MAP_API_KEY=${{ secrets.VITE_TRACKASIA_MAP_API_KEY }}
+            VITE_TRACKASIA_MAP_API_BASE_URL=${{ secrets.VITE_TRACKASIA_MAP_API_BASE_URL }}
+            VITE_APP_NAME=${{ secrets.VITE_APP_NAME }}
+            VITE_APP_DESCRIPTION=${{ secrets.VITE_APP_DESCRIPTION }}
+            VITE_SUPPORT_EMAIL=${{ secrets.VITE_SUPPORT_EMAIL }}
+            VITE_SUPPORT_PHONE=${{ secrets.VITE_SUPPORT_PHONE }}
+            VITE_FEATURE_LIVE_TRACKING=${{ secrets.VITE_FEATURE_LIVE_TRACKING }}
+            VITE_FEATURE_NOTIFICATIONS=${{ secrets.VITE_FEATURE_NOTIFICATIONS }}
+            VITE_FEATURE_CHAT=${{ secrets.VITE_FEATURE_CHAT }}
