@@ -12,26 +12,16 @@
   ],
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(?:js|css|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "VITE_API_URL": "@api_url",
-    "VITE_API_TIMEOUT": "@api_timeout",
-    "VITE_AUTH_ACCESS_TOKEN_KEY": "@auth_access_token_key",
-    "VITE_AUTH_REFRESH_TOKEN_KEY": "@auth_refresh_token_key",
-    "VITE_VIET_MAPS_API_KEY": "@viet_maps_api_key",
-    "VITE_OPEN_MAP_API_KEY": "@open_map_api_key",
-    "VITE_OPEN_MAP_API_BASE_URL": "@open_map_api_base_url",
-    "VITE_TRACKASIA_MAP_API_KEY": "@trackasia_map_api_key",
-    "VITE_TRACKASIA_MAP_API_BASE_URL": "@trackasia_map_api_base_url",
-    "VITE_APP_NAME": "@app_name",
-    "VITE_APP_DESCRIPTION": "@app_description",
-    "VITE_SUPPORT_EMAIL": "@support_email",
-    "VITE_SUPPORT_PHONE": "@support_phone",
-    "VITE_FEATURE_LIVE_TRACKING": "@feature_live_tracking",
-    "VITE_FEATURE_NOTIFICATIONS": "@feature_notifications",
-    "VITE_FEATURE_CHAT": "@feature_chat"
-  }
+  ]
 }

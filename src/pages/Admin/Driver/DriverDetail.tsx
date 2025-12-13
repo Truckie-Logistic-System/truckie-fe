@@ -35,19 +35,6 @@ const DriverDetail: React.FC = () => {
         }
     });
 
-    const renewLicenseMutation = useMutation({
-        mutationFn: (values: LicenseRenewalFormValues) => driverService.renewDriverLicense(id as string, values),
-        onSuccess: () => {
-            message.success('Gia hạn bằng lái thành công');
-            queryClient.invalidateQueries({ queryKey: ['driver', id] });
-            queryClient.invalidateQueries({ queryKey: ['drivers'] });
-            setIsRenewalModalVisible(false);
-        },
-        onError: (error: any) => {
-            message.error(error?.message || 'Gia hạn bằng lái thất bại');
-        }
-    });
-
     const handleStatusChange = (newStatus: string) => {
         if (id) {
             updateStatusMutation.mutate({ id, status: newStatus });
@@ -58,8 +45,10 @@ const DriverDetail: React.FC = () => {
         setIsRenewalModalVisible(true);
     };
 
-    const handleRenewalSubmit = (values: LicenseRenewalFormValues) => {
-        renewLicenseMutation.mutate(values);
+    const handleRenewalSuccess = () => {
+        queryClient.invalidateQueries({ queryKey: ['driver', id] });
+        queryClient.invalidateQueries({ queryKey: ['drivers'] });
+        setIsRenewalModalVisible(false);
     };
 
     const getStatusColor = (status: string) => {
@@ -194,9 +183,8 @@ const DriverDetail: React.FC = () => {
 
             <LicenseRenewalModal
                 visible={isRenewalModalVisible}
-                loading={renewLicenseMutation.isPending}
                 driver={data}
-                onSubmit={handleRenewalSubmit}
+                onSuccess={handleRenewalSuccess}
                 onCancel={() => setIsRenewalModalVisible(false)}
             />
         </div>
