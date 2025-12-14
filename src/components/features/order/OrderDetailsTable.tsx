@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Table, Button, App } from 'antd';
-import { FileTextOutlined, ClockCircleOutlined, CarOutlined } from '@ant-design/icons';
+import { FileTextOutlined, CarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -111,28 +111,6 @@ const OrderDetailsTable: React.FC<OrderDetailsTableProps> = ({
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => <OrderStatusDisplay status={status} size="small" />,
-        },
-        {
-            title: 'Thời gian bắt đầu',
-            dataIndex: 'startTime',
-            key: 'startTime',
-            render: (date: string) => (
-                <div className="flex items-center">
-                    <ClockCircleOutlined className="text-blue-500 mr-1" />
-                    <span>{date ? formatDateToVNTime(date) : 'Chưa bắt đầu'}</span>
-                </div>
-            ),
-        },
-        {
-            title: 'Thời gian kết thúc',
-            dataIndex: 'endTime',
-            key: 'endTime',
-            render: (date: string) => (
-                <div className="flex items-center">
-                    <ClockCircleOutlined className="text-green-500 mr-1" />
-                    <span>{date ? formatDateToVNTime(date) : 'Chưa kết thúc'}</span>
-                </div>
-            ),
         },
     ];
 

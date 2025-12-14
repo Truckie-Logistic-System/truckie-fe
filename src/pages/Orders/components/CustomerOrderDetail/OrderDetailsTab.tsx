@@ -134,7 +134,7 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                         }
                     >
                         <Row gutter={[24, 16]}>
-                            <Col xs={24} md={12}>
+                            <Col xs={24}>
                                 <Card
                                     className="h-full border border-blue-100"
                                     size="small"
@@ -195,65 +195,6 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                                 </span>
                                             </div>
                                         </div>
-                                    </div>
-                                </Card>
-                            </Col>
-
-                            <Col xs={24} md={12}>
-                                <Card
-                                    className="h-full border border-indigo-100"
-                                    size="small"
-                                    title={
-                                        <div className="flex items-center">
-                                            <ClockCircleOutlined className="mr-2 text-indigo-500" />
-                                            <span className="font-medium text-indigo-700">Thông tin thời gian</span>
-                                        </div>
-                                    }
-                                >
-                                    <div className="space-y-4">
-                                        {/* Start Time */}
-                                        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-3 rounded-lg border border-indigo-100">
-                                            <div className="flex items-center mb-2">
-                                                <ClockCircleOutlined className="mr-2 text-indigo-600" />
-                                                <span className="font-medium text-gray-700 text-sm">Thời gian bắt đầu</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                {detail.startTime ? (
-                                                    <div>
-                                                        <span className="font-semibold text-indigo-800">
-                                                            {formatDate(detail.startTime)}
-                                                        </span>
-                                                        <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                                                            Đã bắt đầu
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-gray-500 italic">Chưa có thông tin</span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* End Time */}
-                                        <div className="bg-gradient-to-r from-red-50 to-pink-50 p-3 rounded-lg border border-red-100">
-                                            <div className="flex items-center mb-2">
-                                                <ClockCircleOutlined className="mr-2 text-red-600" />
-                                                <span className="font-medium text-gray-700 text-sm">Thời gian kết thúc</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                {detail.endTime ? (
-                                                    <div>
-                                                        <span className="font-semibold text-red-800">
-                                                            {formatDate(detail.endTime)}
-                                                        </span>
-                                                        <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">
-                                                            Đã kết thúc
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-gray-500 italic">Chưa có thông tin</span>
-                                                )}
-                                            </div>
-                                        </div>
 
                                         {/* Estimated Start Time */}
                                         <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-lg border border-blue-100">
@@ -268,28 +209,6 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                                             {formatDate(detail.estimatedStartTime)}
                                                         </span>
                                                         <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-                                                            Dự kiến
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-gray-500 italic">Chưa có thông tin</span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Estimated End Time */}
-                                        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-3 rounded-lg border border-orange-100">
-                                            <div className="flex items-center mb-2">
-                                                <ClockCircleOutlined className="mr-2 text-orange-600" />
-                                                <span className="font-medium text-gray-700 text-sm">Thời gian dự kiến kết thúc</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                {detail.estimatedEndTime ? (
-                                                    <div>
-                                                        <span className="font-semibold text-orange-800">
-                                                            {formatDate(detail.estimatedEndTime)}
-                                                        </span>
-                                                        <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
                                                             Dự kiến
                                                         </span>
                                                     </div>

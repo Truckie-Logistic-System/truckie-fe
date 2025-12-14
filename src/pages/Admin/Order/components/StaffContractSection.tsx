@@ -1283,11 +1283,11 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           <Form.Item
             label="Tỉ lệ cọc điều chỉnh (%)"
             name="customDepositPercent"
-            tooltip={`Để trống để sử dụng tỉ lệ cọc mặc định từ hệ thống (${contractSettings?.depositPercent || 30}%). Nhập giá trị từ 1-100 để áp dụng tỉ lệ cọc riêng cho hợp đồng này.`}
+            tooltip={`Để trống để sử dụng tỉ lệ cọc mặc định từ hệ thống (${contractSettings?.depositPercent ?? '10'}%). Nhập giá trị từ 1-100 để áp dụng tỉ lệ cọc riêng cho hợp đồng này.`}
           >
             <InputNumber
               style={{ width: "100%" }}
-              placeholder={`Để trống = sử dụng mặc định (${contractSettings?.depositPercent || 30}%)`}
+              placeholder={`Để trống = sử dụng mặc định (${contractSettings?.depositPercent ?? '10'}%)`}
               min={1}
               max={100}
               addonAfter="%"
@@ -1413,11 +1413,11 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           <Form.Item
             label="Tỉ lệ cọc điều chỉnh (%)"
             name="customDepositPercent"
-            tooltip={`Để trống để sử dụng tỉ lệ cọc mặc định từ hệ thống (${contractSettings?.depositPercent || 30}%). Nhập giá trị từ 1-100 để áp dụng tỉ lệ cọc riêng cho hợp đồng này.`}
+            tooltip={`Để trống để sử dụng tỉ lệ cọc mặc định từ hệ thống (${contractSettings?.depositPercent ?? '10'}%). Nhập giá trị từ 1-100 để áp dụng tỉ lệ cọc riêng cho hợp đồng này.`}
           >
             <InputNumber
               style={{ width: "100%" }}
-              placeholder={`Để trống = sử dụng mặc định (${contractSettings?.depositPercent || 30}%)`}
+              placeholder={`Để trống = sử dụng mặc định (${contractSettings?.depositPercent ?? '10'}%)`}
               min={1}
               max={100}
               addonAfter="%"

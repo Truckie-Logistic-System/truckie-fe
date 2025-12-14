@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Modal, Card, Row, Col, Empty, Tabs, Alert } from "antd";
+import { Button, Modal, Card, Row, Col, Empty, Tabs, Alert, Pagination } from "antd";
 import {
   TruckOutlined,
   ThunderboltOutlined,
@@ -33,6 +33,15 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
   const [visualizationVisible, setVisualizationVisible] = useState(false);
   const [selectedVehicle, setSelectedVehicle] =
     useState<VehicleSuggestion | null>(null);
+  // Pagination state for each vehicle's package list
+  const [packagePages, setPackagePages] = useState<Record<string, number>>({});
+  const PACKAGES_PER_PAGE = 3;
+
+  const getPackagePage = (vehicleKey: string) => packagePages[vehicleKey] || 1;
+
+  const setPackagePage = (vehicleKey: string, page: number) => {
+    setPackagePages((prev) => ({ ...prev, [vehicleKey]: page }));
+  };
 
   const handleVisualize = (vehicle: VehicleSuggestion) => {
     // Map tracking codes to packed details for 3D visualization
@@ -210,49 +219,77 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                   📦 Danh sách kiện hàng
                 </span>
               </div>
-              <div className="space-y-2">
-                {suggestion.assignedDetails.map((detail, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-lg border hover:shadow-md transition-shadow ${
-                      isOptimal
-                        ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200"
-                        : "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-mono text-gray-600 bg-white px-2 py-1 rounded border">
-                            <strong>{detail.trackingCode}</strong>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-2">
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-gray-500">
-                              Khối lượng:
-                            </span>
-                            <span
-                              className={`font-bold ${
-                                isOptimal ? "text-blue-700" : "text-green-700"
-                              }`}
-                            >
-                              {detail.weightBaseUnit}
-                            </span>
-                            <span
-                              className={`text-xs text-gray-600 px-2 py-0.5 rounded ${
-                                isOptimal ? "bg-blue-100" : "bg-green-100"
-                              }`}
-                            >
-                              {detail.unit}
-                            </span>
+              {(() => {
+                const vehicleKey = `${isOptimal ? "optimal" : "realistic"}-${index}`;
+                const currentPage = getPackagePage(vehicleKey);
+                const totalItems = suggestion.assignedDetails.length;
+                const startIndex = (currentPage - 1) * PACKAGES_PER_PAGE;
+                const endIndex = startIndex + PACKAGES_PER_PAGE;
+                const paginatedDetails = suggestion.assignedDetails.slice(startIndex, endIndex);
+
+                return (
+                  <>
+                    <div className="space-y-2">
+                      {paginatedDetails.map((detail, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-lg border hover:shadow-md transition-shadow ${
+                            isOptimal
+                              ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200"
+                              : "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-mono text-gray-600 bg-white px-2 py-1 rounded border">
+                                  <strong>{detail.trackingCode}</strong>
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 mt-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-gray-500">
+                                    Khối lượng:
+                                  </span>
+                                  <span
+                                    className={`font-bold ${
+                                      isOptimal ? "text-blue-700" : "text-green-700"
+                                    }`}
+                                  >
+                                    {detail.weightBaseUnit}
+                                  </span>
+                                  <span
+                                    className={`text-xs text-gray-600 px-2 py-0.5 rounded ${
+                                      isOptimal ? "bg-blue-100" : "bg-green-100"
+                                    }`}
+                                  >
+                                    {detail.unit}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
-              </div>
+                    {totalItems > PACKAGES_PER_PAGE && (
+                      <div className="flex justify-center mt-3">
+                        <Pagination
+                          current={currentPage}
+                          pageSize={PACKAGES_PER_PAGE}
+                          total={totalItems}
+                          onChange={(page) => setPackagePage(vehicleKey, page)}
+                          size="small"
+                          showSizeChanger={false}
+                          showTotal={(total, range) =>
+                            `${range[0]}-${range[1]} / ${total} kiện`
+                          }
+                        />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </Card>
         ))}

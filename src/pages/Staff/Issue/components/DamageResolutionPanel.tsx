@@ -77,7 +77,29 @@ const DamageResolutionPanel: React.FC<DamageResolutionPanelProps> = ({ issueId, 
   const formValues = Form.useWatch([], form);
   
   useEffect(() => {
-    form.validateFields({ validateOnly: true })
+    // Only validate visible fields based on hasDocuments state
+    // This prevents requiring estimatedMarketValue when hasDocuments=true and vice versa
+    const hasDocs = form.getFieldValue('hasDocuments');
+    const isFraudMode = form.getFieldValue('fraudDetected');
+    
+    let fieldsToValidate: string[] = [];
+    
+    if (isFraudMode) {
+      // When fraud is detected, only validate fraud reason
+      fieldsToValidate = ['fraudReason'];
+    } else {
+      // Normal mode: validate based on hasDocuments
+      if (hasDocs === true) {
+        fieldsToValidate = ['hasDocuments', 'documentValue', 'damageRate', 'finalCompensation'];
+      } else if (hasDocs === false) {
+        fieldsToValidate = ['hasDocuments', 'estimatedMarketValue', 'damageRate', 'finalCompensation'];
+      } else {
+        // hasDocuments not yet selected
+        fieldsToValidate = ['hasDocuments'];
+      }
+    }
+    
+    form.validateFields(fieldsToValidate, { validateOnly: true })
       .then(() => setIsFormValid(true))
       .catch(() => setIsFormValid(false));
   }, [formValues, form]);

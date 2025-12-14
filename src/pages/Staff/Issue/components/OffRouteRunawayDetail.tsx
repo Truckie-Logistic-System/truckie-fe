@@ -91,7 +91,28 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
     const formValues = Form.useWatch([], form);
     
     useEffect(() => {
-        form.validateFields({ validateOnly: true })
+        // Only validate visible fields based on hasDocuments state
+        // This prevents requiring estimatedMarketValue when hasDocuments=true and vice versa
+        const hasDocs = form.getFieldValue('hasDocuments');
+        const isFraudMode = form.getFieldValue('fraudDetected');
+        
+        let fieldsToValidate: string[] = [];
+        
+        if (isFraudMode) {
+            // When fraud is detected, only validate fraud reason
+            fieldsToValidate = ['fraudReason'];
+        } else {
+            // Normal mode: validate based on hasDocuments
+            // OFF_ROUTE defaults to hasDocuments=true if not yet selected
+            if (hasDocs === false) {
+                fieldsToValidate = ['hasDocuments', 'estimatedMarketValue', 'suggestedCompensation'];
+            } else {
+                // hasDocs === true or undefined (default to true for OFF_ROUTE)
+                fieldsToValidate = ['hasDocuments', 'documentValue', 'suggestedCompensation'];
+            }
+        }
+        
+        form.validateFields(fieldsToValidate, { validateOnly: true })
             .then(() => setIsFormValid(true))
             .catch(() => setIsFormValid(false));
     }, [formValues, form]);
