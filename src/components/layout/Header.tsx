@@ -220,7 +220,7 @@ const Header: React.FC = () => {
                   <div className="flex items-center cursor-pointer h-10">
                     <Avatar icon={<UserOutlined />} className="mr-2 bg-blue-600" size="default" />
                     <span className="mr-2 text-blue-600 font-medium">
-                      Hello {user?.username}
+                      {user?.fullName || user?.username}
                     </span>
                     <DownOutlined style={{ fontSize: "12px" }} />
                   </div>
@@ -275,7 +275,7 @@ const Header: React.FC = () => {
                     className="mr-2 bg-blue-600"
                   />
                   <span className="text-blue-600 font-medium">
-                    Hello {user?.username}
+                    {user?.fullName || user?.username}
                   </span>
                 </div>
                 {/* Staff Issue Queue Badge - Mobile */}

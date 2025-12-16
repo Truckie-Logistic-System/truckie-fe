@@ -83,8 +83,18 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
         if (vehicleId && vehicles.length > 0) {
             const vehicle = vehicles.find(v => v.id === vehicleId);
             setSelectedVehicle(vehicle);
+            
+            // Kiểm tra trạng thái xe
+            if (vehicle && !isEditing) {
+                const unavailableStatuses = ['MAINTENANCE', 'INSPECTION_EXPIRED', 'INSURANCE_EXPIRED', 'BREAKDOWN', 'ACCIDENT'];
+                if (unavailableStatuses.includes(vehicle.status || '')) {
+                    message.error(`Xe ${vehicle.licensePlateNumber} không thể được phân công do đang ở trạng thái: ${vehicle.status}`);
+                    form.setFieldValue('vehicleId', undefined);
+                    setSelectedVehicle(undefined);
+                }
+            }
         }
-    }, [form, vehicles]);
+    }, [form, vehicles, isEditing]);
 
     const handleSubmit = async (values: any) => {
         try {

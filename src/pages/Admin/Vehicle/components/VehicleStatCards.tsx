@@ -6,7 +6,10 @@ import {
     ToolOutlined, 
     CarOutlined, 
     ExclamationCircleOutlined, 
-    AlertOutlined 
+    AlertOutlined,
+    FileProtectOutlined,
+    SafetyCertificateOutlined,
+    ClockCircleOutlined
 } from '@ant-design/icons';
 import { VehicleStatusEnum } from '@/constants/enums';
 import type { Vehicle } from '@/models';
@@ -20,12 +23,22 @@ interface VehicleStatCardsProps {
 
 const VehicleStatCards: React.FC<VehicleStatCardsProps> = ({ vehicles, loading }) => {
     // Lọc xe theo từng trạng thái trong VehicleStatusEnum
-    const activeVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === VehicleStatusEnum.ACTIVE.toLowerCase());
-    const inactiveVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === VehicleStatusEnum.INACTIVE.toLowerCase());
-    const maintenanceVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === VehicleStatusEnum.MAINTENANCE.toLowerCase());
-    const inTransitVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === VehicleStatusEnum.IN_TRANSIT.toLowerCase());
-    const breakdownVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === VehicleStatusEnum.BREAKDOWN.toLowerCase());
-    const accidentVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === VehicleStatusEnum.ACCIDENT.toLowerCase());
+    const activeVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.ACTIVE);
+    const inactiveVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.INACTIVE);
+    const maintenanceVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.MAINTENANCE);
+    const inTransitVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.IN_TRANSIT);
+    const breakdownVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.BREAKDOWN);
+    const accidentVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.ACCIDENT);
+    // Thêm các trạng thái hết hạn và sắp đến hạn
+    const inspectionExpiredVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.INSPECTION_EXPIRED);
+    const insuranceExpiredVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.INSURANCE_EXPIRED);
+    const inspectionDueVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.INSPECTION_DUE);
+    const insuranceDueVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.INSURANCE_DUE);
+    const maintenanceDueVehicles = vehicles.filter(vehicle => vehicle.status?.toUpperCase() === VehicleStatusEnum.MAINTENANCE_DUE);
+    
+    // Tổng hợp các xe có vấn đề (hết hạn hoặc sắp đến hạn)
+    const expiredVehicles = [...inspectionExpiredVehicles, ...insuranceExpiredVehicles];
+    const dueVehicles = [...inspectionDueVehicles, ...insuranceDueVehicles, ...maintenanceDueVehicles];
 
     return (
         <Row gutter={[16, 16]} className="mb-6">
@@ -138,6 +151,46 @@ const VehicleStatCards: React.FC<VehicleStatCardsProps> = ({ vehicles, loading }
                         <Badge count={loading ? 0 : accidentVehicles.length} color="red" showZero>
                             <div className="bg-red-200 p-2 rounded-full">
                                 <AlertOutlined className="text-2xl text-red-600" />
+                            </div>
+                        </Badge>
+                    </div>
+                </Card>
+            </Col>
+            {/* Card thống kê xe hết hạn */}
+            <Col xs={24} sm={12} md={4}>
+                <Card className="bg-gradient-to-r from-rose-50 to-rose-100 border-rose-200 shadow-sm hover:shadow-md transition-shadow h-full">
+                    <div className="flex justify-between items-center h-full">
+                        <div className="flex-1">
+                            <Text className="text-gray-600 block text-xs">Hết hạn</Text>
+                            {loading ? (
+                                <Skeleton.Input style={{ width: 60 }} active size="small" />
+                            ) : (
+                                <Title level={3} className="m-0 text-rose-700">{expiredVehicles.length}</Title>
+                            )}
+                        </div>
+                        <Badge count={loading ? 0 : expiredVehicles.length} color="#e11d48" showZero>
+                            <div className="bg-rose-200 p-2 rounded-full">
+                                <FileProtectOutlined className="text-2xl text-rose-600" />
+                            </div>
+                        </Badge>
+                    </div>
+                </Card>
+            </Col>
+            {/* Card thống kê xe sắp đến hạn */}
+            <Col xs={24} sm={12} md={4}>
+                <Card className="bg-gradient-to-r from-amber-50 to-amber-100 border-amber-200 shadow-sm hover:shadow-md transition-shadow h-full">
+                    <div className="flex justify-between items-center h-full">
+                        <div className="flex-1">
+                            <Text className="text-gray-600 block text-xs">Sắp đến hạn</Text>
+                            {loading ? (
+                                <Skeleton.Input style={{ width: 60 }} active size="small" />
+                            ) : (
+                                <Title level={3} className="m-0 text-amber-700">{dueVehicles.length}</Title>
+                            )}
+                        </div>
+                        <Badge count={loading ? 0 : dueVehicles.length} color="#f59e0b" showZero>
+                            <div className="bg-amber-200 p-2 rounded-full">
+                                <ClockCircleOutlined className="text-2xl text-amber-600" />
                             </div>
                         </Badge>
                     </div>

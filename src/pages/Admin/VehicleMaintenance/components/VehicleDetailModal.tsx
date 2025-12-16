@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Modal, Descriptions, Tag, Divider, Typography, Row, Col, Card, Space, Button, message } from 'antd';
+import { Modal, Descriptions, Tag, Divider, Typography, Row, Col, Card, Space, Button, message, Alert } from 'antd';
 import { CarOutlined, ToolOutlined, CalendarOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { VehicleServiceRecord, Vehicle } from '../../../../models';
 import vehicleService from '../../../../services/vehicle/vehicleService';
+import { VehicleStatusTag } from '../../../../components/common';
+import { VehicleServiceStatusEnum, VEHICLE_SERVICE_STATUS_CONFIG } from '../../../../constants/enums';
 
 const { Title, Text } = Typography;
 const { confirm } = Modal;
@@ -27,6 +29,7 @@ const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
 }) => {
     const [isCompleting, setIsCompleting] = useState(false);
     const [isCancelling, setIsCancelling] = useState(false);
+    const [isStarting, setIsStarting] = useState(false);
 
     // Debug log to check vehicle data
     React.useEffect(() => {
@@ -37,34 +40,29 @@ const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
         }
     }, [visible, vehicle]);
 
-    const getStatusTag = (status: string | undefined) => {
-        switch (status) {
-            case 'PLANNED':
-                return <Tag color="blue">Đã lên lịch</Tag>;
-            case 'IN_PROGRESS':
-                return <Tag color="orange">Đang thực hiện</Tag>;
-            case 'COMPLETED':
-                return <Tag color="green">Đã hoàn thành</Tag>;
-            case 'CANCELLED':
-                return <Tag color="default">Đã hủy</Tag>;
-            case 'OVERDUE':
-                return <Tag color="red">Quá hạn</Tag>;
-            default:
-                return <Tag>Không xác định</Tag>;
+    const getServiceStatusTag = (status: string | undefined) => {
+        if (!status) return <Tag>Không xác định</Tag>;
+        
+        const config = VEHICLE_SERVICE_STATUS_CONFIG[status as VehicleServiceStatusEnum];
+        if (config) {
+            return (
+                <Tag 
+                    style={{ 
+                        color: config.color, 
+                        backgroundColor: config.bgColor, 
+                        borderColor: config.borderColor 
+                    }}
+                >
+                    {config.label}
+                </Tag>
+            );
         }
+        return <Tag>{status}</Tag>;
     };
 
     const getVehicleStatusTag = (status: string | undefined) => {
-        switch (status) {
-            case 'ACTIVE':
-                return <Tag color="green">Đang hoạt động</Tag>;
-            case 'INACTIVE':
-                return <Tag color="red">Ngừng hoạt động</Tag>;
-            case 'MAINTENANCE':
-                return <Tag color="orange">Đang bảo trì</Tag>;
-            default:
-                return <Tag color="default">{status || 'Không xác định'}</Tag>;
-        }
+        if (!status) return <Tag color="default">Không xác định</Tag>;
+        return <VehicleStatusTag status={status} size="small" />;
     };
 
     const isExpiringSoon = (nextServiceDate: string | undefined) => {
@@ -153,6 +151,58 @@ const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
             }
         });
     };
+    
+    // Handle start maintenance
+    const handleStart = () => {
+        if (!currentMaintenance) return;
+
+        confirm({
+            title: 'Xác nhận bắt đầu bảo trì',
+            icon: <ExclamationCircleOutlined />,
+            content: `Bạn có chắc chắn muốn bắt đầu "${currentMaintenance.serviceType}"? Xe sẽ chuyển sang trạng thái "Đang bảo trì" và không thể được phân công cho chuyến xe.`,
+            okText: 'Bắt đầu',
+            cancelText: 'Hủy',
+            onOk: async () => {
+                setIsStarting(true);
+                try {
+                    const response = await vehicleService.startMaintenance(currentMaintenance.id);
+                    if (response.success) {
+                        message.success('Đã bắt đầu bảo trì/đăng kiểm thành công');
+                        onRefresh?.(); // Refresh parent data
+                        // Refresh vehicle data since backend updated vehicle status
+                        if (vehicle?.id && onVehicleUpdate) {
+                            onVehicleUpdate(vehicle.id);
+                        }
+                        onClose(); // Close modal
+                    } else {
+                        message.error(response.message || 'Có lỗi xảy ra khi bắt đầu bảo trì');
+                    }
+                } catch (error) {
+                    console.error('Error starting maintenance:', error);
+                    message.error('Có lỗi xảy ra khi bắt đầu bảo trì/đăng kiểm');
+                } finally {
+                    setIsStarting(false);
+                }
+            }
+        });
+    };
+
+    // Hiển thị cảnh báo khi xe đang ở trạng thái MAINTENANCE
+    const renderMaintenanceWarning = () => {
+        if (vehicle?.status === 'MAINTENANCE') {
+            return (
+                <div style={{ marginBottom: 16 }}>
+                    <Alert
+                        message="Xe đang trong trạng thái bảo trì"
+                        description="Xe này hiện đang trong quá trình bảo trì/đăng kiểm và không thể được phân công cho chuyến xe."
+                        type="warning"
+                        showIcon
+                    />
+                </div>
+            );
+        }
+        return null;
+    };
 
     return (
         <Modal
@@ -172,15 +222,26 @@ const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
                                 danger
                                 loading={isCancelling}
                                 onClick={handleCancel}
-                                disabled={isCompleting}
+                                disabled={isCompleting || isStarting}
                             >
                                 Hủy bỏ
                             </Button>
+                            {currentMaintenance.serviceStatus === 'PLANNED' && (
+                                <Button
+                                    type="default"
+                                    loading={isStarting}
+                                    onClick={handleStart}
+                                    disabled={isCompleting || isCancelling}
+                                    icon={<ToolOutlined />}
+                                >
+                                    Bắt đầu bảo trì
+                                </Button>
+                            )}
                             <Button 
                                 type="primary"
                                 loading={isCompleting}
                                 onClick={handleComplete}
-                                disabled={isCancelling}
+                                disabled={isCancelling || isStarting}
                             >
                                 Hoàn thành
                             </Button>
@@ -193,6 +254,9 @@ const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
         >
             {vehicle && (
                 <>
+                    {/* Hiển thị cảnh báo khi xe đang ở trạng thái MAINTENANCE */}
+                    {renderMaintenanceWarning()}
+                    
                     {/* Thông tin xe */}
                     <Card style={{ backgroundColor: '#f0f5ff', borderColor: '#1976d2' }}>
                         <Title level={4} style={{ color: '#1976d2', marginBottom: 16 }}>
@@ -277,7 +341,7 @@ const VehicleDetailModal: React.FC<VehicleDetailModalProps> = ({
                                             </Text>
                                         </Descriptions.Item>
                                         <Descriptions.Item label="Trạng thái">
-                                            {getStatusTag(maintenance.serviceStatus)}
+                                            {getServiceStatusTag(maintenance.serviceStatus)}
                                         </Descriptions.Item>
                                         <Descriptions.Item label="Ngày dự kiến">
                                             {maintenance.plannedDate ? dayjs(maintenance.plannedDate).format('DD/MM/YYYY HH:mm') : 'N/A'}

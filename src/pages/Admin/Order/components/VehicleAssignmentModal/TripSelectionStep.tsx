@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { Card, Button, Tag, Divider, Empty, Skeleton, Tooltip } from "antd";
+import React, { useMemo, useState } from "react";
+import { Card, Button, Tag, Divider, Empty, Skeleton, Tooltip, Pagination } from "antd";
 import { CarOutlined, CheckCircleOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import type { OrderDetailGroup, VehicleSuggestion } from "../../../../../models/VehicleAssignment";
 
@@ -11,6 +11,8 @@ interface TripSelectionStepProps {
     onAcceptAllSuggestions?: () => void;
 }
 
+const PACKAGES_PER_PAGE = 3;
+
 export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
     detailGroups,
     suggestionsMap,
@@ -18,6 +20,8 @@ export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
     onSelectTrips,
     onAcceptAllSuggestions
 }) => {
+    // State for pagination of each trip's packages
+    const [packagePages, setPackagePages] = useState<Record<number, number>>({});
     // Check if all trips have complete suggestions (vehicle + 2 drivers)
     const allTripsHaveCompleteSuggestions = useMemo(() => {
         if (detailGroups.length === 0) return false;
@@ -157,20 +161,54 @@ export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
                                     </div>
                                 )}
 
-                                {/* Order Details Preview */}
+                                {/* Order Details Preview with Pagination */}
                                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                     <div className="text-xs font-medium text-gray-700 mb-2">Kiện hàng:</div>
-                                    <div className="space-y-1">
-                                        {group.orderDetails.map((detail) => (
-                                            <div key={detail.id} className="text-xs text-gray-600 flex justify-between items-center">
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-blue-600">{detail.trackingCode}</span>
-                                                    <span className="text-gray-500">{detail.description}</span>
+                                    {(() => {
+                                        const currentPage = packagePages[index] || 1;
+                                        const startIndex = (currentPage - 1) * PACKAGES_PER_PAGE;
+                                        const endIndex = startIndex + PACKAGES_PER_PAGE;
+                                        const paginatedDetails = group.orderDetails.slice(startIndex, endIndex);
+                                        const totalPackages = group.orderDetails.length;
+
+                                        return (
+                                            <>
+                                                <div className="space-y-1">
+                                                    {paginatedDetails.map((detail, idx) => (
+                                                        <div key={detail.id} className="text-xs text-gray-600 flex justify-between items-center">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium text-blue-600">
+                                                                    {startIndex + idx + 1}. {detail.trackingCode}
+                                                                </span>
+                                                                <span className="text-gray-500">{detail.description}</span>
+                                                            </div>
+                                                            <span className="text-gray-500">{detail.weightBaseUnit} {detail.unit}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                                <span className="text-gray-500">{detail.weightBaseUnit} {detail.unit}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                                                {totalPackages > PACKAGES_PER_PAGE && (
+                                                    <div className="flex justify-center mt-3">
+                                                        <Pagination
+                                                            current={currentPage}
+                                                            pageSize={PACKAGES_PER_PAGE}
+                                                            total={totalPackages}
+                                                            onChange={(page) => {
+                                                                setPackagePages(prev => ({
+                                                                    ...prev,
+                                                                    [index]: page
+                                                                }));
+                                                            }}
+                                                            size="small"
+                                                            showSizeChanger={false}
+                                                            showTotal={(total, range) =>
+                                                                `${range[0]}-${range[1]} / ${total} kiện`
+                                                            }
+                                                        />
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </Card>

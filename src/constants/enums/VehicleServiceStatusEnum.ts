@@ -1,5 +1,6 @@
 export enum VehicleServiceStatusEnum {
   PLANNED = 'PLANNED',
+  IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
   OVERDUE = 'OVERDUE',
@@ -20,6 +21,13 @@ export const VEHICLE_SERVICE_STATUS_CONFIG: Record<VehicleServiceStatusEnum, Veh
     bgColor: '#EFF6FF', // blue-50
     borderColor: '#BFDBFE', // blue-200
     icon: 'Calendar',
+  },
+  [VehicleServiceStatusEnum.IN_PROGRESS]: {
+    label: 'Đang thực hiện',
+    color: '#F59E0B', // amber-500
+    bgColor: '#FFFBEB', // amber-50
+    borderColor: '#FDE68A', // amber-200
+    icon: 'Clock',
   },
   [VehicleServiceStatusEnum.COMPLETED]: {
     label: 'Đã hoàn thành',

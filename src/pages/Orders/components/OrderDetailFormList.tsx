@@ -172,9 +172,18 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                           <Select placeholder="Chọn kích thước phù hợp">
                             {orderSizes.map((size) => (
                               <Select.Option key={size.id} value={size.id}>
-                                {size.minLength} x {size.minHeight} x{" "}
-                                {size.minWidth} - {size.maxLength} x{" "}
-                                {size.maxHeight} x {size.maxWidth} (m)
+                                <div className="flex justify-between items-center">
+                                  <span>
+                                    {size.minLength} x {size.minHeight} x{" "}
+                                    {size.minWidth} - {size.maxLength} x{" "}
+                                    {size.maxHeight} x {size.maxWidth} (m)
+                                  </span>
+                                  {size.description && (
+                                    <span className="text-gray-500 text-sm ml-2">
+                                      ({size.description})
+                                    </span>
+                                  )}
+                                </div>
                               </Select.Option>
                             ))}
                           </Select>

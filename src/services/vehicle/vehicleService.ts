@@ -407,6 +407,19 @@ const vehicleService = {
     },
 
     /**
+     * Start a maintenance record - sets vehicle status to MAINTENANCE
+     */
+    startMaintenance: async (id: string) => {
+        try {
+            const response = await httpClient.post(`/vehicle-service-records/${id}/start`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error starting maintenance ${id}:`, error);
+            throw error;
+        }
+    },
+
+    /**
      * Trigger manual expiry check
      */
     triggerExpiryCheck: async () => {

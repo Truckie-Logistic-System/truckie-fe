@@ -127,12 +127,14 @@ const authService = {
                 sessionStorage.setItem('user_role', roleName.toLowerCase());
                 sessionStorage.setItem('userId', user.id);
                 sessionStorage.setItem('username', user.username);
+                sessionStorage.setItem('fullName', user.fullName || user.username);
                 sessionStorage.setItem('email', user.email);
 
                 // Also store in localStorage for persistence across server restarts
                 localStorage.setItem('user_role', roleName.toLowerCase());
                 localStorage.setItem('userId', user.id);
                 localStorage.setItem('username', user.username);
+                localStorage.setItem('fullName', user.fullName || user.username);
                 localStorage.setItem('email', user.email);
                 localStorage.setItem('remember_login', 'true');
             } else {

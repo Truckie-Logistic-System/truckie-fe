@@ -750,10 +750,13 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                                             {seal.sealAttachedImage && (
                                                 <div className="mt-3 pt-3 border-t border-blue-200">
                                                     <p className="text-xs text-gray-500 mb-2">Hình ảnh niêm phong</p>
-                                                    <img
+                                                    <Image
                                                         src={seal.sealAttachedImage}
                                                         alt={`Seal ${seal.sealCode}`}
                                                         className="w-full h-24 object-cover rounded"
+                                                        preview={{
+                                                            mask: 'Xem chi tiết'
+                                                        }}
                                                     />
                                                 </div>
                                             )}
@@ -785,16 +788,20 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                         {va.photoCompletions && va.photoCompletions.length > 0 ? (
                             <div className="p-2">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {va.photoCompletions.map((url: string, idx: number) => (
-                                        <div key={idx} className="relative group">
-                                            <img
-                                                src={url}
-                                                alt={`Completion photo ${idx + 1}`}
-                                                className="object-cover rounded w-full h-32"
-                                            />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all" />
-                                        </div>
-                                    ))}
+                                    <Image.PreviewGroup>
+                                        {va.photoCompletions.map((url: string, idx: number) => (
+                                            <div key={idx} className="relative group">
+                                                <Image
+                                                    src={url}
+                                                    alt={`Completion photo ${idx + 1}`}
+                                                    className="object-cover rounded w-full h-32"
+                                                    preview={{
+                                                        mask: 'Xem chi tiết'
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </Image.PreviewGroup>
                                 </div>
                             </div>
                         ) : (

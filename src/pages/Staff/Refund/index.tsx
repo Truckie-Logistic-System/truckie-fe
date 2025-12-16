@@ -455,6 +455,9 @@ const RefundListPage: React.FC = () => {
                       src={selectedRefund.bankTransferImage}
                       alt="Bank transfer proof"
                       style={{ maxHeight: 200, objectFit: 'contain', width: '100%' }}
+                      preview={{
+                        mask: 'Xem chi tiết'
+                      }}
                     />
                   </Card>
                 </Col>

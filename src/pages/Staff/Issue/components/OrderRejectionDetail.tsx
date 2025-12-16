@@ -15,7 +15,8 @@ import {
     Space,
     Skeleton,
     Typography,
-    Statistic
+    Statistic,
+    Image
 } from 'antd';
 import {
     DollarOutlined,
@@ -985,19 +986,23 @@ const globalCustomPoints: RoutePoint[] = [];
                         <div className="mt-4">
                             <h3 className="text-lg font-semibold mb-3">Ảnh xác nhận trả hàng</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                                {detailInfo.returnDeliveryImages.map((imageUrl, index) => (
-                                    <div key={index} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                                        <img 
-                                            src={imageUrl} 
-                                            alt={`Ảnh trả hàng ${index + 1}`}
-                                            className="w-full h-48 object-cover cursor-pointer"
-                                            onClick={() => window.open(imageUrl, '_blank')}
-                                        />
-                                        <div className="p-2 bg-gray-50 text-center text-sm text-gray-600">
-                                            Ảnh {index + 1}
+                                <Image.PreviewGroup>
+                                    {detailInfo.returnDeliveryImages.map((imageUrl, index) => (
+                                        <div key={index} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                                            <Image 
+                                                src={imageUrl} 
+                                                alt={`Ảnh trả hàng ${index + 1}`}
+                                                className="w-full h-48 object-cover cursor-pointer"
+                                                preview={{
+                                                    mask: 'Xem chi tiết'
+                                                }}
+                                            />
+                                            <div className="p-2 bg-gray-50 text-center text-sm text-gray-600">
+                                                Ảnh {index + 1}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </Image.PreviewGroup>
                             </div>
                         </div>
                     )}

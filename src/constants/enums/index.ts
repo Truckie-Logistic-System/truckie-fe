@@ -18,3 +18,4 @@ export * from './CommonStatusEnum';
 export * from './DeviceStatusEnum';
 export * from './PriorityEnum';
 export * from './OrderSizeEnum';
+export * from './VehicleServiceStatusEnum';

@@ -3,6 +3,7 @@ import type { Vehicle } from './Vehicle';
 // Trạng thái dịch vụ - mirror backend VehicleServiceStatusEnum
 export type VehicleServiceStatus =
     | 'PLANNED'
+    | 'IN_PROGRESS'
     | 'COMPLETED'
     | 'CANCELLED'
     | 'OVERDUE';
@@ -10,6 +11,7 @@ export type VehicleServiceStatus =
 // Nhãn hiển thị tiếng Việt cho từng trạng thái
 export const VEHICLE_SERVICE_STATUS_LABELS: Record<VehicleServiceStatus, string> = {
     PLANNED: 'Đã lên lịch',
+    IN_PROGRESS: 'Đang thực hiện',
     COMPLETED: 'Đã hoàn thành',
     CANCELLED: 'Đã hủy',
     OVERDUE: 'Quá hạn',
@@ -19,6 +21,7 @@ export const VEHICLE_SERVICE_STATUS_LABELS: Record<VehicleServiceStatus, string>
 // Có thể dùng trực tiếp với Ant Design (color token) hoặc Tailwind class map ngoài UI
 export const VEHICLE_SERVICE_STATUS_COLORS: Record<VehicleServiceStatus, string> = {
     PLANNED: '#1677ff',      // xanh dương - đã lên lịch
+    IN_PROGRESS: '#F59E0B',  // amber - đang thực hiện
     COMPLETED: '#52c41a',    // xanh lá - hoàn thành
     CANCELLED: '#8c8c8c',    // xám - đã hủy
     OVERDUE: '#ff4d4f',      // đỏ - quá hạn

@@ -831,16 +831,16 @@ const NewStaffDashboard: React.FC = () => {
                                   </div>
                                 ),
                               },
-                              {
-                                title: 'Kiện thành công',
-                                dataIndex: 'totalPackages',
-                                align: 'center' as const,
-                                width: 120,
-                                render: (value: number) => {
-                                  const safeValue = typeof value === 'number' && !Number.isNaN(value) ? value : 0;
-                                  return <Tag color="blue">{safeValue.toLocaleString('vi-VN')}</Tag>;
-                                },
-                              },
+                              // {
+                              //   title: 'Kiện thành công',
+                              //   dataIndex: 'totalPackages',
+                              //   align: 'center' as const,
+                              //   width: 120,
+                              //   render: (value: number) => {
+                              //     const safeValue = typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+                              //     return <Tag color="blue">{safeValue.toLocaleString('vi-VN')}</Tag>;
+                              //   },
+                              // },
                               {
                                 title: 'Doanh thu',
                                 dataIndex: 'totalRevenue',

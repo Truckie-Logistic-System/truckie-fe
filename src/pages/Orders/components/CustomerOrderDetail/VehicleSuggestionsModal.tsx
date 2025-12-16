@@ -175,8 +175,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                       isOptimal ? "text-blue-600" : "text-green-600"
                     }`}
                   >
-                    {suggestion.currentLoad}
-                    {suggestion.currentLoadUnit}
+                    {suggestion.currentLoad} {suggestion.currentLoadUnit}
                   </div>
                 </div>
               </Col>

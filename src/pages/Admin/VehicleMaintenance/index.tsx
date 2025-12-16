@@ -328,6 +328,8 @@ const VehicleMaintenancePage: React.FC = () => {
         switch (status) {
             case 'PLANNED':
                 return <Tag color="blue">Đã lên lịch</Tag>;
+            case 'IN_PROGRESS':
+                return <Tag color="orange">Đang thực hiện</Tag>;
             case 'COMPLETED':
                 return <Tag color="green">Đã hoàn thành</Tag>;
             case 'CANCELLED':
@@ -498,19 +500,20 @@ const VehicleMaintenancePage: React.FC = () => {
 
     const completedMaintenances = maintenances.filter(m => m.serviceStatus === 'COMPLETED');
     const plannedMaintenances = maintenances.filter(m => m.serviceStatus === 'PLANNED');
+    const inProgressMaintenances = maintenances.filter(m => m.serviceStatus === 'IN_PROGRESS');
     const cancelledMaintenances = maintenances.filter(m => m.serviceStatus === 'CANCELLED');
     const overdueMaintenances = maintenances.filter(m => m.serviceStatus === 'OVERDUE');
 
     // Removed duplicate renderMaintenanceTable function
 
-    // Render statistics cards for all maintenance statuses
+    // Render statistics cards for all maintenance statuses (5 statuses)
     const renderStatCards = () => (
         <Row gutter={[16, 16]} className="mb-6">
-            <Col xs={24} sm={12} md={6}>
-                <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+            <Col xs={24} sm={12} md={4}>
+                <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow h-full">
                     <div className="flex justify-between items-center">
                         <div>
-                            <Text className="text-gray-600 block">Đã lên lịch</Text>
+                            <Text className="text-gray-600 block text-xs">Đã lên lịch</Text>
                             {loading ? (
                                 <Skeleton.Input style={{ width: 60 }} active size="small" />
                             ) : (
@@ -519,17 +522,36 @@ const VehicleMaintenancePage: React.FC = () => {
                         </div>
                         <Badge count={loading ? 0 : plannedMaintenances.length} color="blue" showZero>
                             <div className="bg-blue-200 p-2 rounded-full">
-                                <CalendarOutlined className="text-3xl text-blue-600" />
+                                <CalendarOutlined className="text-2xl text-blue-600" />
                             </div>
                         </Badge>
                     </div>
                 </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
-                <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow">
+            <Col xs={24} sm={12} md={4}>
+                <Card className="bg-gradient-to-r from-amber-50 to-amber-100 border-amber-200 shadow-sm hover:shadow-md transition-shadow h-full">
                     <div className="flex justify-between items-center">
                         <div>
-                            <Text className="text-gray-600 block">Đã hoàn thành</Text>
+                            <Text className="text-gray-600 block text-xs">Đang thực hiện</Text>
+                            {loading ? (
+                                <Skeleton.Input style={{ width: 60 }} active size="small" />
+                            ) : (
+                                <Title level={3} className="m-0 text-amber-700">{inProgressMaintenances.length}</Title>
+                            )}
+                        </div>
+                        <Badge count={loading ? 0 : inProgressMaintenances.length} color="#F59E0B" showZero>
+                            <div className="bg-amber-200 p-2 rounded-full">
+                                <ClockCircleOutlined className="text-2xl text-amber-600" />
+                            </div>
+                        </Badge>
+                    </div>
+                </Card>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+                <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow h-full">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <Text className="text-gray-600 block text-xs">Đã hoàn thành</Text>
                             {loading ? (
                                 <Skeleton.Input style={{ width: 60 }} active size="small" />
                             ) : (
@@ -538,17 +560,17 @@ const VehicleMaintenancePage: React.FC = () => {
                         </div>
                         <Badge count={loading ? 0 : completedMaintenances.length} color="green" showZero>
                             <div className="bg-green-200 p-2 rounded-full">
-                                <CheckCircleOutlined className="text-3xl text-green-600" />
+                                <CheckCircleOutlined className="text-2xl text-green-600" />
                             </div>
                         </Badge>
                     </div>
                 </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
-                <Card className="bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <Col xs={24} sm={12} md={4}>
+                <Card className="bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 shadow-sm hover:shadow-md transition-shadow h-full">
                     <div className="flex justify-between items-center">
                         <div>
-                            <Text className="text-gray-600 block">Đã hủy</Text>
+                            <Text className="text-gray-600 block text-xs">Đã hủy</Text>
                             {loading ? (
                                 <Skeleton.Input style={{ width: 60 }} active size="small" />
                             ) : (
@@ -557,17 +579,17 @@ const VehicleMaintenancePage: React.FC = () => {
                         </div>
                         <Badge count={loading ? 0 : cancelledMaintenances.length} color="#6B7280" showZero>
                             <div className="bg-gray-200 p-2 rounded-full">
-                                <StopOutlined className="text-3xl text-gray-600" />
+                                <StopOutlined className="text-2xl text-gray-600" />
                             </div>
                         </Badge>
                     </div>
                 </Card>
             </Col>
-            <Col xs={24} sm={12} md={6}>
-                <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow">
+            <Col xs={24} sm={12} md={4}>
+                <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow h-full">
                     <div className="flex justify-between items-center">
                         <div>
-                            <Text className="text-gray-600 block">Quá hạn</Text>
+                            <Text className="text-gray-600 block text-xs">Quá hạn</Text>
                             {loading ? (
                                 <Skeleton.Input style={{ width: 60 }} active size="small" />
                             ) : (
@@ -576,7 +598,7 @@ const VehicleMaintenancePage: React.FC = () => {
                         </div>
                         <Badge count={loading ? 0 : overdueMaintenances.length} color="red" showZero>
                             <div className="bg-red-200 p-2 rounded-full">
-                                <AlertOutlined className="text-3xl text-red-600" />
+                                <AlertOutlined className="text-2xl text-red-600" />
                             </div>
                         </Badge>
                     </div>
@@ -618,13 +640,13 @@ const VehicleMaintenancePage: React.FC = () => {
     const onRefresh = handleRefresh;
     const tableTitle = "Danh sách lịch bảo trì";
 
-    // Create custom card stats component for 4 statuses
+    // Create custom card stats component for 5 statuses
     const renderCustomStatCards = () => (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-center">
                     <div>
-                        <Text className="text-gray-600 block">Đã lên lịch</Text>
+                        <Text className="text-gray-600 block text-xs">Đã lên lịch</Text>
                         {loading ? (
                             <Skeleton.Input style={{ width: 60 }} active size="small" />
                         ) : (
@@ -633,7 +655,24 @@ const VehicleMaintenancePage: React.FC = () => {
                     </div>
                     <Badge count={loading ? 0 : plannedMaintenances.length} color="blue" showZero>
                         <div className="bg-blue-200 p-2 rounded-full">
-                            <ToolOutlined className="text-3xl text-blue-600" />
+                            <CalendarOutlined className="text-2xl text-blue-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-amber-50 to-amber-100 border-amber-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block text-xs">Đang thực hiện</Text>
+                        {loading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-amber-700">{inProgressMaintenances.length}</Title>
+                        )}
+                    </div>
+                    <Badge count={loading ? 0 : inProgressMaintenances.length} color="#F59E0B" showZero>
+                        <div className="bg-amber-200 p-2 rounded-full">
+                            <ClockCircleOutlined className="text-2xl text-amber-600" />
                         </div>
                     </Badge>
                 </div>
@@ -641,7 +680,7 @@ const VehicleMaintenancePage: React.FC = () => {
             <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-center">
                     <div>
-                        <Text className="text-gray-600 block">Đã hoàn thành</Text>
+                        <Text className="text-gray-600 block text-xs">Đã hoàn thành</Text>
                         {loading ? (
                             <Skeleton.Input style={{ width: 60 }} active size="small" />
                         ) : (
@@ -650,7 +689,7 @@ const VehicleMaintenancePage: React.FC = () => {
                     </div>
                     <Badge count={loading ? 0 : completedMaintenances.length} color="green" showZero>
                         <div className="bg-green-200 p-2 rounded-full">
-                            <CheckCircleOutlined className="text-3xl text-green-600" />
+                            <CheckCircleOutlined className="text-2xl text-green-600" />
                         </div>
                     </Badge>
                 </div>
@@ -658,7 +697,7 @@ const VehicleMaintenancePage: React.FC = () => {
             <Card className="bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-center">
                     <div>
-                        <Text className="text-gray-600 block">Đã hủy</Text>
+                        <Text className="text-gray-600 block text-xs">Đã hủy</Text>
                         {loading ? (
                             <Skeleton.Input style={{ width: 60 }} active size="small" />
                         ) : (
@@ -667,7 +706,7 @@ const VehicleMaintenancePage: React.FC = () => {
                     </div>
                     <Badge count={loading ? 0 : cancelledMaintenances.length} color="#6B7280" showZero>
                         <div className="bg-gray-200 p-2 rounded-full">
-                            <StopOutlined className="text-3xl text-gray-600" />
+                            <StopOutlined className="text-2xl text-gray-600" />
                         </div>
                     </Badge>
                 </div>
@@ -675,7 +714,7 @@ const VehicleMaintenancePage: React.FC = () => {
             <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-center">
                     <div>
-                        <Text className="text-gray-600 block">Quá hạn</Text>
+                        <Text className="text-gray-600 block text-xs">Quá hạn</Text>
                         {loading ? (
                             <Skeleton.Input style={{ width: 60 }} active size="small" />
                         ) : (
@@ -684,7 +723,7 @@ const VehicleMaintenancePage: React.FC = () => {
                     </div>
                     <Badge count={loading ? 0 : overdueMaintenances.length} color="red" showZero>
                         <div className="bg-red-200 p-2 rounded-full">
-                            <ExclamationCircleOutlined className="text-3xl text-red-600" />
+                            <AlertOutlined className="text-2xl text-red-600" />
                         </div>
                     </Badge>
                 </div>

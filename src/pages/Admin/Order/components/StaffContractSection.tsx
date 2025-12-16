@@ -802,19 +802,22 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               <Alert
                 message="Thông tin thanh toán"
                 description={
-                <div className="space-y-4">
-                  <Row gutter={[16, 16]} className="mt-3">
+                <div className="space-y-4" style={{ listStyle: "none", counterReset: "none" }}>
+                  <Row gutter={[16, 16]} className="mt-3" style={{ listStyle: "none" }}>
                     {/* Show both original and adjusted values if there's a discount */}
-                    {contract.adjustedValue && 
-                     contract.adjustedValue > 0 && 
-                     contract.totalValue !== contract.adjustedValue && (
+                    {!!contract.adjustedValue && 
+                     !!contract.totalValue &&
+                     String(contract.adjustedValue) !== "0" &&
+                     String(contract.totalValue) !== "0" &&
+                     parseContractValue(contract.adjustedValue) > 0 && 
+                     parseContractValue(contract.totalValue) > 0 &&
+                     parseContractValue(contract.totalValue) !== parseContractValue(contract.adjustedValue) && (
                       <>
                         <Col xs={24} sm={12} md={6}>
                           <Statistic
                             title="Giá niêm yết"
                             value={parseContractValue(contract.totalValue).toLocaleString("vi-VN")}
                             suffix="VNĐ"
-                            prefix={<DollarOutlined />}
                             valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
                           />
                         </Col>
@@ -823,7 +826,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                             title="Giá thực tế"
                             value={parseContractValue(contract.adjustedValue).toLocaleString("vi-VN")}
                             suffix="VNĐ"
-                            prefix={<DollarOutlined />}
                             valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: "600" }}
                           />
                           <div className="text-xs text-gray-500 mt-1">
@@ -833,10 +835,13 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       </>
                     )}
 
-                    {/* If no adjusted value, show total value */}
+                    {/* If no adjusted value, show total value only if totalValue > 0 */}
                     {(!contract.adjustedValue || 
-                      contract.adjustedValue <= 0 || 
-                      contract.totalValue === contract.adjustedValue) && (
+                      parseContractValue(contract.adjustedValue) <= 0 || 
+                      parseContractValue(contract.totalValue) === parseContractValue(contract.adjustedValue)) && 
+                      !!contract.totalValue && 
+                      String(contract.totalValue) !== "0" &&
+                      parseContractValue(contract.totalValue) > 0 && (
                       <Col xs={24} sm={12} md={6}>
                         <Statistic
                           title="Tổng giá trị đơn hàng"
@@ -884,7 +889,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       {/* a) Base shipping cost by distance */}
                       <div className="mb-3">
                         <div className="text-sm text-gray-700 mb-2">
-                          a) Cước vận chuyển cơ bản theo quãng đường {fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.appliedKm, 0).toFixed(2) || 0} km:
+                          a) Cước vận chuyển cơ bản theo quãng đường {fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.appliedKm, 0).toFixed(2)} km:
                         </div>
                         
                         {/* Breakdown by vehicle type - Group by sizeRuleName */}
@@ -921,7 +926,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         
                         {/* Total base cost */}
                         <div className="text-sm text-gray-700 mt-2">
-                          Tổng cước cơ bản: {fetchedPriceDetails?.steps?.map((step: any) => step.subtotal.toLocaleString("vi-VN")).join(" + ")} = <strong>{fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.subtotal, 0).toLocaleString("vi-VN") || 0}</strong>
+                          Tổng cước cơ bản: {fetchedPriceDetails?.steps?.map((step: any) => step.subtotal.toLocaleString("vi-VN")).join(" + ")} = <strong>{fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.subtotal, 0).toLocaleString("vi-VN")}</strong>
                         </div>
                       </div>
 
@@ -938,7 +943,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       {fetchedPriceDetails?.categorySurcharge && fetchedPriceDetails.categorySurcharge > 0 && (
                         <div className="mb-3">
                           <div className="text-sm text-gray-700">
-                            c) Phụ thu danh mục: <strong>{fetchedPriceDetails?.categorySurcharge?.toLocaleString("vi-VN") || 0} VNĐ</strong>
+                            c) Phụ thu danh mục: <strong>{fetchedPriceDetails?.categorySurcharge?.toLocaleString("vi-VN")} VNĐ</strong>
                           </div>
                         </div>
                       )}
@@ -946,7 +951,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       {/* Total transport cost */}
                       <div className="mb-3">
                         <div className="text-sm text-gray-700">
-                          Tổng chi phí vận chuyển (A): <strong>{fetchedPriceDetails?.finalTotal?.toLocaleString("vi-VN") || 0} VNĐ</strong>
+                          Tổng chi phí vận chuyển (A): <strong>{fetchedPriceDetails?.finalTotal?.toLocaleString("vi-VN")} VNĐ</strong>
                         </div>
                       </div>
                     </div>
@@ -978,10 +983,10 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                   )}
 
                   {/* Grand Total - Show total contract value */}
-                  {fetchedPriceDetails && (
+                  {fetchedPriceDetails && (fetchedPriceDetails?.grandTotal > 0 || fetchedPriceDetails?.finalTotal > 0) && (
                     <div className="mt-4 pt-4 border-t-2 border-black">
                       <div className="text-base font-bold text-gray-900">
-                        TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B): <span className="underline">{(fetchedPriceDetails?.grandTotal || fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")}</span> VNĐ
+                        TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B): <span className="underline">{(fetchedPriceDetails?.grandTotal || fetchedPriceDetails?.finalTotal).toLocaleString("vi-VN")}</span> VNĐ
                       </div>
                     </div>
                   )}

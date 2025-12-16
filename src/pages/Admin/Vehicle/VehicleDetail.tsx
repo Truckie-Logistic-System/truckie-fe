@@ -161,45 +161,17 @@ const VehicleDetailPage: React.FC = () => {
     }, [id, message, navigate]);
 
     const getStatusTag = (status: string) => {
-        let color = 'default';
-        let text = status;
-
-        switch (status.toLowerCase()) {
-            case 'active':
-            case 'hoạt động':
-                color = 'green';
-                text = 'Hoạt động';
-                break;
-            case 'inactive':
-            case 'không hoạt động':
-                color = 'red';
-                text = 'Không hoạt động';
-                break;
-            case 'maintenance':
-            case 'bảo trì':
-                color = 'orange';
-                text = 'Đang bảo trì';
-                break;
-            default:
-                color = 'blue';
-        }
-
-        return <VehicleStatusTag status={text as VehicleStatusEnum} />;
+        // Sử dụng trực tiếp status string từ backend
+        return <VehicleStatusTag status={status} />;
     };
 
     const getStatusText = (status: string | boolean) => {
         if (typeof status === 'boolean') {
-            return status ? 'Đang hoạt động' : 'Không hoạt động';
+            return status ? 'Hoạt động' : 'Ngừng hoạt động';
         }
-
-        switch (status.toLowerCase()) {
-            case 'active':
-                return 'Đang hoạt động';
-            case 'inactive':
-                return 'Không hoạt động';
-            default:
-                return status;
-        }
+        // Import helper function từ VehicleStatusEnum
+        const { getVehicleStatusLabel } = require('@/constants/enums');
+        return getVehicleStatusLabel(status);
     };
 
     const getStatusColor = (status: string | boolean) => {
@@ -207,11 +179,26 @@ const VehicleDetailPage: React.FC = () => {
             return status ? 'green' : 'red';
         }
 
-        switch (status.toLowerCase()) {
-            case 'active':
+        switch (status.toUpperCase()) {
+            case 'ACTIVE':
                 return 'green';
-            case 'inactive':
+            case 'INACTIVE':
+                return 'gray';
+            case 'MAINTENANCE':
+                return 'blue';
+            case 'IN_TRANSIT':
+                return 'yellow';
+            case 'BREAKDOWN':
+                return 'orange';
+            case 'ACCIDENT':
                 return 'red';
+            case 'INSPECTION_EXPIRED':
+            case 'INSURANCE_EXPIRED':
+                return 'red';
+            case 'INSPECTION_DUE':
+            case 'INSURANCE_DUE':
+            case 'MAINTENANCE_DUE':
+                return 'gold';
             default:
                 return 'default';
         }

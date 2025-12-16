@@ -29,32 +29,32 @@ export enum HttpStatusCode {
   GATEWAY_TIMEOUT = 504,
 }
 
-// Error messages for each status code
+// Error messages for each status code (Vietnamese)
 export const HttpErrorMessages: Record<HttpStatusCode, string> = {
-  [HttpStatusCode.OK]: "Success",
-  [HttpStatusCode.CREATED]: "Resource created SUCCESSFUL",
-  [HttpStatusCode.ACCEPTED]: "Request accepted",
-  [HttpStatusCode.NO_CONTENT]: "No content",
+  [HttpStatusCode.OK]: "Thành công",
+  [HttpStatusCode.CREATED]: "Tạo tài nguyên thành công",
+  [HttpStatusCode.ACCEPTED]: "Yêu cầu đã được chấp nhận",
+  [HttpStatusCode.NO_CONTENT]: "Không có nội dung",
 
-  [HttpStatusCode.MOVED_PERMANENTLY]: "Resource moved permanently",
-  [HttpStatusCode.FOUND]: "Resource found",
-  [HttpStatusCode.NOT_MODIFIED]: "Not modified",
+  [HttpStatusCode.MOVED_PERMANENTLY]: "Tài nguyên đã được di chuyển vĩnh viễn",
+  [HttpStatusCode.FOUND]: "Đã tìm thấy tài nguyên",
+  [HttpStatusCode.NOT_MODIFIED]: "Không có thay đổi",
 
-  [HttpStatusCode.BAD_REQUEST]: "Bad request - Invalid input data",
-  [HttpStatusCode.UNAUTHORIZED]: "Unauthorized - Please login",
-  [HttpStatusCode.FORBIDDEN]: "Forbidden - Access denied",
-  [HttpStatusCode.NOT_FOUND]: "Resource not found",
-  [HttpStatusCode.METHOD_NOT_ALLOWED]: "Method not allowed",
-  [HttpStatusCode.CONFLICT]: "Conflict - Resource already exists",
-  [HttpStatusCode.UNPROCESSABLE_ENTITY]: "Validation failed",
+  [HttpStatusCode.BAD_REQUEST]: "Yêu cầu không hợp lệ - Dữ liệu đầu vào không đúng",
+  [HttpStatusCode.UNAUTHORIZED]: "Chưa xác thực - Vui lòng đăng nhập",
+  [HttpStatusCode.FORBIDDEN]: "Bị từ chối - Không có quyền truy cập",
+  [HttpStatusCode.NOT_FOUND]: "Không tìm thấy tài nguyên",
+  [HttpStatusCode.METHOD_NOT_ALLOWED]: "Phương thức không được phép",
+  [HttpStatusCode.CONFLICT]: "Xung đột - Tài nguyên đã tồn tại",
+  [HttpStatusCode.UNPROCESSABLE_ENTITY]: "Xác thực dữ liệu thất bại",
   [HttpStatusCode.TOO_MANY_REQUESTS]:
-    "Too many requests - Please try again later",
+    "Quá nhiều yêu cầu - Vui lòng thử lại sau",
 
-  [HttpStatusCode.INTERNAL_SERVER_ERROR]: "Internal server error",
-  [HttpStatusCode.NOT_IMPLEMENTED]: "Feature not implemented",
-  [HttpStatusCode.BAD_GATEWAY]: "Bad gateway",
-  [HttpStatusCode.SERVICE_UNAVAILABLE]: "Service temporarily unavailable",
-  [HttpStatusCode.GATEWAY_TIMEOUT]: "Gateway timeout",
+  [HttpStatusCode.INTERNAL_SERVER_ERROR]: "Lỗi máy chủ nội bộ",
+  [HttpStatusCode.NOT_IMPLEMENTED]: "Tính năng chưa được triển khai",
+  [HttpStatusCode.BAD_GATEWAY]: "Lỗi cổng kết nối",
+  [HttpStatusCode.SERVICE_UNAVAILABLE]: "Dịch vụ tạm thời không khả dụng",
+  [HttpStatusCode.GATEWAY_TIMEOUT]: "Hết thời gian chờ cổng kết nối",
 };
 
 // Helper functions for HTTP status codes
@@ -64,7 +64,7 @@ export const HttpStatusHelpers = {
   isClientError: (code: number) => code >= 400 && code < 500,
   isServerError: (code: number) => code >= 500 && code < 600,
   getErrorMessage: (code: number) =>
-    HttpErrorMessages[code as HttpStatusCode] || `Unknown error (${code})`,
+    HttpErrorMessages[code as HttpStatusCode] || `Lỗi không xác định (${code})`,
 };
 
 // Application-specific error codes

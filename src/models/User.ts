@@ -58,6 +58,7 @@ export interface RegisterEmployeeRequest {
 export interface User {
     id: string;
     username: string;
+    fullName?: string;
     email: string;
     role: 'admin' | 'customer' | 'staff' | 'driver';
 }
@@ -72,6 +73,7 @@ export const mapUserResponseToModel = (apiUser: UserResponse): User => {
     return {
         id: apiUser.id,
         username: apiUser.username,
+        fullName: apiUser.fullName,
         email: apiUser.email,
         role: apiUser.role.roleName.toLowerCase() as 'admin' | 'customer' | 'staff' | 'driver'
     };

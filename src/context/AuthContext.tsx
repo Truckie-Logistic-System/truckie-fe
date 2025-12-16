@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 let userRole = sessionStorage.getItem("user_role");
                 let userId = sessionStorage.getItem("userId");
                 let username = sessionStorage.getItem("username");
+                let fullName = sessionStorage.getItem("fullName");
                 let email = sessionStorage.getItem("email");
                 
                 // If not in sessionStorage, check localStorage (for server restart scenarios)
@@ -62,6 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     userRole = localStorage.getItem("user_role");
                     userId = localStorage.getItem("userId");
                     username = localStorage.getItem("username");
+                    fullName = localStorage.getItem("fullName");
                     email = localStorage.getItem("email");
                     
                     // Restore to sessionStorage if found in localStorage
@@ -69,6 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         sessionStorage.setItem("user_role", userRole);
                         sessionStorage.setItem("userId", userId);
                         if (username) sessionStorage.setItem("username", username);
+                        if (fullName) sessionStorage.setItem("fullName", fullName);
                         if (email) sessionStorage.setItem("email", email);
                     }
                 }
@@ -85,6 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const userData: User = {
                     id: userId,
                     username: username,
+                    fullName: fullName || username,
                     email: email,
                     role: userRole as "admin" | "customer" | "staff" | "driver",
                 };
@@ -108,6 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     let userRole = sessionStorage.getItem("user_role");
                     let userId = sessionStorage.getItem("userId");
                     let username = sessionStorage.getItem("username");
+                    let fullName = sessionStorage.getItem("fullName");
                     let email = sessionStorage.getItem("email");
                     
                     // Fallback to localStorage if sessionStorage is empty
@@ -115,6 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         userRole = localStorage.getItem("user_role");
                         userId = localStorage.getItem("userId");
                         username = localStorage.getItem("username");
+                        fullName = localStorage.getItem("fullName");
                         email = localStorage.getItem("email");
                     }
 
@@ -122,6 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         const userData: User = {
                             id: userId,
                             username: username,
+                            fullName: fullName || username,
                             email: email,
                             role: userRole as "admin" | "customer" | "staff" | "driver",
                         };
@@ -159,6 +166,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const userData: User = {
                     id: apiUser.id,
                     username: apiUser.username,
+                    fullName: apiUser.fullName || apiUser.username,
                     email: apiUser.email,
                     role: roleName as "admin" | "customer" | "staff" | "driver",
                 };

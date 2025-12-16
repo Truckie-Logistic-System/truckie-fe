@@ -259,17 +259,22 @@ const VehiclePage: React.FC = () => {
     };
 
     const getStatusTag = (status: string) => {
-        // Sử dụng trực tiếp status string từ backend
-        return <VehicleStatusTag status={status} size="small" />;
+        return <VehicleStatusTag status={status as VehicleStatusEnum} size="small" />;
     };
 
     const getStatusText = (status: string | boolean) => {
         if (typeof status === 'boolean') {
-            return status ? 'Hoạt động' : 'Ngừng hoạt động';
+            return status ? 'Đang hoạt động' : 'Không hoạt động';
         }
-        // Import helper function từ VehicleStatusEnum
-        const { getVehicleStatusLabel } = require('@/constants/enums');
-        return getVehicleStatusLabel(status);
+
+        switch (status.toLowerCase()) {
+            case 'active':
+                return 'Đang hoạt động';
+            case 'inactive':
+                return 'Không hoạt động';
+            default:
+                return status;
+        }
     };
 
     const getStatusColor = (status: string | boolean) => {
@@ -277,26 +282,11 @@ const VehiclePage: React.FC = () => {
             return status ? 'green' : 'red';
         }
 
-        switch (status.toUpperCase()) {
-            case 'ACTIVE':
+        switch (status.toLowerCase()) {
+            case 'active':
                 return 'green';
-            case 'INACTIVE':
-                return 'gray';
-            case 'MAINTENANCE':
-                return 'blue';
-            case 'IN_TRANSIT':
-                return 'yellow';
-            case 'BREAKDOWN':
-                return 'orange';
-            case 'ACCIDENT':
+            case 'inactive':
                 return 'red';
-            case 'INSPECTION_EXPIRED':
-            case 'INSURANCE_EXPIRED':
-                return 'red';
-            case 'INSPECTION_DUE':
-            case 'INSURANCE_DUE':
-            case 'MAINTENANCE_DUE':
-                return 'gold';
             default:
                 return 'default';
         }
@@ -531,8 +521,155 @@ const VehiclePage: React.FC = () => {
     const breakdownVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === 'breakdown');
     const accidentVehicles = vehicles.filter(vehicle => vehicle.status.toLowerCase() === 'accident');
 
+    // Nhóm phương tiện theo loại
+    const groupedVehicles = vehicleTypes.map(type => {
+        const vehiclesOfType = filteredVehicles.filter(vehicle => vehicle.vehicleTypeId === type.id);
+        return {
+            typeId: type.id,
+            typeName: type.vehicleTypeName,
+            description: type.description,
+            vehicleTypeDescription: type.vehicleTypeDescription || type.vehicleTypeName,
+            vehicles: vehiclesOfType,
+            activeCount: vehiclesOfType.filter(v => v.status.toLowerCase() === 'active').length,
+            transitCount: vehiclesOfType.filter(v => v.status.toLowerCase() === 'in_transit').length,
+            inactiveCount: vehiclesOfType.filter(v => v.status.toLowerCase() === 'inactive').length
+        };
+    });
 
+    // Lọc ra các nhóm có xe (để hiển thị)
+    const nonEmptyGroups = groupedVehicles.filter(group => group.vehicles.length > 0);
 
+    const renderVehicleCard = (vehicle: Vehicle) => (
+        <Card
+            key={vehicle.id}
+            className="h-full hover:shadow-md transition-shadow"
+            size="small"
+            title={
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center truncate mr-2" style={{ maxWidth: 'calc(100% - 100px)' }}>
+                        <CarOutlined className="mr-2 flex-shrink-0 text-blue-500 text-lg" />
+                        <Text strong className="truncate text-blue-600" title={vehicle.licensePlateNumber}>
+                            {vehicle.licensePlateNumber}
+                        </Text>
+                    </div>
+                    <div className="flex-shrink-0">
+                        {getStatusTag(vehicle.status)}
+                    </div>
+                </div>
+            }
+            headStyle={{
+                backgroundColor: '#f0f5ff',
+                borderBottom: '1px solid #d6e4ff'
+            }}
+            extra={null}
+            bodyStyle={{
+                padding: '12px',
+                height: '100%'
+            }}
+        >
+            <div className="flex flex-col h-full">
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="vehicle-info-item">
+                        <span className="vehicle-info-label">Mẫu xe:</span>
+                        <span className="vehicle-info-value" title={vehicle.model}>{vehicle.model}</span>
+                    </div>
+                    <div className="vehicle-info-item">
+                        <span className="vehicle-info-label">Nhà sản xuất:</span>
+                        <span className="vehicle-info-value" title={vehicle.manufacturer}>{vehicle.manufacturer}</span>
+                    </div>
+                    <div className="vehicle-info-item">
+                        <span className="vehicle-info-label">Năm sản xuất:</span>
+                        <span className="vehicle-info-value">{vehicle.year}</span>
+                    </div>
+                </div>
+                <div className="vehicle-card-actions">
+                    <Space>
+                        <Button
+                            size="small"
+                            icon={<EyeOutlined />}
+                            onClick={() => handleViewDetails(vehicle.id)}
+                        >
+                            Chi tiết
+                        </Button>
+                        <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => handleOpenEditModal(vehicle)}
+                        >
+                            Sửa
+                        </Button>
+                        {vehicle.status.toLowerCase() === 'active' ? (
+                            <Button
+                                size="small"
+                                danger
+                                icon={<StopOutlined />}
+                                onClick={() => handleOpenStatusModal(vehicle)}
+                            >
+                                Vô hiệu
+                            </Button>
+                        ) : vehicle.status.toLowerCase() === 'in_transit' ? (
+                            <Button
+                                size="small"
+                                disabled
+                                icon={<StopOutlined />}
+                                title="Không thể vô hiệu hóa xe đang di chuyển"
+                            >
+                                Đang chạy
+                            </Button>
+                        ) : (
+                            <Button
+                                size="small"
+                                type="primary"
+                                icon={<CheckCircleOutlined />}
+                                onClick={() => handleOpenStatusModal(vehicle)}
+                            >
+                                Kích hoạt
+                            </Button>
+                        )}
+                    </Space>
+                </div>
+            </div>
+        </Card>
+    );
+
+    const renderGroupedVehicles = () => (
+        <div>
+            {nonEmptyGroups.length === 0 && !loading && !isFetching ? (
+                <Empty description="Không tìm thấy phương tiện nào" />
+            ) : (
+                <Collapse defaultActiveKey={nonEmptyGroups.map(g => g.typeId)}>
+                    {nonEmptyGroups.map(group => (
+                        <Panel
+                            key={group.typeId}
+                            header={
+                                <div className="flex items-center">
+                                    <Title level={5} className="m-0 text-blue-700">
+                                        {group.description || group.typeName}
+                                    </Title>
+                                </div>
+                            }
+                            extra={
+                                <Space>
+                                    <Badge count={group.activeCount} color="#22c55e" overflowCount={999} title="Đang hoạt động" />
+                                    <Badge count={group.transitCount} color="#eab308" overflowCount={999} title="Đang di chuyển" />
+                                    <Badge count={group.inactiveCount} color="#6b7280" overflowCount={999} title="Không hoạt động" />
+                                </Space>
+                            }
+                            className="vehicle-type-panel"
+                        >
+                            <Row gutter={[16, 16]} className="equal-height-cards">
+                                {group.vehicles.map(vehicle => (
+                                    <Col xs={24} sm={24} md={8} lg={8} xl={8} key={vehicle.id} className="h-full">
+                                        {renderVehicleCard(vehicle)}
+                                    </Col>
+                                ))}
+                            </Row>
+                        </Panel>
+                    ))}
+                </Collapse>
+            )}
+        </div>
+    );
 
     const renderVehicleTab = () => {
         if (loading || isFetching) {
@@ -544,15 +681,28 @@ const VehiclePage: React.FC = () => {
                 {/* Hiển thị card thống kê cho tất cả các trạng thái xe */}
                 <VehicleStatCards vehicles={vehicles} loading={loading} />
                 
-                <Table
-                    dataSource={filteredVehicles}
-                    columns={columns}
-                    rowKey="id"
-                    pagination={{ pageSize: 10 }}
-                    locale={{
-                        emptyText: <Empty description="Không tìm thấy phương tiện nào" />
-                    }}
-                />
+                <div className="mb-4 flex justify-end">
+                    <Button
+                        type={groupedView ? "primary" : "default"}
+                        onClick={() => setGroupedView(!groupedView)}
+                    >
+                        {groupedView ? "Xem dạng bảng" : "Xem theo nhóm"}
+                    </Button>
+                </div>
+                
+                {groupedView ? (
+                    renderGroupedVehicles()
+                ) : (
+                    <Table
+                        dataSource={filteredVehicles}
+                        columns={columns}
+                        rowKey="id"
+                        pagination={{ pageSize: 10 }}
+                        locale={{
+                            emptyText: <Empty description="Không tìm thấy phương tiện nào" />
+                        }}
+                    />
+                )}
             </div>
         );
     };

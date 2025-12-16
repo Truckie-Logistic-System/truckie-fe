@@ -131,8 +131,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
             >
                 <Radio.Group disabled={mode === 'create'}>
                     <Radio value="ACTIVE">Hoạt động</Radio>
-                    <Radio value="INACTIVE">Không hoạt động</Radio>
-                    <Radio value="IN_TRANSIT">Đang di chuyển</Radio>
+                    <Radio value="INACTIVE">Ngừng hoạt động</Radio>
                 </Radio.Group>
             </Form.Item>
 

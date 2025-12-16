@@ -633,10 +633,13 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                         {seal.sealAttachedImage && (
                             <div className="mt-3 pt-3 border-t border-blue-200">
                                 <p className="text-xs text-gray-500 mb-2">Hình ảnh niêm phong</p>
-                                <img
+                                <Image
                                     src={seal.sealAttachedImage}
                                     alt={`Seal ${seal.sealCode}`}
                                     className="w-full h-24 object-cover rounded"
+                                    preview={{
+                                        mask: 'Xem chi tiết'
+                                    }}
                                 />
                             </div>
                         )}
@@ -773,39 +776,50 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                     </div>
 
                     {/* Images */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {fuel.odometerAtStartUrl && (
-                            <div>
-                                <p className="text-xs text-gray-500 font-medium mb-2">Hình ảnh odometer đầu chuyến</p>
-                                <img
-                                    src={fuel.odometerAtStartUrl}
-                                    alt="Odometer start"
-                                    className="w-full h-32 object-cover rounded border border-gray-200"
-                                />
-                            </div>
-                        )}
-                        {fuel.odometerAtEndUrl && (
-                            <div>
-                                <p className="text-xs text-gray-500 font-medium mb-2">Hình ảnh odometer cuối chuyến</p>
-                                <img
-                                    src={fuel.odometerAtEndUrl}
-                                    alt="Odometer end"
-                                    className="w-full h-32 object-cover rounded border border-gray-200"
-                                />
-                            </div>
-                        )}
-                    </div>
-
-                    {fuel.companyInvoiceImageUrl && (
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium mb-2">Hóa đơn nhiên liệu</p>
-                            <img
-                                src={fuel.companyInvoiceImageUrl}
-                                alt="Company invoice"
-                                className="w-full h-48 object-cover rounded border border-gray-200"
-                            />
+                    <Image.PreviewGroup>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {fuel.odometerAtStartUrl && (
+                                <div>
+                                    <p className="text-xs text-gray-500 font-medium mb-2">Hình ảnh odometer đầu chuyến</p>
+                                    <Image
+                                        src={fuel.odometerAtStartUrl}
+                                        alt="Odometer start"
+                                        className="w-full h-32 object-cover rounded border border-gray-200"
+                                        preview={{
+                                            mask: 'Xem chi tiết'
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            {fuel.odometerAtEndUrl && (
+                                <div>
+                                    <p className="text-xs text-gray-500 font-medium mb-2">Hình ảnh odometer cuối chuyến</p>
+                                    <Image
+                                        src={fuel.odometerAtEndUrl}
+                                        alt="Odometer end"
+                                        className="w-full h-32 object-cover rounded border border-gray-200"
+                                        preview={{
+                                            mask: 'Xem chi tiết'
+                                        }}
+                                    />
+                                </div>
+                            )}
                         </div>
-                    )}
+
+                        {fuel.companyInvoiceImageUrl && (
+                            <div>
+                                <p className="text-xs text-gray-500 font-medium mb-2">Hóa đơn nhiên liệu</p>
+                                <Image
+                                    src={fuel.companyInvoiceImageUrl}
+                                    alt="Company invoice"
+                                    className="w-full h-48 object-cover rounded border border-gray-200"
+                                    preview={{
+                                        mask: 'Xem chi tiết'
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </Image.PreviewGroup>
                 </div>
             </Card>
         );

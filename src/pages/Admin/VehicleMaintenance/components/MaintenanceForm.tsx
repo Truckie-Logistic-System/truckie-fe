@@ -3,6 +3,7 @@ import { Form, Input, Button, DatePicker, InputNumber, Select, Spin, Skeleton, R
 import { useQuery } from '@tanstack/react-query';
 import type { VehicleServiceRecord, Vehicle } from '../../../../models';
 import { maintenanceTypeService } from '../../../../services/maintenance-type';
+import { VehicleStatusTag } from '../../../../components/common';
 import dayjs from 'dayjs';
 
 interface MaintenanceFormProps {
@@ -228,9 +229,7 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                                 <div><span className="font-medium">Năm sản xuất:</span> {selectedVehicle.year}</div>
                                 <div><span className="font-medium">Loại xe:</span> {selectedVehicle.vehicleTypeDescription || 'N/A'}</div>
                                 <div><span className="font-medium">Trạng thái:</span>
-                                    <Tag color={selectedVehicle.status === 'ACTIVE' ? 'green' : 'red'} className="ml-1">
-                                        {selectedVehicle.status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-                                    </Tag>
+                                    <VehicleStatusTag status={selectedVehicle.status} size="small" />
                                 </div>
                             </div>
                         </div>
