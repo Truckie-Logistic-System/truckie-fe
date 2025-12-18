@@ -72,7 +72,7 @@ class AudioContextManager {
         console.log('✅ AudioContext already running');
         this.playPendingSounds();
       }
-    } catch (error) {
+    } catch {
       console.log('⏳ Cannot initialize AudioContext yet, waiting for user interaction');
     }
   }
@@ -336,7 +336,7 @@ const soundPresets = {
   
   // Seal Confirm - Crisp subtle click
   // Click nhẹ, tinh tế
-  seal: [.4,,280,.005,.02,.06,1],
+  seal: [.4,,280,.005,.02,.06,1]
 };
 
 /**

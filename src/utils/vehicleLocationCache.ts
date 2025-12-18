@@ -223,7 +223,7 @@ class VehicleLocationCache {
       const timeout = timeoutMinutes * 60 * 1000;
       
       return (now - lastUpdate) < timeout;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

@@ -129,13 +129,17 @@ const contractService = {
 
       // Fetch optimal and realistic assign results
       try {
-        const assignResponse = await httpClient.get(
-          `/contracts/${contractId}/get-both-optimal-and-realistic-assign-vehicles`
-        );
+        // Use orderId from response data instead of contractId
+        const orderId = response.data?.data?.orderInfo?.id;
+        if (orderId) {
+          const assignResponse = await httpClient.get(
+            `/contracts/${orderId}/get-both-optimal-and-realistic-assign-vehicles`
+          );
 
-        if (assignResponse.data?.success && assignResponse.data?.data) {
-          // Note: Assignment results are now handled directly in the backend API response
-          // The assignResult property contains the vehicle assignment data
+          if (assignResponse.data?.success && assignResponse.data?.data) {
+            // Note: Assignment results are now handled directly in the backend API response
+            // The assignResult property contains the vehicle assignment data
+          }
         }
       } catch (assignError) {
         console.warn(

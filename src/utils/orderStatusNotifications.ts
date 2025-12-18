@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import { playNotificationSound, NotificationSoundType } from './notificationSound';
 import type { OrderStatusChangeMessage } from '../hooks/useOrderStatusTracking';
 
@@ -28,7 +27,7 @@ export const createOrderStatusChangeHandler = (
   const { orderId, refetch, refetchWithReturn, messageApi, onStatusChange, customNotifications, onTabSwitch } = options;
 
   // Enhanced refetch with retry mechanism to handle race conditions
-  const refetchWithRetry = useCallback(async (expectedStatus?: string, statusChange?: OrderStatusChangeMessage) => {
+  const refetchWithRetry = async (expectedStatus?: string, statusChange?: OrderStatusChangeMessage) => {
     const MAX_RETRIES = 3;
     const BASE_DELAY = 500; // Start with 500ms
     let retryCount = 0;
@@ -92,9 +91,9 @@ export const createOrderStatusChangeHandler = (
     };
     
     await attemptRefetch();
-  }, [refetch, refetchWithReturn, messageApi, onTabSwitch]);
+  };
 
-  return useCallback((statusChange: OrderStatusChangeMessage) => {
+  return (statusChange: OrderStatusChangeMessage) => {
     // Check if this status change is for the current order
     if (orderId && statusChange.orderId === orderId) {
       // Enhanced refetch with retry mechanism to handle race conditions
@@ -113,9 +112,8 @@ export const createOrderStatusChangeHandler = (
         // Default notification behavior
         handleDefaultNotification(statusChange, messageApi);
       }
-    } else {
     }
-  }, [orderId, refetch, messageApi, onStatusChange, customNotifications, onTabSwitch, refetchWithRetry]);
+  };
 };
 
 /**
