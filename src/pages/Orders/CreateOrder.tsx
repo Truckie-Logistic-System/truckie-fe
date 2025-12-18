@@ -21,7 +21,7 @@ const { Title, Text } = Typography;
 export default function CreateOrder() {
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const { addresses, orderSizes, categories, loading, error, createOrder } = useOrderCreation();
+  const { addresses, orderSizes, categories, loading, error, createOrder, refetchAddresses } = useOrderCreation();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<any>({
@@ -114,9 +114,8 @@ export default function CreateOrder() {
   }, [currentStep, formValues, form]);
 
   // Refresh addresses after creating/updating
-  // Note: Hook will auto-refetch, but keep this for manual refresh if needed
   const refreshAddresses = async () => {
-    // Hook handles address fetching, no manual refresh needed
+    await refetchAddresses();
   };
 
   // Handle receiver details loaded from suggestion
