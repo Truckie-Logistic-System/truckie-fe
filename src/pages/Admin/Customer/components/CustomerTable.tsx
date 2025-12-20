@@ -10,15 +10,15 @@ import {
     ShopOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { UserModel } from '@/services/user/types';
+import type { CustomerModel } from '@/models/Customer';
 import { UserStatusEnum } from '@/constants/enums';
 import { UserStatusTag } from '@/components/common/tags';
 
 interface CustomerTableProps {
-    data: UserModel[];
+    data: CustomerModel[];
     loading: boolean;
     onViewDetails: (id: string) => void;
-    onStatusChange: (user: UserModel) => void;
+    onStatusChange: (customer: CustomerModel) => void;
     getStatusColor: (status: string) => string;
     getStatusText: (status: string) => string;
 }
@@ -35,7 +35,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
         {
             title: 'Khách hàng',
             key: 'customer',
-            render: (record: UserModel) => (
+            render: (record: CustomerModel) => (
                 <div className="flex items-center">
                     <Avatar
                         src={record.imageUrl}
@@ -53,7 +53,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
         {
             title: 'Thông tin liên hệ',
             key: 'contact',
-            render: (record: UserModel) => (
+            render: (record: CustomerModel) => (
                 <div>
                     <div className="flex items-center mb-1">
                         <MailOutlined className="text-gray-500 mr-2" />
@@ -82,7 +82,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
         {
             title: 'Thao tác',
             key: 'action',
-            render: (record: UserModel) => (
+            render: (record: CustomerModel) => (
                 <Space size="middle">
                     <Button
                         type="primary"
