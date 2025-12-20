@@ -3,9 +3,9 @@ import contractSettingService from "../services/contract/contractSettingService"
 import type { ContractSettingsResponse } from "@/models/Contract";
 
 export interface InsuranceRates {
-  normalRate: number;      // decimal, e.g. 0.00088
-  fragileRate: number;     // decimal, e.g. 0.00165
-  vatRate: number;         // decimal, e.g. 0.1
+  normalRate: number; // decimal, e.g. 0.00088
+  fragileRate: number; // decimal, e.g. 0.00165
+  vatRate: number; // decimal, e.g. 0.1
 }
 
 export const useInsuranceRates = () => {
@@ -19,8 +19,12 @@ export const useInsuranceRates = () => {
 
   const first = data?.data?.[0];
 
-  const normalRatePercent = first?.insuranceRateNormal ?? (first?.insuranceRate ? first.insuranceRate * 100 : 0.088);
-  const fragileRatePercent = first?.insuranceRateFragile ?? (first?.insuranceRate ? first.insuranceRate * 100 : 0.165);
+  const normalRatePercent =
+    first?.insuranceRateNormal ??
+    (first?.insuranceRate ? first.insuranceRate * 100 : 0.088);
+  const fragileRatePercent =
+    first?.insuranceRateFragile ??
+    (first?.insuranceRate ? first.insuranceRate * 100 : 0.165);
   const vatRatePercent = first?.vatRate ?? 10;
 
   const normalRate = normalRatePercent / 100;
