@@ -90,11 +90,13 @@ const DamageResolutionPanel: React.FC<DamageResolutionPanelProps> = ({ issueId, 
     } else {
       // Normal mode: validate based on hasDocuments
       if (hasDocs === true) {
-        fieldsToValidate = ['hasDocuments', 'documentValue', 'damageRate', 'finalCompensation'];
+        // Có chứng từ: chỉ yêu cầu giá trị chứng từ
+        fieldsToValidate = ['hasDocuments', 'documentValue', 'damageRate', 'finalCompensation', 'refundAmount', 'bankName', 'accountNumber', 'accountHolderName'];
       } else if (hasDocs === false) {
-        fieldsToValidate = ['hasDocuments', 'estimatedMarketValue', 'damageRate', 'finalCompensation'];
+        // Không có chứng từ: chỉ yêu cầu giá trị thị trường ước tính
+        fieldsToValidate = ['hasDocuments', 'estimatedMarketValue', 'damageRate', 'finalCompensation', 'refundAmount', 'bankName', 'accountNumber', 'accountHolderName'];
       } else {
-        // hasDocuments not yet selected
+        // Chưa chọn: yêu cầu chọn hasDocuments
         fieldsToValidate = ['hasDocuments'];
       }
     }
@@ -1120,17 +1122,49 @@ const DamageResolutionPanel: React.FC<DamageResolutionPanelProps> = ({ issueId, 
             
             if (!showField) return null;
             
-            const isDocumentField = hasDocs;
-            
-            return (
-              <>
+            // Chỉ hiển thị field tương ứng khi đã chọn hasDocuments
+            if (hasDocs === true) {
+              // Có chứng từ: chỉ hiển thị documentValue
+              return (
+                <>
+                  <Form.Item
+                    name="documentValue"
+                    label="Giá trị theo chứng từ (VNĐ)"
+                    rules={[
+                      { required: true, message: 'Vui lòng nhập giá trị chứng từ' },
+                      { type: 'number', min: 1, message: 'Giá trị chứng từ phải lớn hơn 0' }
+                    ]}
+                  >
+                    <InputNumber
+                      min={1}
+                      style={{ width: '100%' }}
+                      formatter={(value) => {
+                        if (value == null) return '';
+                        return `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                      }}
+                      parser={(value) => {
+                        if (!value || value === '') return undefined;
+                        const parsed = value?.replace(/\$\s?|(,*)/g, '');
+                        return (parsed ? parseInt(parsed, 10) : undefined) as any;
+                      }}
+                      addonAfter="VNĐ"
+                      placeholder="Nhập giá trị theo chứng từ khách cung cấp"
+                    />
+                  </Form.Item>
+                  <Text type="secondary" style={{ display: 'block', marginTop: -16, marginBottom: 16 }}>
+                    Nếu chứng từ thấp hơn khai báo: bồi thường theo chứng từ. Nếu chứng từ cao hơn khai báo: bồi thường tối đa theo giá trị khai báo.
+                  </Text>
+                </>
+              );
+            } else if (hasDocs === false) {
+              // Không có chứng từ: chỉ hiển thị estimatedMarketValue
+              return (
                 <Form.Item
-                  name={isDocumentField ? "documentValue" : "estimatedMarketValue"}
-                  label={isDocumentField ? "Giá trị theo chứng từ (VNĐ)" : "Giá trị thị trường ước tính (VNĐ)"}
-                  dependencies={['hasDocuments', 'isFraud']}
+                  name="estimatedMarketValue"
+                  label="Giá trị thị trường ước tính (VNĐ)"
                   rules={[
-                    { required: true, message: isDocumentField ? 'Vui lòng nhập giá trị chứng từ' : 'Vui lòng nhập giá trị thị trường ước tính' },
-                    { type: 'number', min: 1, message: isDocumentField ? 'Giá trị chứng từ phải lớn hơn 0' : 'Giá trị thị trường phải lớn hơn 0' }
+                    { required: true, message: 'Vui lòng nhập giá trị thị trường ước tính' },
+                    { type: 'number', min: 1, message: 'Giá trị thị trường phải lớn hơn 0' }
                   ]}
                 >
                   <InputNumber
@@ -1146,17 +1180,14 @@ const DamageResolutionPanel: React.FC<DamageResolutionPanelProps> = ({ issueId, 
                       return (parsed ? parseInt(parsed, 10) : undefined) as any;
                     }}
                     addonAfter="VNĐ"
-                    placeholder={isDocumentField ? "Nhập giá trị theo chứng từ khách cung cấp" : "Giá trị ước tính theo thị trường khi không có chứng từ"}
+                    placeholder="Giá trị ước tính theo thị trường khi không có chứng từ"
                   />
                 </Form.Item>
-
-                {isDocumentField && (
-                  <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                    Nếu chứng từ thấp hơn khai báo: bồi thường theo chứng từ. Nếu chứng từ cao hơn khai báo: bồi thường tối đa theo giá trị khai báo.
-                  </Text>
-                )}
-              </>
-            );
+              );
+            }
+            
+            // Chưa chọn hasDocuments: không hiển thị field nào
+            return null;
           }}
         </Form.Item>
 
@@ -1524,7 +1555,6 @@ const DamageResolutionPanel: React.FC<DamageResolutionPanelProps> = ({ issueId, 
             type="primary"
             htmlType="submit"
             loading={submitting}
-            disabled={!isFormValid && !isFraud}
             icon={<SaveOutlined />}
             block
             style={{

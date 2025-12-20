@@ -408,7 +408,7 @@ export interface CustomerOrderDetailItem {
   unit: string;
   description: string;
   status: string;
-  estimatedStartTime: string;
+  estimatedStartTime?: string;
   createdAt: string;
   trackingCode: string;
   orderSize?: {

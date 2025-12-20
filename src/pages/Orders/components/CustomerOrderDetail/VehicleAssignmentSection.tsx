@@ -307,6 +307,12 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                                                         {detail.weightBaseUnit} {detail.unit}
                                                     </span>
                                                 </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm text-gray-600">Giá trị khai báo:</span>
+                                                    <span className="font-semibold text-gray-900">
+                                                        {detail.declaredValue ? `${detail.declaredValue.toLocaleString('vi-VN')} VNĐ` : "Không có"}
+                                                    </span>
+                                                </div>
                                                 <div className="flex justify-between items-start">
                                                     <span className="text-sm text-gray-600">Mô tả:</span>
                                                     <span className="text-sm text-gray-900 text-right max-w-xs">

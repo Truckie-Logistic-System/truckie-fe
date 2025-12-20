@@ -282,6 +282,16 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                                     {detail.unit}
                                   </span>
                                 </div>
+                                {detail.declaredValue && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-gray-500">
+                                      Giá trị KB:
+                                    </span>
+                                    <span className="text-xs font-semibold text-orange-600">
+                                      {detail.declaredValue.toLocaleString('vi-VN')} VNĐ
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>

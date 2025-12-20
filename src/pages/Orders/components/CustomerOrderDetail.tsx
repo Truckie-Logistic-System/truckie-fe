@@ -19,6 +19,7 @@ import {
   EnvironmentOutlined,
   CloseOutlined,
   ExclamationCircleOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../services/order/orderService";
 import { contractService } from "../../../services/contract";
@@ -43,6 +44,7 @@ import ContractSection from "./CustomerOrderDetail/ContractSection";
 import TransactionSection from "./CustomerOrderDetail/TransactionSection";
 import VehicleSuggestionsModal from "./CustomerOrderDetail/VehicleSuggestionsModal";
 import ReturnShippingIssuesSection from "./CustomerOrderDetail/ReturnShippingIssuesSection";
+import OrderEditModal from "./CustomerOrderDetail/OrderEditModal";
 import { issueWebSocket } from "../../../services/websocket/issueWebSocket";
 
 dayjs.extend(utc);
@@ -89,6 +91,7 @@ const CustomerOrderDetail: React.FC = () => {
     null
   );
   const [cancellingOrder, setCancellingOrder] = useState<boolean>(false);
+  const [orderEditModalVisible, setOrderEditModalVisible] = useState<boolean>(false);
 
   // NOTE: Real-time tracking logic is now handled inside RouteMapWithRealTimeTracking
   // to prevent unnecessary re-renders of CustomerOrderDetail parent component
@@ -706,6 +709,15 @@ const CustomerOrderDetail: React.FC = () => {
     !areAllOrderDetailsInFinalStatus(orderData.order.orderDetails);
 
   const checkContractExists = async (orderId: string) => {
+    // Only check contract if order status is beyond PENDING
+    const shouldCheckContract = orderData?.order?.status && 
+      orderData.order.status !== OrderStatusEnum.PENDING;
+    
+    if (!shouldCheckContract) {
+      setHasContract(false);
+      return;
+    }
+
     setCheckingContract(true);
     try {
       const response = await orderService.checkContractByOrderId(orderId);
@@ -872,14 +884,24 @@ const CustomerOrderDetail: React.FC = () => {
           <Title level={3}>Chi tiết đơn hàng {order.orderCode}</Title>
         </div>
         {["PENDING", "PROCESSING", "CONTRACT_DRAFT"].includes(order.status) && (
-          <Button
-            danger
-            icon={<CloseOutlined />}
-            onClick={handleCancelOrder}
-            loading={cancellingOrder}
-          >
-            Hủy đơn hàng
-          </Button>
+          <div className="space-x-2">
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => setOrderEditModalVisible(true)}
+              disabled={!["PENDING", "PROCESSING"].includes(order.status)}
+            >
+              Chỉnh sửa đơn hàng
+            </Button>
+            <Button
+              danger
+              icon={<CloseOutlined />}
+              onClick={handleCancelOrder}
+              loading={cancellingOrder}
+            >
+              Hủy đơn hàng
+            </Button>
+          </div>
         )}
       </div>
 
@@ -1042,6 +1064,22 @@ const CustomerOrderDetail: React.FC = () => {
         creatingContract={creatingContract}
         onCancel={() => setVehicleSuggestionsModalVisible(false)}
         onAccept={handleAcceptVehicleSuggestion}
+      />
+
+      {/* Order Edit Modal */}
+      <OrderEditModal
+        visible={orderEditModalVisible}
+        orderData={orderData?.order}
+        onCancel={() => setOrderEditModalVisible(false)}
+        onSuccess={async () => {
+          // Refresh order data after successful update
+          if (id) {
+            await fetchOrderDetails(id);
+            // Reset package detail tab to first package
+            setActiveDetailTab('0');
+          }
+          setOrderEditModalVisible(false);
+        }}
       />
     </div>
   );

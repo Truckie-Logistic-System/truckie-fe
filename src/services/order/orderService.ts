@@ -23,6 +23,7 @@ import type {
   VehicleSuggestionsResponse,
   BillOfLadingPreviewResponse,
   BothOptimalAndRealisticVehicle,
+  ComprehensiveOrderUpdateRequest,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -714,6 +715,23 @@ const orderService = {
     } catch (error) {
       console.error(`Error fetching recipient tracking for order ${orderCode}:`, error);
       throw handleApiError(error, "Không tìm thấy đơn hàng với mã này");
+    }
+  },
+
+  /**
+   * Comprehensive order update for customers
+   * Updates both order info and order details
+   * Only allowed for orders with status PENDING or PROCESSING
+   * @param updateRequest Comprehensive order update request
+   * @returns Promise with updated order data
+   */
+  updateOrderComprehensive: async (updateRequest: ComprehensiveOrderUpdateRequest): Promise<any> => {
+    try {
+      const response = await httpClient.put('/orders/comprehensive', updateRequest);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error updating order comprehensively:', error);
+      throw handleApiError(error, "Không thể cập nhật đơn hàng");
     }
   },
 };

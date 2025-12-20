@@ -29,27 +29,31 @@ export const useStaffOrderDetail = () => {
       const orderData = await orderService.getOrderForStaffByOrderId(id);
       setOrder(orderData);
 
-      // Fetch contract if exists
-      try {
-        const contractResponse = await orderService.checkContractByOrderId(id);
-        if (contractResponse?.success && contractResponse?.data) {
-          setContract(contractResponse.data);
-          
-          if (contractResponse.data.id) {
-            setLoadingPriceDetails(true);
-            try {
-              const priceResponse = await contractService.getContractPdfData(contractResponse.data.id);
-              if (priceResponse?.success) {
-                setPriceDetails(priceResponse.data?.priceDetails);
+      // Fetch contract if exists (only if order status is beyond PENDING)
+      const shouldCheckContract = orderData?.status && orderData.status !== 'PENDING';
+      
+      if (shouldCheckContract) {
+        try {
+          const contractResponse = await orderService.checkContractByOrderId(id);
+          if (contractResponse?.success && contractResponse?.data) {
+            setContract(contractResponse.data);
+            
+            if (contractResponse.data.id) {
+              setLoadingPriceDetails(true);
+              try {
+                const priceResponse = await contractService.getContractPdfData(contractResponse.data.id);
+                if (priceResponse?.success) {
+                  setPriceDetails(priceResponse.data?.priceDetails);
+                }
+              } catch (priceError) {
+                console.error('[useStaffOrderDetail] Error fetching price details:', priceError);
+              } finally {
+                setLoadingPriceDetails(false);
               }
-            } catch (priceError) {
-              console.error('[useStaffOrderDetail] Error fetching price details:', priceError);
-            } finally {
-              setLoadingPriceDetails(false);
             }
           }
+        } catch (contractError) {
         }
-      } catch (contractError) {
       }
       
       return orderData; // Return the fetched order data for verification

@@ -113,6 +113,7 @@ export interface AssignedDetail {
   weightBaseUnit: number;
   unit: string;
   trackingCode: string;
+  declaredValue?: number;
 }
 export interface VehicleSuggestionsResponse {
   success: boolean;
@@ -166,4 +167,35 @@ export interface BothOptimalAndRealisticVehicleSuggestionsResponse {
 export interface BothOptimalAndRealisticVehicle {
   optimal: VehicleSuggestion[];
   realistic: VehicleSuggestion[];
+}
+
+// Comprehensive Order Update Request Types
+export interface ComprehensiveOrderUpdateRequest {
+  orderId: string;
+  orderInfo: UpdateOrderInfoRequest;
+  orderDetails: UpdateOrderDetailInfoRequest[];
+}
+
+export interface UpdateOrderInfoRequest {
+  notes: string;
+  receiverName: string;
+  receiverPhone: string;
+  receiverIdentity: string;
+  packageDescription: string;
+  estimateStartTime: string;
+  deliveryAddressId: string;
+  pickupAddressId: string;
+  categoryId: string;
+  hasInsurance?: boolean;
+}
+
+export interface UpdateOrderDetailInfoRequest {
+  orderDetailId?: string; // null for new order details
+  weight: number;
+  unit: string;
+  description: string;
+  orderSizeId: string;
+  declaredValue: number;
+  isFragile?: boolean;
+  toDelete?: boolean; // flag to mark for deletion
 }

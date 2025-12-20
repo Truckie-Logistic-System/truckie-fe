@@ -39,7 +39,7 @@ const TransactionSection: React.FC<TransactionProps> = ({
     if (!dateString) return "Chưa có thông tin";
     return dayjs(dateString)
       .tz("Asia/Ho_Chi_Minh")
-      .format("DD/MM/YYYY HH:mm:ss");
+      .format("DD/MM/YYYY");
   };
 
   const getTransactionTypeName = (type?: string) => {

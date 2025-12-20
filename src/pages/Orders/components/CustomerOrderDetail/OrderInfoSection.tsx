@@ -16,6 +16,7 @@ interface OrderInfoSectionProps {
         description?: string;
         status: string;
         trackingCode: string;
+        declaredValue?: number;
     }[];
 }
 
@@ -76,7 +77,10 @@ const OrderInfoSection: React.FC<OrderInfoSectionProps> = ({
                                 <Descriptions.Item label="Trạng thái">
                                     <OrderDetailStatusCard status={detail.status} />
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Mô tả">{detail.description || "Không có mô tả"}</Descriptions.Item>
+                                <Descriptions.Item label="Giá trị khai báo">
+                                    {detail.declaredValue ? `${detail.declaredValue.toLocaleString('vi-VN')} VNĐ` : "Không có"}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Mô tả" span={2}>{detail.description || "Không có mô tả"}</Descriptions.Item>
                             </Descriptions>
                         </div>
                     ))

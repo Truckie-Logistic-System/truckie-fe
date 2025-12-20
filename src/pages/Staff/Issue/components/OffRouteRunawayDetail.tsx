@@ -105,10 +105,14 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
             // Normal mode: validate based on hasDocuments
             // OFF_ROUTE defaults to hasDocuments=true if not yet selected
             if (hasDocs === false) {
-                fieldsToValidate = ['hasDocuments', 'estimatedMarketValue', 'suggestedCompensation'];
+                // Không có chứng từ: chỉ yêu cầu giá trị thị trường ước tính
+                fieldsToValidate = ['hasDocuments', 'estimatedMarketValue', 'suggestedCompensation', 'refundAmount', 'bankName', 'accountNumber', 'accountHolderName'];
+            } else if (hasDocs === true) {
+                // Có chứng từ: chỉ yêu cầu giá trị chứng từ
+                fieldsToValidate = ['hasDocuments', 'documentValue', 'suggestedCompensation', 'refundAmount', 'bankName', 'accountNumber', 'accountHolderName'];
             } else {
-                // hasDocs === true or undefined (default to true for OFF_ROUTE)
-                fieldsToValidate = ['hasDocuments', 'documentValue', 'suggestedCompensation'];
+                // Chưa chọn: yêu cầu chọn hasDocuments
+                fieldsToValidate = ['hasDocuments'];
             }
         }
         
@@ -1436,16 +1440,49 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
 
                             if (isFraud) return null;
 
-                            const isDocumentField = hasDocs !== false; // mặc định coi như có chứng từ khi chưa chọn
-
-                            return (
-                                <>
+                            // Chỉ hiển thị field tương ứng khi đã chọn hasDocuments
+                            if (hasDocs === true) {
+                                // Có chứng từ: chỉ hiển thị documentValue
+                                return (
+                                    <>
+                                        <Form.Item
+                                            name="documentValue"
+                                            label="Giá trị theo chứng từ (VNĐ)"
+                                            rules={[{
+                                                required: true,
+                                                message: 'Vui lòng nhập giá trị chứng từ',
+                                            }]}
+                                        >
+                                            <InputNumber
+                                                min={1}
+                                                style={{ width: '100%' }}
+                                                formatter={(value) => {
+                                                    if (value == null) return '';
+                                                    return `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                                }}
+                                                parser={(value) => {
+                                                    if (!value || value === '') return undefined as any;
+                                                    const parsed = value?.replace(/\$\s?|(,*)/g, '');
+                                                    return (parsed ? parseInt(parsed, 10) : undefined) as any;
+                                                }}
+                                                addonAfter="VNĐ"
+                                                placeholder="Nhập giá trị theo chứng từ khách cung cấp"
+                                            />
+                                        </Form.Item>
+                                        <Text type="secondary" style={{ display: 'block', marginTop: -16, marginBottom: 16 }}>
+                                            Nếu chứng từ thấp hơn khai báo: bồi thường theo chứng từ. Nếu chứng từ cao hơn khai báo: bồi thường tối đa theo giá trị khai báo.
+                                        </Text>
+                                    </>
+                                );
+                            } else if (hasDocs === false) {
+                                // Không có chứng từ: chỉ hiển thị estimatedMarketValue
+                                return (
                                     <Form.Item
-                                        name={isDocumentField ? 'documentValue' : 'estimatedMarketValue'}
-                                        label={isDocumentField ? 'Giá trị theo chứng từ (VNĐ)' : 'Giá trị thị trường ước tính (VNĐ)'}
+                                        name="estimatedMarketValue"
+                                        label="Giá trị thị trường ước tính (VNĐ)"
                                         rules={[{
                                             required: true,
-                                            message: isDocumentField ? 'Vui lòng nhập giá trị chứng từ' : 'Vui lòng nhập giá trị thị trường ước tính',
+                                            message: 'Vui lòng nhập giá trị thị trường ước tính',
                                         }]}
                                     >
                                         <InputNumber
@@ -1461,18 +1498,14 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
                                                 return (parsed ? parseInt(parsed, 10) : undefined) as any;
                                             }}
                                             addonAfter="VNĐ"
-                                            placeholder={isDocumentField ? 'Nhập giá trị theo chứng từ khách cung cấp' : 'Giá trị ước tính theo thị trường khi không có chứng từ'}
-                                            disabled={isFraud}
+                                            placeholder="Giá trị ước tính theo thị trường khi không có chứng từ"
                                         />
                                     </Form.Item>
-
-                                    {isDocumentField && (
-                                        <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                                            Nếu chứng từ thấp hơn khai báo: bồi thường theo chứng từ. Nếu chứng từ cao hơn khai báo: bồi thường tối đa theo giá trị khai báo.
-                                        </Text>
-                                    )}
-                                </>
-                            );
+                                );
+                            }
+                            
+                            // Chưa chọn hasDocuments: không hiển thị field nào
+                            return null;
                         }}
                     </Form.Item>
 
@@ -1794,7 +1827,6 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
                                     type="primary"
                                     htmlType="submit"
                                     loading={submitting || isSaving}
-                                    disabled={!isFormValid && !isFraud}
                                     icon={<SaveOutlined />}
                                     block
                                     style={{

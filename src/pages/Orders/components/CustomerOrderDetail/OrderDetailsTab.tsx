@@ -183,6 +183,21 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                             </div>
                                         </div>
 
+                                        {/* Declared Value */}
+                                        {detail.declaredValue !== undefined && detail.declaredValue !== null && (
+                                            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 p-3 rounded-lg border border-yellow-100">
+                                                <div className="flex items-center mb-2">
+                                                    <TagOutlined className="mr-2 text-yellow-600" />
+                                                    <span className="font-medium text-gray-700 text-sm">Giá trị khai báo</span>
+                                                </div>
+                                                <div className="ml-6">
+                                                    <span className="font-semibold text-yellow-800 text-lg">
+                                                        {detail.declaredValue.toLocaleString('vi-VN')} VNĐ
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Description */}
                                         <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-3 rounded-lg border border-amber-100">
                                             <div className="flex items-center mb-2">

@@ -43,7 +43,7 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
         if (!dateString) return "Chưa có thông tin";
         return dayjs(dateString)
             .tz("Asia/Ho_Chi_Minh")
-            .format("DD/MM/YYYY HH:mm:ss");
+            .format("DD/MM/YYYY");
     };
 
     // Custom function to get map instance - STABLE VERSION
