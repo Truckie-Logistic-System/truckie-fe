@@ -20,12 +20,13 @@ import {
   FileTextOutlined,
   SwapOutlined,
   TagsOutlined,
+  BoxPlotOutlined,
 } from "@ant-design/icons";
 import { icons } from "lucide-react";
 
 const { Sider } = Layout;
 
-type MenuItem = Required<MenuProps>['items'][number];
+type MenuItem = Required<MenuProps>["items"][number];
 
 interface AdminSidebarProps {
   collapsed?: boolean;
@@ -97,7 +98,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
             {
               key: "/admin/vehicle-maintenances",
               icon: <ToolOutlined />,
-              label: <Link to="/admin/vehicle-maintenances">Đăng kiểm & Bảo trì</Link>,
+              label: (
+                <Link to="/admin/vehicle-maintenances">
+                  Đăng kiểm & Bảo trì
+                </Link>
+              ),
             },
             {
               key: "/admin/devices",
@@ -107,12 +112,43 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
             {
               key: "/admin/fuel-consumptions",
               icon: <DashboardOutlined />,
-              label: <Link to="/admin/fuel-consumptions">Tiêu thụ nhiên liệu</Link>,
+              label: (
+                <Link to="/admin/fuel-consumptions">Tiêu thụ nhiên liệu</Link>
+              ),
             },
             {
               key: "/admin/fuel-types",
               icon: <TagsOutlined />,
               label: <Link to="/admin/fuel-types">Loại nhiên liệu</Link>,
+            },
+          ],
+        },
+        {
+          key: "admin-pricing-management",
+          icon: <DollarOutlined />,
+          label: "Cấu hình sản phẩm & giá",
+          children: [
+            {
+              key: "/admin/vehicle-rules",
+              icon: <DollarOutlined />,
+              label: <Link to="/admin/vehicle-rules">Bảng giá</Link>,
+            },
+            {
+              key: "/admin/size-rules",
+              icon: <BoxPlotOutlined />,
+              label: (
+                <Link to="/admin/size-rules">Quy tắc kích thước thùng xe</Link>
+              ),
+            },
+            {
+              key: "/admin/categories",
+              icon: <TagsOutlined />,
+              label: <Link to="/admin/categories">Danh mục hàng</Link>,
+            },
+            {
+              key: "/admin/order-sizes",
+              icon: <TagsOutlined />,
+              label: <Link to="/admin/order-sizes">Kích thước kiện hàng</Link>,
             },
           ],
         },
@@ -156,7 +192,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
             {
               key: "/staff/compensation-assessments",
               icon: <DollarOutlined />,
-              label: <Link to="/staff/compensation-assessments">Thẩm định bồi thường</Link>,
+              label: (
+                <Link to="/staff/compensation-assessments">
+                  Thẩm định bồi thường
+                </Link>
+              ),
             },
             // {
             //   key: "/staff/off-route-events",
@@ -243,12 +283,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       onCollapse={onCollapse}
       className="bg-white shadow-md"
       style={{
-        height: "100vh",
+        height: "calc(100vh - 64px)",
         position: "fixed",
         left: 0,
-        top: 0,
-        paddingTop: 56,
-        zIndex: 100,
+        top: 64,
+        zIndex: 99,
         overflow: "auto",
       }}
       theme="light"
@@ -261,28 +300,6 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
         }
       }}
     >
-      {/* Truckie brand */}
-      <div
-        style={{
-          padding: collapsed ? "0 10px" : "0 16px",
-          textAlign: "left",
-          marginTop: -16,
-          marginBottom: 0,
-        }}
-      >
-        {!collapsed && (
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: "bold",
-              color: "#1890ff",
-            }}
-          >
-            truckie
-          </div>
-        )}
-      </div>
-
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}

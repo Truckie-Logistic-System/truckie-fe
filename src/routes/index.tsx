@@ -1,6 +1,11 @@
 import { createBrowserRouter, Outlet } from "react-router-dom";
 import HomePage from "../pages/Home";
-import { LoginPage, RegisterPage, ForgotPasswordPage, FirstTimePasswordChangePage } from "../pages/Auth";
+import {
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  FirstTimePasswordChangePage,
+} from "../pages/Auth";
 import VerifyOTPPage from "../pages/Auth/VerifyOTP";
 import { PaymentReturn } from "../pages/Payment";
 import RecipientOrderTracking from "../pages/RecipientTracking";
@@ -46,6 +51,7 @@ import AdminVehicleAssignmentDetailPage from "../pages/Admin/VehicleAssignment/V
 import StaffVehicleAssignmentPage from "../pages/Staff/VehicleAssignment";
 import StaffVehicleAssignmentDetailPage from "../pages/Staff/VehicleAssignment/VehicleAssignmentDetail";
 import SizeRulePage from "../pages/Admin/SizeRule";
+import SizeRuleManagement from "../pages/Admin/SizeRule/SizeRuleManagement";
 import StipulationSettings from "../pages/Staff/StipulationSettings";
 import PricingInfoPage from "../pages/PricingInfo";
 import TransactionListPage from "../pages/Staff/Transaction";
@@ -390,6 +396,11 @@ const router = createBrowserRouter([
             path: "vehicle-rules",
             element: <SizeRulePage />,
           },
+          // Admin: Quản lý quy tắc kích thước thùng xe
+          {
+            path: "size-rules",
+            element: <SizeRuleManagement />,
+          },
           // Staff: Quản lý loại hàng
           {
             path: "categories",
@@ -435,10 +446,10 @@ const router = createBrowserRouter([
             path: "profile/:userId",
             element: <ProfilePage />,
           },
-    ],
-  },
+        ],
+      },
 
-  // Route cho admin - yêu cầu đăng nhập và vai trò admin
+      // Route cho admin - yêu cầu đăng nhập và vai trò admin
       {
         path: "/admin",
         element: (
@@ -537,6 +548,10 @@ const router = createBrowserRouter([
           {
             path: "vehicle-rules",
             element: <SizeRulePage />,
+          },
+          {
+            path: "size-rules",
+            element: <SizeRuleManagement />,
           },
           {
             path: "categories",
