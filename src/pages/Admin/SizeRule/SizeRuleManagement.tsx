@@ -102,7 +102,7 @@ const SizeRuleManagement: React.FC = () => {
     if (!sizeRulesData?.data || !activeCategory) return [];
 
     return sizeRulesData.data.filter((rule: SizeRule) => {
-      const ruleCategoryId = rule.category?.id || rule.categoryId;
+      const ruleCategoryId = rule.category?.id;
       return ruleCategoryId === activeCategory;
     });
   }, [sizeRulesData, activeCategory]);
@@ -118,8 +118,7 @@ const SizeRuleManagement: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: (data: SizeRuleRequest) => sizeRuleService.createSizeRule(data),
     onSuccess: (response) => {
-      const successMessage =
-        response?.message || "Tạo quy tắc kích thước thành công!";
+      const successMessage = "Tạo quy tắc kích thước thành công!";
       message.success(successMessage);
       setIsModalOpen(false);
       form.resetFields();
@@ -140,8 +139,14 @@ const SizeRuleManagement: React.FC = () => {
     mutationFn: ({ id, data }: { id: string; data: SizeRuleRequest }) =>
       sizeRuleService.updateSizeRule(id, data as any),
     onSuccess: (response) => {
-      const successMessage = "Thành công";
-      message.success(successMessage);
+      const successMessage = `Cập nhật quy tắc kích thước "${response?.sizeRuleName || 'này'}" thành công!`;
+      message.success({
+        content: successMessage,
+        duration: 3,
+        style: {
+          marginTop: '5vh',
+        },
+      });
       setIsModalOpen(false);
       setEditingRule(null);
       form.resetFields();
@@ -161,8 +166,7 @@ const SizeRuleManagement: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => sizeRuleService.deleteSizeRule(id),
     onSuccess: (response) => {
-      const successMessage =
-        response?.message || "Xóa quy tắc kích thước thành công!";
+      const successMessage = "Xóa quy tắc kích thước thành công!";
       message.success(successMessage);
       queryClient.invalidateQueries({ queryKey: ["sizeRules"] });
       queryClient.invalidateQueries({ queryKey: ["sizeRulesPublic"] });
@@ -198,8 +202,8 @@ const SizeRuleManagement: React.FC = () => {
         dayjs(record.effectiveFrom),
         record.effectiveTo ? dayjs(record.effectiveTo) : null,
       ],
-      vehicleTypeId: record.vehicleTypeEntity?.id || record.vehicleTypeId,
-      categoryId: record.category?.id || record.categoryId,
+      vehicleTypeId: record.vehicleTypeEntity?.id,
+      categoryId: record.category?.id,
       status: record.status,
     });
     setIsModalOpen(true);
@@ -502,7 +506,7 @@ const SizeRuleManagement: React.FC = () => {
             <Input />
           </Form.Item>
 
-          <Divider orientation="left">
+          <Divider>
             <Text strong style={{ color: "#1890ff" }}>
               Trọng lượng (Tấn)
             </Text>
@@ -576,7 +580,7 @@ const SizeRuleManagement: React.FC = () => {
             </Col>
           </Row>
 
-          <Divider orientation="left">
+          <Divider>
             <Text strong style={{ color: "#1890ff" }}>
               Kích thước thùng xe (m)
             </Text>
@@ -773,7 +777,7 @@ const SizeRuleManagement: React.FC = () => {
             </Col>
           </Row>
 
-          <Divider orientation="left">
+          <Divider>
             <Text strong style={{ color: "#1890ff" }}>
               Thời hạn hiệu lực
             </Text>

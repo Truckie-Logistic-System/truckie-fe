@@ -557,6 +557,10 @@ const router = createBrowserRouter([
             path: "categories",
             element: <CategoryManagement />,
           },
+          {
+            path: "order-sizes",
+            element: <OrderSizeManagement />,
+          },
           // Admin: Quản lý tiêu thụ nhiên liệu
           {
             path: "fuel-consumptions",

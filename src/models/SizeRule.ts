@@ -63,6 +63,21 @@ export interface SizeRuleRequest {
     basingPrices?: BasingPrice[];
 }
 
-export interface UpdateSizeRuleRequest extends SizeRuleRequest {
+export interface UpdateSizeRuleRequest {
     id: string;
+    // sizeRuleName is not allowed to be updated
+    minWeight: number;
+    maxWeight: number;
+    minLength: number;
+    maxLength: number;
+    minWidth: number;
+    maxWidth: number;
+    minHeight: number;
+    maxHeight: number;
+    status: string;
+    effectiveFrom: string;
+    effectiveTo?: string;
+    categoryId: string;
+    vehicleTypeId: string;
+    basingPrices?: BasingPrice[];
 }

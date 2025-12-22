@@ -20,6 +20,7 @@ interface BasingPriceFormItem {
     fromKm: number;
     toKm: number;
     basePrice: string;
+    distanceRuleResponse?: DistanceRule;
 }
 
 const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
@@ -52,6 +53,7 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                     fromKm: price.distanceRuleResponse.fromKm,
                     toKm: price.distanceRuleResponse.toKm,
                     basePrice: price.basePrice,
+                    distanceRuleResponse: price.distanceRuleResponse,
                 }));
                 setBasingPrices(formattedPrices);
             }
@@ -62,29 +64,46 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
         try {
             const values = await form.validateFields();
 
-            const formattedValues: SizeRuleRequest = {
-                ...values,
-                effectiveFrom: values.effectiveFrom ? values.effectiveFrom.format('YYYY-MM-DDTHH:mm:ss') : dayjs().format('YYYY-MM-DDTHH:mm:ss'),
-                effectiveTo: values.effectiveTo ? values.effectiveTo.format('YYYY-MM-DDTHH:mm:ss') : null,
-                // Chuyển đổi basingPrices từ form sang định dạng API
-                basingPrices: basingPrices.map(price => ({
-                    id: price.key !== 'new' ? price.key : undefined,
-                    basePrice: price.basePrice,
-                    distanceRuleResponse: {
-                        id: price.key !== 'new' ? price.key : undefined,
-                        fromKm: price.fromKm,
-                        toKm: price.toKm
-                    }
-                }))
-            };
-
             if (isEditing && initialValues) {
+                // For update, don't include sizeRuleName
                 const updateValues: UpdateSizeRuleRequest = {
-                    ...formattedValues,
-                    id: initialValues.id
+                    id: initialValues.id,
+                    minWeight: values.minWeight,
+                    maxWeight: values.maxWeight,
+                    minLength: values.minLength,
+                    maxLength: values.maxLength,
+                    minWidth: values.minWidth,
+                    maxWidth: values.maxWidth,
+                    minHeight: values.minHeight,
+                    maxHeight: values.maxHeight,
+                    status: values.status,
+                    effectiveFrom: values.effectiveFrom ? values.effectiveFrom.format('YYYY-MM-DDTHH:mm:ss') : dayjs().format('YYYY-MM-DDTHH:mm:ss'),
+                    effectiveTo: values.effectiveTo ? values.effectiveTo.format('YYYY-MM-DDTHH:mm:ss') : undefined,
+                    categoryId: values.categoryId,
+                    vehicleTypeId: values.vehicleTypeId,
+                    basingPrices: basingPrices
+                        .filter(price => price.key !== 'new' && price.distanceRuleResponse)
+                        .map(price => ({
+                            id: price.key as string,
+                            basePrice: price.basePrice,
+                            distanceRuleResponse: price.distanceRuleResponse!,
+                        }))
                 };
                 onSubmit(updateValues);
             } else {
+                // For create, include sizeRuleName
+                const formattedValues: SizeRuleRequest = {
+                    ...values,
+                    effectiveFrom: values.effectiveFrom ? values.effectiveFrom.format('YYYY-MM-DDTHH:mm:ss') : dayjs().format('YYYY-MM-DDTHH:mm:ss'),
+                    effectiveTo: values.effectiveTo ? values.effectiveTo.format('YYYY-MM-DDTHH:mm:ss') : undefined,
+                    basingPrices: basingPrices
+                        .filter(price => price.key !== 'new' && price.distanceRuleResponse)
+                        .map(price => ({
+                            id: price.key as string,
+                            basePrice: price.basePrice,
+                            distanceRuleResponse: price.distanceRuleResponse!,
+                        }))
+                };
                 onSubmit(formattedValues);
             }
         } catch (error) {
@@ -199,15 +218,17 @@ const SizeRuleForm: React.FC<SizeRuleFormProps> = ({
                     </Title>
 
                     <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="sizeRuleName"
-                                label="Tên quy tắc"
-                                rules={[{ required: true, message: 'Vui lòng nhập tên quy tắc' }]}
-                            >
-                                <Input placeholder="Nhập tên quy tắc" />
-                            </Form.Item>
-                        </Col>
+                        {!isEditing && (
+                            <Col span={12}>
+                                <Form.Item
+                                    name="sizeRuleName"
+                                    label="Tên quy tắc"
+                                    rules={[{ required: true, message: 'Vui lòng nhập tên quy tắc' }]}
+                                >
+                                    <Input placeholder="Nhập tên quy tắc" />
+                                </Form.Item>
+                            </Col>
+                        )}
                         <Col span={12}>
                             <Form.Item
                                 name="status"
