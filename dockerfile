@@ -3,8 +3,8 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Build arguments - CHỈ NHỮNG GIÁ TRỊ QUAN TRỌNG
-ARG VITE_API_URL=http://14.225.253.8/api/v1
-ARG VITE_API_BASE_URL=http://14.225.253.8
+ARG VITE_API_URL=https://api.truckie.io.vn/api/v1
+ARG VITE_API_BASE_URL=https://api.truckie.io.vn
 ARG VITE_VIET_MAPS_API_KEY
 ARG VITE_OPEN_MAP_API_KEY
 ARG VITE_TRACKASIA_MAP_API_KEY
