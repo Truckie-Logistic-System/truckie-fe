@@ -58,16 +58,15 @@ const orderSizeService = {
 
     /**
      * Update order size
-     * @param id Order size ID
-     * @param orderSizeData Order size data to update
+     * @param orderSizeData Order size data to update (includes id)
      * @returns Promise with updated order size
      */
-    updateOrderSize: async (id: string, orderSizeData: OrderSizeUpdateDto): Promise<OrderSize> => {
+    updateOrderSize: async (orderSizeData: OrderSizeUpdateDto): Promise<OrderSize> => {
         try {
-            const response = await httpClient.put<OrderSizeResponse>(`/order-sizes/${id}`, orderSizeData);
+            const response = await httpClient.put<OrderSizeResponse>('/order-sizes', orderSizeData);
             return response.data.data;
         } catch (error) {
-            console.error(`Error updating order size ${id}:`, error);
+            console.error(`Error updating order size ${orderSizeData.id}:`, error);
             throw handleApiError(error, 'Không thể cập nhật kích thước đơn hàng');
         }
     },
@@ -83,7 +82,20 @@ const orderSizeService = {
             console.error(`Error deleting order size ${id}:`, error);
             throw handleApiError(error, 'Không thể xóa kích thước đơn hàng');
         }
+    },
+
+    /**
+     * Activate order size
+     * @param id Order size ID
+     */
+    activateOrderSize: async (id: string): Promise<void> => {
+        try {
+            await httpClient.put(`/order-sizes/${id}/active`);
+        } catch (error) {
+            console.error(`Error activating order size ${id}:`, error);
+            throw handleApiError(error, 'Không thể kích hoạt kích thước đơn hàng');
+        }
     }
 };
 
-export default orderSizeService; 
+export default orderSizeService;

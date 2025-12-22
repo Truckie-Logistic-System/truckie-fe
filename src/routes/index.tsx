@@ -34,6 +34,7 @@ import StaffDetail from "../pages/Admin/Staff/StaffDetail";
 import StaffRegister from "../pages/Admin/Staff/StaffRegister";
 import DeviceManagement from "../pages/Admin/Device";
 import CategoryManagement from "../pages/Admin/Category";
+import OrderSizeManagement from "../pages/Admin/OrderSizes";
 import VehiclePage from "../pages/Admin/Vehicle";
 import VehicleDetailPage from "../pages/Admin/Vehicle/VehicleDetail";
 import VehicleMaintenancePage from "../pages/Admin/VehicleMaintenance";
@@ -393,6 +394,11 @@ const router = createBrowserRouter([
           {
             path: "categories",
             element: <CategoryManagement />,
+          },
+          // Staff: Quản lý kích thước kiện hàng
+          {
+            path: "order-sizes",
+            element: <OrderSizeManagement />,
           },
           // Staff: Quản lý hợp đồng
           {

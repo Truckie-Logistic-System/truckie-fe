@@ -1,9 +1,5 @@
 export interface OrderSize {
     id: string;
-    name: string; // Thêm thuộc tính name
-    price: number; // Thêm thuộc tính price
-    minWeight: number;
-    maxWeight: number;
     minLength: number;
     maxLength: number;
     minHeight: number;
@@ -15,8 +11,6 @@ export interface OrderSize {
 }
 
 export interface OrderSizeCreateDto {
-    minWeight: number;
-    maxWeight: number;
     minLength: number;
     maxLength: number;
     minHeight: number;
@@ -27,8 +21,7 @@ export interface OrderSizeCreateDto {
 }
 
 export interface OrderSizeUpdateDto {
-    minWeight?: number;
-    maxWeight?: number;
+    id: string;
     minLength?: number;
     maxLength?: number;
     minHeight?: number;
@@ -36,5 +29,4 @@ export interface OrderSizeUpdateDto {
     minWidth?: number;
     maxWidth?: number;
     description?: string;
-    status?: string;
-} 
+}

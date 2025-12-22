@@ -173,7 +173,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
         {
           key: "staff-pricing-management",
           icon: <DollarOutlined />,
-          label: "Bảng giá vận chuyển",
+          label: "Cấu hình sản phẩm & giá",
           children: [
             {
               key: "/staff/vehicle-rules",
@@ -184,6 +184,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
               key: "/staff/categories",
               icon: <TagsOutlined />,
               label: <Link to="/staff/categories">Danh mục hàng</Link>,
+            },
+            {
+              key: "/staff/order-sizes",
+              icon: <TagsOutlined />,
+              label: <Link to="/staff/order-sizes">Kích thước kiện hàng</Link>,
             },
           ],
         },
