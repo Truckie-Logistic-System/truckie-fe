@@ -640,7 +640,7 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
           {/* Display adjusted value if enabled */}
           {customization.hasAdjustedValue && adjustedValue > 0 && (
             <p style={{ marginBottom: "12pt" }}>
-              <strong>Giá trị điều chỉnh (trợ giá):</strong> <strong>{formatCurrency(adjustedValue)}</strong>
+              <strong>Giá trị điều chỉnh:</strong> <strong>{formatCurrency(adjustedValue)}</strong>
             </p>
           )}
 

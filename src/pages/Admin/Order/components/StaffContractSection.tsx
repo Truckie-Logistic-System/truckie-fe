@@ -1301,7 +1301,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           </Form.Item>
 
           <Form.Item
-            label="Giá trị điều chỉnh (trợ giá)"
+            label="Giá trị điều chỉnh"
             name="adjustedValue"
             tooltip="Giá trị điều chỉnh sẽ thay thế tổng giá trị hợp đồng nếu lớn hơn 0"
             initialValue={0}
@@ -1431,7 +1431,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           </Form.Item>
 
           <Form.Item
-            label="Giá trị điều chỉnh (trợ giá)"
+            label="Giá trị điều chỉnh"
             name="adjustedValue"
             tooltip="Giá trị điều chỉnh sẽ thay thế tổng giá trị hợp đồng nếu lớn hơn 0"
             initialValue={0}

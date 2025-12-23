@@ -478,7 +478,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                 <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
                   <div className="flex items-center mb-2">
                     <WarningOutlined className="text-orange-600 mr-2" />
-                    <Text strong className="text-orange-700">Mức bồi thường tối đa</Text>
+                    <Text strong className="text-orange-700">Mức bồi thường tối đa ước tính cho giá trị hàng hóa</Text>
                   </div>
                   <Text className="text-xl font-bold text-orange-800">
                     {formatCurrency(insuranceInfo.totalValue)}

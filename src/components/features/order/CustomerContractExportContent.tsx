@@ -529,7 +529,7 @@ const CustomerContractExportContent: React.FC<CustomerContractExportContentProps
           {adjustedValue > 0 && (
             <div className="adjusted-value">
               <strong>
-                Giá trị điều chỉnh (trợ giá): {formatCurrency(adjustedValue)}
+                Giá trị điều chỉnh: {formatCurrency(adjustedValue)}
               </strong>
             </div>
           )}
