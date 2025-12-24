@@ -54,7 +54,19 @@ const AddressModal: React.FC<AddressModalProps> = ({
     const [useTrackAsia, setUseTrackAsia] = useState(false); // Default to false now
     const [useVietMap, setUseVietMap] = useState(true); // Default to true
     const [isFormValid, setIsFormValid] = useState(false);
+    const [isOutsideHCMC, setIsOutsideHCMC] = useState(false); // Validate if address is outside HCMC
     const { message } = App.useApp();
+
+    // Helper function to check if province is Ho Chi Minh City
+    const isHoChiMinhCity = (provinceName: string | undefined | null): boolean => {
+        if (!provinceName) return false;
+        const normalizedProvince = provinceName.toLowerCase().trim();
+        return normalizedProvince.includes('hồ chí minh') || 
+               normalizedProvince.includes('ho chi minh') ||
+               normalizedProvince.includes('hcm') ||
+               normalizedProvince === 'tp hcm' ||
+               normalizedProvince === 'tp.hcm';
+    };
 
     // Monitor form fields to check if the form is valid
     const formValues = Form.useWatch([], form);
@@ -63,6 +75,17 @@ const AddressModal: React.FC<AddressModalProps> = ({
         form.validateFields({ validateOnly: true })
             .then(() => setIsFormValid(true))
             .catch(() => setIsFormValid(false));
+    }, [formValues, form]);
+
+    // Monitor province field to check if address is outside HCMC
+    useEffect(() => {
+        const province = form.getFieldValue('province');
+        if (province) {
+            const isValidLocation = isHoChiMinhCity(province);
+            setIsOutsideHCMC(!isValidLocation);
+        } else {
+            setIsOutsideHCMC(false);
+        }
     }, [formValues, form]);
 
     // TrackAsia states
@@ -162,6 +185,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
         setSelectedPlace(null);
         setSelectedVietMapPlace(null);
         setMapLocation(null);
+        setIsOutsideHCMC(false); // Reset validation state when modal opens
 
         // Đặt lại chế độ nhập liệu dựa trên trạng thái VietMap/TrackAsia và dữ liệu tỉnh/thành phố
         if (useVietMap || useTrackAsia) {
@@ -597,6 +621,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
         form.resetFields();
         setSelectedPlace(null);
         setMapLocation(null);
+        setIsOutsideHCMC(false); // Reset validation state when modal closes
         onCancel();
     };
 
@@ -654,7 +679,7 @@ const AddressModal: React.FC<AddressModalProps> = ({
             className="address-modal"
             okButtonProps={{ 
                 className: 'rounded-md',
-                disabled: !isFormValid 
+                disabled: !isFormValid || isOutsideHCMC 
             }}
             cancelButtonProps={{ className: 'rounded-md border-gray-300 hover:border-gray-400' }}
             bodyStyle={{ paddingTop: '1rem' }}
@@ -692,6 +717,16 @@ const AddressModal: React.FC<AddressModalProps> = ({
                                 Thử lại
                             </Button>
                         }
+                    />
+                )}
+
+                {isOutsideHCMC && (
+                    <Alert
+                        message="Địa chỉ nằm ngoài Thành phố Hồ Chí Minh"
+                        description="Hiện tại hệ thống chỉ hỗ trợ giao hàng trong phạm vi Thành phố Hồ Chí Minh. Vui lòng chọn địa chỉ khác."
+                        type="error"
+                        showIcon
+                        className="mb-6 rounded-md shadow-sm"
                     />
                 )}
 
@@ -939,6 +974,13 @@ const AddressModal: React.FC<AddressModalProps> = ({
                                         <VietMapMap
                                             mapLocation={mapLocation}
                                             onLocationChange={handleLocationChange}
+                                            markers={mapLocation ? [{ 
+                                                lat: mapLocation.lat, 
+                                                lng: mapLocation.lng, 
+                                                address: mapLocation.address,
+                                                name: 'Vị trí đã chọn',
+                                                type: 'delivery' as const
+                                            }] : []}
                                         />
                                     ) : (
                                         <AddressMap

@@ -477,7 +477,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           </thead>
           <tbody>
             {(() => {
-              // Group steps by sizeRuleName to use rowSpan for vehicle type columns
+              // Group steps by sizeRuleName
               const groupedSteps: { [key: string]: typeof contractData.priceDetails.steps } = {};
               contractData.priceDetails.steps.forEach((step) => {
                 const key = step.sizeRuleName;
@@ -489,24 +489,37 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
 
               const rows: React.ReactNode[] = [];
               Object.entries(groupedSteps).forEach(([sizeRuleName, steps]) => {
-                steps.forEach((step, stepIndex) => {
+                // Find unique price tiers (by distanceRange + unitPrice)
+                const uniqueTiers: { [key: string]: typeof contractData.priceDetails.steps[0] } = {};
+                steps.forEach((step) => {
+                  const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                  if (!uniqueTiers[tierKey]) {
+                    uniqueTiers[tierKey] = step;
+                  }
+                });
+                
+                const tiersArray = Object.values(uniqueTiers);
+                const numUniqueTiers = tiersArray.length;
+                const numVehicles = steps.length / numUniqueTiers;
+                
+                tiersArray.forEach((tier, tierIndex) => {
                   rows.push(
-                    <tr key={`${sizeRuleName}-${stepIndex}`}>
+                    <tr key={`${sizeRuleName}-${tierIndex}`}>
                       {/* Only render vehicle type and count on first row of each group */}
-                      {stepIndex === 0 && (
+                      {tierIndex === 0 && (
                         <>
-                          <td rowSpan={steps.length} style={{ verticalAlign: 'middle' }}>
+                          <td rowSpan={numUniqueTiers} style={{ verticalAlign: 'middle' }}>
                             {sizeRuleName}
                           </td>
-                          <td rowSpan={steps.length} style={{ verticalAlign: 'middle', textAlign: 'center' }}>
-                            {step.numOfVehicles}
+                          <td rowSpan={numUniqueTiers} style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                            {numVehicles}
                           </td>
                         </>
                       )}
-                      <td>{step.distanceRange}</td>
-                      <td>{formatCurrency(step.unitPrice)}</td>
-                      <td>{step.appliedKm.toFixed(2)}</td>
-                      <td>{formatCurrency(step.subtotal)}</td>
+                      <td>{tier.distanceRange}</td>
+                      <td>{formatCurrency(tier.unitPrice)}</td>
+                      <td>{tier.appliedKm.toFixed(2)}</td>
+                      <td>{formatCurrency(tier.subtotal)}</td>
                     </tr>
                   );
                 });
@@ -522,59 +535,123 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             <strong>3.1. Chi phí vận chuyển:</strong>
           </p>
           
-          {/* Base transport calculation - grouped by vehicle type with detailed breakdown */}
+          {/* Base transport calculation - show each vehicle separately */}
           <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
-            a) Cước vận chuyển cơ bản theo quãng đường {contractData.distanceKm.toFixed(2)} km:
+            a) Cước vận chuyển cơ bản theo quãng đường {(() => {
+              // Calculate actual distance (unique price tiers only, not multiplied by vehicles)
+              const groupedSteps: { [key: string]: typeof contractData.priceDetails.steps } = {};
+              contractData.priceDetails.steps.forEach((step) => {
+                const key = step.sizeRuleName;
+                if (!groupedSteps[key]) {
+                  groupedSteps[key] = [];
+                }
+                groupedSteps[key].push(step);
+              });
+              
+              const firstGroup = Object.values(groupedSteps)[0] || [];
+              const uniqueTiers: { [key: string]: typeof contractData.priceDetails.steps[0] } = {};
+              firstGroup.forEach((step) => {
+                const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                if (!uniqueTiers[tierKey]) {
+                  uniqueTiers[tierKey] = step;
+                }
+              });
+              
+              const actualDistance = Object.values(uniqueTiers).reduce((sum, step) => sum + step.appliedKm, 0);
+              return actualDistance.toFixed(2);
+            })()} km:
           </p>
           {(() => {
-            // Group steps by sizeRuleName to show detailed breakdown and totals per vehicle type
+            // Group steps by sizeRuleName
             const groupedSteps: {
-              [key: string]: { steps: typeof contractData.priceDetails.steps; total: number; vehicleCount: number };
+              [key: string]: { steps: typeof contractData.priceDetails.steps; };
             } = {};
 
             contractData.priceDetails.steps.forEach((step) => {
               const key = step.sizeRuleName;
               if (!groupedSteps[key]) {
-                groupedSteps[key] = { steps: [], total: 0, vehicleCount: step.numOfVehicles };
+                groupedSteps[key] = { steps: [] };
               }
               groupedSteps[key].steps.push(step);
-              groupedSteps[key].total += step.subtotal;
-              // Giả định numOfVehicles là số xe cố định theo loại, không cộng dồn theo từng rule
-              groupedSteps[key].vehicleCount = step.numOfVehicles;
             });
 
-            return Object.entries(groupedSteps).map(([sizeRuleName, data]) => (
-              <p
-                key={sizeRuleName}
-                style={{ marginLeft: "40px", marginBottom: "4px" }}
-              >
-                - {sizeRuleName} ({data.vehicleCount} xe):{" "}
-                {data.steps.map((step, idx) => (
-                  <span key={`${sizeRuleName}-detail-${idx}`}>
-                    {idx > 0 && " + "}
-                    ({formatCurrency(step.unitPrice)}/km × {step.appliedKm.toFixed(2)} km)
-                  </span>
-                ))}
-                {" = "}
-                <strong>{formatCurrency(data.total)}</strong>
-              </p>
-            ));
+            let globalVehicleIndex = 0;
+            const vehicleElements: React.ReactNode[] = [];
+            
+            Object.entries(groupedSteps).forEach(([sizeRuleName, data]) => {
+              // Find unique (distanceRange, unitPrice) combinations
+              const uniqueTiers: { [key: string]: typeof contractData.priceDetails.steps[0] } = {};
+              data.steps.forEach((step) => {
+                const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                if (!uniqueTiers[tierKey]) {
+                  uniqueTiers[tierKey] = step;
+                }
+              });
+              
+              const numUniqueTiers = Object.keys(uniqueTiers).length;
+              const numVehicles = data.steps.length / numUniqueTiers;
+              const tiersPerVehicle = Object.values(uniqueTiers);
+              const costPerVehicle = tiersPerVehicle.reduce((sum, step) => sum + step.subtotal, 0);
+              
+              for (let i = 0; i < numVehicles; i++) {
+                globalVehicleIndex++;
+                vehicleElements.push(
+                  <p
+                    key={`vehicle-${globalVehicleIndex}`}
+                    style={{ marginLeft: "40px", marginBottom: "4px" }}
+                  >
+                    - Xe {globalVehicleIndex} ({sizeRuleName}):{" "}
+                    {tiersPerVehicle.map((step, idx) => (
+                      <span key={`tier-${idx}`}>
+                        {idx > 0 && " + "}
+                        ({formatCurrency(step.unitPrice)}/km × {step.appliedKm.toFixed(2)} km)
+                      </span>
+                    ))}
+                    {" = "}
+                    <strong>{formatCurrency(costPerVehicle)}</strong>
+                  </p>
+                );
+              }
+            });
+            
+            return vehicleElements;
           })()}
 
           {(() => {
-            // Tính tổng theo từng loại xe để hiển thị công thức cộng rõ ràng
-            const groupedTotals: { [key: string]: number } = {};
+            // Calculate per-vehicle costs for the total formula
+            const groupedSteps: { [key: string]: typeof contractData.priceDetails.steps } = {};
             contractData.priceDetails.steps.forEach((step) => {
               const key = step.sizeRuleName;
-              groupedTotals[key] = (groupedTotals[key] || 0) + step.subtotal;
+              if (!groupedSteps[key]) {
+                groupedSteps[key] = [];
+              }
+              groupedSteps[key].push(step);
             });
 
-            const perVehicleTotals = Object.values(groupedTotals);
-            const basicTotal = perVehicleTotals.reduce((sum, val) => sum + val, 0);
+            const vehicleCosts: number[] = [];
+            Object.values(groupedSteps).forEach((steps) => {
+              const uniqueTiers: { [key: string]: typeof contractData.priceDetails.steps[0] } = {};
+              steps.forEach((step) => {
+                const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                if (!uniqueTiers[tierKey]) {
+                  uniqueTiers[tierKey] = step;
+                }
+              });
+              
+              const numUniqueTiers = Object.keys(uniqueTiers).length;
+              const numVehicles = steps.length / numUniqueTiers;
+              const costPerVehicle = Object.values(uniqueTiers).reduce((sum, step) => sum + step.subtotal, 0);
+              
+              for (let i = 0; i < numVehicles; i++) {
+                vehicleCosts.push(costPerVehicle);
+              }
+            });
+            
+            const basicTotal = vehicleCosts.reduce((sum, val) => sum + val, 0);
 
             return (
               <p style={{ marginLeft: "40px", marginBottom: "8px" }}>
-                Tổng cước cơ bản: {perVehicleTotals.map((val, idx) => (
+                Tổng cước cơ bản: {vehicleCosts.map((val, idx) => (
                   <span key={idx}>
                     {idx > 0 && " + "}
                     {formatCurrency(val)}
@@ -591,27 +668,30 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             b) Hệ số danh mục hàng hóa ({contractData.orderInfo.category.description}): × {contractData.priceDetails.categoryMultiplier}
           </p>
 
-          {/* Category extra fee */}
+          {/* Category extra fee - applied once per order */}
           {contractData.priceDetails.categoryExtraFee > 0 && (
             <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
               c) Phụ thu danh mục ({contractData.orderInfo.category.description}): + <strong>{formatCurrency(contractData.priceDetails.categoryExtraFee)}</strong>
             </p>
           )}
 
-          {/* Promotion discount */}
-          {contractData.priceDetails.promotionDiscount > 0 && (
-            <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
-              d) Giảm giá khuyến mãi: - <strong>{formatCurrency(contractData.priceDetails.promotionDiscount)}</strong>
-            </p>
-          )}
+          {/* Note: No promotionDiscount - adjustedValue replaces grandTotal if set */}
 
-          {/* Transport subtotal */}
-          <p style={{ marginLeft: "20px", marginBottom: "16px", paddingTop: "8px", borderTop: "1px dashed #000" }}>
-            <strong>Tổng chi phí vận chuyển (A):</strong> {formatCurrency(contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0))} × {contractData.priceDetails.categoryMultiplier}
-            {contractData.priceDetails.categoryExtraFee > 0 && ` + ${formatCurrency(contractData.priceDetails.categoryExtraFee)}`}
-            {contractData.priceDetails.promotionDiscount > 0 && ` - ${formatCurrency(contractData.priceDetails.promotionDiscount)}`}
-            {" = "}<strong style={{ fontSize: "13px" }}>{formatCurrency(contractData.priceDetails.finalTotal)}</strong>
-          </p>
+          {/* Transport subtotal - USE API VALUES */}
+          {(() => {
+            // Display formula components from API data
+            const baseTotal = contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0);
+            // Use API finalTotal (transport cost A) to ensure consistency
+            const transportTotal = contractData.priceDetails.finalTotal || 0;
+            
+            return (
+              <p style={{ marginLeft: "20px", marginBottom: "16px", paddingTop: "8px", borderTop: "1px dashed #000" }}>
+                <strong>Tổng chi phí vận chuyển (A):</strong> {formatCurrency(baseTotal)} × {contractData.priceDetails.categoryMultiplier}
+                {contractData.priceDetails.categoryExtraFee > 0 && ` + ${formatCurrency(contractData.priceDetails.categoryExtraFee)}`}
+                {" = "}<strong style={{ fontSize: "13px" }}>{formatCurrency(transportTotal)}</strong>
+              </p>
+            );
+          })()}
 
           {/* Insurance Section */}
           {contractData.priceDetails.hasInsurance && (
@@ -641,21 +721,34 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             </p>
           )}
 
-          {/* Grand Total */}
-          <p style={{ 
-            marginTop: "16px", 
-            paddingTop: "12px", 
-            borderTop: "2px solid #000",
-            fontSize: "14px"
-          }}>
-            <strong>3.3. TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B):</strong>{" "}
-            <strong style={{ fontSize: "16px", textDecoration: "underline" }}>
-              {formatCurrency(contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal)}
-            </strong>
-            <span style={{ marginLeft: "8px" }}>
-              (Bằng chữ: {numberToVietnameseWords(contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal)})
-            </span>
-          </p>
+          {/* Grand Total - USE API VALUES */}
+          {(() => {
+            // Display formula components from API data
+            const baseTotal = contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0);
+            // Use API values to ensure consistency
+            const transportTotal = contractData.priceDetails.finalTotal || 0;
+            const insuranceTotal = contractData.priceDetails.hasInsurance ? (contractData.priceDetails.insuranceFee || 0) : 0;
+            // Use API grandTotal
+            const grandTotal = contractData.priceDetails.grandTotal || 0;
+            
+            return (
+              <p style={{ 
+                marginTop: "16px", 
+                paddingTop: "12px", 
+                borderTop: "2px solid #000",
+                fontSize: "14px"
+              }}>
+                <strong>3.3. TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B):</strong>{" "}
+                {formatCurrency(transportTotal)} + {formatCurrency(insuranceTotal)} = {" "}
+                <strong style={{ fontSize: "16px", textDecoration: "underline" }}>
+                  {formatCurrency(grandTotal)}
+                </strong>
+                <span style={{ marginLeft: "8px" }}>
+                  (Bằng chữ: {numberToVietnameseWords(grandTotal)})
+                </span>
+              </p>
+            );
+          })()}
         </div>
 
         <div style={{ marginTop: "20px" }}>

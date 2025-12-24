@@ -23,7 +23,7 @@ export interface OffRouteEvent {
     resolvedAt?: string;
     resolvedReason?: string;
     // Calculated fields
-    offRouteDurationMinutes: number;
+    offRouteDurationSeconds: number;
     // Nested vehicle assignment for driver info
     vehicleAssignment?: {
         id: string;

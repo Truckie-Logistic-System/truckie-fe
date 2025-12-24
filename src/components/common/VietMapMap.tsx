@@ -849,6 +849,9 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     useEffect(() => {
         if (!mapRef.current || !mapLoaded || !showRouteLines || routeSegments.length === 0) return;
 
+        // Flag to track if this effect has been superseded
+        let isCancelled = false;
+
         // Hủy animation cũ nếu có
         if (animationRef.current !== null) {
             cancelAnimationFrame(animationRef.current);
@@ -866,7 +869,10 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
         setActivePopupIndex(null);
 
         // Đợi một chút để map đã render xong các markers
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
+            // Guard: Check if this effect has been superseded by a newer one
+            if (isCancelled || !mapRef.current) return;
+            
             if (animateRoute && routeSegments.length > 0) {
                 // Bắt đầu animation với segment đầu tiên
                 setIsAnimating(true);
@@ -875,7 +881,16 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 );
             } else {
                 // Hiển thị tất cả route không có animation
+                // Guard: Check mapRef.current is still valid inside timeout
+                if (!mapRef.current) return;
+                
                 routeSegments.forEach((segment, index) => {
+                    // Skip segments with invalid or empty path
+                    if (!segment.path || !Array.isArray(segment.path) || segment.path.length < 2) {
+                        console.warn(`[VietMapMap] Skipping segment ${index} - invalid path:`, segment.path?.length || 0);
+                        return;
+                    }
+                    
                     const sourceId = `route-source-${index}`;
                     const layerId = `route-layer-${index}`;
 
@@ -962,6 +977,10 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
         }, 100);
 
         return () => {
+            // Mark this effect as cancelled so pending timeout won't render
+            isCancelled = true;
+            clearTimeout(timeoutId);
+            
             // Hủy animation khi unmount hoặc khi routeSegments thay đổi
             if (animationRef.current !== null) {
                 cancelAnimationFrame(animationRef.current);

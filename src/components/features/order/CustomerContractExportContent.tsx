@@ -484,16 +484,7 @@ const CustomerContractExportContent: React.FC<CustomerContractExportContentProps
             <span>{contractData.priceDetails.categoryMultiplier}</span>
           </div>
 
-          <div className="price-divider">
-            <div className="price-row">
-              <span>
-                <strong>Giảm giá khuyến mãi:</strong>
-              </span>
-              <span style={{ fontWeight: "bold" }}>
-                -{formatCurrency(contractData.priceDetails.promotionDiscount)}
-              </span>
-            </div>
-          </div>
+          {/* Note: No promotionDiscount - adjustedValue replaces grandTotal if set */}
 
           {/* VAT as separate row in price table - before total */}
           {contractSettings?.vatRate && (

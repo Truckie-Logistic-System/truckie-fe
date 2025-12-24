@@ -148,7 +148,7 @@ const ContactConfirmationModal: React.FC<ContactConfirmationModalProps> = ({
                             <Space>
                                 <ClockCircleOutlined style={{ color: '#fa8c16' }} />
                                 <Text type="secondary">Thời gian lệch:</Text>
-                                <Text strong>{offRouteEvent.offRouteDurationMinutes} phút</Text>
+                                <Text strong>{offRouteEvent.offRouteDurationSeconds} giây</Text>
                             </Space>
                         </Col>
                         <Col span={12}>

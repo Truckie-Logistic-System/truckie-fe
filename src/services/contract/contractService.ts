@@ -207,6 +207,7 @@ const contractService = {
     adjustedValue: number;
     description: string;
     customDepositPercent?: number | null;
+    priceDetailsSnapshot?: string | null;
   }) => {
     try {
       const response = await httpClient.post(

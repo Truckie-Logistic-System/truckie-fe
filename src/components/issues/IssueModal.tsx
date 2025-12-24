@@ -32,6 +32,8 @@ const IssueModal: React.FC = () => {
 
   // Debug log to check issue data
   console.log('IssueModal - newIssueForModal data:', newIssueForModal);
+  console.log('IssueModal - issueCategory:', newIssueForModal.issueCategory);
+  console.log('IssueModal - issueImages:', newIssueForModal.issueImages);
   return (
     <Modal
       open={!!newIssueForModal}

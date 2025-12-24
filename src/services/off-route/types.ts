@@ -14,7 +14,7 @@ export interface OffRouteWarningPayload {
   offRouteEventId: string;
   vehicleAssignmentId: string;
   orderId: string;
-  offRouteDurationMinutes: number;
+  offRouteDurationSeconds: number;
   lastKnownLocation: LocationInfo;
   driverName: string;
   driverPhone: string;
@@ -104,7 +104,7 @@ export interface PackageInfo {
 export interface OffRouteEventDetail {
   id: string;
   warningStatus: string;
-  offRouteDurationMinutes: number;
+  offRouteDurationSeconds: number;
   offRouteStartTime: string;
   canContactDriver?: boolean;
   contactNotes?: string;

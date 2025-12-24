@@ -17,7 +17,7 @@ const InsuranceSelectionCard: React.FC<InsuranceSelectionCardProps> = ({
 }) => {
   const [selectedOption, setSelectedOption] = useState<boolean>(true);
   const form = Form.useFormInstance();
-  const { rates, normalRatePercent, fragileRatePercent } = useInsuranceRates();
+  const { rates, normalRatePercent, fragileRatePercent, normalRatePercentBase, fragileRatePercentBase, vatRatePercent } = useInsuranceRates();
   
   // Lấy giá trị thực tế từ form để kiểm tra validation
   const categoryId = Form.useWatch('categoryId', form);
@@ -43,8 +43,10 @@ const InsuranceSelectionCard: React.FC<InsuranceSelectionCardProps> = ({
   // Kiểm tra hàng dễ vỡ - sử dụng enum-based detection
   const isFragile = isFragileCategory(categoryName);
 
-  // Tính phí bảo hiểm dự kiến - chỉ khi có đủ thông tin
-  const insuranceRate = isFragile ? rates.fragileRate : rates.normalRate; // Đã bao gồm VAT 10%
+  // Tính phí bảo hiểm dự kiến - rates đã bao gồm VAT
+  const insuranceRate = isFragile ? rates.fragileRate : rates.normalRate; // Already includes VAT
+  const insuranceRatePercent = isFragile ? fragileRatePercent : normalRatePercent; // Already includes VAT
+  const baseRatePercent = isFragile ? fragileRatePercentBase : normalRatePercentBase; // Without VAT
   const estimatedInsuranceFee = canShowPricing ? Math.round(totalDeclaredValue * insuranceRate) : 0;
 
   // Bảng so sánh 4 trường hợp
@@ -211,14 +213,22 @@ const InsuranceSelectionCard: React.FC<InsuranceSelectionCardProps> = ({
                   </Text>
                 </Space>
                 <div>
-                  <Text type="secondary" style={{ fontSize: 13 }}>Phí bảo hiểm (đã VAT 10%): </Text>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    Tỷ lệ bảo hiểm cho {isFragile ? "hàng dễ vỡ" : "hàng thường"} (đã bao gồm VAT):{" "}
+                  </Text>
                   <Text strong style={{ color: "#1890ff", fontSize: 13 }}>
-                    {isFragile ? `${fragileRatePercent.toFixed(3)}%` : `${normalRatePercent.toFixed(3)}%`} × Giá trị khai báo
+                    {insuranceRatePercent.toFixed(3)}%
                   </Text>
                 </div>
                 {canShowPricing && (
                   <div>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Phí ước tính: </Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Phí ước tính = Giá trị khai báo × Tỷ lệ bảo hiểm
+                    </Text>
+                    <br />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      = {totalDeclaredValue.toLocaleString("vi-VN")} × {insuranceRatePercent.toFixed(3)}% ={" "}
+                    </Text>
                     <Text strong style={{ color: "#52c41a", fontSize: 13 }}>
                       {estimatedInsuranceFee.toLocaleString("vi-VN")} VNĐ
                     </Text>

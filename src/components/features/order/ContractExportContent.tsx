@@ -587,27 +587,31 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
             b) Hệ số danh mục hàng hóa ({contractData.orderInfo.category.description}): × {contractData.priceDetails.categoryMultiplier}
           </p>
 
-          {/* Category extra fee */}
+          {/* Category extra fee - applied once per order */}
           {contractData.priceDetails.categoryExtraFee > 0 && (
             <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
               c) Phụ thu danh mục ({contractData.orderInfo.category.description}): + <strong>{formatCurrency(contractData.priceDetails.categoryExtraFee)}</strong>
+              <span style={{ fontSize: "9pt", color: "#666", marginLeft: "6pt" }}>(tính 1 lần)</span>
             </p>
           )}
 
-          {/* Promotion discount */}
-          {contractData.priceDetails.promotionDiscount > 0 && (
-            <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
-              d) Giảm giá khuyến mãi: - <strong>{formatCurrency(contractData.priceDetails.promotionDiscount)}</strong>
-            </p>
-          )}
+          {/* Note: No promotionDiscount - adjustedValue replaces grandTotal if set */}
 
-          {/* Transport subtotal */}
-          <p style={{ marginLeft: "15pt", marginBottom: "12pt", paddingTop: "6pt", borderTop: "1pt dashed #000" }}>
-            <strong>Tổng chi phí vận chuyển (A):</strong> {formatCurrency(contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0))} × {contractData.priceDetails.categoryMultiplier}
-            {contractData.priceDetails.categoryExtraFee > 0 && ` + ${formatCurrency(contractData.priceDetails.categoryExtraFee)}`}
-            {contractData.priceDetails.promotionDiscount > 0 && ` - ${formatCurrency(contractData.priceDetails.promotionDiscount)}`}
-            {" = "}<strong style={{ fontSize: "12pt" }}>{formatCurrency(contractData.priceDetails.finalTotal)}</strong>
-          </p>
+          {/* Transport subtotal - USE API VALUES */}
+          {(() => {
+            // Display formula components
+            const baseTotal = contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0);
+            // Use API finalTotal (transport cost A) to ensure consistency
+            const transportTotal = contractData.priceDetails.finalTotal || 0;
+            
+            return (
+              <p style={{ marginLeft: "15pt", marginBottom: "12pt", paddingTop: "6pt", borderTop: "1pt dashed #000" }}>
+                <strong>Tổng chi phí vận chuyển (A):</strong> {formatCurrency(baseTotal)} × {contractData.priceDetails.categoryMultiplier}
+                {contractData.priceDetails.categoryExtraFee > 0 && ` + ${formatCurrency(contractData.priceDetails.categoryExtraFee)}`}
+                {" = "}<strong style={{ fontSize: "12pt" }}>{formatCurrency(transportTotal)}</strong>
+              </p>
+            );
+          })()}
 
           {/* Insurance Section */}
           {contractData.priceDetails.hasInsurance && (

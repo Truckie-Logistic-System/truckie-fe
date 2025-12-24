@@ -537,6 +537,17 @@ const RerouteDetail: React.FC<RerouteDetailProps> = ({ issue, onUpdate }) => {
             const response = await routeService.suggestRoute(request) as any;
 
             if (response.segments && response.segments.length > 0) {
+                console.log('🛣️ [ROUTE] Received segments from API:', {
+                    count: response.segments.length,
+                    segments: response.segments.map((s: any) => ({
+                        segmentOrder: s.segmentOrder,
+                        startName: s.startName,
+                        endName: s.endName,
+                        pathLength: s.path?.length || 0,
+                        pathSample: s.path?.slice(0, 2)
+                    }))
+                });
+                
                 setNewRouteSegments(response.segments as any);
                 setRouteInfoFromAPI({
                     totalDistance: response.totalDistance || 0,

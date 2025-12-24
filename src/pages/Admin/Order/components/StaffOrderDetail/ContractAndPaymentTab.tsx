@@ -36,6 +36,7 @@ interface ContractAndPaymentTabProps {
   readOnly?: boolean;
   // Order category for insurance rate calculation
   categoryName?: string;
+  orderStatus?: string; // Order status to control button visibility
 }
 
 const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
@@ -49,6 +50,7 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
   totalDeclaredValue,
   readOnly,
   categoryName,
+  orderStatus,
 }) => {
   return (
     <div>
@@ -64,6 +66,7 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
           totalDeclaredValue={totalDeclaredValue}
           readOnly={readOnly}
           categoryName={categoryName}
+          orderStatus={orderStatus}
         />
       )}
 

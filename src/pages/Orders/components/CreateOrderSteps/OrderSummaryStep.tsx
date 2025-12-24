@@ -169,27 +169,33 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
   const totalWeightDisplay = formatTotalWeight();
 
   // Tính toán thông tin bảo hiểm
-  const { rates, normalRatePercent, fragileRatePercent } = useInsuranceRates();
+  const { rates, normalRatePercent, fragileRatePercent, normalRatePercentBase, fragileRatePercentBase, vatRatePercent } = useInsuranceRates();
   const calculateInsuranceInfo = () => {
     if (!formValues.hasInsurance || !totals.totalDeclaredValue || totals.totalDeclaredValue <= 0) {
       return {
         hasInsurance: false,
         totalFee: 0,
         totalValue: 0,
-        isFragile: false
+        isFragile: false,
+        ratePercent: 0,
+        baseRatePercent: 0
       };
     }
 
     const selectedCategory = categories.find((c) => c.id === formValues.categoryId);
     const isFragile = selectedCategory ? isFragileCategory(selectedCategory.categoryName) : false;
-    const insuranceRate = isFragile ? rates.fragileRate : rates.normalRate; // Đã bao gồm VAT 10%
+    const insuranceRate = isFragile ? rates.fragileRate : rates.normalRate; // Already includes VAT
+    const ratePercent = isFragile ? fragileRatePercent : normalRatePercent; // Already includes VAT
+    const baseRatePercent = isFragile ? fragileRatePercentBase : normalRatePercentBase; // Without VAT
     const totalFee = totals.totalDeclaredValue * insuranceRate;
 
     return {
       hasInsurance: true,
       totalFee,
       totalValue: totals.totalDeclaredValue,
-      isFragile
+      isFragile,
+      ratePercent,
+      baseRatePercent
     };
   };
 
@@ -469,9 +475,10 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                     {formatCurrency(insuranceInfo.totalFee)}
                   </Text>
                   <Text className="block text-xs text-blue-600 mt-1">
-                    {insuranceInfo.isFragile
-                      ? `${fragileRatePercent.toFixed(3)}% (Hàng dễ vỡ)`
-                      : `${normalRatePercent.toFixed(3)}% (Hàng thường)`} - Đã bao gồm VAT
+                    Tỷ lệ: {insuranceInfo.ratePercent.toFixed(3)}% ({insuranceInfo.isFragile ? "Hàng dễ vỡ" : "Hàng thường"}, đã bao gồm VAT)
+                  </Text>
+                  <Text className="block text-xs text-blue-600">
+                    = {insuranceInfo.totalValue.toLocaleString("vi-VN")} × {insuranceInfo.ratePercent.toFixed(3)}%
                   </Text>
                 </div>
 

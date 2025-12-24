@@ -86,6 +86,7 @@ interface StaffContractProps {
   readOnly?: boolean;
   // Order category for insurance rate calculation
   categoryName?: string;
+  orderStatus?: string; // Order status to control button visibility
 }
 
 const StaffContractSection: React.FC<StaffContractProps> = ({
@@ -98,6 +99,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   totalDeclaredValue,
   readOnly = false,
   categoryName,
+  orderStatus,
 }) => {
   const messageApi = App.useApp().message;
   const [contractData, setContractData] = useState<ContractData | null>(null);
@@ -106,6 +108,13 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   const [stipulationSettings, setStipulationSettings] =
     useState<StipulationSettings | null>(null);
   const [fetchedPriceDetails, setFetchedPriceDetails] = useState<any>(null);
+  
+  // Helper function to get grandTotal from API data
+  // USE API VALUE DIRECTLY - do not recalculate to avoid data mismatch
+  const calculateGrandTotalFromFormula = (priceDetails: any): number => {
+    // Return API value directly - backend already calculated correctly
+    return priceDetails?.grandTotal || 0;
+  };
   
   // Calculate deposit amount and check if adjusted value exists (same as Customer view)
   const hasAdjustedValue = Boolean(
@@ -409,16 +418,69 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         return date.hour(0).minute(0).second(0).toISOString().slice(0, 19);
       };
 
+      // Build PaymentBreakdownSnapshot from contractData.priceDetails
+      // USE API DATA DIRECTLY - do NOT recalculate to avoid data mismatch
+      const priceDetails = contractData.priceDetails;
+      const adjustedValue = Number(values.adjustedValue) || 0;
+      const depositPercent = (values.customDepositPercent as number) ?? contractData.contractSettings?.depositPercent ?? 30;
+      
+      // Use API values directly instead of recalculating
+      const transportTotal = priceDetails.finalTotal || 0; // Transport cost (A) from API
+      const grandTotal = priceDetails.grandTotal || 0; // (A + B) from API
+      
+      // Only effectiveTotal, depositAmount, remainingAmount need calculation 
+      // because they depend on user-input adjustedValue
+      const effectiveTotal = adjustedValue > 0 ? adjustedValue : grandTotal;
+      const depositAmount = effectiveTotal * depositPercent / 100;
+      const remainingAmount = effectiveTotal - depositAmount;
+      
+      const priceDetailsSnapshot = {
+        // Use ALL values directly from API to avoid data mismatch
+        totalPrice: priceDetails.totalPrice || 0,
+        totalBeforeAdjustment: priceDetails.totalBeforeAdjustment || 0,
+        categoryExtraFee: priceDetails.categoryExtraFee || 0,
+        categoryMultiplier: priceDetails.categoryMultiplier || 1,
+        promotionDiscount: 0, // No promotionDiscount - adjustedValue replaces if needed
+        finalTotal: transportTotal, // Transport cost (A) - from API
+        totalTollFee: priceDetails.totalTollFee || 0,
+        totalTollCount: priceDetails.totalTollCount || 0,
+        vehicleType: priceDetails.vehicleType || "",
+        totalDeclaredValue: priceDetails.totalDeclaredValue || 0,
+        insuranceFee: priceDetails.insuranceFee || 0,
+        insuranceRate: priceDetails.insuranceRate || 0,
+        vatRate: priceDetails.vatRate || contractData.contractSettings?.vatRate || 0.1,
+        hasInsurance: priceDetails.hasInsurance || false,
+        grandTotal: grandTotal, // (A + B) - from API
+        steps: priceDetails.steps || [],
+        vehicleAssignments: contractData.assignResult?.map((assign) => ({
+          vehicleId: null,
+          vehicleTypeName: assign.sizeRuleName?.includes("tấn") ? assign.sizeRuleName.split(" ")[0] + " tấn" : "",
+          licensePlate: null,
+          sizeRuleName: assign.sizeRuleName,
+          pricePerKm: 0,
+          quantity: 1,
+        })) || [],
+        distanceKm: contractData.distanceKm || 0,
+        depositPercent: depositPercent,
+        depositAmount: depositAmount,
+        remainingAmount: remainingAmount,
+        adjustedValue: adjustedValue > 0 ? adjustedValue : null,
+        effectiveTotal: effectiveTotal,
+        snapshotDate: new Date().toISOString(),
+        snapshotVersion: "1.0",
+      };
+
       // Call backend API to generate PDF (Flying Saucer handles page breaks properly - no truncation)
-      console.log("🎯 Calling backend PDF generation API...");
+      console.log("🎯 Calling backend PDF generation API with priceDetailsSnapshot...");
       const uploadResponse = await contractService.generateAndSaveContractPdf({
         contractId: contract.id,
         contractName: values.contractName as string,
         effectiveDate: formatDateTime(values.effectiveDate as dayjs.Dayjs),
         expirationDate: formatDateTime(values.expirationDate as dayjs.Dayjs),
-        adjustedValue: Number(values.adjustedValue) || 0,
+        adjustedValue: adjustedValue,
         description: values.description as string,
         customDepositPercent: values.customDepositPercent as number | null,
+        priceDetailsSnapshot: JSON.stringify(priceDetailsSnapshot),
       });
       console.log("✅ Backend PDF generation completed");
       // Handle response safely
@@ -873,15 +935,16 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                   <Row gutter={[16, 16]} className="mt-3" style={{ listStyle: "none" }}>
                     {/* Show both original and adjusted values if there's a discount */}
                     {fetchedPriceDetails.adjustedValue && 
-                         fetchedPriceDetails.grandTotal &&
                          fetchedPriceDetails.adjustedValue > 0 && 
-                         fetchedPriceDetails.grandTotal > 0 &&
-                         fetchedPriceDetails.grandTotal !== fetchedPriceDetails.adjustedValue && (
+                         (() => {
+                           const calculatedGrandTotal = calculateGrandTotalFromFormula(fetchedPriceDetails);
+                           return calculatedGrandTotal !== fetchedPriceDetails.adjustedValue;
+                         })() && (
                           <>
                             <Col xs={24} sm={12} md={6}>
                               <Statistic
                                 title="Giá niêm yết"
-                                value={fetchedPriceDetails.grandTotal.toLocaleString("vi-VN")}
+                                value={calculateGrandTotalFromFormula(fetchedPriceDetails).toLocaleString("vi-VN")}
                                 suffix="VNĐ"
                                 valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
                               />
@@ -903,12 +966,12 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         {/* If no adjusted value, show grand total only */}
                         {(!fetchedPriceDetails.adjustedValue || 
                           fetchedPriceDetails.adjustedValue <= 0 || 
-                          fetchedPriceDetails.grandTotal === fetchedPriceDetails.adjustedValue) && 
-                          fetchedPriceDetails.grandTotal > 0 && (
+                          calculateGrandTotalFromFormula(fetchedPriceDetails) === fetchedPriceDetails.adjustedValue) && 
+                          calculateGrandTotalFromFormula(fetchedPriceDetails) > 0 && (
                           <Col xs={24} sm={12} md={6}>
                             <Statistic
                               title="Tổng giá trị đơn hàng"
-                              value={fetchedPriceDetails.grandTotal.toLocaleString("vi-VN")}
+                              value={calculateGrandTotalFromFormula(fetchedPriceDetails).toLocaleString("vi-VN")}
                               suffix="VNĐ"
                               prefix={<DollarOutlined />}
                               valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
@@ -960,35 +1023,123 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       {/* a) Base shipping cost by distance */}
                       <div className="mb-3">
                         <div className="text-sm text-gray-700 mb-2">
-                          a) Cước vận chuyển cơ bản theo quãng đường {fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.appliedKm, 0).toFixed(2)} km:
+                          {(() => {
+                            // Calculate actual distance (unique price tiers only, not multiplied by vehicles)
+                            const groupedSteps: { [key: string]: any[] } = {};
+                            fetchedPriceDetails?.steps?.forEach((step: any) => {
+                              const key = step.sizeRuleName;
+                              if (!groupedSteps[key]) {
+                                groupedSteps[key] = [];
+                              }
+                              groupedSteps[key].push(step);
+                            });
+                            
+                            // Get unique price tiers for one vehicle type
+                            const firstGroup = Object.values(groupedSteps)[0] || [];
+                            // Find unique tiers by distanceRange + unitPrice
+                            const uniqueTiers: { [key: string]: any } = {};
+                            firstGroup.forEach((step: any) => {
+                              const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                              if (!uniqueTiers[tierKey]) {
+                                uniqueTiers[tierKey] = step;
+                              }
+                            });
+                            const actualDistance = Object.values(uniqueTiers).reduce((sum: number, step: any) => sum + step.appliedKm, 0);
+                            
+                            return `a) Cước vận chuyển cơ bản theo quãng đường ${actualDistance.toFixed(2)} km:`;
+                          })()}
                         </div>
                         
-                        {/* Breakdown by vehicle type - Show each vehicle separately */}
+                        {/* Breakdown by individual vehicles */}
                         <div className="space-y-2 ml-4">
-                          {fetchedPriceDetails?.steps?.map((step: any, index: number) => {
-                            const calcParts = [];
-                            // Build calculation formula parts
-                            calcParts.push(`${step.unitPrice.toLocaleString("vi-VN")}/km × ${step.appliedKm.toFixed(2)} km`);
+                          {(() => {
+                            // Group steps by sizeRuleName
+                            const groupedSteps: { [key: string]: any[] } = {};
+                            fetchedPriceDetails?.steps?.forEach((step: any) => {
+                              const key = step.sizeRuleName;
+                              if (!groupedSteps[key]) {
+                                groupedSteps[key] = [];
+                              }
+                              groupedSteps[key].push(step);
+                            });
+
+                            let globalVehicleIndex = 0;
+                            const vehicleElements: React.ReactNode[] = [];
                             
-                            return (
-                              <div key={index} className="text-sm text-gray-700">
-                                - Xe {index + 1} ({step.sizeRuleName}): {calcParts.join(" + ")} = <strong>{step.subtotal.toLocaleString("vi-VN")} VNĐ</strong>
-                              </div>
-                            );
-                          })}
+                            Object.entries(groupedSteps).forEach(([sizeRuleName, steps]) => {
+                              // Determine number of vehicles and price tiers per vehicle
+                              // Find unique (distanceRange, unitPrice) combinations
+                              const uniqueTiers: { [key: string]: any } = {};
+                              steps.forEach((step: any) => {
+                                const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                                if (!uniqueTiers[tierKey]) {
+                                  uniqueTiers[tierKey] = step;
+                                }
+                              });
+                              
+                              const numUniqueTiers = Object.keys(uniqueTiers).length;
+                              const numVehicles = steps.length / numUniqueTiers;
+                              const tiersPerVehicle = Object.values(uniqueTiers);
+                              const costPerVehicle = tiersPerVehicle.reduce((sum: number, step: any) => sum + step.subtotal, 0);
+                              
+                              for (let i = 0; i < numVehicles; i++) {
+                                globalVehicleIndex++;
+                                const calcParts = tiersPerVehicle.map((step: any) => 
+                                  `${step.unitPrice.toLocaleString("vi-VN")}/km × ${step.appliedKm.toFixed(2)} km`
+                                );
+                                
+                                vehicleElements.push(
+                                  <div key={`vehicle-${globalVehicleIndex}`} className="text-sm text-gray-700">
+                                    - Xe {globalVehicleIndex} ({sizeRuleName}): ({calcParts.join(" + ")}) = <strong>{costPerVehicle.toLocaleString("vi-VN")} VNĐ</strong>
+                                  </div>
+                                );
+                              }
+                            });
+                            
+                            return vehicleElements;
+                          })()}
                         </div>
                         
                         {/* Total base cost with formula */}
-                        {fetchedPriceDetails?.steps && fetchedPriceDetails.steps.length > 1 && (
-                          <div className="text-sm text-gray-700 mt-2">
-                            Tổng cước cơ bản: {fetchedPriceDetails.steps.map((step: any) => step.subtotal.toLocaleString("vi-VN")).join(" + ")} = <strong>{fetchedPriceDetails.steps.reduce((sum: number, step: any) => sum + step.subtotal, 0).toLocaleString("vi-VN")} VNĐ</strong>
-                          </div>
-                        )}
-                        {fetchedPriceDetails?.steps && fetchedPriceDetails.steps.length === 1 && (
-                          <div className="text-sm text-gray-700 mt-2">
-                            Tổng cước cơ bản: <strong>{fetchedPriceDetails.steps[0].subtotal.toLocaleString("vi-VN")} VNĐ</strong>
-                          </div>
-                        )}
+                        <div className="text-sm text-gray-700 mt-2">
+                          {(() => {
+                            const groupedSteps: { [key: string]: any[] } = {};
+                            fetchedPriceDetails?.steps?.forEach((step: any) => {
+                              const key = step.sizeRuleName;
+                              if (!groupedSteps[key]) {
+                                groupedSteps[key] = [];
+                              }
+                              groupedSteps[key].push(step);
+                            });
+                            
+                            const vehicleCosts: number[] = [];
+                            Object.values(groupedSteps).forEach((steps: any[]) => {
+                              const uniqueTiers: { [key: string]: any } = {};
+                              steps.forEach((step: any) => {
+                                const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                                if (!uniqueTiers[tierKey]) {
+                                  uniqueTiers[tierKey] = step;
+                                }
+                              });
+                              
+                              const numUniqueTiers = Object.keys(uniqueTiers).length;
+                              const numVehicles = steps.length / numUniqueTiers;
+                              const costPerVehicle = Object.values(uniqueTiers).reduce((sum: number, step: any) => sum + step.subtotal, 0);
+                              
+                              for (let i = 0; i < numVehicles; i++) {
+                                vehicleCosts.push(costPerVehicle);
+                              }
+                            });
+                            
+                            const total = vehicleCosts.reduce((sum, cost) => sum + cost, 0);
+                            
+                            return (
+                              <>
+                                Tổng cước cơ bản: {vehicleCosts.map(c => c.toLocaleString("vi-VN")).join(" + ")} = <strong>{total.toLocaleString("vi-VN")} VNĐ</strong>
+                              </>
+                            );
+                          })()}
+                        </div>
                       </div>
 
                       {/* b) Category multiplier */}
@@ -1009,28 +1160,31 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         </div>
                       )}
 
-                      {/* Total transport cost with formula */}
+                      {/* Total transport cost with formula - USE API VALUE */}
                       <div className="border-t-2 border-dashed border-gray-400 pt-2 mt-2">
                         <div className="text-base font-semibold text-gray-800">
                           {(() => {
                             const baseCost = fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.subtotal, 0) || 0;
                             const hasMultiplier = fetchedPriceDetails?.categoryMultiplier && fetchedPriceDetails.categoryMultiplier > 1;
-                            const afterMultiplier = hasMultiplier ? baseCost * fetchedPriceDetails.categoryMultiplier : baseCost;
+                            const multiplier = hasMultiplier ? fetchedPriceDetails.categoryMultiplier : 1;
+                            const afterMultiplier = baseCost * multiplier;
                             const extraFee = fetchedPriceDetails?.categoryExtraFee || 0;
                             
-                            const parts = [];
+                            // Use API finalTotal to ensure consistency with backend calculation
+                            const transportTotal = fetchedPriceDetails?.finalTotal || (afterMultiplier + extraFee);
+                            
                             if (hasMultiplier && extraFee > 0) {
-                              // Both multiplier and extra fee
-                              return `Tổng chi phí vận chuyển (A): (${baseCost.toLocaleString("vi-VN")} × ${fetchedPriceDetails.categoryMultiplier}) + ${extraFee.toLocaleString("vi-VN")} = ${(fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")} VNĐ`;
+                              // Both multiplier and extra fee: (baseCost × multiplier) + extraFee
+                              return `Tổng chi phí vận chuyển (A): (${baseCost.toLocaleString("vi-VN")} × ${multiplier}) + ${extraFee.toLocaleString("vi-VN")} = ${transportTotal.toLocaleString("vi-VN")} VNĐ`;
                             } else if (hasMultiplier) {
                               // Only multiplier
-                              return `Tổng chi phí vận chuyển (A): ${baseCost.toLocaleString("vi-VN")} × ${fetchedPriceDetails.categoryMultiplier} = ${(fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")} VNĐ`;
+                              return `Tổng chi phí vận chuyển (A): ${baseCost.toLocaleString("vi-VN")} × ${multiplier} = ${transportTotal.toLocaleString("vi-VN")} VNĐ`;
                             } else if (extraFee > 0) {
                               // Only extra fee
-                              return `Tổng chi phí vận chuyển (A): ${baseCost.toLocaleString("vi-VN")} + ${extraFee.toLocaleString("vi-VN")} = ${(fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")} VNĐ`;
+                              return `Tổng chi phí vận chuyển (A): ${baseCost.toLocaleString("vi-VN")} + ${extraFee.toLocaleString("vi-VN")} = ${transportTotal.toLocaleString("vi-VN")} VNĐ`;
                             } else {
                               // No adjustments
-                              return `Tổng chi phí vận chuyển (A): ${(fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")} VNĐ`;
+                              return `Tổng chi phí vận chuyển (A): ${transportTotal.toLocaleString("vi-VN")} VNĐ`;
                             }
                           })()}
                         </div>
@@ -1060,7 +1214,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                     </div>
                   )}
 
-                  {/* Grand Total - Show total contract value with formula */}
+                  {/* Grand Total - Show total contract value with formula - USE API VALUES */}
                   {loadingPriceData ? (
                     <div className="mt-4 pt-4 border-t-2 border-black">
                       <Skeleton.Input style={{ width: 300 }} size="small" active />
@@ -1069,9 +1223,10 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                     <div className="mt-4 pt-4 border-t-2 border-black">
                       <div className="text-lg font-bold text-gray-900">
                         {(() => {
+                          // Use API values directly to ensure consistency
                           const transportCost = fetchedPriceDetails?.finalTotal || 0;
                           const insuranceCost = fetchedPriceDetails?.insuranceFee || 0;
-                          const grandTotal = fetchedPriceDetails?.grandTotal || 0;
+                          const grandTotal = fetchedPriceDetails?.grandTotal || (transportCost + insuranceCost);
                           
                           if (insuranceCost > 0) {
                             return `TỔNG GIÁ TRỊ (A + B): ${transportCost.toLocaleString("vi-VN")} + ${insuranceCost.toLocaleString("vi-VN")} = ${grandTotal.toLocaleString("vi-VN")} VNĐ`;
@@ -1095,16 +1250,18 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           {/* Contract Actions - Chỉ xem và xuất hợp đồng, không có thanh toán */}
           <div className="mt-6">
             <div className="flex gap-4">
-              <Button
-                type="default"
-                icon={<FileTextOutlined />}
-                onClick={handleOpenModal}
-                loading={loadingContractData}
-                size="large"
-                className="border-purple-500 text-purple-500 hover:border-purple-600 hover:text-purple-600"
-              >
-                Xem hợp đồng (preview)
-              </Button>
+              {orderStatus === "PROCESSING" && (
+                <Button
+                  type="default"
+                  icon={<FileTextOutlined />}
+                  onClick={handleOpenModal}
+                  loading={loadingContractData}
+                  size="large"
+                  className="border-purple-500 text-purple-500 hover:border-purple-600 hover:text-purple-600"
+                >
+                  Xem hợp đồng (preview)
+                </Button>
+              )}
               <Button
                 type="default"
                 icon={<DownloadOutlined />}

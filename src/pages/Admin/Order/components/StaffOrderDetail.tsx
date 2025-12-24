@@ -709,6 +709,7 @@ const StaffOrderDetail: React.FC = () => {
               hasInsurance={order.hasInsurance}
               totalInsuranceFee={order.totalInsuranceFee}
               totalDeclaredValue={order.totalDeclaredValue}
+              orderStatus={order.status}
               onRefetch={() => {
                 if (id) {
                   fetchOrderDetails(id);

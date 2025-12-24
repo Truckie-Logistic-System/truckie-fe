@@ -89,7 +89,7 @@ const OffRouteWarningModal: React.FC<OffRouteWarningModalProps> = ({
     setActionLoading(true);
     try {
       const issueId = await onCreateIssue(warning.offRouteEventId, notes || 
-        `Tài xế lệch tuyến > ${warning.offRouteDurationMinutes} phút, không liên hệ được`);
+        `Tài xế lệch tuyến > ${warning.offRouteDurationSeconds} giây, không liên hệ được`);
       if (issueId) {
         message.success('Đã tạo sự cố thành công');
       }
@@ -237,7 +237,7 @@ const OffRouteWarningModal: React.FC<OffRouteWarningModalProps> = ({
               }
             </div>
             <div className="text-sm opacity-90">
-              Off-route khoảng {warning.offRouteDurationMinutes} phút
+              Off-route khoảng {warning.offRouteDurationSeconds} giây
               {isRed && ' - Cần kiểm tra ngay'}
             </div>
           </div>
@@ -306,7 +306,7 @@ const OffRouteWarningModal: React.FC<OffRouteWarningModalProps> = ({
             {isRed && (
               <Alert
                 message="Không liên hệ được tài xế"
-                description={`Tài xế đã lệch tuyến hơn ${warning.offRouteDurationMinutes} phút. Vui lòng xử lý ngay để đảm bảo an toàn hàng hóa.`}
+                description={`Tài xế đã lệch tuyến hơn ${warning.offRouteDurationSeconds} giây. Vui lòng xử lý ngay để đảm bảo an toàn hàng hóa.`}
                 type="error"
                 showIcon
                 className="mb-4"

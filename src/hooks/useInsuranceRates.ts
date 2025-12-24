@@ -3,8 +3,8 @@ import contractSettingService from "../services/contract/contractSettingService"
 import type { ContractSettingsResponse } from "@/models/Contract";
 
 export interface InsuranceRates {
-  normalRate: number; // decimal, e.g. 0.00088
-  fragileRate: number; // decimal, e.g. 0.00165
+  normalRate: number; // decimal with VAT included, e.g. 0.000968 (0.088% * 1.1)
+  fragileRate: number; // decimal with VAT included, e.g. 0.001815 (0.165% * 1.1)
   vatRate: number; // decimal, e.g. 0.1
 }
 
@@ -19,17 +19,25 @@ export const useInsuranceRates = () => {
 
   const first = data?.data?.[0];
 
-  const normalRatePercent =
+  // Base rates (without VAT) in percentage
+  const normalRatePercentBase =
     first?.insuranceRateNormal ??
     (first?.insuranceRate ? first.insuranceRate * 100 : 0.088);
-  const fragileRatePercent =
+  const fragileRatePercentBase =
     first?.insuranceRateFragile ??
     (first?.insuranceRate ? first.insuranceRate * 100 : 0.165);
-  const vatRatePercent = first?.vatRate ?? 10;
+  
+  // VAT rate from contract settings (stored as decimal, e.g., 0.1 = 10%)
+  const vatRate = first?.vatRate ?? 0.1;
+  const vatRatePercent = vatRate * 100;
 
+  // Calculate rates with VAT included (in percentage)
+  const normalRatePercent = normalRatePercentBase * (1 + vatRate);
+  const fragileRatePercent = fragileRatePercentBase * (1 + vatRate);
+
+  // Convert to decimal for calculation
   const normalRate = normalRatePercent / 100;
   const fragileRate = fragileRatePercent / 100;
-  const vatRate = vatRatePercent / 100;
 
   const rates: InsuranceRates = {
     normalRate,
@@ -42,8 +50,10 @@ export const useInsuranceRates = () => {
     isLoading,
     isError,
     rawSettings: first,
-    normalRatePercent,
-    fragileRatePercent,
+    normalRatePercent, // with VAT
+    fragileRatePercent, // with VAT
+    normalRatePercentBase, // without VAT
+    fragileRatePercentBase, // without VAT
     vatRatePercent,
   };
 };

@@ -85,6 +85,13 @@ const ContractSection: React.FC<ContractProps> = ({
   const [fetchedPriceDetails, setFetchedPriceDetails] = useState<PriceDetails | null>(null);
   const [loadingPriceData, setLoadingPriceData] = useState<boolean>(false);
   
+  // Helper function to get grandTotal from API data
+  // USE API VALUE DIRECTLY - do not recalculate to avoid data mismatch
+  const calculateGrandTotalFromFormula = (priceDetails: any): number => {
+    // Return API value directly - backend already calculated correctly
+    return priceDetails?.grandTotal || 0;
+  };
+  
   // Fetch contract settings and price details on component mount
   useEffect(() => {
     const fetchContractSettings = async () => {
@@ -379,8 +386,17 @@ const ContractSection: React.FC<ContractProps> = ({
                       <div className="mt-4 pt-4 border-t border-blue-200">
                         <Skeleton active paragraph={{ rows: 8, width: ['100%', '80%', '60%', '100%', '70%', '50%', '100%', '80%'] }} />
                       </div>
-                    ) : fetchedPriceDetails && fetchedPriceDetails.steps && fetchedPriceDetails.steps.length > 0 ? (
+                    ) : fetchedPriceDetails?.isSnapshot && fetchedPriceDetails.steps && fetchedPriceDetails.steps.length > 0 ? (
                       <div className="mt-4 pt-4 border-t border-blue-200">
+                        {/* Snapshot indicator */}
+                        {fetchedPriceDetails.isSnapshot && fetchedPriceDetails.snapshotDate && (
+                          <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded">
+                            <span className="text-xs text-green-700">
+                              ✓ Thông tin thanh toán đã được lưu trữ tại thời điểm xuất hợp đồng ({new Date(fetchedPriceDetails.snapshotDate).toLocaleString('vi-VN')})
+                            </span>
+                          </div>
+                        )}
+                        
                         <div className="mb-3">
                           <span className="font-semibold text-gray-700">Chi phí vận chuyển:</span>
                         </div>
@@ -388,65 +404,169 @@ const ContractSection: React.FC<ContractProps> = ({
                         {/* a) Base shipping cost by distance */}
                         <div className="mb-3">
                           <div className="text-sm text-gray-700 mb-2">
-                            a) Cước vận chuyển cơ bản theo quãng đường {fetchedPriceDetails.steps.reduce((sum, step) => sum + step.appliedKm, 0).toFixed(2)} km:
-                          </div>
-                          
-                          {/* Breakdown by vehicle type - Group by sizeRuleName */}
-                          <div className="space-y-2 ml-4">
                             {(() => {
-                              // Group steps by sizeRuleName
-                              const groupedSteps = fetchedPriceDetails.steps.reduce((acc: any, step) => {
-                                if (!acc[step.sizeRuleName]) {
-                                  acc[step.sizeRuleName] = {
-                                    sizeRuleName: step.sizeRuleName,
-                                    numOfVehicles: step.numOfVehicles,
-                                    parts: [],
-                                    totalSubtotal: 0
-                                  };
+                              // Calculate actual distance (unique price tiers only, not multiplied by vehicles)
+                              const groupedSteps: { [key: string]: any[] } = {};
+                              fetchedPriceDetails?.steps?.forEach((step: any) => {
+                                const key = step.sizeRuleName;
+                                if (!groupedSteps[key]) {
+                                  groupedSteps[key] = [];
                                 }
-                                acc[step.sizeRuleName].parts.push({
-                                  unitPrice: step.unitPrice,
-                                  appliedKm: step.appliedKm,
-                                  subtotal: step.subtotal
-                                });
-                                acc[step.sizeRuleName].totalSubtotal += step.subtotal;
-                                return acc;
-                              }, {});
+                                groupedSteps[key].push(step);
+                              });
                               
-                              return Object.values(groupedSteps).map((group: any, index: number) => (
-                                <div key={index} className="text-sm text-gray-700">
-                                  - {group.sizeRuleName} ({group.numOfVehicles} xe): {group.parts.map((part: any) => 
-                                    `(${part.unitPrice.toLocaleString("vi-VN")}/km × ${part.appliedKm.toFixed(2)} km)`
-                                  ).join(" + ")} = <strong>{group.totalSubtotal.toLocaleString("vi-VN")}</strong>
-                                </div>
-                              ));
+                              // Get unique price tiers for one vehicle type
+                              const firstGroup = Object.values(groupedSteps)[0] || [];
+                              // Find unique tiers by distanceRange + unitPrice
+                              const uniqueTiers: { [key: string]: any } = {};
+                              firstGroup.forEach((step: any) => {
+                                const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                                if (!uniqueTiers[tierKey]) {
+                                  uniqueTiers[tierKey] = step;
+                                }
+                              });
+                              const actualDistance = Object.values(uniqueTiers).reduce((sum: number, step: any) => sum + step.appliedKm, 0);
+                              
+                              return `a) Cước vận chuyển cơ bản theo quãng đường ${actualDistance.toFixed(2)} km:`;
                             })()}
                           </div>
                           
-                          {/* Total base cost */}
+                          {/* Breakdown by individual vehicles */}
+                          <div className="space-y-2 ml-4">
+                            {(() => {
+                              // Group steps by sizeRuleName
+                              const groupedSteps: { [key: string]: any[] } = {};
+                              fetchedPriceDetails?.steps?.forEach((step: any) => {
+                                const key = step.sizeRuleName;
+                                if (!groupedSteps[key]) {
+                                  groupedSteps[key] = [];
+                                }
+                                groupedSteps[key].push(step);
+                              });
+
+                              let globalVehicleIndex = 0;
+                              const vehicleElements: React.ReactNode[] = [];
+                              
+                              Object.entries(groupedSteps).forEach(([sizeRuleName, steps]) => {
+                                // Determine number of vehicles and price tiers per vehicle
+                                // Find unique (distanceRange, unitPrice) combinations
+                                const uniqueTiers: { [key: string]: any } = {};
+                                steps.forEach((step: any) => {
+                                  const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                                  if (!uniqueTiers[tierKey]) {
+                                    uniqueTiers[tierKey] = step;
+                                  }
+                                });
+                                
+                                const numUniqueTiers = Object.keys(uniqueTiers).length;
+                                const numVehicles = steps.length / numUniqueTiers;
+                                const tiersPerVehicle = Object.values(uniqueTiers);
+                                const costPerVehicle = tiersPerVehicle.reduce((sum: number, step: any) => sum + step.subtotal, 0);
+                                
+                                for (let i = 0; i < numVehicles; i++) {
+                                  globalVehicleIndex++;
+                                  const calcParts = tiersPerVehicle.map((step: any) => 
+                                    `${step.unitPrice.toLocaleString("vi-VN")}/km × ${step.appliedKm.toFixed(2)} km`
+                                  );
+                                  
+                                  vehicleElements.push(
+                                    <div key={`vehicle-${globalVehicleIndex}`} className="text-sm text-gray-700">
+                                      - Xe {globalVehicleIndex} ({sizeRuleName}): ({calcParts.join(" + ")}) = <strong>{costPerVehicle.toLocaleString("vi-VN")} VNĐ</strong>
+                                    </div>
+                                  );
+                                }
+                              });
+                              
+                              return vehicleElements;
+                            })()}
+                          </div>
+                          
+                          {/* Total base cost with formula */}
                           <div className="text-sm text-gray-700 mt-2">
-                            Tổng cước cơ bản: {fetchedPriceDetails.steps.map(step => step.subtotal.toLocaleString("vi-VN")).join(" + ")} = <strong>{fetchedPriceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0).toLocaleString("vi-VN")}</strong>
+                            {(() => {
+                              const groupedSteps: { [key: string]: any[] } = {};
+                              fetchedPriceDetails?.steps?.forEach((step: any) => {
+                                const key = step.sizeRuleName;
+                                if (!groupedSteps[key]) {
+                                  groupedSteps[key] = [];
+                                }
+                                groupedSteps[key].push(step);
+                              });
+                              
+                              const vehicleCosts: number[] = [];
+                              Object.values(groupedSteps).forEach((steps: any[]) => {
+                                const uniqueTiers: { [key: string]: any } = {};
+                                steps.forEach((step: any) => {
+                                  const tierKey = `${step.distanceRange}_${step.unitPrice}`;
+                                  if (!uniqueTiers[tierKey]) {
+                                    uniqueTiers[tierKey] = step;
+                                  }
+                                });
+                                
+                                const numUniqueTiers = Object.keys(uniqueTiers).length;
+                                const numVehicles = steps.length / numUniqueTiers;
+                                const costPerVehicle = Object.values(uniqueTiers).reduce((sum: number, step: any) => sum + step.subtotal, 0);
+                                
+                                for (let i = 0; i < numVehicles; i++) {
+                                  vehicleCosts.push(costPerVehicle);
+                                }
+                              });
+                              
+                              const total = vehicleCosts.reduce((sum, cost) => sum + cost, 0);
+                              
+                              return (
+                                <>
+                                  Tổng cước cơ bản: {vehicleCosts.map(c => c.toLocaleString("vi-VN")).join(" + ")} = <strong>{total.toLocaleString("vi-VN")} VNĐ</strong>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
 
                         {/* b) Category multiplier */}
-                        {fetchedPriceDetails.categoryMultiplier && fetchedPriceDetails.categoryMultiplier !== 1 && (
-                          <div className="text-sm text-gray-700 mb-2">
-                            b) Hệ số danh mục hàng hóa (Hàng dễ vỡ): × <strong>{fetchedPriceDetails.categoryMultiplier}</strong>
+                        {fetchedPriceDetails?.categoryMultiplier && fetchedPriceDetails.categoryMultiplier > 1 && (
+                          <div className="mb-3">
+                            <div className="text-sm text-gray-700">
+                              b) Hệ số danh mục (Hàng dễ vỡ): × <strong>{fetchedPriceDetails.categoryMultiplier}</strong>
+                            </div>
                           </div>
                         )}
 
-                        {/* c) Category extra fee */}
-                        {fetchedPriceDetails.categoryExtraFee && fetchedPriceDetails.categoryExtraFee > 0 && (
-                          <div className="text-sm text-gray-700 mb-3">
-                            c) Phụ thu danh mục (Hàng dễ vỡ): + <strong>{fetchedPriceDetails.categoryExtraFee.toLocaleString("vi-VN")}</strong>
+                        {/* c) Category extra fee - applied once per order */}
+                        {fetchedPriceDetails?.categoryExtraFee && fetchedPriceDetails.categoryExtraFee > 0 && (
+                          <div className="mb-3">
+                            <div className="text-sm text-gray-700">
+                              c) Phụ thu danh mục (Hàng dễ vỡ): + <strong>{fetchedPriceDetails.categoryExtraFee.toLocaleString("vi-VN")} VNĐ</strong>
+                            </div>
                           </div>
                         )}
 
-                        {/* Total transport fee with dashed line */}
+                        {/* Total transport cost with formula - USE API VALUE */}
                         <div className="border-t-2 border-dashed border-gray-400 pt-2 mt-2">
                           <div className="text-base font-semibold text-gray-800">
-                            Tổng chi phí vận chuyển (A): <strong>{fetchedPriceDetails.finalTotal.toLocaleString("vi-VN")}</strong>
+                            {(() => {
+                              const baseCost = fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.subtotal, 0) || 0;
+                              const hasMultiplier = fetchedPriceDetails?.categoryMultiplier && fetchedPriceDetails.categoryMultiplier > 1;
+                              const multiplier = hasMultiplier ? fetchedPriceDetails.categoryMultiplier : 1;
+                              const extraFee = fetchedPriceDetails?.categoryExtraFee || 0;
+                              
+                              // Use API finalTotal (transport cost A) to ensure consistency
+                              const transportTotal = fetchedPriceDetails?.finalTotal || 0;
+                              
+                              if (hasMultiplier && extraFee > 0) {
+                                // Both multiplier and extra fee
+                                return `Tổng chi phí vận chuyển (A): (${baseCost.toLocaleString("vi-VN")} × ${multiplier}) + ${extraFee.toLocaleString("vi-VN")} = ${transportTotal.toLocaleString("vi-VN")} VNĐ`;
+                              } else if (hasMultiplier) {
+                                // Only multiplier
+                                return `Tổng chi phí vận chuyển (A): ${baseCost.toLocaleString("vi-VN")} × ${multiplier} = ${transportTotal.toLocaleString("vi-VN")} VNĐ`;
+                              } else if (extraFee > 0) {
+                                // Only extra fee
+                                return `Tổng chi phí vận chuyển (A): ${baseCost.toLocaleString("vi-VN")} + ${extraFee.toLocaleString("vi-VN")} = ${transportTotal.toLocaleString("vi-VN")} VNĐ`;
+                              } else {
+                                // No adjustments
+                                return `Tổng chi phí vận chuyển (A): ${transportTotal.toLocaleString("vi-VN")} VNĐ`;
+                              }
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -463,10 +583,12 @@ const ContractSection: React.FC<ContractProps> = ({
                             - Giá trị khai báo: <strong>{(fetchedPriceDetails.totalDeclaredValue || 0).toLocaleString("vi-VN")} VNĐ</strong>
                           </div>
                           <div className="text-sm text-gray-700">
-                            - Tỷ lệ bảo hiểm: <strong>{((fetchedPriceDetails.insuranceRate || 0) * (1 + (fetchedPriceDetails.vatRate || 0))).toFixed(5).replace('.', ',')}%</strong> (đã bao gồm {((fetchedPriceDetails.vatRate || 0) * 100)}% VAT)
+                            - Tỷ lệ bảo hiểm (đã bao gồm VAT): <strong>{((fetchedPriceDetails.insuranceRate || 0) * (1 + (fetchedPriceDetails.vatRate || 0))).toFixed(5).replace('.', ',')}%</strong>
                           </div>
-                          <div className="text-sm text-gray-700">
-                            - Phí bảo hiểm: <strong>{(fetchedPriceDetails.insuranceFee || 0).toLocaleString("vi-VN")} VNĐ</strong>
+                        </div>
+                        <div className="border-t-2 border-dashed border-gray-400 pt-2 mt-2">
+                          <div className="text-base font-semibold text-gray-800">
+                            Tổng chi phí bảo hiểm (B): {(fetchedPriceDetails.totalDeclaredValue || 0).toLocaleString("vi-VN")} × {((fetchedPriceDetails.insuranceRate || 0) * (1 + (fetchedPriceDetails.vatRate || 0))).toFixed(5).replace('.', ',')}% = <strong>{(fetchedPriceDetails.insuranceFee || 0).toLocaleString("vi-VN")} VNĐ</strong>
                           </div>
                         </div>
                       </div>
@@ -520,15 +642,26 @@ const ContractSection: React.FC<ContractProps> = ({
                       </div>
                     )}
 
-                    {/* Grand Total - Show total contract value */}
+                    {/* Grand Total - Show total contract value with formula */}
                     {loadingPriceData ? (
                       <div className="mt-4 pt-4 border-t-2 border-black">
                         <Skeleton.Input style={{ width: 300 }} size="small" active />
                       </div>
-                    ) : fetchedPriceDetails ? (
+                    ) : fetchedPriceDetails && ((fetchedPriceDetails?.grandTotal ?? 0) > 0 || (fetchedPriceDetails?.finalTotal ?? 0) > 0) ? (
                       <div className="mt-4 pt-4 border-t-2 border-black">
-                        <div className="text-base font-bold text-gray-900">
-                          TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B): <span className="underline">{(fetchedPriceDetails.grandTotal || fetchedPriceDetails.finalTotal).toLocaleString("vi-VN")}</span> VNĐ
+                        <div className="text-lg font-bold text-gray-900">
+                          {(() => {
+                            // Use API values directly to avoid data mismatch
+                            const transportCost = fetchedPriceDetails?.finalTotal || 0;
+                            const insuranceCost = fetchedPriceDetails?.insuranceFee || 0;
+                            const grandTotal = fetchedPriceDetails?.grandTotal || 0;
+                            
+                            if (insuranceCost > 0) {
+                              return `TỔNG GIÁ TRỊ (A + B): ${transportCost.toLocaleString("vi-VN")} + ${insuranceCost.toLocaleString("vi-VN")} = ${grandTotal.toLocaleString("vi-VN")} VNĐ`;
+                            } else {
+                              return `TỔNG GIÁ TRỊ: ${grandTotal.toLocaleString("vi-VN")} VNĐ`;
+                            }
+                          })()}
                         </div>
                       </div>
                     ) : null}

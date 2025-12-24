@@ -686,7 +686,7 @@ export interface OffRouteAssessment {
 
 export interface OffRouteEventInfo {
     eventId: string;
-    offRouteDurationMinutes: number;
+    offRouteDurationSeconds: number;
     distanceFromRouteMeters: number;
     warningStatus: string;
     canContactDriver: boolean;

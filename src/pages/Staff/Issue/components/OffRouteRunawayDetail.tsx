@@ -794,7 +794,7 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
                         {/* Alert Banner */}
                         <Alert
                             message="Sự cố lệch tuyến nghiêm trọng"
-                            description={`Tài xế đã lệch khỏi tuyến đường đã lên kế hoạch trong ${detail.offRouteEventInfo.offRouteDurationMinutes} phút với khoảng cách ${Math.round(detail.offRouteEventInfo.distanceFromRouteMeters)} mét.`}
+                            description={`Tài xế đã lệch khỏi tuyến đường đã lên kế hoạch trong ${detail.offRouteEventInfo.offRouteDurationSeconds} giây với khoảng cách ${Math.round(detail.offRouteEventInfo.distanceFromRouteMeters)} mét.`}
                             type="error"
                             showIcon
                             icon={<WarningOutlined />}
@@ -805,8 +805,8 @@ const OffRouteRunawayDetail: React.FC<OffRouteRunawayDetailProps> = ({ issue, on
                             <Col span={6}>
                                 <Statistic
                                     title="Thời gian lệch tuyến"
-                                    value={detail.offRouteEventInfo.offRouteDurationMinutes}
-                                    suffix="phút"
+                                    value={detail.offRouteEventInfo.offRouteDurationSeconds}
+                                    suffix="giây"
                                     prefix={<ClockCircleOutlined />}
                                     valueStyle={{ color: '#cf1322', fontSize: 28 }}
                                 />
