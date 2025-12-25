@@ -389,21 +389,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                     />
                 </Form.Item>
 
-                <Form.Item
-                    name="agreement"
-                    valuePropName="checked"
-                    rules={[
-                        {
-                            validator: (_, value) =>
-                                value ? Promise.resolve() : Promise.reject('Vui lòng đồng ý với điều khoản dịch vụ'),
-                        },
-                    ]}
-                >
-                    <Checkbox disabled={loading}>
-                        Tôi đã đọc và đồng ý với <span className="text-blue-600">điều khoản dịch vụ</span> và <span className="text-blue-600">chính sách bảo mật</span>
-                    </Checkbox>
-                </Form.Item>
-
                 <Form.Item>
                     <Button
                         type="primary"
