@@ -653,11 +653,11 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
                                 {vehicle.licensePlateNumber}
                               </span>
                             </div>
-                            {vehicle.speed !== null && vehicle.speed !== undefined && (
+                            {/* {vehicle.speed !== null && vehicle.speed !== undefined && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-blue-100 text-blue-700">
                                 {vehicle.speed.toFixed(0)} km/h
                               </span>
-                            )}
+                            )} */}
                           </div>
 
                           {/* Info */}

@@ -280,45 +280,56 @@ const IssueModal: React.FC = () => {
                 </div>
               )}
 
-              {/* PENALTY: Show penalty images */}
-              {newIssueForModal.issueCategory === 'PENALTY' && (
-                <div className="p-2 rounded border bg-purple-50 border-purple-200">
-                  <div className="flex items-center gap-1 mb-1">
-                    <PictureOutlined style={{ fontSize: '14px', color: '#9333ea' }} />
-                    <Text strong style={{ fontSize: '11px', color: '#7e22ce' }}>
-                      Biên bản vi phạm
-                    </Text>
-                  </div>
-                  {newIssueForModal.issueImages && newIssueForModal.issueImages.length > 0 ? (
-                    <Image.PreviewGroup>
-                      <div className="grid grid-cols-2 gap-2">
-                        {newIssueForModal.issueImages.map((imageUrl, index) => (
-                          <Image
-                            key={index}
-                            src={imageUrl}
-                            alt={`Biên bản vi phạm ${index + 1}`}
-                            style={{ 
-                              width: '100%',
-                              height: 'auto',
-                              maxHeight: '250px',
-                              objectFit: 'contain',
-                              borderRadius: '4px',
-                              border: '1px solid #9333ea',
-                              cursor: 'pointer'
-                            }}
-                            preview={{ mask: 'Xem full size' }}
-                            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
-                          />
-                        ))}
-                      </div>
-                    </Image.PreviewGroup>
-                  ) : (
-                    <div className="text-center py-4 text-gray-500 text-xs">
-                      Chưa có hình biên bản vi phạm
+              {/* PENALTY: Show penalty images - only show section if images exist */}
+              {newIssueForModal.issueCategory === 'PENALTY' && (() => {
+                // Debug: Log issueImages data
+                console.log('PENALTY issueImages:', newIssueForModal.issueImages);
+                
+                // Check if issueImages is valid array with actual URLs
+                const hasValidImages = newIssueForModal.issueImages && 
+                  Array.isArray(newIssueForModal.issueImages) && 
+                  newIssueForModal.issueImages.length > 0 &&
+                  newIssueForModal.issueImages.some(url => url && typeof url === 'string' && url.trim() !== '');
+                
+                return (
+                  <div className="p-2 rounded border bg-purple-50 border-purple-200">
+                    <div className="flex items-center gap-1 mb-1">
+                      <PictureOutlined style={{ fontSize: '14px', color: '#9333ea' }} />
+                      <Text strong style={{ fontSize: '11px', color: '#7e22ce' }}>
+                        Biên bản vi phạm
+                      </Text>
                     </div>
-                  )}
-                </div>
-              )}
+                    {hasValidImages ? (
+                      <Image.PreviewGroup>
+                        <div className="grid grid-cols-2 gap-2">
+                          {newIssueForModal.issueImages!.filter(url => url && typeof url === 'string' && url.trim() !== '').map((imageUrl, index) => (
+                            <Image
+                              key={index}
+                              src={imageUrl}
+                              alt={`Biên bản vi phạm ${index + 1}`}
+                              style={{ 
+                                width: '100%',
+                                height: 'auto',
+                                maxHeight: '250px',
+                                objectFit: 'contain',
+                                borderRadius: '4px',
+                                border: '1px solid #9333ea',
+                                cursor: 'pointer'
+                              }}
+                              preview={{ mask: 'Xem full size' }}
+                              fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+                            />
+                          ))}
+                        </div>
+                      </Image.PreviewGroup>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500 text-xs">
+                        Chưa có hình biên bản vi phạm
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* SEAL_REPLACEMENT: Show seal removal image */}
               {newIssueForModal.issueCategory === 'SEAL_REPLACEMENT' && (
