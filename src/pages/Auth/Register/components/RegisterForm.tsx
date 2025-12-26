@@ -206,10 +206,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="password"
                             label="Mật khẩu"
+                            validateFirst
                             rules={[
                                 { required: true, message: 'Vui lòng nhập mật khẩu' },
                                 { validator: validatePassword }
                             ]}
+                            hasFeedback
                         >
                             <Input.Password
                                 prefix={<LockOutlined />}
@@ -224,10 +226,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="confirmPassword"
                             label="Xác nhận mật khẩu"
+                            validateFirst
                             dependencies={['password']}
                             rules={[
+                                { required: true, message: 'Vui lòng xác nhận mật khẩu' },
                                 { validator: validateConfirmPassword }
                             ]}
+                            hasFeedback
                         >
                             <Input.Password
                                 prefix={<LockOutlined />}
@@ -247,7 +252,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="fullName"
                             label="Họ và tên"
+                            validateFirst
                             rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+                            hasFeedback
                         >
                             <Input
                                 prefix={<UserOutlined />}
@@ -261,10 +268,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="phoneNumber"
                             label="Số điện thoại"
+                            validateFirst
                             rules={[
                                 { required: true, message: 'Vui lòng nhập số điện thoại' },
                                 { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải có 10 chữ số' }
                             ]}
+                            hasFeedback
                         >
                             <Input
                                 prefix={<PhoneOutlined />}
@@ -281,6 +290,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="gender"
                             label="Giới tính"
+                            validateFirst
                             rules={[{ required: true, message: 'Vui lòng chọn giới tính' }]}
                         >
                             <Radio.Group disabled={loading}>
@@ -293,6 +303,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="dateOfBirth"
                             label="Ngày sinh"
+                            validateFirst
                             rules={[{ required: true, message: 'Vui lòng chọn ngày sinh' }]}
                         >
                             <DateSelectGroup mode="birthdate" />
@@ -317,7 +328,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="companyName"
                             label="Tên công ty"
+                            validateFirst
                             rules={[{ required: true, message: 'Vui lòng nhập tên công ty' }]}
+                            hasFeedback
                         >
                             <Input
                                 prefix={<BankOutlined />}
@@ -331,7 +344,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="businessLicenseNumber"
                             label="Mã số doanh nghiệp"
+                            validateFirst
                             rules={[{ required: true, message: 'Vui lòng nhập mã số doanh nghiệp' }]}
+                            hasFeedback
                         >
                             <Input
                                 prefix={<IdcardOutlined />}
@@ -348,7 +363,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="representativeName"
                             label="Tên người đại diện"
+                            validateFirst
                             rules={[{ required: true, message: 'Vui lòng nhập tên người đại diện' }]}
+                            hasFeedback
                         >
                             <Input
                                 prefix={<UserOutlined />}
@@ -362,10 +379,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="representativePhone"
                             label="Số điện thoại người đại diện"
+                            validateFirst
                             rules={[
                                 { required: true, message: 'Vui lòng nhập số điện thoại người đại diện' },
                                 { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải có 10 chữ số' }
                             ]}
+                            hasFeedback
                         >
                             <Input
                                 prefix={<PhoneOutlined />}
@@ -380,7 +399,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                 <Form.Item
                     name="businessAddress"
                     label="Địa chỉ doanh nghiệp"
+                    validateFirst
                     rules={[{ required: true, message: 'Vui lòng nhập địa chỉ doanh nghiệp' }]}
+                    hasFeedback
                 >
                     <Input.TextArea
                         placeholder="Nhập địa chỉ doanh nghiệp"
