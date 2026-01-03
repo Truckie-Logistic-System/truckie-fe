@@ -39,13 +39,13 @@
 
 ### 🎓 Capstone Project Details
 - **University:** FPT University
-- **Semester:** Fall 2025
+- **Semester:** Fall 2025 (9/2025 - 12/2025)
 - **Team Size:** 5 members
 - **Development Duration:** 4 months
 
 ### 💡 Design Philosophy
 
-- **User-Centric:** Tailored interfaces for different user roles (Admin, Staff, Driver, Customer)
+- **User-Centric:** Tailored interfaces for different user roles (Admin, Staff, Customer)
 - **Real-Time:** WebSocket integration for live updates and tracking
 - **Responsive:** Mobile-first design approach with Tailwind CSS
 - **Performance:** Optimized with React Query, lazy loading, and code splitting
@@ -221,7 +221,7 @@ Ensure you have the following installed:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/truckie-fe.git
+   git clone https://github.com/Truckie-Logistic-System/truckie-fe
    cd truckie-fe
    ```
 
@@ -513,6 +513,6 @@ This project is developed for educational purposes as part of FPT University's C
 
 **Built with ❤️ by FPT University Students**
 
-[Report Bug](https://github.com/your-username/truckie-fe/issues) • [Request Feature](https://github.com/your-username/truckie-fe/issues)
+[Report Bug](https://github.com/Truckie-Logistic-System/truckie-fe/issues) • [Request Feature](https://github.com/Truckie-Logistic-System/truckie-fe/issues)
 
 </div>
