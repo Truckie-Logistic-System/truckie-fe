@@ -3,8 +3,8 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Build arguments - CHỈ NHỮNG GIÁ TRỊ QUAN TRỌNG
-ARG VITE_API_URL=https://web-production-7b905.up.railway.app/api/v1
-ARG VITE_API_BASE_URL=https://web-production-7b905.up.railway.app
+ARG VITE_API_URL=https://truckie-be-e3bre6hmfqhcabba.southeastasia-01.azurewebsites.net/api/v1
+ARG VITE_API_BASE_URL=https://truckie-be-e3bre6hmfqhcabba.southeastasia-01.azurewebsites.net
 ARG VITE_VIET_MAPS_API_KEY
 ARG VITE_OPEN_MAP_API_KEY
 ARG VITE_TRACKASIA_MAP_API_KEY
