@@ -12,7 +12,7 @@
 
 *A comprehensive frontend application for truck logistics operations with real-time GPS tracking, intelligent dashboards, and seamless user experience across Admin, Staff, Driver, and Customer roles.*
 
-[Live Demo](https://truckie.vercel.app/) • [Backend API](https://web-production-7b905.up.railway.app/swagger-ui/index.html) • [Report Bug](#-contributing) • [Request Feature](#-contributing)
+[Live Demo](https://truckie.vercel.app/) • [Backend API](https://truckie-be-e3bre6hmfqhcabba.southeastasia-01.azurewebsites.net/swagger-ui/index.html) • [Report Bug](#-contributing) • [Request Feature](#-contributing)
 
 </div>
 
